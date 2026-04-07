@@ -1,0 +1,12 @@
+{
+    "name": "viewer-project",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "concurrently \"node build-post.js --watch\" \"npx serve dist\"",
+        "build": "node build-post.js"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1"
+    }
+}
