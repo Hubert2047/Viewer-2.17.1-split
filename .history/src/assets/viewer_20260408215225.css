@@ -598,7 +598,7 @@ button {
   background: rgba(0, 0, 0, 0.03);
   padding: 8px 0;
   max-height: 72vh;
-  overflow-y: overlay;
+  overflow-y: auto;
   scrollbar-gutter: stable both-edges;
   overscroll-behavior: contain;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);

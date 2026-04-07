@@ -20,8 +20,12 @@ const files = [
     'src/libs/engine/engine-2.js',
     'src/libs/engine/engine-3.js',
     'src/libs/engine/engine-4.js',
-    'src/libs/hotspot.js',
-    'src/libs/viewer.js',
+    'src/utils/index.js',
+    'src/components/confirm-dialog.js',
+    'src/components/hotspots/hotspot.js',
+    'src/components/hotspots/hotspot-manager.js',
+    'src/components/hotspots/hotspot-editor-ui.js',
+    'src/main.js',
 ]
 
 function build() {
@@ -29,7 +33,7 @@ function build() {
         const js = files.map((f) => fs.readFileSync(f, 'utf8')).join('\n')
         fs.mkdirSync('dist', { recursive: true })
         fs.writeFileSync('dist/viewer.js', js)
-        fs.copyFileSync('src/css/viewer.css', 'dist/viewer.css')
+        fs.copyFileSync('src/assets/viewer.css', 'dist/viewer.css')
         if (fs.existsSync('public')) {
             copyDir('public', 'dist')
             console.log('✓ Copied public/')

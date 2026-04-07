@@ -1,4 +1,3 @@
-
 const initPoster = (events) => {
     const poster = document.getElementById('poster')
     events.on('loaded:changed', () => {
@@ -59,13 +58,13 @@ function pickModelLocalPoint(x, y, camera) {
         return localRay.getPoint(t)
     }
 
-    return findFallbackIntersectionPoint(localRay, localCenters)
+    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
 }
 
-function findFallbackIntersectionPoint(localRay, centers) {
+function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
     const nearestPoint = findNearestSplatCenter(localRay, centers)
     if (nearestPoint) return nearestPoint
-    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay)
+    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
     if (bboxIntersection) return bboxIntersection
 
     return localRay.getPoint(5.0)
@@ -95,7 +94,7 @@ function findNearestSplatCenter(localRay, centers) {
     return bestT !== null ? localRay.getPoint(bestT) : null
 }
 
-function intersectBoundingBoxCenterPlane(localRay) {
+function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
     const meshInstance = modelEntity.gsplat.instance.meshInstance
     const aabbWorld = meshInstance.aabb
     const bboxCenterWorld = aabbWorld.center.clone()
@@ -117,21 +116,14 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
 }
 
 function initHotspotSection(body, global, dom) {
-    const editor = new HotspotEditorUI(body, { events: global.events, dom, state:global.state, camera: global.camera })
+    const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
-    const manager = new HotspotManager({
-        editable: global.config.edit,
-        camera: global.camera.camera,
-        events: global.events,
-        editor,
-        dom: dom,
-        modelEntity,
-    })
+    const manager = new HotspotManager({ global, editor, dom: dom })
 
     return manager
 }
 
-function createSection({ id, title, body: renderBody }) {
+function createSection({ id, title, body: renderBody, classname = '' }) {
     const section = document.createElement('div')
     section.classList.add('section')
     const header = document.createElement('div')
@@ -143,16 +135,16 @@ function createSection({ id, title, body: renderBody }) {
     header.appendChild(titleEl)
     header.appendChild(chevron)
     const body = document.createElement('div')
-    body.classList.add('section-body')
+    body.classList.add('section-body', classname)
     body.id = `sidebar-section-${id}`
     renderBody(body)
     body.style.display = 'none'
     header.addEventListener('click', () => {
         const isOpen = body.style.display !== 'none'
-        document.querySelectorAll('[data-sidebar-body]').forEach(el => {
+        document.querySelectorAll('[data-sidebar-body]').forEach((el) => {
             el.style.display = 'none'
         })
-        document.querySelectorAll('[data-sidebar-chevron]').forEach(el => {
+        document.querySelectorAll('[data-sidebar-chevron]').forEach((el) => {
             el.style.transform = ''
         })
         if (!isOpen) {
@@ -167,13 +159,46 @@ function createSection({ id, title, body: renderBody }) {
     return section
 }
 
+function initviewSection(el, global) {}
+function exportSection(el) {
+    const filenameField = document.createElement('div')
+    filenameField.classList.add('hotspot-field')
 
-function initviewSection(el, global){
+    const label = document.createElement('div')
+    label.classList.add('hotspot-label')
+    label.textContent = 'File Name'
 
+    const inputWrap = document.createElement('div')
+    inputWrap.classList.add('export-input-wrap')
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = 'index'
+    input.id = 'export-filename'
+    input.classList.add('input-field')
+
+    const ext = document.createElement('span')
+    ext.classList.add('export-ext')
+    ext.textContent = '.html'
+
+    inputWrap.appendChild(input)
+    inputWrap.appendChild(ext)
+    filenameField.appendChild(label)
+    filenameField.appendChild(inputWrap)
+    el.appendChild(filenameField)
+
+    const btn = document.createElement('button')
+    btn.classList.add('export-btn')
+    btn.textContent = 'Export HTML'
+    btn.addEventListener('click', () => {
+        const filename = (input.value.trim() || 'index') + '.html'
+        exportHtml(filename, window.sse)
+    })
+    el.appendChild(btn)
 }
 
 function createSidebar(global, dom) {
-    const SIDEBAR_WIDTH = '360px'   
+    const SIDEBAR_WIDTH = '360px'
     const sidebar = document.createElement('div')
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
@@ -182,16 +207,30 @@ function createSidebar(global, dom) {
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
     sidebar.appendChild(header)
-    sidebar.appendChild(createSection({
-        id: 'initview',
-        title: 'Initview',
-        body: (el) => initviewSection(el, global),
-    }))
-    sidebar.appendChild(createSection({
-        id: 'hotspot',
-        title: 'Hotspots',
-        body: (el) => initHotspotSection(el, global, dom),
-    }))
+    sidebar.appendChild(
+        createSection({
+            id: 'initview',
+            title: 'Initview',
+            classname: 'initview-section',
+            body: (el) => initviewSection(el, global),
+        }),
+    )
+    sidebar.appendChild(
+        createSection({
+            id: 'hotspot',
+            title: 'Hotspots',
+            classname: 'hotspot-section',
+            body: (el) => initHotspotSection(el, global, dom),
+        }),
+    )
+    sidebar.appendChild(
+        createSection({
+            id: 'export',
+            title: 'Export',
+            classname: 'export-section',
+            body: (el) => exportSection(el),
+        }),
+    )
     document.body.appendChild(sidebar)
     const canvas = global.app.graphicsDevice.canvas
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
@@ -234,7 +273,7 @@ const initUI = (global) => {
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
         events.fire('pointerup', event)
-     })
+    })
     dom.ui.addEventListener(
         'wheel',
         (event) => {
@@ -340,7 +379,7 @@ const initUI = (global) => {
         events.fire('inputEvent', 'frame', event)
     })
     // Initialize annotation navigator
-    initAnnotationNav(dom, events, state, global.settings.annotations)
+    // initAnnotationNav(dom, events, state, global.settings.annotations)
     // Hide all UI (poster, loading bar, controls)
     if (config.noui) {
         dom.ui.classList.add('hidden')
@@ -355,7 +394,7 @@ const initUI = (global) => {
             return window.location.hostname !== window.parent.location.hostname
         } catch (e) {
             // cross-origin iframe — parent location is inaccessible
-            return true 
+            return true
         }
     }
     if (window.parent !== window && isThirdPartyEmbedded()) {
@@ -364,8 +403,9 @@ const initUI = (global) => {
             viewUrl.pathname = '/view'
         }
     }
-    const shouldShowSidebar = config.edit && window.location.protocol !== 'https:'
-    if(shouldShowSidebar) createSidebar(global, dom)
+    if (config.editable) {
+        createSidebar(global, dom)
+    }
 }
 
 // clamp the vertices of the hotspot so it is never clipped by the near or far plane
@@ -899,7 +939,7 @@ class Annotation extends Script {
 }
 
 class Annotations {
-    annotations
+    annotations = []
     parentDom
     constructor(global, hasCameraFrame) {
         // create dom parent
@@ -1260,7 +1300,7 @@ class Camera {
     position = new Vec3()
     angles = new Vec3()
     distance = 1
-    fov = 65
+    fov = 60
     constructor(other) {
         if (other) {
             this.copy(other)
@@ -1706,8 +1746,34 @@ class OtherController {
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
-    listenEvents(){
-        this.events.on('hotspot:editor-selected',(editData)=>{ this.isSelectedHotspot = editData !== null })
+    listenEvents() {
+        this.events.on('hotspot:editing', (isEdit) => {
+            this.isEditHotspot = isEdit
+        })
+        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
+            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
+            const startPose = {
+                focus: this.focus.clone(),
+                position: new Vec3(
+                    modelEntity.localPosition.x,
+                    modelEntity.localPosition.y,
+                    modelEntity.localPosition.z,
+                ),
+                rotation: modelEntity.localRotation.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            }
+            const targetPose = {
+                focus: this.getActualFocus(f),
+                position: new Vec3(p.x, p.y, p.z),
+                rotation: new Quat(r.x, r.y, r.z, r.w),
+                distance: this.getActualDistance(d),
+                yaw,
+                pitch,
+            }
+            this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
+        })
     }
     getCustomCenterPivot(pos) {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
@@ -1759,7 +1825,7 @@ class OtherController {
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
         } else {
             const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-            const fovDeg = pose.fov ?? 75
+            const fovDeg = 50
             let verticalFovRad
             if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
                 const hFovRad = (fovDeg * Math.PI) / 180
@@ -1830,10 +1896,6 @@ class OtherController {
         const { move, rotate } = inputFrame.read()
         this.move(move, rotate)
         this.getPose(camera)
-        // if (!this.initHotspot && this.hotspotManager.readyToRender) {
-        //     this.hotspotManager.init()
-        //     this.initHotspot = true
-        // }
         this.smooth(dt)
         this.updateModelEntity(dt)
         // this.applyInertia()
@@ -1841,11 +1903,9 @@ class OtherController {
     onEnter(camera) {
         this.reset(camera)
     }
-    onExit(){
-
-    }
+    onExit() {}
     applyInertia() {
-        if (this.isSelectedHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
+        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
         const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
         if (speed < this.inertiaMinSpeed) {
             this.inertiaVelX = 0
@@ -1992,7 +2052,7 @@ class OtherController {
         return Math.min(maxDistance, Math.max(this.getActualDistance(orterySettings.lockZoomIn.value), distance))
     }
     move(move, rotate) {
-        if (this.isSelectedHotspot) return
+        if (this.isEditHotspot) return
         const [x, y, z] = move
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
@@ -2032,10 +2092,11 @@ class OtherController {
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
                 this.syncHierarchyAndRender()
+                didRotate = true
             }
         }
         if (didRotate) {
-            this.hotspotManager.hideAll()
+            this.events.fire('hotspot:hide-all')
         }
         if (isZooming || isPanning || didRotate) {
             // this.hotspotManager.stopAutoPlay()
@@ -2575,14 +2636,10 @@ class CameraManager {
     controllers
     // holds the camera state
     camera = new Camera()
-    constructor(global, bbox, app, entity, dom, collider = null) {
+    constructor(global, bbox, app, entity, collider = null) {
         const { events, settings, state } = global
-        const camera0 = settings.cameras[0]?.initial
-        const defaultFov = camera0?.fov ?? 75
-        const frameCamera = createFrameCamera(bbox, defaultFov)
-        const resetCamera = camera0
-            ? createCamera(new Vec3(camera0.position), new Vec3(camera0.target), camera0.fov)
-            : frameCamera
+        const defaultFov = 50
+        const resetCamera = createFrameCamera(bbox, defaultFov)
         const getAnimTrack = (initial, isObjectExperience) => {
             const { animTracks } = settings
             // extract the camera animation track from settings
@@ -3153,7 +3210,8 @@ class InputController {
         // handle keyboard events
         window.addEventListener('keydown', (event) => {
             const tag = document.activeElement?.tagName
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
+                return
             if (event.key === 'Escape') {
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
@@ -3271,7 +3329,7 @@ class InputController {
         const isOrtery = state.cameraMode === 'ortery'
         this._state.axis.add(
             tmpV1.set(
-                isOrtery ? 0: key[keyCode.D] - key[keyCode.A] + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
+                isOrtery ? 0 : key[keyCode.D] - key[keyCode.A] + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
                 isOrtery ? 0 : key[keyCode.E] - key[keyCode.Q],
                 isOrtery ? 0 : key[keyCode.W] - key[keyCode.S] + (key[keyCode.UP] - key[keyCode.DOWN]),
             ),
@@ -4489,9 +4547,9 @@ class Viewer {
             if (gsplatBbox) {
                 sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform())
             }
-            if (!config.noui) {
-                this.annotations = new Annotations(global, this.cameraFrame != null)
-            }
+            // if (!config.noui) {
+            //     this.annotations = new Annotations(global, this.cameraFrame != null)
+            // }
             this.inputController = new InputController(global)
             this.inputController.collider = collider ?? null
             state.hasCollision = !!collider
@@ -4505,7 +4563,7 @@ class Viewer {
                     app.renderNextFrame = true
                 })
             }
-            this.cameraManager = new CameraManager(global, sceneBound, app, camera, dom, collider)
+            this.cameraManager = new CameraManager(global, sceneBound, app, camera, collider)
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
@@ -4612,7 +4670,14 @@ class Viewer {
     configureCamera(settings) {
         const { global } = this
         const { app, config, camera } = global
-        const { postEffectSettings } = settings
+        settings.tonemapping = settings.tonemapping || 'none'
+        const postEffectSettings = settings.postEffectSettings || {
+            sharpness: { enabled: false, amount: 0 },
+            bloom: { enabled: false, intensity: 1, blurLevel: 2 },
+            grading: { enabled: false, brightness: 0, contrast: 1, saturation: 1, tint: [1, 1, 1] },
+            vignette: { enabled: false, intensity: 0.5, inner: 0.3, outer: 0.75, curvature: 1 },
+            fringing: { enabled: false, intensity: 0.5 },
+        }
         const { background } = settings
         // hpr override takes precedence over settings.highPrecisionRendering
         const highPrecisionRendering = config.hpr ?? settings.highPrecisionRendering
@@ -6737,7 +6802,7 @@ const config = {
     contentUrl: settings.contentUrl,
     contents: createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
-    edit: url.searchParams.get('edit') === 'true',
+    editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:',
     noanim: true,
     nofx: url.searchParams.has('nofx'),
     hpr: url.searchParams.has('hpr') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('hpr')) : undefined,
@@ -6776,6 +6841,7 @@ const main = async (canvas, settingsJson, config) => {
         controlsHidden: false,
         gamingControls: localStorage.getItem('gamingControls') === 'true',
     })
+    const confirmDialog = new ConfirmDialog()
     const global = {
         app,
         settings: importSettings(settingsJson),
@@ -6783,6 +6849,7 @@ const main = async (canvas, settingsJson, config) => {
         state,
         events,
         camera,
+        confirmDialog,
     }
     initCanvas(global)
     // start the application
@@ -6851,7 +6918,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-
     // const bboxSetup = (() => {
     //     const app = viewer.global.app
     //     const layers = app.scene.layers

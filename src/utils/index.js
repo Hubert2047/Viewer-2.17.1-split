@@ -1,18 +1,33 @@
-<!doctype html>
+function exportHtml(name, data) {
+    const injectedScript = `<script>
+            window.sse = ${JSON.stringify(data)}
+        <\/script>`
+    const template = getHtmlTemplate()
+    const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(url)
+}
+
+function getHtmlTemplate() {
+    return `<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Viewer</title>
-        <meta charset="UTF-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css" />
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
+<head>
+    <title>Viewer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <base href>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+      <div id="ui">
             <div id="poster"></div>
             <div id="loadingWrap">
                 <div id="loadingText"></div>
@@ -47,16 +62,11 @@
                             </svg>
                         </button>
                         <button id="settings" class="controlButton">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                                <path
-                                    fill="currentColor"
-                                    fill-rule="evenodd"
-                                    clip-rule="evenodd"
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" viewBox="0 0 24 24">
+                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
                                     d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 9.7998 12 8ZM12 9.7998C10.785 9.7998 9.7998 10.785 9.7998 12C9.7998 13.215 10.785 14.2002 12 14.2002C13.215 14.2002 14.2002 13.215 14.2002 12C14.2002 10.785 13.215 9.7998 12 9.7998Z" />
-                                <path
-                                    fill="currentColor"
-                                    fill-rule="evenodd"
-                                    clip-rule="evenodd"
+                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
                                     d="M12.7119 2.2002C13.1961 2.20028 13.6296 2.49055 13.8164 2.93066L13.8506 3.02051L14.3652 4.56641C14.7875 4.70091 15.1932 4.87075 15.5801 5.07129L17.042 4.3418L17.1299 4.30176C17.5436 4.13502 18.017 4.21245 18.3564 4.50195L18.4268 4.56641L19.4336 5.57324C19.7985 5.93836 19.8889 6.49621 19.6582 6.95801L18.9268 8.41895C19.1274 8.80592 19.2971 9.21159 19.4316 9.63379L20.9795 10.1504C21.4693 10.3138 21.7997 10.7717 21.7998 11.2881V12.7119C21.7997 13.2284 21.4695 13.6873 20.9795 13.8506L19.4316 14.3652C19.2971 14.7875 19.1274 15.1932 18.9268 15.5801L19.6582 17.042C19.8889 17.5038 19.7985 18.0616 19.4336 18.4268L18.4268 19.4336C18.0616 19.7985 17.5038 19.8889 17.042 19.6582L15.5801 18.9268C15.1932 19.1274 14.7875 19.2971 14.3652 19.4316L13.8506 20.9795C13.6873 21.4695 13.2284 21.7997 12.7119 21.7998H11.2881C10.7717 21.7997 10.3138 21.4693 10.1504 20.9795L9.63379 19.4316C9.21159 19.2971 8.80592 19.1274 8.41895 18.9268L6.95801 19.6582C6.49621 19.8889 5.93836 19.7985 5.57324 19.4336L4.56641 18.4268C4.20146 18.0617 4.1112 17.5038 4.3418 17.042L5.07129 15.5801C4.87075 15.1932 4.70091 14.7875 4.56641 14.3652L3.02051 13.8506C2.53057 13.6873 2.20029 13.2283 2.2002 12.7119V11.2881C2.20024 10.7718 2.53076 10.3139 3.02051 10.1504L4.56641 9.63379C4.70094 9.21149 4.86966 8.80498 5.07031 8.41797L4.3418 6.95801C4.11113 6.49617 4.20145 5.93834 4.56641 5.57324L5.57324 4.56641C5.93834 4.20145 6.49617 4.11113 6.95801 4.3418L8.41797 5.07031C8.80498 4.86966 9.21149 4.70094 9.63379 4.56641L10.1504 3.02051L10.1836 2.92969C10.3706 2.49001 10.8042 2.20023 11.2881 2.2002H12.7119ZM11.0186 5.4707L10.8809 5.88477L10.458 5.99316C9.88479 6.13982 9.34317 6.36768 8.84473 6.66309L8.46875 6.88477L8.0791 6.69043L6.50098 5.90137L5.90137 6.50098L6.69043 8.0791L6.88477 8.46875L6.66309 8.84473C6.36768 9.34317 6.13982 9.88479 5.99316 10.458L5.88477 10.8809L5.4707 11.0186L3.7998 11.5762V12.4229L5.4707 12.9805L5.88477 13.1182L5.99316 13.541C6.13969 14.1141 6.36763 14.6556 6.66309 15.1543L6.88477 15.5303L6.69043 15.9199L5.90137 17.498L6.50098 18.0977L8.0791 17.3086L8.46875 17.1133L8.84473 17.3359C9.34314 17.6314 9.88463 17.8591 10.458 18.0059L10.8809 18.1143L11.0186 18.5283L11.5771 20.2002H12.4229L13.1182 18.1143L13.541 18.0059C14.1143 17.8593 14.6556 17.6314 15.1543 17.3359L15.5303 17.1143L15.9199 17.3086L17.498 18.0977L18.0977 17.498L17.3086 15.9199L17.1143 15.5303L17.3359 15.1543C17.6314 14.6556 17.8593 14.1143 18.0059 13.541L18.1143 13.1182L20.2002 12.4229V11.5762L18.1143 10.8809L18.0059 10.458C17.8591 9.88463 17.6314 9.34314 17.3359 8.84473L17.1133 8.46875L17.3086 8.0791L18.0977 6.50098L17.498 5.90137L15.9199 6.69043L15.5303 6.88477L15.1543 6.66309C14.6556 6.36763 14.1141 6.13969 13.541 5.99316L13.1182 5.88477L12.9805 5.4707L12.4229 3.7998H11.5762L11.0186 5.4707Z" />
                             </svg>
                         </button>
@@ -71,7 +81,8 @@
                 </div>
             </div>
             <div id="infoPanel" class="hidden">
-                <div id="infoPanelContent" onpointerdown="event.stopPropagation()">
+                <div id="infoPanelContent"
+                    onpointerdown="event.stopPropagation()">
                     <div id="header">Controls</div>
                     <div id="tabs">
                         <div id="desktopTab" class="tab active">Desktop</div>
@@ -97,10 +108,12 @@
                             </div>
                             <div class="control-item autoPlay-info">
                                 <span class="control-action">Auto Play</span>
-                                <span class="control-key">P / Triangle icon</span>
+                                <span class="control-key">P / Triangle
+                                    icon</span>
                             </div>
                             <div class="control-item messages-info">
-                                <span class="control-action">Messages Disable </span>
+                                <span class="control-action">Messages Disable
+                                </span>
                                 <span class="control-key">T / Text Icon</span>
                             </div>
                         </div>
@@ -126,7 +139,8 @@
                                 <span class="control-key">Triangle icon</span>
                             </div>
                             <div class="control-item messages-info">
-                                <span class="control-action">Messages Disable </span>
+                                <span class="control-action">Messages Disable
+                                </span>
                                 <span class="control-key">Text Icon</span>
                             </div>
                         </div>
@@ -136,29 +150,8 @@
             <!-- Tooltip -->
             <div id="tooltip"></div>
         </div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                version: 2,
-                contentUrl: 'car.sog',
-                autoHideUI: false,
-                background: { color: [0, 0, 0] },
-                startMode: 'default',
-                model: 'spherical',
-                lockZoomIn: {
-                    value: 11,
-                    locked: false,
-                },
-                pivotPos: null,
-                initview: {
-                    pose: null,
-                },
-                orientation: null,
-                backgroundColor: '#ffffff',
-                hotspots:[]
-            },
-        }
-    </script>
-    <script type="module" src="./src/main.js"></script>
-</html>
+</body>
+<!-- INJECT_SCRIPT -->
+<script src="./viewer.js"><\/script>
+</html>`
+}

@@ -3686,8 +3686,9 @@ class Ray {
     copy(src) {
         return this.set(src.origin, src.direction)
     }
-    getPoint(t) {
-        return this.origin.clone().add(this.direction.clone().mulScalar(t))
+    getPoint(t, out = new Vec3()) {
+        out.copy(this.direction).mulScalar(t).add(this.origin)
+        return out
     }
     clone() {
         return new this.constructor(this.origin, this.direction)
@@ -19656,9 +19657,6 @@ let Camera$1 = class Camera {
         }
     }
     worldToScreen(worldCoord, cw, ch, screenCoord = new Vec3()) {
-        if (!(screenCoord instanceof Vec3)) {
-            screenCoord = new Vec3()
-        }
         this._updateViewProjMat()
         this._viewProjMat.transformPoint(worldCoord, screenCoord)
         const vpm = this._viewProjMat.data

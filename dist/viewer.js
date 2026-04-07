@@ -3708,8 +3708,9 @@ class Ray {
     copy(src) {
         return this.set(src.origin, src.direction)
     }
-    getPoint(t) {
-        return this.origin.clone().add(this.direction.clone().mulScalar(t))
+    getPoint(t, out = new Vec3()) {
+        out.copy(this.direction).mulScalar(t).add(this.origin)
+        return out
     }
     clone() {
         return new this.constructor(this.origin, this.direction)
@@ -19678,9 +19679,6 @@ let Camera$1 = class Camera {
         }
     }
     worldToScreen(worldCoord, cw, ch, screenCoord = new Vec3()) {
-        if (!(screenCoord instanceof Vec3)) {
-            screenCoord = new Vec3()
-        }
         this._updateViewProjMat()
         this._viewProjMat.transformPoint(worldCoord, screenCoord)
         const vpm = this._viewProjMat.data
@@ -74009,6 +74007,231 @@ const initAnnotationNav = (dom, events, state, annotations) => {
     // Initial state
     updateDisplay()
 }
+function exportHtml(name, data) {
+    const injectedScript = `<script>
+            window.sse = ${JSON.stringify(data)}
+        <\/script>`
+    const template = getHtmlTemplate()
+    const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(url)
+}
+
+function getHtmlTemplate() {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Viewer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <base href>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+      <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="controlsWrap" class="hidden">
+                <div id="buttonsContainer">
+                    <div class="buttonGroup">
+                        <button id="resetCamera" class="controlButton">
+                            <svg
+                                width="28px"
+                                height="28px"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M7.59843 4.48666C7.86525 3.17678 9.03088 2.25 10.3663 2.25H13.6337C14.9691 2.25 16.1347 3.17678 16.4016 4.48666C16.4632 4.78904 16.7371 5.01086 17.022 5.01086C17.0329 5.01086 17.0439 5.0111 17.0548 5.01157C18.4582 5.07294 19.5362 5.24517 20.4362 5.83558C21.0032 6.20757 21.4909 6.68617 21.871 7.24464C22.3439 7.93947 22.5524 8.73694 22.6524 9.70145C22.75 10.6438 22.75 11.825 22.75 13.3211V13.4062C22.75 14.9023 22.75 16.0835 22.6524 17.0258C22.5524 17.9903 22.3439 18.7878 21.871 19.4826C21.4909 20.0411 21.0032 20.5197 20.4362 20.8917C19.7327 21.3532 18.9262 21.5567 17.948 21.6544C16.9903 21.75 15.789 21.75 14.2634 21.75H9.73657C8.21098 21.75 7.00967 21.75 6.05196 21.6544C5.07379 21.5567 4.26731 21.3532 3.56385 20.8917C2.99682 20.5197 2.50905 20.0411 2.12899 19.4826C1.65612 18.7878 1.44756 17.9903 1.34762 17.0258C1.24998 16.0835 1.24999 14.9023 1.25 13.4062V13.3211C1.24999 11.825 1.24998 10.6438 1.34762 9.70145C1.44756 8.73694 1.65612 7.93947 2.12899 7.24464C2.50905 6.68617 2.99682 6.20757 3.56385 5.83558C4.46383 5.24517 5.5418 5.07294 6.94523 5.01157C6.95615 5.0111 6.96707 5.01086 6.978 5.01086C7.26288 5.01086 7.53683 4.78905 7.59843 4.48666ZM10.3663 3.75C9.72522 3.75 9.18905 4.19299 9.06824 4.78607C8.87258 5.74659 8.021 6.50186 6.99633 6.51078C5.64772 6.57069 4.92536 6.73636 4.38664 7.08978C3.98309 7.35452 3.63752 7.6941 3.36906 8.08857C3.09291 8.49435 2.92696 9.01325 2.83963 9.85604C2.75094 10.7121 2.75 11.8156 2.75 13.3636C2.75 14.9117 2.75094 16.0152 2.83963 16.8712C2.92696 17.714 3.09291 18.2329 3.36906 18.6387C3.63752 19.0332 3.98309 19.3728 4.38664 19.6375C4.80417 19.9114 5.33844 20.0756 6.20104 20.1618C7.07549 20.2491 8.20193 20.25 9.77778 20.25H14.2222C15.7981 20.25 16.9245 20.2491 17.799 20.1618C18.6616 20.0756 19.1958 19.9114 19.6134 19.6375C20.0169 19.3728 20.3625 19.0332 20.6309 18.6387C20.9071 18.2329 21.073 17.714 21.1604 16.8712C21.2491 16.0152 21.25 14.9117 21.25 13.3636C21.25 11.8156 21.2491 10.7121 21.1604 9.85604C21.073 9.01325 20.9071 8.49435 20.6309 8.08857C20.3625 7.6941 20.0169 7.35452 19.6134 7.08978C19.0746 6.73636 18.3523 6.57069 17.0037 6.51078C15.979 6.50186 15.1274 5.74659 14.9318 4.78607C14.8109 4.19299 14.2748 3.75 13.6337 3.75H10.3663ZM14.5197 8.25C14.9339 8.25 15.2697 8.58579 15.2697 9V10.6799C15.2697 11.0346 15.0213 11.3408 14.6742 11.4138L13.1545 11.7339C12.7492 11.8193 12.3514 11.5599 12.2661 11.1546C12.1928 10.8065 12.3737 10.4641 12.6828 10.3202C11.8617 10.0792 10.9379 10.2825 10.2902 10.9303C9.34597 11.8745 9.34597 13.4053 10.2902 14.3495C11.2343 15.2937 12.7652 15.2937 13.7094 14.3495C14.112 13.9469 14.3422 13.4396 14.4019 12.9152C14.4487 12.5037 14.8203 12.208 15.2319 12.2548C15.6434 12.3016 15.9391 12.6732 15.8923 13.0848C15.7957 13.9341 15.421 14.7592 14.77 15.4101C13.24 16.9401 10.7595 16.9401 9.2295 15.4101C7.69953 13.8802 7.69953 11.3996 9.2295 9.86963C10.4581 8.64105 12.2996 8.39903 13.7697 9.14355V9C13.7697 8.58579 14.1055 8.25 14.5197 8.25Z"
+                                    fill="white" />
+                            </svg>
+                        </button>
+                        <button id="info" class="controlButton">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                height="24px"
+                                viewBox="0 -960 960 960"
+                                width="24px"
+                                fill="currentColor">
+                                <path
+                                    d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
+                            </svg>
+                        </button>
+                        <button id="settings" class="controlButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                height="24" viewBox="0 0 24 24">
+                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 9.7998 12 8ZM12 9.7998C10.785 9.7998 9.7998 10.785 9.7998 12C9.7998 13.215 10.785 14.2002 12 14.2002C13.215 14.2002 14.2002 13.215 14.2002 12C14.2002 10.785 13.215 9.7998 12 9.7998Z" />
+                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M12.7119 2.2002C13.1961 2.20028 13.6296 2.49055 13.8164 2.93066L13.8506 3.02051L14.3652 4.56641C14.7875 4.70091 15.1932 4.87075 15.5801 5.07129L17.042 4.3418L17.1299 4.30176C17.5436 4.13502 18.017 4.21245 18.3564 4.50195L18.4268 4.56641L19.4336 5.57324C19.7985 5.93836 19.8889 6.49621 19.6582 6.95801L18.9268 8.41895C19.1274 8.80592 19.2971 9.21159 19.4316 9.63379L20.9795 10.1504C21.4693 10.3138 21.7997 10.7717 21.7998 11.2881V12.7119C21.7997 13.2284 21.4695 13.6873 20.9795 13.8506L19.4316 14.3652C19.2971 14.7875 19.1274 15.1932 18.9268 15.5801L19.6582 17.042C19.8889 17.5038 19.7985 18.0616 19.4336 18.4268L18.4268 19.4336C18.0616 19.7985 17.5038 19.8889 17.042 19.6582L15.5801 18.9268C15.1932 19.1274 14.7875 19.2971 14.3652 19.4316L13.8506 20.9795C13.6873 21.4695 13.2284 21.7997 12.7119 21.7998H11.2881C10.7717 21.7997 10.3138 21.4693 10.1504 20.9795L9.63379 19.4316C9.21159 19.2971 8.80592 19.1274 8.41895 18.9268L6.95801 19.6582C6.49621 19.8889 5.93836 19.7985 5.57324 19.4336L4.56641 18.4268C4.20146 18.0617 4.1112 17.5038 4.3418 17.042L5.07129 15.5801C4.87075 15.1932 4.70091 14.7875 4.56641 14.3652L3.02051 13.8506C2.53057 13.6873 2.20029 13.2283 2.2002 12.7119V11.2881C2.20024 10.7718 2.53076 10.3139 3.02051 10.1504L4.56641 9.63379C4.70094 9.21149 4.86966 8.80498 5.07031 8.41797L4.3418 6.95801C4.11113 6.49617 4.20145 5.93834 4.56641 5.57324L5.57324 4.56641C5.93834 4.20145 6.49617 4.11113 6.95801 4.3418L8.41797 5.07031C8.80498 4.86966 9.21149 4.70094 9.63379 4.56641L10.1504 3.02051L10.1836 2.92969C10.3706 2.49001 10.8042 2.20023 11.2881 2.2002H12.7119ZM11.0186 5.4707L10.8809 5.88477L10.458 5.99316C9.88479 6.13982 9.34317 6.36768 8.84473 6.66309L8.46875 6.88477L8.0791 6.69043L6.50098 5.90137L5.90137 6.50098L6.69043 8.0791L6.88477 8.46875L6.66309 8.84473C6.36768 9.34317 6.13982 9.88479 5.99316 10.458L5.88477 10.8809L5.4707 11.0186L3.7998 11.5762V12.4229L5.4707 12.9805L5.88477 13.1182L5.99316 13.541C6.13969 14.1141 6.36763 14.6556 6.66309 15.1543L6.88477 15.5303L6.69043 15.9199L5.90137 17.498L6.50098 18.0977L8.0791 17.3086L8.46875 17.1133L8.84473 17.3359C9.34314 17.6314 9.88463 17.8591 10.458 18.0059L10.8809 18.1143L11.0186 18.5283L11.5771 20.2002H12.4229L13.1182 18.1143L13.541 18.0059C14.1143 17.8593 14.6556 17.6314 15.1543 17.3359L15.5303 17.1143L15.9199 17.3086L17.498 18.0977L18.0977 17.498L17.3086 15.9199L17.1143 15.5303L17.3359 15.1543C17.6314 14.6556 17.8593 14.1143 18.0059 13.541L18.1143 13.1182L20.2002 12.4229V11.5762L18.1143 10.8809L18.0059 10.458C17.8591 9.88463 17.6314 9.34314 17.3359 8.84473L17.1133 8.46875L17.3086 8.0791L18.0977 6.50098L17.498 5.90137L15.9199 6.69043L15.5303 6.88477L15.1543 6.66309C14.6556 6.36763 14.1141 6.13969 13.541 5.99316L13.1182 5.88477L12.9805 5.4707L12.4229 3.7998H11.5762L11.0186 5.4707Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="settingsPanel" class="hidden">
+                <div class="divider"></div>
+                <div class="settingsRow">
+                    <button id="frame">1</button>
+                    <button id="reset">2</button>
+                </div>
+            </div>
+            <div id="infoPanel" class="hidden">
+                <div id="infoPanelContent"
+                    onpointerdown="event.stopPropagation()">
+                    <div id="header">Controls</div>
+                    <div id="tabs">
+                        <div id="desktopTab" class="tab active">Desktop</div>
+                        <div id="touchTab" class="tab">Touch</div>
+                    </div>
+                    <div id="infoPanels">
+                        <div id="desktopInfoPanel">
+                            <div class="control-item">
+                                <span class="control-action">Rotate</span>
+                                <span class="control-key">Left Mouse</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Pan</span>
+                                <span class="control-key">Right Mouse</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Zoom</span>
+                                <span class="control-key">Mouse Wheel</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Reset Camera</span>
+                                <span class="control-key">R / Camera Icon</span>
+                            </div>
+                            <div class="control-item autoPlay-info">
+                                <span class="control-action">Auto Play</span>
+                                <span class="control-key">P / Triangle
+                                    icon</span>
+                            </div>
+                            <div class="control-item messages-info">
+                                <span class="control-action">Messages Disable
+                                </span>
+                                <span class="control-key">T / Text Icon</span>
+                            </div>
+                        </div>
+                        <div id="touchInfoPanel" class="hidden">
+                            <div class="control-item">
+                                <span class="control-action">Rotate</span>
+                                <span class="control-key">One Finger Drag</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Pan</span>
+                                <span class="control-key">Two Finger Drag</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Zoom</span>
+                                <span class="control-key">Pinch</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Reset Camera</span>
+                                <span class="control-key">Camera Icon</span>
+                            </div>
+                            <div class="control-item autoPlay-info">
+                                <span class="control-action">Auto Play</span>
+                                <span class="control-key">Triangle icon</span>
+                            </div>
+                            <div class="control-item messages-info">
+                                <span class="control-action">Messages Disable
+                                </span>
+                                <span class="control-key">Text Icon</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tooltip -->
+            <div id="tooltip"></div>
+        </div>
+</body>
+<!-- INJECT_SCRIPT -->
+<script src="./viewer.js"><\/script>
+</html>`
+}
+
+class ConfirmDialog {
+    constructor() {
+        this._resolve = null
+        this._build()
+    }
+
+    _build() {
+        this.overlay = document.createElement('div')
+        this.overlay.style.display = 'none'
+        this.overlay.classList.add('confirm-dialog-overlay')
+
+        const box = document.createElement('div')
+        box.classList.add('confirm-dialog-box')
+        this.titleEl = document.createElement('div')
+        this.titleEl.classList.add('confirm-title')
+        this.msgEl = document.createElement('div')
+        this.msgEl.classList.add('confirm-msg')
+        const btnRow = document.createElement('div')
+        btnRow.classList.add('confirm-btn-row')
+        this.cancelBtn = document.createElement('button')
+        this.cancelBtn.textContent = 'Cancel'
+        this.cancelBtn.classList.add('confirm-cancel-btn','cancel-btn','btn')
+
+        this.confirmBtn = document.createElement('button')
+        this.confirmBtn.textContent = 'Delete'
+        this.confirmBtn.classList.add('confirm-accept-btn', 'confirm-btn','btn')
+        this.confirmBtn.style.background = '#c0392b'
+
+        btnRow.appendChild(this.cancelBtn)
+        btnRow.appendChild(this.confirmBtn)
+        box.appendChild(this.titleEl)
+        box.appendChild(this.msgEl)
+        box.appendChild(btnRow)
+        this.overlay.appendChild(box)
+        document.body.appendChild(this.overlay)
+
+        this.confirmBtn.addEventListener('click', () => this._close(true))
+        this.cancelBtn.addEventListener('click', () => this._close(false))
+        this.overlay.addEventListener('click', (e) => {
+            if (e.target === this.overlay) this._close(false)
+        })
+    }
+
+    _close(result) {
+        this.overlay.style.display = 'none'
+        this._resolve?.(result)
+        this._resolve = null
+    }
+
+    ask(title, message, variant = 'default' | 'delete' | 'edit') {
+        this.titleEl.textContent = title
+        this.msgEl.textContent = message
+        this.overlay.style.display = 'flex'
+        switch (variant) {
+            case 'delete':
+                this.confirmBtn.style.background = '#c0392b'
+                break
+            case 'edit':
+                this.confirmBtn.style.background = '#3498db'
+                break
+            default:
+                this.confirmBtn.style.background = '#27ae60'
+        }
+        return new Promise((res) => (this._resolve = res))
+    }
+}
+
 class Hotspot {
     constructor(camera, dom, data) {
         this.camera = camera
@@ -74022,14 +74245,21 @@ class Hotspot {
         this.resizing = false
         this.resizeEdge = null
 
-        this.data.focus.position = new Vec3(data.focus.position.x, data.focus.position.y, data.focus.position.z)
+        if (data.focus.position && !(data.focus.position instanceof Vec3)) {
+            this.data.focus.position = new Vec3(data.focus.position.x, data.focus.position.y, data.focus.position.z)
+        }
+        if (data.text.topLeft && !(data.text.topLeft instanceof Vec3)) {
+            this.data.text.topLeft = new Vec3(data.text.topLeft.x, data.text.topLeft.y, data.text.topLeft.z)
+        }
+        if (data.text.botRight && !(data.text.botRight instanceof Vec3)) {
+            this.data.text.botRight = new Vec3(data.text.botRight.x, data.text.botRight.y, data.text.botRight.z)
+        }
 
         this.createDiv()
         this.createLine()
         this.createDot()
         this.addDotDragEvents()
         this.addContentDragEvents()
-        // this.update()
     }
 
     setHotspotBtn(btn) {
@@ -74066,54 +74296,16 @@ class Hotspot {
 
     // ── Update loop ──────────────────────────
     update(updateContent = true, dotSize) {
-        if (!modelEntity?.gsplat?.instance?.meshInstance?.node) return
-
         const containerRect = this.dom.ui.getBoundingClientRect()
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
         const focusWorldPos = new Vec3()
         worldMatrix.transformPoint(this.data.focus.position, focusWorldPos)
-        const focusScreenPos = this.camera.worldToScreen(focusWorldPos, containerRect.width, containerRect.height)
-
+        const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
         this.updateDotLocalBounds(focusWorldPos, invWorldMatrix, dotSize)
-        this.updateTextLocalBounds(focusWorldPos, invWorldMatrix)
-        this.updateDot(worldMatrix, focusScreenPos, containerRect)
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
+        this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
-    }
-
-    updateTextLocalBounds(focusWorldPos, invWorldMatrix) {
-        if (this.data.text?.topLeft instanceof Vec3) return
-
-        if (this.data.text?.topLeft) {
-            this.data.text.topLeft = new Vec3(
-                this.data.text.topLeft.x,
-                this.data.text.topLeft.y,
-                this.data.text.topLeft.z,
-            )
-            this.data.text.botRight = new Vec3(
-                this.data.text.botRight.x,
-                this.data.text.botRight.y,
-                this.data.text.botRight.z,
-            )
-            return
-        }
-
-        const focusScreenPos = this.camera.worldToScreen(focusWorldPos, window.innerWidth, window.innerHeight)
-        const px = 50,
-            py = 50
-        const tl = new Vec3(focusScreenPos.x + 20, focusScreenPos.y - py * 2, focusScreenPos.z)
-        const br = new Vec3(focusScreenPos.x + 20 + px * 3, focusScreenPos.y - py, focusScreenPos.z)
-        const worldTL = this.camera.screenToWorld(tl.x, tl.y, tl.z)
-        const worldBR = this.camera.screenToWorld(br.x, br.y, br.z)
-        const localTL = new Vec3()
-        const localBR = new Vec3()
-        invWorldMatrix.transformPoint(worldTL, localTL)
-        invWorldMatrix.transformPoint(worldBR, localBR)
-        this.data.text.originWidth = Math.abs(br.x - tl.x)
-        this.data.text.originHeight = Math.abs(br.y - tl.y)
-        this.data.text.topLeft = localTL
-        this.data.text.botRight = localBR
     }
 
     updateDotLocalBounds(focusWorldPos, invWorldMatrix, size) {
@@ -74132,10 +74324,12 @@ class Hotspot {
             }
             return
         }
-        const focusScreenPos = this.camera.worldToScreen(focusWorldPos, window.innerWidth, window.innerHeight)
-        const half = (size ?? this.data.size ?? 30) / 2
-        const tl = new Vec3(focusScreenPos.x - half, focusScreenPos.y - half, focusScreenPos.z)
-        const br = new Vec3(focusScreenPos.x + half, focusScreenPos.y + half, focusScreenPos.z)
+        const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
+        const half = (size ?? this.data.dot.size ?? 30) / 2
+        const cameraPos = this.camera.entity.getPosition()
+        const zDepth = focusWorldPos.distance(cameraPos)
+        const tl = new Vec3(focusScreenPos.x - half, focusScreenPos.y - half, zDepth)
+        const br = new Vec3(focusScreenPos.x + half, focusScreenPos.y + half, zDepth)
         const worldTL = this.camera.screenToWorld(tl.x, tl.y, tl.z)
         const worldBR = this.camera.screenToWorld(br.x, br.y, br.z)
         const localTL = new Vec3()
@@ -74146,13 +74340,13 @@ class Hotspot {
         this.data.dot.botRight = localBR
     }
 
-    updateDot(worldMatrix, focusScreenPos, containerRect) {
+    updateDot(worldMatrix, focusScreenPos) {
         const dotWorldTL = new Vec3()
         const dotWorldBR = new Vec3()
         worldMatrix.transformPoint(this.data.dot.topLeft, dotWorldTL)
         worldMatrix.transformPoint(this.data.dot.botRight, dotWorldBR)
-        const dotScreenTL = this.camera.worldToScreen(dotWorldTL, containerRect.width, containerRect.height)
-        const dotScreenBR = this.camera.worldToScreen(dotWorldBR, containerRect.width, containerRect.height)
+        const dotScreenTL = this.camera.worldToScreen(dotWorldTL)
+        const dotScreenBR = this.camera.worldToScreen(dotWorldBR)
         const dotSize = Math.abs(dotScreenBR.x - dotScreenTL.x)
 
         this.dot.style.width = dotSize + 'px'
@@ -74219,59 +74413,145 @@ class Hotspot {
     }
 
     updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent) {
-        if (!this.data.text?.topLeft || !this.data.text?.botRight) return
-        this.textContentSpan.innerHTML = this.data.text.content
-        this.textContentSpan.style.textAlign = this.data.text.align || 'center'
-        this.textContentSpan.style.color = this.data.text.color
+        this.textContentSpan.textContent = this.data.text.content
+        this.textContentSpan.style.textAlign = this.data.text.align
         const contentWorldTL = new Vec3()
         const contentWorldBR = new Vec3()
         worldMatrix.transformPoint(this.data.text.topLeft, contentWorldTL)
         worldMatrix.transformPoint(this.data.text.botRight, contentWorldBR)
-        const sTL = this.camera.worldToScreen(contentWorldTL, containerRect.width, containerRect.height)
-        const sBR = this.camera.worldToScreen(contentWorldBR, containerRect.width, containerRect.height)
-        const width = Math.abs(sBR.x - sTL.x)
-        const height = Math.abs(sBR.y - sTL.y)
-
+        const contentScreenTL = this.camera.worldToScreen(contentWorldTL)
+        const contentScreenBR = this.camera.worldToScreen(contentWorldBR)
+        const width = Math.abs(contentScreenBR.x - contentScreenTL.x)
+        const height = Math.abs(contentScreenBR.y - contentScreenTL.y)
         this.div.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
         this.div.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
-        this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
         this.div.style.backgroundColor = this.transparentColor(
             this.data.text.background,
             this.data.text.backgroundAlpha,
         )
-
+        this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
         if (this.data.text.originHeight) {
-            const fontSize = this.data.text.fontSize || 16
-            const fontScale = Math.min(width / this.data.text.originWidth, height / this.data.text.originHeight, 2)
-            this.div.style.fontSize = Math.max(Math.min(16, fontSize), Math.round(fontSize * fontScale)) + 'px'
+            let fontSize = this.data.text.fontSize || 16
+            const fontScaleX = width / this.data.text.originWidth
+            const fontScaleY = height / this.data.text.originHeight
+            const fontScale = Math.min(fontScaleX, fontScaleY, hotspotMaxScale)
+            const minFontSize = Math.min(16, fontSize)
+            fontSize = Math.max(minFontSize, Math.round(fontSize * fontScale))
+            this.div.style.fontSize = fontSize + 'px'
         }
+        if (updateContent && this.isDisplay) {
+            const dotRect = this.dot.getBoundingClientRect()
+            const dotWidth = dotRect.width
+            const dotHeight = dotRect.height
+            const dotPartiallyOutside =
+                focusScreenPos.x + dotWidth / 2 < 0 ||
+                focusScreenPos.y + dotHeight / 2 < 0 ||
+                focusScreenPos.x - dotWidth / 2 > containerRect.width ||
+                focusScreenPos.y - dotHeight / 2 > containerRect.height ||
+                focusScreenPos.y - dotHeight / 2 < 0 ||
+                focusScreenPos.x - dotWidth / 2 < 0
+            if (dotPartiallyOutside) {
+                this.div.style.display = 'none'
+                this.div.style.visibility = 'hidden'
+                this.lineSvg.style.display = 'none'
+                this.dot.style.display = 'none'
+                delete this.initialDx
+                delete this.initialDy
+                delete this.div.hasAdjusted
+                return
+            } else {
+                this.div.style.display = 'flex'
+                this.div.style.visibility = 'hidden'
+                this.lineSvg.style.display = 'block'
+                this.dot.style.display = 'block'
+            }
+            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * hotspotMaxScale))
+            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * hotspotMaxScale))
+            let finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth - 20)
+            let finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight - 20)
+            const dotCenterX = dotRect.left + dotRect.width / 2
+            const dotCenterY = dotRect.top + dotRect.height / 2
+            const margin = 20
+            const willOverlap = (l, t) =>
+                l < dotRect.right &&
+                l + scaleWidth > dotRect.left &&
+                t < dotRect.bottom &&
+                t + scaleHeight > dotRect.top
+            const initiallyOverlap = willOverlap(finalLeft, finalTop)
+            if (initiallyOverlap && !this.div.hasAdjusted) {
+                let divCenterY = finalTop + scaleHeight / 2
+                if (divCenterY < dotCenterY) {
+                    finalTop = dotRect.top - scaleHeight - margin
+                    if (finalTop < 0 && dotRect.bottom + scaleHeight + margin < containerRect.height)
+                        finalTop = dotRect.bottom + margin
+                } else {
+                    finalTop = dotRect.bottom + margin
+                    if (finalTop + scaleHeight > containerRect.height && dotRect.top - scaleHeight - margin > 0)
+                        finalTop = dotRect.top - scaleHeight - margin
+                }
+                if (willOverlap(finalLeft, finalTop)) {
+                    if (dotRect.right + scaleWidth + margin < containerRect.width) {
+                        finalLeft = dotRect.right + margin
+                    } else if (dotRect.left - scaleWidth - margin > 0) {
+                        finalLeft = dotRect.left - scaleWidth - margin
+                    }
+                }
+                this.initialDx = finalLeft + scaleWidth / 2 - dotCenterX
+                this.initialDy = finalTop + scaleHeight / 2 - dotCenterY
+                this.div.hasAdjusted = true
+            } else if (this.div.hasAdjusted) {
+                finalLeft = dotCenterX + this.initialDx - scaleWidth / 2
+                finalTop = dotCenterY + this.initialDy - scaleHeight / 2
+                finalLeft = Math.min(Math.max(finalLeft, 0), containerRect.width - scaleWidth)
+                finalTop = Math.min(Math.max(finalTop, 0), containerRect.height - scaleHeight)
+                if (!initiallyOverlap && !willOverlap(finalLeft, finalTop)) {
+                    delete this.div.hasAdjusted
+                    delete this.initialDx
+                    delete this.initialDy
+                    finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth)
+                    finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight)
+                }
+            } else {
+                delete this.div.hasAdjusted
+                delete this.initialDx
+                delete this.initialDy
+            }
+            finalLeft = Math.min(Math.max(finalLeft, 0), containerRect.width - scaleWidth)
+            finalTop = Math.min(Math.max(finalTop, 0), containerRect.height - scaleHeight)
+            this.div.style.left = finalLeft + 'px'
+            this.div.style.top = finalTop + 'px'
+            this.div.style.width = scaleWidth + 'px'
+            this.div.style.height = scaleHeight + 'px'
+            const _cw = this.dom.ui.offsetWidth || containerRect.width
+            const _ch = this.dom.ui.offsetHeight || containerRect.height
+            const actualW = this.div.offsetWidth
+            const actualH = this.div.offsetHeight
+            let adjLeft = parseFloat(this.div.style.left)
+            let adjTop = parseFloat(this.div.style.top)
+            adjLeft = Math.min(Math.max(adjLeft, 0), _cw - actualW - 4)
+            adjTop = Math.min(Math.max(adjTop, 0), (this.dom.ui.offsetHeight || containerRect.height) - actualH - 4)
+            const dotCX = focusScreenPos.x
+            const dotCY = focusScreenPos.y
+            const dotR = this.dot.offsetWidth / 2 + 8
+            const overlapsX = adjLeft < dotCX + dotR && adjLeft + actualW > dotCX - dotR
+            const overlapsY = adjTop < dotCY + dotR && adjTop + actualH > dotCY - dotR
 
-        if (!updateContent || !this.isDisplay) return
+            if (overlapsX && overlapsY) {
+                const tryTop = dotCY - dotR - actualH - 4
+                const tryBottom = dotCY + dotR + 4
 
-        const dotRect = this.dot.getBoundingClientRect()
-        const outOfView =
-            focusScreenPos.x + dotRect.width / 2 < 0 ||
-            focusScreenPos.y + dotRect.height / 2 < 0 ||
-            focusScreenPos.x - dotRect.width / 2 > window.innerWidth ||
-            focusScreenPos.y - dotRect.height / 2 > window.innerHeight
-
-        if (outOfView) {
-            this.div.style.display = 'none'
-            this.lineSvg.style.display = 'none'
-            this.dot.style.display = 'none'
-            return
+                if (tryTop >= 0) {
+                    adjTop = tryTop
+                } else if (tryBottom + actualH <= _ch) {
+                    adjTop = tryBottom
+                } else {
+                    adjTop = Math.min(Math.max(adjTop, 0), _ch - actualH - 4)
+                }
+            }
+            this.div.style.left = adjLeft + 'px'
+            this.div.style.top = adjTop + 'px'
+            this.div.style.visibility = 'visible'
         }
-
-        const scaleWidth = Math.max(100, Math.min(width, (this.data.text.originWidth || 100) * 2))
-        const scaleHeight = Math.max(32, Math.min(height, (this.data.text.originHeight || 32) * 2))
-        this.div.style.left = Math.min(Math.max(sTL.x, 0), window.innerWidth - scaleWidth - 20) + 'px'
-        this.div.style.top = Math.min(Math.max(sTL.y, 0), window.innerHeight - scaleHeight - 20) + 'px'
-        this.div.style.width = scaleWidth + 'px'
-        this.div.style.height = scaleHeight + 'px'
-        this.div.style.display = 'flex'
-        this.div.style.visibility = 'visible'
-        this.lineSvg.style.display = 'block'
-        this.dot.style.display = 'block'
     }
 
     // ── Show / Hide / Destroy ─────────────────
@@ -74281,7 +74561,6 @@ class Hotspot {
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
         if (this.hotspotBtn) this.hotspotBtn.setActiveColor()
-        this.update()
     }
 
     hide() {
@@ -74421,11 +74700,53 @@ class Hotspot {
             this.update(false)
         })
 
-        this.div.addEventListener('pointerup', () => {
+        this.div.addEventListener('pointerup', (e) => {
+            this.isEdit = false
             this.dragging = false
             this.resizing = false
             this.resizeEdge = null
+            this.div.releasePointerCapture(e.pointerId)
+            this.div.style.cursor = 'default'
+            const { topLeft, botRight, originWidth, originHeight } = this.getLocalContentPosByDiv()
+            this.data.text.topLeft = topLeft
+            this.data.text.botRight = botRight
+            this.data.text.originWidth = originWidth
+            this.data.text.originHeight = originHeight
         })
+    }
+    getLocalContentPosByDiv() {
+        const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+        const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
+
+        const left = parseFloat(this.div.style.left)
+        const top = parseFloat(this.div.style.top)
+        const right = left + this.div.offsetWidth
+        const bottom = top + this.div.offsetHeight
+
+        const focusWorldPos = new Vec3()
+        worldMatrix.transformPoint(this.data.focus.position, focusWorldPos)
+        const cameraPos = this.camera.entity.getPosition()
+        const zDepth = focusWorldPos.distance(cameraPos)
+
+        const contentWorldTL = this.camera.screenToWorld(left, top, zDepth)
+        const contentWorldBR = this.camera.screenToWorld(right, bottom, zDepth)
+
+        const contentLocalTL = new Vec3()
+        const contentLocalBR = new Vec3()
+        invWorldMatrix.transformPoint(contentWorldTL, contentLocalTL)
+        invWorldMatrix.transformPoint(contentWorldBR, contentLocalBR)
+
+        const contentScreenTL = this.camera.worldToScreen(contentWorldTL)
+        const contentScreenBR = this.camera.worldToScreen(contentWorldBR)
+        const originWidth = Math.abs(contentScreenBR.x - contentScreenTL.x)
+        const originHeight = Math.abs(contentScreenBR.y - contentScreenTL.y)
+
+        return {
+            topLeft: contentLocalTL,
+            botRight: contentLocalBR,
+            originWidth,
+            originHeight,
+        }
     }
 
     transparentColor(color, alpha = 0.5) {
@@ -74449,68 +74770,123 @@ class Hotspot {
         return color
     }
 }
+
 class HotspotManager {
-    constructor({ camera, events, dom, editor, editable }) {
-        this.camera = camera
-        this.events = events
+    constructor({ global, dom, editor }) {
+        this.camera = global.camera.camera
+        this.events = global.events
+        this.editable = global.config.editable
         this.editor = editor
         this.dom = dom
-        this.editable = editable
+        this.state = global.state
+
         this.hotspots = []
-        this.hotspotData = []
+        this.hotspotData = global.settings.hotspots
 
         this.activeHotspot = null
         this.activeData = null
-        this.restoreData = null
 
         this.isAutoPlay = false
         this.intervalID = null
         this.listenEvents()
+        this.controllers = null
+        global.app.on('postrender', () => this.update())
     }
 
     listenEvents() {
+        this.events.on('controllers:created', (controllers) => {
+            this.controllers = controllers
+        })
         this.events.on('hotspot:add', ({ position, entityInfo }) => {
             const data = this.createDefault(position, entityInfo)
             this.hotspotData.push(data)
             const h = new Hotspot(this.camera, this.dom, data)
             this.hotspots.push(h)
             this.events.fire('hotspot:editor-selected', data)
+            this.events.fire('hotspot:editing', false)
         })
         this.events.on('hotspot:editor-selected', (selected) => {
             this.activeData = selected
-            this.activeHotspot = selected === null ? null : this.hotspots.find((h) => h.id === selected.id)
+            const activeHotspot =
+                selected === null ? this.activeHotspot : this.hotspots.find((h) => h.id === selected.id)
+            this.update(true)
+            if (activeHotspot) {
+                this.setActive(activeHotspot, HOTSPOT_FADE_TIME)
+            }
+            if (!selected) {
+                this.events.fire('hotspot:editing', false)
+            }
+        })
+        this.events.on('hotspot:hide-all', () => {
+            this.activeData = null
+            if (this.activeHotspot) {
+                this.activeHotspot.hide()
+                this.activeHotspot = null
+            }
             this.update(true)
         })
         this.events.on('hotspot:editor-changed', (data) => {
             this.activeData = data
             this.update()
         })
-
+        this.events.on('hotspot:editor-cancelled', () => {
+            this.activeData = null
+            if(this.activeHotspot)this.activeHotspot.hide()
+            this.activeHotspot = null
+            this.update(true)
+            this.events.fire('hotspot:editing', false)
+        })
         this.events.on('hotspot:delete', (id) => {
             const idx = this.hotspots.findIndex((h) => h.id === id)
             if (idx < 0) return
             this.hotspots[idx].destroy()
-            if (this.activeHotspot?.id === id) this.activeHotspot = null
+            if (this.activeHotspot?.id === id) {
+                this.activeData = null
+                this.activeHotspot = null
+            }
             this.hotspots.splice(idx, 1)
+            this.hotspotData.splice(idx, 1)
+            this.update(true)
+            this.events.fire('hotspot:editing', false)
         })
 
-        this.events.on('hotspot:reset', (id) => {
-            const h = this.hotspots.find((h) => h.id === id)
-            if (!h) return
-            h.data.dot.topLeft = null
-            h.data.dot.botRight = null
-            h.update()
+        this.events.on('hotspot:apply', (data) => {
+            this.hotspotData = this.hotspotData.map((d) => {
+                if (d.id === data.id) return this.activeHotspot.data
+                return d
+            })
+            this.activeData = null
+            this.update(true)
+            this.events.fire('hotspot:editing', false)
         })
     }
     createDefault(position, entityInfo) {
+        const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+        const focusWorldPos = new Vec3()
+        worldMatrix.transformPoint(position, focusWorldPos)
+        const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
+        const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
+        const paddingX = 50
+        const paddingY = 50
+
+        const cameraWorldPos = this.camera.entity.getPosition()
+        const zDepth = focusWorldPos.distance(cameraWorldPos)
+
+        const contentScreenTL = new Vec3(focusScreenPos.x + 20, focusScreenPos.y - paddingY * 2, zDepth)
+        const contentScreenBR = new Vec3(focusScreenPos.x + 20 + paddingX * 3, focusScreenPos.y - paddingY, zDepth)
+        const contentWorldTL = this.camera.screenToWorld(contentScreenTL.x, contentScreenTL.y, contentScreenTL.z)
+        const contentWorldBR = this.camera.screenToWorld(contentScreenBR.x, contentScreenBR.y, contentScreenBR.z)
+        const topLeft = new Vec3()
+        const botRight = new Vec3()
+        invWorldMatrix.transformPoint(contentWorldTL, topLeft)
+        invWorldMatrix.transformPoint(contentWorldBR, botRight)
+        const originWidth = Math.abs(contentScreenBR.x - contentScreenTL.x)
+        const originHeight = Math.abs(contentScreenBR.y - contentScreenTL.y)
+
         return {
             id: guid.create(),
-            autoPlay: {
-                time: 3000,
-            },
-            button: {
-                title: 'hotspot',
-            },
+            autoPlay: { time: 3000 },
+            button: { title: 'hotspot' },
             text: {
                 color: 'black',
                 bold: false,
@@ -74520,15 +74896,13 @@ class HotspotManager {
                 font: 'Lato',
                 background: '#ffffff',
                 backgroundAlpha: 0.8,
-                originWidth: 0,
-                originHeight: 0,
-                topLeft: null,
-                botRight: null,
+                originWidth,
+                originHeight,
+                topLeft,
+                botRight,
                 fontSize: 16,
             },
-            focus: {
-                position,
-            },
+            focus: { position },
             dot: {
                 style: 'circle',
                 strokeColor: 'white',
@@ -74540,18 +74914,53 @@ class HotspotManager {
             entityInfo,
         }
     }
-    setActive(hotspot, lerpDuration = 1.5) {
-        if (!hotspot) return
-        if (this.activeHotspot?.id !== hotspot.id) {
-            this.activeHotspot?.hide()
+    isSameVec3(v1, v2, precision = 1e-5) {
+        return (
+            Math.abs(v1.x - v2.x) < precision && Math.abs(v1.y - v2.y) < precision && Math.abs(v1.z - v2.z) < precision
+        )
+    }
+
+    isSamePose(hotspot) {
+        const controller = this.controllers[this.state.cameraMode]
+        if (!controller) return false
+        const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
+        const aspect = f.aspect
+        const restoredFocus = {
+            x: f.x * aspect + controller.originFocus.x,
+            y: f.y * aspect + controller.originFocus.y,
+            z: f.z * aspect + controller.originFocus.z,
         }
-        this.activeHotspot = hotspot
-        // this.orbitCamera.setupTransition({
-        //     targetPose: this.getTargetPose(hotspot),
-        //     startPose: this.getStartPose(),
-        //     onTransitionFinished: () => hotspot.show(),
-        //     lerpDuration,
-        // })
+        return (
+            this.isSameVec3(p, modelEntity.localPosition) &&
+            this.isSameVec3(r, modelEntity.localRotation) &&
+            this.isSameVec3(restoredFocus, controller.focus) &&
+            controller.getActualDistance(d) == controller.distance
+        )
+    }
+    setActive(hotspot, lerpDuration = 1.5) {
+        if (!hotspot || !modelEntity) return
+        const isSamePose = this.isSamePose(hotspot)
+        if (isSamePose && hotspot.id === this.activeHotspot?.id) {
+            hotspot.show()
+            hotspot.update()
+            return
+        }
+        if (isSamePose) {
+            hotspot.show()
+            hotspot.update()
+            this.activeHotspot = hotspot
+            return
+        }
+        this.events.fire('ortery-controller:transition', {
+            entityInfo: hotspot.data.entityInfo,
+            lerpDuration,
+            onTransitionFinished: () => {
+                const h = this.hotspots.find((h) => h.id === hotspot.id)
+                h.show()
+                h.update()
+                this.activeHotspot = hotspot
+            },
+        })
     }
 
     setActiveById(id) {
@@ -74577,66 +74986,35 @@ class HotspotManager {
         this.isAutoPlay = false
     }
 
-    hideAll() {
-        this.hotspots.forEach((h) => h.hide())
-        this.activeHotspot = null
-    }
-
     update(updateEditor = false) {
         if (updateEditor) {
-            const data = this.hotspotData.map((h) => {
-                if (h.id === this.activeData?.id) return this.activeData
-                return h
-            })
-            this.editor.render(data, this.activeData?.id)
+            this.editor.render(this.hotspotData, this.activeData)
         }
         this.hotspots.forEach((h) => {
-            if (h.id === this.activeData?.id) {
-                h.data = this.activeData
+            if (h.id === this.activeHotspot?.id) {
+                if (this.activeData) h.data = JSON.parse(JSON.stringify(this.activeData))
                 h.show()
-                h.update()
-            } else {
-                h.hide()
+                h.update(true, this.activeData?.dot.size)
             }
         })
     }
-
-    getStartPose() {
-        return {
-            focus: this.orbitCamera.focus.clone(),
-            position: new Vec3(modelEntity.localPosition.x, modelEntity.localPosition.y, modelEntity.localPosition.z),
-            rotation: modelEntity.localRotation.clone(),
-            distance: this.orbitCamera.distance,
-            yaw: this.orbitCamera.currentYaw,
-            pitch: this.orbitCamera.currentPitch,
-        }
-    }
-
-    getTargetPose(hotspot) {
-        const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = hotspot.data.entityInfo
-        return {
-            focus: this.orbitCamera.getActualFocus(f),
-            position: new Vec3(p.x, p.y, p.z),
-            rotation: new Quat(r.x, r.y, r.z, r.w),
-            distance: this.orbitCamera.getActualDistance(d),
-            yaw,
-            pitch,
-        }
-    }
 }
+
 class HotspotEditorUI {
     isCreatingHotspot = false
     controllers = null
-    constructor(body, { events, dom, state, camera }) {
+    constructor(body, { global, dom }) {
         this.body = body
-        this.camera = camera
         this.dom = dom
-        this.events = events
-        this.state = state
-        this.expandedId = null
+        this.confirmDialog = global.confirmDialog
+        this.camera = global.camera.camera
+        this.events = global.events
+        this.state = global.state
+        this.activeHotspotData = null
         this.listEl = null
         this.countEl = null
-        events.on('controllers:created', (controllers) => {
+        
+        this.events.on('controllers:created', (controllers) => {
             this.controllers = controllers
         })
     }
@@ -74646,7 +75024,6 @@ class HotspotEditorUI {
         this.listEl = document.createElement('div')
         this.listEl.classList.add('hotspot-list')
         this.body.appendChild(this.listEl)
-        // this.render()
     }
 
     // ── Header ───────────────────────────────
@@ -74681,12 +75058,13 @@ class HotspotEditorUI {
     onAdd() {
         document.body.style.cursor = 'crosshair'
         this.isCreatingHotspot = true
+        this.events.fire('hotspot:editing', true)
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
             const rect = this.dom.ui.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
-            const position = pickModelLocalPoint(mouseX, mouseY, this.camera.camera)
+            const position = pickModelLocalPoint(mouseX, mouseY, this.camera)
             const entityInfo = this.controllers[this.state.cameraMode].getEntityInfo()
             this.events.fire('hotspot:add', { position, entityInfo })
             document.body.style.cursor = 'default'
@@ -74694,36 +75072,33 @@ class HotspotEditorUI {
         })
     }
 
-    onDelete(id) {
-        this.store.remove(id)
-        if (this.expandedId === id) this.expandedId = null
-        this.events.fire('hotspot:delete', id)
-        // this.render()
+    async onDelete(id) {
+        const ok = await this.confirmDialog.ask('Delete Hotspot', 'Are you sure? This cannot be undone.', 'delete')
+        if (ok) {
+            this.events.fire('hotspot:delete', id)
+        }
+    }
+    onCancel() {
+        this.events.fire('hotspot:editor-cancelled')
     }
 
-    onApply(draft) {
-        this.store.update(draft.id, draft)
-        this.events.fire('hotspot:update', draft)
-        this.expandedId = draft.id
-        // this.render()
+    onApply() {
+        this.events.fire('hotspot:apply', this.activeHotspotData)
     }
 
     // ── Render list ──────────────────────────
-    render(hotspots, expandedId) {
-        this.expandedId = expandedId
+    render(hotspotData, activeHotspotData) {
+        this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
         this.listEl.innerHTML = ''
-        this.countEl.textContent = `${hotspots.length} hotspot${hotspots.length !== 1 ? 's' : ''} configured`
-        let editData = null
-        hotspots.forEach((h) => {
-            const isExpanded = this.expandedId === h.id
+        this.countEl.textContent = `${hotspotData.length} hotspot${hotspotData.length !== 1 ? 's' : ''} configured`
+        hotspotData.forEach((h) => {
+            const isExpanded = this.activeHotspotData?.id === h.id
             const item = document.createElement('div')
             item.classList.add('hotspot-item')
             if (isExpanded) item.classList.add('expanded')
-            item.appendChild(this.renderItemHeader(h, isExpanded))
-            if (isExpanded) {
-                editData = h
-                item.appendChild(this.renderEditPanel(h))
-            }
+            const { row, headerTitle } = this.renderItemHeader(h, isExpanded)
+            item.appendChild(row)
+            if (isExpanded) item.appendChild(this.renderEditPanel(headerTitle))
             this.listEl.appendChild(item)
         })
     }
@@ -74734,7 +75109,7 @@ class HotspotEditorUI {
 
         const name = document.createElement('div')
         name.classList.add('hotspot-header-name')
-        name.textContent = h.button?.title || 'Hotspot'
+        name.textContent = h.button?.title || 'hotspot'
 
         const actions = document.createElement('div')
         actions.classList.add('hotspot-header-actions')
@@ -74748,12 +75123,6 @@ class HotspotEditorUI {
             this.events.fire('hotspot:editor-selected', isExpanded ? null : h)
         })
 
-        const resetBtn = this.makeIconBtn(
-            `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5A4.5 4.5 0 0 1 10.5 3.5M11 6.5A4.5 4.5 0 0 1 2.5 9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M8.5 3H11V5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10H2V7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-        )
-        resetBtn.title = 'Reset'
-        resetBtn.addEventListener('click', () => this.events.fire('hotspot:reset', h.id))
-
         const delBtn = this.makeIconBtn(
             `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
             'del',
@@ -74762,26 +75131,24 @@ class HotspotEditorUI {
         delBtn.addEventListener('click', () => this.onDelete(h.id))
 
         actions.appendChild(editBtn)
-        actions.appendChild(resetBtn)
         actions.appendChild(delBtn)
         row.appendChild(name)
         row.appendChild(actions)
-        return row
+        return { row, headerTitle: name }
     }
-    renderEditPanel(h) {
-        const draft = JSON.parse(JSON.stringify(h))
+    applyDraft = () => {
+        this.events.fire('hotspot:editor-changed', this.activeHotspotData)
+    }
+    renderEditPanel(headerTitle) {
         const panel = document.createElement('div')
         panel.classList.add('hotspot-edit-panel')
-        const applyDraft = () => {
-            this.events.fire('hotspot:editor-changed', { ...draft })
-        }
         // GROUP: Text
         const textGroup = this.makeGroup('Text')
         const labelField = this.makeField('Label')
         const formatRow = document.createElement('div')
         formatRow.classList.add('hotspot-label-row')
-        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', draft, applyDraft))
-        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', draft, applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.activeHotspotData, this.applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.activeHotspotData, this.applyDraft))
 
         const alignIcons = {
             left: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
@@ -74805,13 +75172,13 @@ class HotspotEditorUI {
             const btn = document.createElement('button')
             btn.classList.add('fmt-btn')
             btn.innerHTML = alignIcons[align]
-            if ((draft.text.align || 'center') === align) btn.classList.add('active')
+            if ((this.activeHotspotData.text.align || 'center') === align) btn.classList.add('active')
             btn.dataset.align = align
             btn.addEventListener('click', () => {
-                draft.text.align = align
+                this.activeHotspotData.text.align = align
                 formatRow.querySelectorAll('.fmt-btn[data-align]').forEach((b) => b.classList.remove('active'))
                 btn.classList.add('active')
-                applyDraft()
+                this.applyDraft()
             })
             formatRow.appendChild(btn)
         })
@@ -74819,13 +75186,13 @@ class HotspotEditorUI {
         const labelRow = document.createElement('div')
         labelRow.classList.add('hotspot-label-row')
         labelRow.appendChild(
-            this.makeTextarea(draft.text.content, {
+            this.makeTextarea(this.activeHotspotData.text.content, {
                 placeholder: 'Enter label...',
                 classname: 'hotspot-text',
-                name: h.text.content,
+                name: this.activeHotspotData.text.content,
                 onChange: (v) => {
-                    draft.text.content = v
-                    applyDraft()
+                    this.activeHotspotData.text.content = v
+                    this.applyDraft()
                 },
             }),
         )
@@ -74838,28 +75205,28 @@ class HotspotEditorUI {
         colorGrid.style.marginTop = '7px'
         const colorField = this.makeField('Color')
         colorField.appendChild(
-            this.makeColorSwatch(draft.text.color, (v) => {
-                draft.text.color = v
-                applyDraft()
+            this.makeColorSwatch(this.activeHotspotData.text.color, (v) => {
+                this.activeHotspotData.text.color = v
+                this.applyDraft()
             }),
         )
         const bgField = this.makeField('Background')
         bgField.appendChild(
-            this.makeColorSwatch(draft.text.background, (v) => {
-                draft.text.background = v
-                applyDraft()
+            this.makeColorSwatch(this.activeHotspotData.text.background, (v) => {
+                this.activeHotspotData.text.background = v
+                this.applyDraft()
             }),
         )
         const alphaField = this.makeField('Alpha')
         alphaField.appendChild(
-            this.makeInput('number', draft.text.backgroundAlpha, {
+            this.makeInput('number', this.activeHotspotData.text.backgroundAlpha, {
                 min: 0,
                 max: 1,
                 step: 0.1,
                 name: 'anpha',
                 onChange: (v) => {
-                    draft.text.backgroundAlpha = parseFloat(v)
-                    applyDraft()
+                    this.activeHotspotData.text.backgroundAlpha = parseFloat(v)
+                    this.applyDraft()
                 },
             }),
         )
@@ -74872,13 +75239,13 @@ class HotspotEditorUI {
         fontGrid.style.marginTop = '7px'
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
-            this.makeInput('number', draft.text.fontSize, {
+            this.makeInput('number', this.activeHotspotData.text.fontSize, {
                 min: 8,
                 max: 72,
                 name: 'font-size',
                 onChange: (v) => {
-                    draft.text.fontSize = parseInt(v)
-                    applyDraft()
+                    this.activeHotspotData.text.fontSize = parseInt(v)
+                    this.applyDraft()
                 },
             }),
         )
@@ -74886,10 +75253,10 @@ class HotspotEditorUI {
         fontFamilyField.appendChild(
             this.makeSelect(
                 ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
-                draft.text.font,
+                this.activeHotspotData.text.font,
                 (v) => {
-                    draft.text.font = v
-                    applyDraft()
+                    this.activeHotspotData.text.font = v
+                    this.applyDraft()
                 },
                 {
                     name: 'font-family',
@@ -74909,119 +75276,122 @@ class HotspotEditorUI {
         ;['circle', 'dot'].forEach((opt) => {
             const btn = document.createElement('div')
             btn.classList.add('hotspot-style-btn')
-            if (draft.dot.style === opt) btn.classList.add('active')
+            if (this.activeHotspotData.dot.style === opt) btn.classList.add('active')
             btn.textContent = opt.charAt(0).toUpperCase() + opt.slice(1)
             btn.addEventListener('click', () => {
-                draft.dot.style = opt
+                this.activeHotspotData.dot.style = opt
                 styleRow.querySelectorAll('.hotspot-style-btn').forEach((b) => b.classList.toggle('active', b === btn))
-                applyDraft()
+                this.applyDraft()
             })
             styleRow.appendChild(btn)
         })
         styleField.appendChild(styleRow)
         hotspotGroup.appendChild(styleField)
 
-        const dotGrid = this.makeGrid(2)
+        const dotGrid = this.makeGrid(3)
         dotGrid.style.marginTop = '7px'
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
-            this.makeInput('number', draft.dot.size, {
+            this.makeInput('number', this.activeHotspotData.dot.size, {
                 min: 10,
                 max: 80,
                 name: 'dot-size',
                 onChange: (v) => {
-                    draft.dot.size = parseInt(v)
-                    applyDraft()
+                    this.activeHotspotData.dot.size = parseInt(v)
+                    this.applyDraft()
                 },
             }),
         )
         const strokeField = this.makeField('Stroke width')
         strokeField.appendChild(
-            this.makeInput('number', draft.dot.stroke, {
+            this.makeInput('number', this.activeHotspotData.dot.stroke, {
                 min: 0,
                 max: 10,
                 step: 0.5,
                 name: 'stroke-width',
                 onChange: (v) => {
-                    draft.dot.stroke = parseFloat(v)
-                    applyDraft()
+                    this.activeHotspotData.dot.stroke = parseFloat(v)
+                    this.applyDraft()
                 },
+            }),
+        )
+        const strokeColorField = this.makeField('Stroke color')
+        strokeColorField.style.marginTop = '7px'
+        strokeColorField.appendChild(
+            this.makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
+                this.activeHotspotData.dot.strokeColor = v
+                this.applyDraft()
             }),
         )
         dotGrid.appendChild(sizeField)
         dotGrid.appendChild(strokeField)
+        dotGrid.appendChild(strokeColorField)
         hotspotGroup.appendChild(dotGrid)
 
-        const strokeColorField = this.makeField('Stroke color')
-        strokeColorField.style.marginTop = '7px'
-        strokeColorField.appendChild(
-            this.makeColorSwatch(draft.dot.strokeColor, (v) => {
-                draft.dot.strokeColor = v
-                applyDraft()
-            }),
-        )
-        hotspotGroup.appendChild(strokeColorField)
+        // hotspotGroup.appendChild(strokeColorField)
         panel.appendChild(hotspotGroup)
 
-        // GROUP: Auto Play + Button
-        const bottomGrid = document.createElement('div')
-        bottomGrid.classList.add('hotspot-autoplay')
+        // GROUP: Auto Play
+        const autoplayGrid = document.createElement('div')
+        autoplayGrid.classList.add('hotspot-autoplay')
 
         const autoPlayGroup = this.makeGroup('Auto Play')
         const timeField = this.makeField('Time (ms)')
         timeField.appendChild(
-            this.makeInput('number', draft.autoPlay.time, {
+            this.makeInput('number', this.activeHotspotData.autoPlay.time, {
                 min: 0,
                 step: 500,
                 name: 'play-time',
                 onChange: (v) => {
-                    draft.autoPlay.time = parseInt(v)
-                    applyDraft()
+                    this.activeHotspotData.autoPlay.time = parseInt(v)
+                    this.applyDraft()
                 },
             }),
         )
         autoPlayGroup.appendChild(timeField)
 
+        const buttonGrid = document.createElement('div')
         const buttonGroup = this.makeGroup('Button')
         const btnTitleField = this.makeField('Title')
         btnTitleField.appendChild(
-            this.makeInput('text', draft.button.title, {
+            this.makeInput('text', this.activeHotspotData.button.title, {
                 placeholder: 'Title...',
                 name: 'button-title',
                 onChange: (v) => {
-                    draft.button.title = v
-                    applyDraft()
+                    this.activeHotspotData.button.title = v
+                    headerTitle.textContent = v
+                    this.applyDraft()
                 },
             }),
         )
         buttonGroup.appendChild(btnTitleField)
 
-        bottomGrid.appendChild(autoPlayGroup)
-        bottomGrid.appendChild(buttonGroup)
-        panel.appendChild(bottomGrid)
+        autoplayGrid.appendChild(autoPlayGroup)
+        buttonGrid.appendChild(buttonGroup)
+        panel.appendChild(autoplayGrid)
+        panel.appendChild(buttonGrid)
 
         // Apply / Cancel
-        // const applyRow = document.createElement('div')
-        // applyRow.style.cssText = 'display:flex; gap:6px;'
+        const applyRow = document.createElement('div')
+        applyRow.style.cssText = 'display:flex; gap:6px;'
 
-        // const cancelBtn = document.createElement('button')
-        // cancelBtn.classList.add('hotspot-cancel-btn')
-        // cancelBtn.style.flex = '1'
-        // cancelBtn.textContent = 'Cancel'
-        // cancelBtn.addEventListener('click', () => {
-        //     this.expandedId = null
-        //     this.render()
-        // })
+        const cancelBtn = document.createElement('button')
+        cancelBtn.classList.add('cancel-btn', 'btn', 'hotspot-cancel-btn')
+        cancelBtn.style.flex = '1'
+        cancelBtn.textContent = 'Cancel'
+        cancelBtn.addEventListener('click', () => {
+            this.onCancel()
+        })
 
-        // const applyBtn = document.createElement('button')
-        // applyBtn.classList.add('hotspot-apply-btn')
-        // applyBtn.style.flex = '1'
-        // applyBtn.textContent = 'Apply'
-        // applyBtn.addEventListener('click', () => this.onApply(draft))
+        const applyBtn = document.createElement('button')
+        applyBtn.classList.add('hotspot-apply-btn', 'confirm-btn', 'btn')
+        applyBtn.style.flex = '1'
+        applyBtn.textContent = 'Apply'
+        applyBtn.addEventListener('click',()=> this.onApply())
 
-        // applyRow.appendChild(applyBtn)
-        // applyRow.appendChild(cancelBtn)
-        // panel.appendChild(applyRow)
+        applyRow.appendChild(applyBtn)
+        applyRow.appendChild(cancelBtn)
+        panel.appendChild(applyRow)
         return panel
     }
     makeTextarea(value, opts = {}) {
@@ -75140,7 +75510,6 @@ class HotspotEditorUI {
     }
 }
 
-
 const initPoster = (events) => {
     const poster = document.getElementById('poster')
     events.on('loaded:changed', () => {
@@ -75201,13 +75570,13 @@ function pickModelLocalPoint(x, y, camera) {
         return localRay.getPoint(t)
     }
 
-    return findFallbackIntersectionPoint(localRay, localCenters)
+    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
 }
 
-function findFallbackIntersectionPoint(localRay, centers) {
+function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
     const nearestPoint = findNearestSplatCenter(localRay, centers)
     if (nearestPoint) return nearestPoint
-    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay)
+    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
     if (bboxIntersection) return bboxIntersection
 
     return localRay.getPoint(5.0)
@@ -75237,7 +75606,7 @@ function findNearestSplatCenter(localRay, centers) {
     return bestT !== null ? localRay.getPoint(bestT) : null
 }
 
-function intersectBoundingBoxCenterPlane(localRay) {
+function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
     const meshInstance = modelEntity.gsplat.instance.meshInstance
     const aabbWorld = meshInstance.aabb
     const bboxCenterWorld = aabbWorld.center.clone()
@@ -75259,21 +75628,14 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
 }
 
 function initHotspotSection(body, global, dom) {
-    const editor = new HotspotEditorUI(body, { events: global.events, dom, state:global.state, camera: global.camera })
+    const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
-    const manager = new HotspotManager({
-        editable: global.config.edit,
-        camera: global.camera.camera,
-        events: global.events,
-        editor,
-        dom: dom,
-        modelEntity,
-    })
+    const manager = new HotspotManager({ global, editor, dom: dom })
 
     return manager
 }
 
-function createSection({ id, title, body: renderBody }) {
+function createSection({ id, title, body: renderBody, classname = '' }) {
     const section = document.createElement('div')
     section.classList.add('section')
     const header = document.createElement('div')
@@ -75285,16 +75647,16 @@ function createSection({ id, title, body: renderBody }) {
     header.appendChild(titleEl)
     header.appendChild(chevron)
     const body = document.createElement('div')
-    body.classList.add('section-body')
+    body.classList.add('section-body', classname)
     body.id = `sidebar-section-${id}`
     renderBody(body)
     body.style.display = 'none'
     header.addEventListener('click', () => {
         const isOpen = body.style.display !== 'none'
-        document.querySelectorAll('[data-sidebar-body]').forEach(el => {
+        document.querySelectorAll('[data-sidebar-body]').forEach((el) => {
             el.style.display = 'none'
         })
-        document.querySelectorAll('[data-sidebar-chevron]').forEach(el => {
+        document.querySelectorAll('[data-sidebar-chevron]').forEach((el) => {
             el.style.transform = ''
         })
         if (!isOpen) {
@@ -75309,13 +75671,46 @@ function createSection({ id, title, body: renderBody }) {
     return section
 }
 
+function initviewSection(el, global) {}
+function exportSection(el) {
+    const filenameField = document.createElement('div')
+    filenameField.classList.add('hotspot-field')
 
-function initviewSection(el, global){
+    const label = document.createElement('div')
+    label.classList.add('hotspot-label')
+    label.textContent = 'File Name'
 
+    const inputWrap = document.createElement('div')
+    inputWrap.classList.add('export-input-wrap')
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = 'index'
+    input.id = 'export-filename'
+    input.classList.add('input-field')
+
+    const ext = document.createElement('span')
+    ext.classList.add('export-ext')
+    ext.textContent = '.html'
+
+    inputWrap.appendChild(input)
+    inputWrap.appendChild(ext)
+    filenameField.appendChild(label)
+    filenameField.appendChild(inputWrap)
+    el.appendChild(filenameField)
+
+    const btn = document.createElement('button')
+    btn.classList.add('export-btn')
+    btn.textContent = 'Export HTML'
+    btn.addEventListener('click', () => {
+        const filename = (input.value.trim() || 'index') + '.html'
+        exportHtml(filename, window.sse)
+    })
+    el.appendChild(btn)
 }
 
 function createSidebar(global, dom) {
-    const SIDEBAR_WIDTH = '360px'   
+    const SIDEBAR_WIDTH = '360px'
     const sidebar = document.createElement('div')
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
@@ -75324,16 +75719,30 @@ function createSidebar(global, dom) {
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
     sidebar.appendChild(header)
-    sidebar.appendChild(createSection({
-        id: 'initview',
-        title: 'Initview',
-        body: (el) => initviewSection(el, global),
-    }))
-    sidebar.appendChild(createSection({
-        id: 'hotspot',
-        title: 'Hotspots',
-        body: (el) => initHotspotSection(el, global, dom),
-    }))
+    sidebar.appendChild(
+        createSection({
+            id: 'initview',
+            title: 'Initview',
+            classname: 'initview-section',
+            body: (el) => initviewSection(el, global),
+        }),
+    )
+    sidebar.appendChild(
+        createSection({
+            id: 'hotspot',
+            title: 'Hotspots',
+            classname: 'hotspot-section',
+            body: (el) => initHotspotSection(el, global, dom),
+        }),
+    )
+    sidebar.appendChild(
+        createSection({
+            id: 'export',
+            title: 'Export',
+            classname: 'export-section',
+            body: (el) => exportSection(el),
+        }),
+    )
     document.body.appendChild(sidebar)
     const canvas = global.app.graphicsDevice.canvas
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
@@ -75376,7 +75785,7 @@ const initUI = (global) => {
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
         events.fire('pointerup', event)
-     })
+    })
     dom.ui.addEventListener(
         'wheel',
         (event) => {
@@ -75482,7 +75891,7 @@ const initUI = (global) => {
         events.fire('inputEvent', 'frame', event)
     })
     // Initialize annotation navigator
-    initAnnotationNav(dom, events, state, global.settings.annotations)
+    // initAnnotationNav(dom, events, state, global.settings.annotations)
     // Hide all UI (poster, loading bar, controls)
     if (config.noui) {
         dom.ui.classList.add('hidden')
@@ -75497,7 +75906,7 @@ const initUI = (global) => {
             return window.location.hostname !== window.parent.location.hostname
         } catch (e) {
             // cross-origin iframe — parent location is inaccessible
-            return true 
+            return true
         }
     }
     if (window.parent !== window && isThirdPartyEmbedded()) {
@@ -75506,8 +75915,9 @@ const initUI = (global) => {
             viewUrl.pathname = '/view'
         }
     }
-    const shouldShowSidebar = config.edit && window.location.protocol !== 'https:'
-    if(shouldShowSidebar) createSidebar(global, dom)
+    if (config.editable) {
+        createSidebar(global, dom)
+    }
 }
 
 // clamp the vertices of the hotspot so it is never clipped by the near or far plane
@@ -76041,7 +76451,7 @@ class Annotation extends Script {
 }
 
 class Annotations {
-    annotations
+    annotations = []
     parentDom
     constructor(global, hasCameraFrame) {
         // create dom parent
@@ -76402,7 +76812,7 @@ class Camera {
     position = new Vec3()
     angles = new Vec3()
     distance = 1
-    fov = 65
+    fov = 60
     constructor(other) {
         if (other) {
             this.copy(other)
@@ -76848,8 +77258,34 @@ class OtherController {
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
-    listenEvents(){
-        this.events.on('hotspot:editor-selected',(editData)=>{ this.isSelectedHotspot = editData !== null })
+    listenEvents() {
+        this.events.on('hotspot:editing', (isEdit) => {
+            this.isEditHotspot = isEdit
+        })
+        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
+            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
+            const startPose = {
+                focus: this.focus.clone(),
+                position: new Vec3(
+                    modelEntity.localPosition.x,
+                    modelEntity.localPosition.y,
+                    modelEntity.localPosition.z,
+                ),
+                rotation: modelEntity.localRotation.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            }
+            const targetPose = {
+                focus: this.getActualFocus(f),
+                position: new Vec3(p.x, p.y, p.z),
+                rotation: new Quat(r.x, r.y, r.z, r.w),
+                distance: this.getActualDistance(d),
+                yaw,
+                pitch,
+            }
+            this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
+        })
     }
     getCustomCenterPivot(pos) {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
@@ -76901,7 +77337,7 @@ class OtherController {
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
         } else {
             const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-            const fovDeg = pose.fov ?? 75
+            const fovDeg = 50
             let verticalFovRad
             if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
                 const hFovRad = (fovDeg * Math.PI) / 180
@@ -76972,10 +77408,6 @@ class OtherController {
         const { move, rotate } = inputFrame.read()
         this.move(move, rotate)
         this.getPose(camera)
-        // if (!this.initHotspot && this.hotspotManager.readyToRender) {
-        //     this.hotspotManager.init()
-        //     this.initHotspot = true
-        // }
         this.smooth(dt)
         this.updateModelEntity(dt)
         // this.applyInertia()
@@ -76983,11 +77415,9 @@ class OtherController {
     onEnter(camera) {
         this.reset(camera)
     }
-    onExit(){
-
-    }
+    onExit() {}
     applyInertia() {
-        if (this.isSelectedHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
+        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
         const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
         if (speed < this.inertiaMinSpeed) {
             this.inertiaVelX = 0
@@ -77134,7 +77564,7 @@ class OtherController {
         return Math.min(maxDistance, Math.max(this.getActualDistance(orterySettings.lockZoomIn.value), distance))
     }
     move(move, rotate) {
-        if (this.isSelectedHotspot) return
+        if (this.isEditHotspot) return
         const [x, y, z] = move
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
@@ -77174,10 +77604,11 @@ class OtherController {
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
                 this.syncHierarchyAndRender()
+                didRotate = true
             }
         }
         if (didRotate) {
-            this.hotspotManager.hideAll()
+            this.events.fire('hotspot:hide-all')
         }
         if (isZooming || isPanning || didRotate) {
             // this.hotspotManager.stopAutoPlay()
@@ -77717,14 +78148,10 @@ class CameraManager {
     controllers
     // holds the camera state
     camera = new Camera()
-    constructor(global, bbox, app, entity, dom, collider = null) {
+    constructor(global, bbox, app, entity, collider = null) {
         const { events, settings, state } = global
-        const camera0 = settings.cameras[0]?.initial
-        const defaultFov = camera0?.fov ?? 75
-        const frameCamera = createFrameCamera(bbox, defaultFov)
-        const resetCamera = camera0
-            ? createCamera(new Vec3(camera0.position), new Vec3(camera0.target), camera0.fov)
-            : frameCamera
+        const defaultFov = 50
+        const resetCamera = createFrameCamera(bbox, defaultFov)
         const getAnimTrack = (initial, isObjectExperience) => {
             const { animTracks } = settings
             // extract the camera animation track from settings
@@ -78295,7 +78722,8 @@ class InputController {
         // handle keyboard events
         window.addEventListener('keydown', (event) => {
             const tag = document.activeElement?.tagName
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
+                return
             if (event.key === 'Escape') {
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
@@ -78413,7 +78841,7 @@ class InputController {
         const isOrtery = state.cameraMode === 'ortery'
         this._state.axis.add(
             tmpV1.set(
-                isOrtery ? 0: key[keyCode.D] - key[keyCode.A] + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
+                isOrtery ? 0 : key[keyCode.D] - key[keyCode.A] + (key[keyCode.RIGHT] - key[keyCode.LEFT]),
                 isOrtery ? 0 : key[keyCode.E] - key[keyCode.Q],
                 isOrtery ? 0 : key[keyCode.W] - key[keyCode.S] + (key[keyCode.UP] - key[keyCode.DOWN]),
             ),
@@ -79631,9 +80059,9 @@ class Viewer {
             if (gsplatBbox) {
                 sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform())
             }
-            if (!config.noui) {
-                this.annotations = new Annotations(global, this.cameraFrame != null)
-            }
+            // if (!config.noui) {
+            //     this.annotations = new Annotations(global, this.cameraFrame != null)
+            // }
             this.inputController = new InputController(global)
             this.inputController.collider = collider ?? null
             state.hasCollision = !!collider
@@ -79647,7 +80075,7 @@ class Viewer {
                     app.renderNextFrame = true
                 })
             }
-            this.cameraManager = new CameraManager(global, sceneBound, app, camera, dom, collider)
+            this.cameraManager = new CameraManager(global, sceneBound, app, camera, collider)
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
@@ -79754,7 +80182,14 @@ class Viewer {
     configureCamera(settings) {
         const { global } = this
         const { app, config, camera } = global
-        const { postEffectSettings } = settings
+        settings.tonemapping = settings.tonemapping || 'none'
+        const postEffectSettings = settings.postEffectSettings || {
+            sharpness: { enabled: false, amount: 0 },
+            bloom: { enabled: false, intensity: 1, blurLevel: 2 },
+            grading: { enabled: false, brightness: 0, contrast: 1, saturation: 1, tint: [1, 1, 1] },
+            vignette: { enabled: false, intensity: 0.5, inner: 0.3, outer: 0.75, curvature: 1 },
+            fringing: { enabled: false, intensity: 0.5 },
+        }
         const { background } = settings
         // hpr override takes precedence over settings.highPrecisionRendering
         const highPrecisionRendering = config.hpr ?? settings.highPrecisionRendering
@@ -81879,7 +82314,7 @@ const config = {
     contentUrl: settings.contentUrl,
     contents: createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
-    edit: url.searchParams.get('edit') === 'true',
+    editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:',
     noanim: true,
     nofx: url.searchParams.has('nofx'),
     hpr: url.searchParams.has('hpr') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('hpr')) : undefined,
@@ -81918,6 +82353,7 @@ const main = async (canvas, settingsJson, config) => {
         controlsHidden: false,
         gamingControls: localStorage.getItem('gamingControls') === 'true',
     })
+    const confirmDialog = new ConfirmDialog()
     const global = {
         app,
         settings: importSettings(settingsJson),
@@ -81925,6 +82361,7 @@ const main = async (canvas, settingsJson, config) => {
         state,
         events,
         camera,
+        confirmDialog,
     }
     initCanvas(global)
     // start the application
@@ -81993,7 +82430,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-
     // const bboxSetup = (() => {
     //     const app = viewer.global.app
     //     const layers = app.scene.layers
