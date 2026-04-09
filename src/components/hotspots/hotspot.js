@@ -1,15 +1,16 @@
 class Hotspot {
-    constructor(camera, dom, data) {
+    dragging = false
+    resizing = false
+    resizeEdge = null
+    hotspotMaxScale = 1.5
+    isEdit = false
+    constructor({ camera, dom, data, display = true, button, editable }) {
         this.camera = camera
         this.dom = dom
         this.data = data
         this.id = data.id
-        this.isDisplay = true
-        this.isEdit = false
-        this.hotspotBtn = null
-        this.dragging = false
-        this.resizing = false
-        this.resizeEdge = null
+        this.isDisplay = display
+        this.button = button
 
         if (data.focus.position && !(data.focus.position instanceof Vec3)) {
             this.data.focus.position = new Vec3(data.focus.position.x, data.focus.position.y, data.focus.position.z)
@@ -20,16 +21,19 @@ class Hotspot {
         if (data.text.botRight && !(data.text.botRight instanceof Vec3)) {
             this.data.text.botRight = new Vec3(data.text.botRight.x, data.text.botRight.y, data.text.botRight.z)
         }
-
+        if (data.dot.topLeft && !(data.dot.topLeft instanceof Vec3)) {
+            this.data.dot.topLeft = new Vec3(data.dot.topLeft.x, data.dot.topLeft.y, data.dot.topLeft.z)
+        }
+        if (data.dot.botRight && !(data.dot.botRight instanceof Vec3)) {
+            this.data.dot.botRight = new Vec3(data.dot.botRight.x, data.dot.botRight.y, data.dot.botRight.z)
+        }
         this.createDiv()
         this.createLine()
         this.createDot()
-        this.addDotDragEvents()
-        this.addContentDragEvents()
-    }
-
-    setHotspotBtn(btn) {
-        this.hotspotBtn = btn
+        if(editable){
+            this.addDotDragEvents()
+            this.addContentDragEvents()
+        }
     }
 
     // ── DOM creation ─────────────────────────
@@ -61,49 +65,16 @@ class Hotspot {
     }
 
     // ── Update loop ──────────────────────────
-    update(updateContent = true, dotSize) {
+    update(updateContent = true, buttonTitle = '') {
+        if (buttonTitle) this.button.updateTitle(buttonTitle)
         const containerRect = this.dom.ui.getBoundingClientRect()
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-        const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
         const focusWorldPos = new Vec3()
         worldMatrix.transformPoint(this.data.focus.position, focusWorldPos)
         const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
-        this.updateDotLocalBounds(focusWorldPos, invWorldMatrix, dotSize)
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
         this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
-    }
-
-    updateDotLocalBounds(focusWorldPos, invWorldMatrix, size) {
-        if (!size && this.data.dot.topLeft && this.data.dot.botRight) {
-            if (!(this.data.dot.topLeft instanceof Vec3)) {
-                this.data.dot.topLeft = new Vec3(
-                    this.data.dot.topLeft.x,
-                    this.data.dot.topLeft.y,
-                    this.data.dot.topLeft.z,
-                )
-                this.data.dot.botRight = new Vec3(
-                    this.data.dot.botRight.x,
-                    this.data.dot.botRight.y,
-                    this.data.dot.botRight.z,
-                )
-            }
-            return
-        }
-        const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
-        const half = (size ?? this.data.dot.size ?? 30) / 2
-        const cameraPos = this.camera.entity.getPosition()
-        const zDepth = focusWorldPos.distance(cameraPos)
-        const tl = new Vec3(focusScreenPos.x - half, focusScreenPos.y - half, zDepth)
-        const br = new Vec3(focusScreenPos.x + half, focusScreenPos.y + half, zDepth)
-        const worldTL = this.camera.screenToWorld(tl.x, tl.y, tl.z)
-        const worldBR = this.camera.screenToWorld(br.x, br.y, br.z)
-        const localTL = new Vec3()
-        const localBR = new Vec3()
-        invWorldMatrix.transformPoint(worldTL, localTL)
-        invWorldMatrix.transformPoint(worldBR, localBR)
-        this.data.dot.topLeft = localTL
-        this.data.dot.botRight = localBR
     }
 
     updateDot(worldMatrix, focusScreenPos) {
@@ -181,6 +152,7 @@ class Hotspot {
     updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent) {
         this.textContentSpan.textContent = this.data.text.content
         this.textContentSpan.style.textAlign = this.data.text.align
+        this.textContentSpan.style.color = this.data.text.color
         const contentWorldTL = new Vec3()
         const contentWorldBR = new Vec3()
         worldMatrix.transformPoint(this.data.text.topLeft, contentWorldTL)
@@ -200,7 +172,7 @@ class Hotspot {
             let fontSize = this.data.text.fontSize || 16
             const fontScaleX = width / this.data.text.originWidth
             const fontScaleY = height / this.data.text.originHeight
-            const fontScale = Math.min(fontScaleX, fontScaleY, hotspotMaxScale)
+            const fontScale = Math.min(fontScaleX, fontScaleY, this.hotspotMaxScale)
             const minFontSize = Math.min(16, fontSize)
             fontSize = Math.max(minFontSize, Math.round(fontSize * fontScale))
             this.div.style.fontSize = fontSize + 'px'
@@ -231,8 +203,8 @@ class Hotspot {
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
             }
-            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * hotspotMaxScale))
-            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * hotspotMaxScale))
+            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.hotspotMaxScale))
+            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * this.hotspotMaxScale))
             let finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth - 20)
             let finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight - 20)
             const dotCenterX = dotRect.left + dotRect.width / 2
@@ -326,7 +298,7 @@ class Hotspot {
         this.div.style.display = 'flex'
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
-        if (this.hotspotBtn) this.hotspotBtn.setActiveColor()
+        if (this.button) this.button.setActiveColor()
     }
 
     hide() {
@@ -334,13 +306,14 @@ class Hotspot {
         this.div.style.display = 'none'
         this.lineSvg.style.display = 'none'
         this.dot.style.display = 'none'
-        if (this.hotspotBtn) this.hotspotBtn.setUnactiveColor()
+        if (this.button) this.button.setUnactiveColor()
     }
 
     destroy() {
         this.div.remove()
         this.dot.remove()
         this.lineSvg.remove()
+        this.button.remove()
     }
 
     // ── Drag events ──────────────────────────
@@ -467,7 +440,6 @@ class Hotspot {
         })
 
         this.div.addEventListener('pointerup', (e) => {
-            this.isEdit = false
             this.dragging = false
             this.resizing = false
             this.resizeEdge = null

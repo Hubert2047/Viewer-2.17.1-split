@@ -11,17 +11,24 @@ class HotspotEditorUI {
         this.activeHotspotData = null
         this.listEl = null
         this.countEl = null
-        
+        this.listenEvents()
+    }
+    listenEvents() {
         this.events.on('controllers:created', (controllers) => {
             this.controllers = controllers
         })
+        this.events.on('hotspot:add-cancelled',()=>{
+            document.body.style.cursor = 'default'
+            this.events.fire('hotspot:editing', false)
+            this.isCreatingHotspot = false
+        })
     }
-
     mount() {
         this.renderHeader()
         this.listEl = document.createElement('div')
         this.listEl.classList.add('hotspot-list')
         this.body.appendChild(this.listEl)
+        this.events.fire('hotspot:editor', this)
     }
 
     // ── Header ───────────────────────────────
@@ -42,9 +49,9 @@ class HotspotEditorUI {
         const addBtn = document.createElement('button')
         addBtn.classList.add('hotspot-add-btn')
         addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg> Add`
+                <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg> Add`
         addBtn.addEventListener('click', () => this.onAdd())
 
         header.appendChild(titleGroup)
@@ -57,6 +64,7 @@ class HotspotEditorUI {
         document.body.style.cursor = 'crosshair'
         this.isCreatingHotspot = true
         this.events.fire('hotspot:editing', true)
+        this.events.fire('hotspot:editor-selected', null)
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
             const rect = this.dom.ui.getBoundingClientRect()
@@ -89,14 +97,39 @@ class HotspotEditorUI {
         this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
         this.listEl.innerHTML = ''
         this.countEl.textContent = `${hotspotData.length} hotspot${hotspotData.length !== 1 ? 's' : ''} configured`
+
         hotspotData.forEach((h) => {
             const isExpanded = this.activeHotspotData?.id === h.id
             const item = document.createElement('div')
             item.classList.add('hotspot-item')
+            item.dataset.id = h.id
             if (isExpanded) item.classList.add('expanded')
+
             const { row, headerTitle } = this.renderItemHeader(h, isExpanded)
             item.appendChild(row)
             if (isExpanded) item.appendChild(this.renderEditPanel(headerTitle))
+
+            // ── Drop target ───────────────────────
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                document.querySelectorAll('.hotspot-item').forEach((el) => el.classList.remove('drag-over'))
+                item.classList.add('drag-over')
+            })
+
+            item.addEventListener('dragleave', () => {
+                item.classList.remove('drag-over')
+            })
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault()
+                item.classList.remove('drag-over')
+                const fromId = e.dataTransfer.getData('text/plain')
+                const toId = h.id
+                if (fromId === toId) return
+                this.events.fire('hotspot:reorder', { fromId, toId })
+            })
+
             this.listEl.appendChild(item)
         })
     }
@@ -104,6 +137,32 @@ class HotspotEditorUI {
     renderItemHeader(h, isExpanded) {
         const row = document.createElement('div')
         row.classList.add('hotspot-header')
+        // ── Drag handle ──────────────────────────
+        const handle = document.createElement('div')
+        handle.classList.add('hotspot-drag-handle')
+        handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+        <circle cx="4" cy="2.5" r="1"/><circle cx="8" cy="2.5" r="1"/>
+        <circle cx="4" cy="6"   r="1"/><circle cx="8" cy="6"   r="1"/>
+        <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
+        </svg>`
+
+        // ── Draggable item ────────────────────────
+        const item = row.closest('.hotspot-item') || row.parentElement
+        // lấy item ở render() vì lúc này chưa append, truyền id qua dataset
+        row.dataset.dragId = h.id
+
+        row.setAttribute('draggable', true)
+
+        row.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData('text/plain', h.id)
+            row.classList.add('dragging')
+        })
+
+        row.addEventListener('dragend', () => {
+            row.classList.remove('dragging')
+            document.querySelectorAll('.hotspot-item').forEach((el) => el.classList.remove('drag-over'))
+        })
 
         const name = document.createElement('div')
         name.classList.add('hotspot-header-name')
@@ -135,7 +194,7 @@ class HotspotEditorUI {
         return { row, headerTitle: name }
     }
     applyDraft = () => {
-        this.events.fire('hotspot:editor-changed', this.activeHotspotData)
+        this.events.fire('hotspot:editor-changed', JSON.parse(JSON.stringify(this.activeHotspotData)))
     }
     renderEditPanel(headerTitle) {
         const panel = document.createElement('div')
@@ -150,20 +209,20 @@ class HotspotEditorUI {
 
         const alignIcons = {
             left: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="0" y="5" width="9" height="2" rx="1"/>
-                <rect x="0" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="0" y="5" width="9" height="2" rx="1"/>
+                    <rect x="0" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
             center: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="2.5" y="5" width="9" height="2" rx="1"/>
-                <rect x="1" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="2.5" y="5" width="9" height="2" rx="1"/>
+                    <rect x="1" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
             right: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="5" y="5" width="9" height="2" rx="1"/>
-                <rect x="2" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="5" y="5" width="9" height="2" rx="1"/>
+                    <rect x="2" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
         }
 
         ;['left', 'center', 'right'].forEach((align) => {
@@ -385,7 +444,7 @@ class HotspotEditorUI {
         applyBtn.classList.add('hotspot-apply-btn', 'confirm-btn', 'btn')
         applyBtn.style.flex = '1'
         applyBtn.textContent = 'Apply'
-        applyBtn.addEventListener('click',()=> this.onApply())
+        applyBtn.addEventListener('click', () => this.onApply())
 
         applyRow.appendChild(applyBtn)
         applyRow.appendChild(cancelBtn)

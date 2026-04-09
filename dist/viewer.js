@@ -1,25 +1,13 @@
-let modelEntity = null
-const AUTO_PLAY_LERP_TIME = 1.5
-const TRACEID_GPU_TIMINGS = 'GpuTimings'
-const hotspotMaxScale = 1.5
-const HOTSPOT_FADE_TIME = 0.5
-let maxDistance = 200
-let minDistance = 11
 const version$1 = '2.17.1'
+const TRACEID_GPU_TIMINGS = 'GpuTimings'
+const AUTO_PLAY_LERP_TIME = 1.5
+const HOTSPOT_FADE_TIME = 0.5
 const revision = 'b60756b'
-let orterySettings = {
-    lockZoomIn: {
-        value: minDistance,
-        locked: false,
-    },
-    pivotPos: null,
-    initview: {
-        pose: null,
-    },
-    orientation: null,
-    backgroundColor: '#ffffff',
-
-}
+let modelEntity = null
+const isMobile =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0
 function extend(target, ex) {
     for (const prop in ex) {
         const copy = ex[prop]
@@ -48958,6 +48946,21 @@ const shaderChunksWGSL = {
     webgpuVS,
 }
 
+const defaultSettings = {
+    version: 2,
+    contentUrl: 'car.sog',
+    autoHideUI: false,
+    background: { color: [0, 0, 0] },
+    startMode: 'default',
+    model: 'spherical',
+    lockZoomIn: { value: 11, locked: false },
+    pivotPos: null,
+    initview: { pose: null },
+    orientation: null,
+    backgroundColor: '#ffffff',
+    hotspots: [],
+}
+
 class AppBase extends EventHandler {
     init(appOptions) {
         const {
@@ -73892,7 +73895,7 @@ const importSettings = (settings) => {
     } else {
         throw new Error(`Unsupported experience settings version: ${version}`)
     }
-    return result
+    return {...defaultSettings,...result}
 }
 
 class Tooltip {
@@ -73906,34 +73909,49 @@ class Tooltip {
         let timer = 0
         this.register = (target, textString, direction = 'bottom') => {
             const activate = () => {
-                const rect = target.getBoundingClientRect()
-                const midx = Math.floor((rect.left + rect.right) * 0.5)
-                const midy = Math.floor((rect.top + rect.bottom) * 0.5)
-                switch (direction) {
-                    case 'left':
-                        style.left = `${rect.left}px`
-                        style.top = `${midy}px`
-                        style.transform = 'translate(calc(-100% - 10px), -50%)'
-                        break
-                    case 'right':
-                        style.left = `${rect.right}px`
-                        style.top = `${midy}px`
-                        style.transform = 'translate(10px, -50%)'
-                        break
-                    case 'top':
-                        style.left = `${midx}px`
-                        style.top = `${rect.top}px`
-                        style.transform = 'translate(-50%, calc(-100% - 10px))'
-                        break
-                    case 'bottom':
-                        style.left = `${midx}px`
-                        style.top = `${rect.bottom}px`
-                        style.transform = 'translate(-50%, 10px)'
-                        break
-                }
-                dom.textContent = textString
-                style.display = 'inline'
-            }
+        dom.textContent = textString
+        style.display = 'inline'
+        style.whiteSpace = 'nowrap'
+        style.width = 'max-content'
+
+        const rect = target.getBoundingClientRect()
+        const tooltipW = dom.offsetWidth
+        const tooltipH = dom.offsetHeight
+        const GAP = 8
+        const midx = Math.floor((rect.left + rect.right) * 0.5)
+        const midy = Math.floor((rect.top + rect.bottom) * 0.5)
+
+        let left, top
+
+        switch (direction) {
+            case 'left':
+                left = rect.left - tooltipW - 10
+                top  = midy - tooltipH / 2
+                break
+            case 'right':
+                left = rect.right + 10
+                top  = midy - tooltipH / 2
+                break
+            case 'top':
+                left = midx - tooltipW / 2
+                top  = rect.top - tooltipH - 10
+                break
+            case 'bottom':
+                left = midx - tooltipW / 2
+                top  = rect.bottom + 10
+                break
+        }
+
+        // Clamp trong viewport
+        if (left + tooltipW > window.innerWidth - GAP)  left = window.innerWidth - tooltipW - GAP
+        if (left < GAP)                                  left = GAP
+        if (top + tooltipH > window.innerHeight - GAP)  top  = window.innerHeight - tooltipH - GAP
+        if (top < GAP)                                   top  = GAP
+
+        style.transform = 'none'
+        style.left = left + 'px'
+        style.top  = top  + 'px'
+    }
             const startTimer = (fn) => {
                 timer = window.setTimeout(() => {
                     fn()
@@ -74007,6 +74025,456 @@ const initAnnotationNav = (dom, events, state, annotations) => {
     // Initial state
     updateDisplay()
 }
+class Vec33 {
+    constructor(x = 0, y = 0, z = 0) {
+        this.x = x
+        this.y = y
+        this.z = z
+    }
+    copy(v) {
+        this.x = v.x
+        this.y = v.y
+        this.z = v.z
+        return this
+    }
+    set(x, y, z) {
+        this.x = x
+        this.y = y
+        this.z = z
+        return this
+    }
+    add(v) {
+        this.x += v.x
+        this.y += v.y
+        this.z += v.z
+        return this
+    }
+    sub(v) {
+        this.x -= v.x
+        this.y -= v.y
+        this.z -= v.z
+        return this
+    }
+    mulScalar(s) {
+        this.x *= s
+        this.y *= s
+        this.z *= s
+        return this
+    }
+    lerp(target, t) {
+        this.x += (target.x - this.x) * t
+        this.y += (target.y - this.y) * t
+        this.z += (target.z - this.z) * t
+        return this
+    }
+    length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
+    }
+    normalize() {
+        const len = this.length()
+        if (len > 0) {
+            this.mulScalar(1 / len)
+        }
+        return this
+    }
+    cross(v) {
+        const x = this.y * v.z - this.z * v.y
+        const y = this.z * v.x - this.x * v.z
+        const z = this.x * v.y - this.y * v.x
+        this.x = x
+        this.y = y
+        this.z = z
+        return this
+    }
+    toArray(arr, offset = 0) {
+        arr[offset] = this.x
+        arr[offset + 1] = this.y
+        arr[offset + 2] = this.z
+    }
+    fromArray(arr, offset = 0) {
+        this.x = arr[offset]
+        this.y = arr[offset + 1]
+        this.z = arr[offset + 2]
+        return this
+    }
+    transformQuat(q) {
+        const x = this.x,
+            y = this.y,
+            z = this.z
+        const qx = q.x,
+            qy = q.y,
+            qz = q.z,
+            qw = q.w
+        const ix = qw * x + qy * z - qz * y
+        const iy = qw * y + qz * x - qx * z
+        const iz = qw * z + qx * y - qy * x
+        const iw = -qx * x - qy * y - qz * z
+        this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy
+        this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz
+        this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx
+        return this
+    }
+    cloneTransformQuat(q) {
+        const v = this.clone()
+        v.transformQuat(q)
+        return v
+    }
+    static get FORWARD() {
+        return new Vec33(0, 0, -1)
+    }
+    static get UP() {
+        return new Vec33(0, 1, 0)
+    }
+    static get RIGHT() {
+        return new Vec33(1, 0, 0)
+    }
+    clone() {
+        return new Vec33(this.x, this.y, this.z)
+    }
+}
+class Quat3 {
+    constructor(x = 0, y = 0, z = 0, w = 1) {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
+    set(x, y, z, w) {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+        return this
+    }
+    copy(q) {
+        this.x = q.x
+        this.y = q.y
+        this.z = q.z
+        this.w = q.w
+        return this
+    }
+    clone() {
+        return new Quat3(this.x, this.y, this.z, this.w)
+    }
+    static slerp(a, b, t) {
+        let cosHalfTheta = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+        if (cosHalfTheta < 0) {
+            b = new Quat3(-b.x, -b.y, -b.z, -b.w)
+            cosHalfTheta = -cosHalfTheta
+        }
+        if (cosHalfTheta > 0.9995) {
+            return new Quat3(
+                a.x + t * (b.x - a.x),
+                a.y + t * (b.y - a.y),
+                a.z + t * (b.z - a.z),
+                a.w + t * (b.w - a.w),
+            ).normalize()
+        }
+        const halfTheta = Math.acos(cosHalfTheta)
+        const sinHalfTheta = Math.sqrt(1 - cosHalfTheta * cosHalfTheta)
+        const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta
+        const ratioB = Math.sin(t * halfTheta) / sinHalfTheta
+        return new Quat3(
+            a.x * ratioA + b.x * ratioB,
+            a.y * ratioA + b.y * ratioB,
+            a.z * ratioA + b.z * ratioB,
+            a.w * ratioA + b.w * ratioB,
+        )
+    }
+    normalize() {
+        const len = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w)
+        if (len > 0) {
+            const invLen = 1 / len
+            this.x *= invLen
+            this.y *= invLen
+            this.z *= invLen
+            this.w *= invLen
+        }
+        return this
+    }
+    mul(q) {
+        const ax = this.x,
+            ay = this.y,
+            az = this.z,
+            aw = this.w
+        const bx = q.x,
+            by = q.y,
+            bz = q.z,
+            bw = q.w
+        this.x = aw * bx + ax * bw + ay * bz - az * by
+        this.y = aw * by - ax * bz + ay * bw + az * bx
+        this.z = aw * bz + ax * by - ay * bx + az * bw
+        this.w = aw * bw - ax * bx - ay * by - az * bz
+        return this
+    }
+    setFromAxisAngle(axis, angleRad) {
+        const halfAngle = angleRad * 0.5
+        const s = Math.sin(halfAngle)
+        this.x = axis.x * s
+        this.y = axis.y * s
+        this.z = axis.z * s
+        this.w = Math.cos(halfAngle)
+        return this
+    }
+    setFromEulerAngles(euler) {
+        const yaw = (euler.y * Math.PI) / 180
+        const pitch = (euler.x * Math.PI) / 180
+        const roll = (euler.z * Math.PI) / 180
+        const cy = Math.cos(yaw * 0.5)
+        const sy = Math.sin(yaw * 0.5)
+        const cp = Math.cos(pitch * 0.5)
+        const sp = Math.sin(pitch * 0.5)
+        const cr = Math.cos(roll * 0.5)
+        const sr = Math.sin(roll * 0.5)
+        this.w = cr * cp * cy + sr * sp * sy
+        this.x = sr * cp * cy - cr * sp * sy
+        this.y = cr * sp * cy + sr * cp * sy
+        this.z = cr * cp * sy - sr * sp * cy
+        return this
+    }
+    transformVector(vec) {
+        return vec.clone().transformQuat(this)
+    }
+    static lookRotation(forward, up) {
+        const z = forward.clone().normalize()
+        const x = up.clone().cross(z).normalize()
+        const y = z.clone().cross(x)
+        const m00 = x.x,
+            m01 = y.x,
+            m02 = z.x
+        const m10 = x.y,
+            m11 = y.y,
+            m12 = z.y
+        const m20 = x.z,
+            m21 = y.z,
+            m22 = z.z
+        const trace = m00 + m11 + m22
+        const q = new Quat3()
+        if (trace > 0) {
+            const s = 0.5 / Math.sqrt(trace + 1)
+            q.w = 0.25 / s
+            q.x = (m21 - m12) * s
+            q.y = (m02 - m20) * s
+            q.z = (m10 - m01) * s
+        } else if (m00 > m11 && m00 > m22) {
+            const s = 2 * Math.sqrt(1 + m00 - m11 - m22)
+            q.w = (m21 - m12) / s
+            q.x = 0.25 * s
+            q.y = (m01 + m10) / s
+            q.z = (m02 + m20) / s
+        } else if (m11 > m22) {
+            const s = 2 * Math.sqrt(1 + m11 - m00 - m22)
+            q.w = (m02 - m20) / s
+            q.x = (m01 + m10) / s
+            q.y = 0.25 * s
+            q.z = (m12 + m21) / s
+        } else {
+            const s = 2 * Math.sqrt(1 + m22 - m00 - m11)
+            q.w = (m10 - m01) / s
+            q.x = (m02 + m20) / s
+            q.y = (m12 + m21) / s
+            q.z = 0.25 * s
+        }
+        return q.normalize()
+    }
+}
+class SmoothDamp3 {
+    constructor(initialValue) {
+        this.value = initialValue.slice()
+        this.target = initialValue.slice()
+        this.velocity = new Array(initialValue.length).fill(0)
+        this.smoothTime = 0
+    }
+    update(dt) {
+        const smoothTime = Math.max(this.smoothTime, 1e-6)
+        const omega = 2 / smoothTime
+        const x = omega * dt
+        const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+        for (let i = 0; i < this.value.length; i++) {
+            const v = this.velocity[i]
+            const t = this.target[i]
+            let x0 = this.value[i]
+            let xDiff = x0 - t
+            const temp = (v + omega * xDiff) * dt
+            this.velocity[i] = (v - omega * temp) * exp
+            this.value[i] = t + (xDiff + temp) * exp
+        }
+    }
+}
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+function updateProgress(loaded, total, initPoster) {
+    const loadingText = document.getElementById('loadingText')
+    const fileSizeInfo = document.getElementById('fileSizeInfo')
+    const loadingBar = document.getElementById('loadingBar')
+    const progress = (loaded / total) * 100
+    if (total > 0) {
+        if (progress === 100) modelLoaded = true
+        const displayProgress = Math.min((loaded / total) * 100, 99)
+        const loadedSize = formatFileSize(loaded)
+        const totalSize = formatFileSize(total)
+        if (fileSizeInfo) {
+            fileSizeInfo.textContent = `${loadedSize} / ${totalSize}`
+        }
+
+        if (loadingText) {
+            loadingText.textContent = `${Math.round(displayProgress)}%`
+        }
+        if (loadingBar)
+            loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${displayProgress}%, white ${displayProgress}%, white 100%)`
+    } else {
+        if (fileSizeInfo) {
+            fileSizeInfo.textContent = 'Loading...'
+        }
+        if (loadingText) {
+            loadingText.textContent = '0%'
+        }
+    }
+    if (initPoster) {
+        const poster = document.getElementById('poster')
+        blurPoster(poster, progress)
+    }
+}
+function blurPoster(poster, progress) {
+    poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
+}
+function showToast(content, opts = {}) {
+    const duration = typeof opts.duration === 'number' ? opts.duration : 1500
+    const type = opts.type || 'default'
+    let toast = document.getElementById('toast')
+    if (!toast) {
+        toast = document.createElement('div')
+        toast.id = 'toast'
+        document.body.appendChild(toast)
+    }
+    toast.textContent = content
+    if (content.length === 1) {
+        toast.classList.add('char')
+    } else {
+        toast.classList.remove('char')
+    }
+    if (type === 'success') {
+        toast.classList.add('success')
+    } else {
+        toast.classList.remove('success')
+    }
+    toast.classList.add('show')
+    if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
+    toast._hideTimeout = setTimeout(() => {
+        toast.classList.remove('show')
+        toast._removeTimeout = setTimeout(() => {}, 300)
+    }, duration)
+}
+function pickModelLocalPoint(x, y, camera) {
+    const from = camera.screenToWorld(x, y, camera.nearClip)
+    const to = camera.screenToWorld(x, y, camera.farClip)
+    const worldRay = new Ray(from, to.clone().sub(from).normalize())
+
+    let closestHitLocal = null
+    let closestDist = Infinity
+
+    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
+    const localCenters = gsplatInstance.resource.centers
+    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+    const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
+
+    const localRayOrigin = new Vec3()
+    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
+    const localRayDirection = new Vec3()
+    invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
+    localRayDirection.normalize()
+    const localRay = new Ray(localRayOrigin, localRayDirection)
+
+    const splatRadius = [0.03, 0.05, 0.1]
+
+    for (let k = 0; k < splatRadius.length; k++) {
+        for (let i = 0; i < localCenters.length; i += 3) {
+            const localPos = new Vec3(localCenters[i], localCenters[i + 1], localCenters[i + 2])
+            const distToSplat = localRay.direction.dot(localPos.clone().sub(localRay.origin))
+
+            if (distToSplat > 0) {
+                const pointOnRay = localRay.getPoint(distToSplat)
+                const dist = pointOnRay.distance(localPos)
+
+                if (dist < splatRadius[k]) {
+                    if (distToSplat < closestDist) {
+                        closestDist = distToSplat
+                        closestHitLocal = localPos.clone()
+                    }
+                }
+            }
+        }
+        if (closestHitLocal) break
+    }
+
+    if (closestHitLocal) {
+        const zTarget = closestHitLocal.z
+        const t = (zTarget - localRay.origin.z) / localRay.direction.z
+        return localRay.getPoint(t)
+    }
+
+    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
+}
+
+function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
+    const nearestPoint = findNearestSplatCenter(localRay, centers)
+    if (nearestPoint) return nearestPoint
+    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
+    if (bboxIntersection) return bboxIntersection
+
+    return localRay.getPoint(5.0)
+}
+
+function findNearestSplatCenter(localRay, centers) {
+    let bestT = null
+    let bestDistSq = Infinity
+
+    for (let i = 0; i < centers.length; i += 3) {
+        const p = new Vec3(centers[i], centers[i + 1], centers[i + 2])
+        const v = p.clone().sub(localRay.origin)
+        const t = v.dot(localRay.direction)
+
+        if (t < 0) continue
+
+        const pointOnRay = localRay.getPoint(t)
+        const dx = pointOnRay.x - p.x
+        const dy = pointOnRay.y - p.y
+        const dz = pointOnRay.z - p.z
+        const distSq = dx * dx + dy * dy + dz * dz
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq
+            bestT = t
+        }
+    }
+    return bestT !== null ? localRay.getPoint(bestT) : null
+}
+
+function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
+    const meshInstance = modelEntity.gsplat.instance.meshInstance
+    const aabbWorld = meshInstance.aabb
+    const bboxCenterWorld = aabbWorld.center.clone()
+    const bboxCenterLocal = new Vec3()
+    invWorldMatrix.transformPoint(bboxCenterWorld, bboxCenterLocal)
+
+    const planeNormal = localRay.direction.clone()
+    return intersectRayPlane(localRay, bboxCenterLocal, planeNormal)
+}
+
+function intersectRayPlane(ray, planePoint, planeNormal) {
+    const denom = planeNormal.dot(ray.direction)
+    if (Math.abs(denom) < 1e-6) return null
+
+    const t = planeNormal.dot(planePoint.clone().sub(ray.origin)) / denom
+    if (t < 0) return null
+
+    return ray.getPoint(t)
+}
+
 function exportHtml(name, data) {
     const injectedScript = `<script>
             window.sse = ${JSON.stringify(data)}
@@ -74027,142 +74495,279 @@ function getHtmlTemplate() {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Viewer</title>
+    <title>3D Model Viewer</title>
     <meta charset="UTF-8">
+    <meta property="og:title" content="3D Model Viewer" />
+    <meta property="og:description" content=" " />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <base href>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="viewer.css">
+    <link
+            href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
+            rel="stylesheet" />
+    <script>
+        const time = Date.now()
+        const params = new URLSearchParams(window.location.search)
+        if (!params.has('nocache')) {
+            const url = new URL(window.location.href)
+            url.searchParams.set('nocache', time)
+            window.location.replace(url.toString())
+        }
+    </script>      
 </head>
 <body>
     <canvas id="application-canvas"></canvas>
       <div id="ui">
             <div id="poster"></div>
             <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
                 <div id="loadingText"></div>
                 <div id="loadingBar"></div>
             </div>
-            <div id="controlsWrap" class="hidden">
-                <div id="buttonsContainer">
-                    <div class="buttonGroup">
-                        <button id="resetCamera" class="controlButton">
-                            <svg
-                                width="28px"
-                                height="28px"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    fill-rule="evenodd"
-                                    clip-rule="evenodd"
-                                    d="M7.59843 4.48666C7.86525 3.17678 9.03088 2.25 10.3663 2.25H13.6337C14.9691 2.25 16.1347 3.17678 16.4016 4.48666C16.4632 4.78904 16.7371 5.01086 17.022 5.01086C17.0329 5.01086 17.0439 5.0111 17.0548 5.01157C18.4582 5.07294 19.5362 5.24517 20.4362 5.83558C21.0032 6.20757 21.4909 6.68617 21.871 7.24464C22.3439 7.93947 22.5524 8.73694 22.6524 9.70145C22.75 10.6438 22.75 11.825 22.75 13.3211V13.4062C22.75 14.9023 22.75 16.0835 22.6524 17.0258C22.5524 17.9903 22.3439 18.7878 21.871 19.4826C21.4909 20.0411 21.0032 20.5197 20.4362 20.8917C19.7327 21.3532 18.9262 21.5567 17.948 21.6544C16.9903 21.75 15.789 21.75 14.2634 21.75H9.73657C8.21098 21.75 7.00967 21.75 6.05196 21.6544C5.07379 21.5567 4.26731 21.3532 3.56385 20.8917C2.99682 20.5197 2.50905 20.0411 2.12899 19.4826C1.65612 18.7878 1.44756 17.9903 1.34762 17.0258C1.24998 16.0835 1.24999 14.9023 1.25 13.4062V13.3211C1.24999 11.825 1.24998 10.6438 1.34762 9.70145C1.44756 8.73694 1.65612 7.93947 2.12899 7.24464C2.50905 6.68617 2.99682 6.20757 3.56385 5.83558C4.46383 5.24517 5.5418 5.07294 6.94523 5.01157C6.95615 5.0111 6.96707 5.01086 6.978 5.01086C7.26288 5.01086 7.53683 4.78905 7.59843 4.48666ZM10.3663 3.75C9.72522 3.75 9.18905 4.19299 9.06824 4.78607C8.87258 5.74659 8.021 6.50186 6.99633 6.51078C5.64772 6.57069 4.92536 6.73636 4.38664 7.08978C3.98309 7.35452 3.63752 7.6941 3.36906 8.08857C3.09291 8.49435 2.92696 9.01325 2.83963 9.85604C2.75094 10.7121 2.75 11.8156 2.75 13.3636C2.75 14.9117 2.75094 16.0152 2.83963 16.8712C2.92696 17.714 3.09291 18.2329 3.36906 18.6387C3.63752 19.0332 3.98309 19.3728 4.38664 19.6375C4.80417 19.9114 5.33844 20.0756 6.20104 20.1618C7.07549 20.2491 8.20193 20.25 9.77778 20.25H14.2222C15.7981 20.25 16.9245 20.2491 17.799 20.1618C18.6616 20.0756 19.1958 19.9114 19.6134 19.6375C20.0169 19.3728 20.3625 19.0332 20.6309 18.6387C20.9071 18.2329 21.073 17.714 21.1604 16.8712C21.2491 16.0152 21.25 14.9117 21.25 13.3636C21.25 11.8156 21.2491 10.7121 21.1604 9.85604C21.073 9.01325 20.9071 8.49435 20.6309 8.08857C20.3625 7.6941 20.0169 7.35452 19.6134 7.08978C19.0746 6.73636 18.3523 6.57069 17.0037 6.51078C15.979 6.50186 15.1274 5.74659 14.9318 4.78607C14.8109 4.19299 14.2748 3.75 13.6337 3.75H10.3663ZM14.5197 8.25C14.9339 8.25 15.2697 8.58579 15.2697 9V10.6799C15.2697 11.0346 15.0213 11.3408 14.6742 11.4138L13.1545 11.7339C12.7492 11.8193 12.3514 11.5599 12.2661 11.1546C12.1928 10.8065 12.3737 10.4641 12.6828 10.3202C11.8617 10.0792 10.9379 10.2825 10.2902 10.9303C9.34597 11.8745 9.34597 13.4053 10.2902 14.3495C11.2343 15.2937 12.7652 15.2937 13.7094 14.3495C14.112 13.9469 14.3422 13.4396 14.4019 12.9152C14.4487 12.5037 14.8203 12.208 15.2319 12.2548C15.6434 12.3016 15.9391 12.6732 15.8923 13.0848C15.7957 13.9341 15.421 14.7592 14.77 15.4101C13.24 16.9401 10.7595 16.9401 9.2295 15.4101C7.69953 13.8802 7.69953 11.3996 9.2295 9.86963C10.4581 8.64105 12.2996 8.39903 13.7697 9.14355V9C13.7697 8.58579 14.1055 8.25 14.5197 8.25Z"
-                                    fill="white" />
-                            </svg>
-                        </button>
-                        <button id="info" class="controlButton">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                height="24px"
-                                viewBox="0 -960 960 960"
-                                width="24px"
-                                fill="currentColor">
-                                <path
-                                    d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
-                            </svg>
-                        </button>
-                        <button id="settings" class="controlButton">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                height="24" viewBox="0 0 24 24">
-                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 9.7998 12 8ZM12 9.7998C10.785 9.7998 9.7998 10.785 9.7998 12C9.7998 13.215 10.785 14.2002 12 14.2002C13.215 14.2002 14.2002 13.215 14.2002 12C14.2002 10.785 13.215 9.7998 12 9.7998Z" />
-                                <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M12.7119 2.2002C13.1961 2.20028 13.6296 2.49055 13.8164 2.93066L13.8506 3.02051L14.3652 4.56641C14.7875 4.70091 15.1932 4.87075 15.5801 5.07129L17.042 4.3418L17.1299 4.30176C17.5436 4.13502 18.017 4.21245 18.3564 4.50195L18.4268 4.56641L19.4336 5.57324C19.7985 5.93836 19.8889 6.49621 19.6582 6.95801L18.9268 8.41895C19.1274 8.80592 19.2971 9.21159 19.4316 9.63379L20.9795 10.1504C21.4693 10.3138 21.7997 10.7717 21.7998 11.2881V12.7119C21.7997 13.2284 21.4695 13.6873 20.9795 13.8506L19.4316 14.3652C19.2971 14.7875 19.1274 15.1932 18.9268 15.5801L19.6582 17.042C19.8889 17.5038 19.7985 18.0616 19.4336 18.4268L18.4268 19.4336C18.0616 19.7985 17.5038 19.8889 17.042 19.6582L15.5801 18.9268C15.1932 19.1274 14.7875 19.2971 14.3652 19.4316L13.8506 20.9795C13.6873 21.4695 13.2284 21.7997 12.7119 21.7998H11.2881C10.7717 21.7997 10.3138 21.4693 10.1504 20.9795L9.63379 19.4316C9.21159 19.2971 8.80592 19.1274 8.41895 18.9268L6.95801 19.6582C6.49621 19.8889 5.93836 19.7985 5.57324 19.4336L4.56641 18.4268C4.20146 18.0617 4.1112 17.5038 4.3418 17.042L5.07129 15.5801C4.87075 15.1932 4.70091 14.7875 4.56641 14.3652L3.02051 13.8506C2.53057 13.6873 2.20029 13.2283 2.2002 12.7119V11.2881C2.20024 10.7718 2.53076 10.3139 3.02051 10.1504L4.56641 9.63379C4.70094 9.21149 4.86966 8.80498 5.07031 8.41797L4.3418 6.95801C4.11113 6.49617 4.20145 5.93834 4.56641 5.57324L5.57324 4.56641C5.93834 4.20145 6.49617 4.11113 6.95801 4.3418L8.41797 5.07031C8.80498 4.86966 9.21149 4.70094 9.63379 4.56641L10.1504 3.02051L10.1836 2.92969C10.3706 2.49001 10.8042 2.20023 11.2881 2.2002H12.7119ZM11.0186 5.4707L10.8809 5.88477L10.458 5.99316C9.88479 6.13982 9.34317 6.36768 8.84473 6.66309L8.46875 6.88477L8.0791 6.69043L6.50098 5.90137L5.90137 6.50098L6.69043 8.0791L6.88477 8.46875L6.66309 8.84473C6.36768 9.34317 6.13982 9.88479 5.99316 10.458L5.88477 10.8809L5.4707 11.0186L3.7998 11.5762V12.4229L5.4707 12.9805L5.88477 13.1182L5.99316 13.541C6.13969 14.1141 6.36763 14.6556 6.66309 15.1543L6.88477 15.5303L6.69043 15.9199L5.90137 17.498L6.50098 18.0977L8.0791 17.3086L8.46875 17.1133L8.84473 17.3359C9.34314 17.6314 9.88463 17.8591 10.458 18.0059L10.8809 18.1143L11.0186 18.5283L11.5771 20.2002H12.4229L13.1182 18.1143L13.541 18.0059C14.1143 17.8593 14.6556 17.6314 15.1543 17.3359L15.5303 17.1143L15.9199 17.3086L17.498 18.0977L18.0977 17.498L17.3086 15.9199L17.1143 15.5303L17.3359 15.1543C17.6314 14.6556 17.8593 14.1143 18.0059 13.541L18.1143 13.1182L20.2002 12.4229V11.5762L18.1143 10.8809L18.0059 10.458C17.8591 9.88463 17.6314 9.34314 17.3359 8.84473L17.1133 8.46875L17.3086 8.0791L18.0977 6.50098L17.498 5.90137L15.9199 6.69043L15.5303 6.88477L15.1543 6.66309C14.6556 6.36763 14.1141 6.13969 13.541 5.99316L13.1182 5.88477L12.9805 5.4707L12.4229 3.7998H11.5762L11.0186 5.4707Z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div id="settingsPanel" class="hidden">
-                <div class="divider"></div>
-                <div class="settingsRow">
-                    <button id="frame">1</button>
-                    <button id="reset">2</button>
-                </div>
-            </div>
-            <div id="infoPanel" class="hidden">
-                <div id="infoPanelContent"
-                    onpointerdown="event.stopPropagation()">
-                    <div id="header">Controls</div>
-                    <div id="tabs">
-                        <div id="desktopTab" class="tab active">Desktop</div>
-                        <div id="touchTab" class="tab">Touch</div>
-                    </div>
-                    <div id="infoPanels">
-                        <div id="desktopInfoPanel">
-                            <div class="control-item">
-                                <span class="control-action">Rotate</span>
-                                <span class="control-key">Left Mouse</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Pan</span>
-                                <span class="control-key">Right Mouse</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Zoom</span>
-                                <span class="control-key">Mouse Wheel</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Reset Camera</span>
-                                <span class="control-key">R / Camera Icon</span>
-                            </div>
-                            <div class="control-item autoPlay-info">
-                                <span class="control-action">Auto Play</span>
-                                <span class="control-key">P / Triangle
-                                    icon</span>
-                            </div>
-                            <div class="control-item messages-info">
-                                <span class="control-action">Messages Disable
-                                </span>
-                                <span class="control-key">T / Text Icon</span>
-                            </div>
-                        </div>
-                        <div id="touchInfoPanel" class="hidden">
-                            <div class="control-item">
-                                <span class="control-action">Rotate</span>
-                                <span class="control-key">One Finger Drag</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Pan</span>
-                                <span class="control-key">Two Finger Drag</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Zoom</span>
-                                <span class="control-key">Pinch</span>
-                            </div>
-                            <div class="control-item">
-                                <span class="control-action">Reset Camera</span>
-                                <span class="control-key">Camera Icon</span>
-                            </div>
-                            <div class="control-item autoPlay-info">
-                                <span class="control-action">Auto Play</span>
-                                <span class="control-key">Triangle icon</span>
-                            </div>
-                            <div class="control-item messages-info">
-                                <span class="control-action">Messages Disable
-                                </span>
-                                <span class="control-key">Text Icon</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Tooltip -->
             <div id="tooltip"></div>
         </div>
 </body>
 <!-- INJECT_SCRIPT -->
 <script src="./viewer.js"><\/script>
 </html>`
+}
+
+function createControlItems(items) {
+    return items.map(({ action, key, cls }) => {
+        const div = document.createElement('div')
+        div.className = 'control-item' + (cls ? ' ' + cls : '')
+        div.innerHTML = `
+      <span class="control-action">${action}</span>
+      <span class="control-key">${key}</span>
+    `
+        return div
+    })
+}
+
+function createTabPanel(id, items, hidden = false) {
+    const panel = document.createElement('div')
+    panel.id = id
+    if (hidden) panel.className = 'hidden'
+    createControlItems(items).forEach((el) => panel.appendChild(el))
+    return panel
+}
+
+function createInfoPanel(settings, events) {
+    const baseDesktop = [
+        { action: 'Rotate', key: 'Left Mouse' },
+        { action: 'Pan', key: 'Right Mouse' },
+        { action: 'Zoom', key: 'Mouse Wheel' },
+        { action: 'Reset Camera', key: 'R / Camera Icon' },
+    ]
+    const baseTouch = [
+        { action: 'Rotate', key: 'One Finger Drag' },
+        { action: 'Pan', key: 'Two Finger Drag' },
+        { action: 'Zoom', key: 'Pinch' },
+        { action: 'Reset Camera', key: 'Camera Icon' },
+    ]
+    const hotspotDesktop = [
+        { action: 'Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
+        { action: 'Messages Disable', key: 'T / Text Icon', cls: 'messages-info' },
+    ]
+    const hotspotTouch = [
+        { action: 'Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
+        { action: 'Messages Disable', key: 'Text Icon', cls: 'messages-info' },
+    ]
+
+    const getControls = () => ({
+        desktop: settings.hotspots?.length ? [...baseDesktop, ...hotspotDesktop] : baseDesktop,
+        touch: settings.hotspots?.length ? [...baseTouch, ...hotspotTouch] : baseTouch,
+    })
+
+    const wrapper = document.createElement('div')
+    wrapper.id = 'infoPanel'
+    wrapper.className = 'hidden'
+
+    const content = document.createElement('div')
+    content.id = 'infoPanelContent'
+    content.addEventListener('pointerdown', (e) => e.stopPropagation())
+
+    const tabs = document.createElement('div')
+    tabs.id = 'tabs'
+    tabs.innerHTML = `
+        <div id="desktopTab" class="tab active">Desktop</div>
+        <div id="touchTab" class="tab">Touch</div>
+    `
+
+    const panels = document.createElement('div')
+    panels.id = 'infoPanels'
+
+    const rebuild = () => {
+        const controls = getControls()
+        panels.innerHTML = ''
+        panels.appendChild(createTabPanel('desktopInfoPanel', controls.desktop))
+        panels.appendChild(createTabPanel('touchInfoPanel', controls.touch, true))
+    }
+
+    rebuild()
+    content.append(tabs, panels)
+    wrapper.appendChild(content)
+
+    events.on('hotspot:rebuild-info', rebuild)
+
+    return wrapper
+}
+const SVG_ICONS = {
+    resetCamera: {
+        size: '28',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: 'M7.59843 4.48666C7.86525 3.17678 9.03088 2.25 10.3663 2.25H13.6337C14.9691 2.25 16.1347 3.17678 16.4016 4.48666C16.4632 4.78904 16.7371 5.01086 17.022 5.01086C17.0329 5.01086 17.0439 5.0111 17.0548 5.01157C18.4582 5.07294 19.5362 5.24517 20.4362 5.83558C21.0032 6.20757 21.4909 6.68617 21.871 7.24464C22.3439 7.93947 22.5524 8.73694 22.6524 9.70145C22.75 10.6438 22.75 11.825 22.75 13.3211V13.4062C22.75 14.9023 22.75 16.0835 22.6524 17.0258C22.5524 17.9903 22.3439 18.7878 21.871 19.4826C21.4909 20.0411 21.0032 20.5197 20.4362 20.8917C19.7327 21.3532 18.9262 21.5567 17.948 21.6544C16.9903 21.75 15.789 21.75 14.2634 21.75H9.73657C8.21098 21.75 7.00967 21.75 6.05196 21.6544C5.07379 21.5567 4.26731 21.3532 3.56385 20.8917C2.99682 20.5197 2.50905 20.0411 2.12899 19.4826C1.65612 18.7878 1.44756 17.9903 1.34762 17.0258C1.24998 16.0835 1.24999 14.9023 1.25 13.4062V13.3211C1.24999 11.825 1.24998 10.6438 1.34762 9.70145C1.44756 8.73694 1.65612 7.93947 2.12899 7.24464C2.50905 6.68617 2.99682 6.20757 3.56385 5.83558C4.46383 5.24517 5.5418 5.07294 6.94523 5.01157C6.95615 5.0111 6.96707 5.01086 6.978 5.01086C7.26288 5.01086 7.53683 4.78905 7.59843 4.48666ZM10.3663 3.75C9.72522 3.75 9.18905 4.19299 9.06824 4.78607C8.87258 5.74659 8.021 6.50186 6.99633 6.51078C5.64772 6.57069 4.92536 6.73636 4.38664 7.08978C3.98309 7.35452 3.63752 7.6941 3.36906 8.08857C3.09291 8.49435 2.92696 9.01325 2.83963 9.85604C2.75094 10.7121 2.75 11.8156 2.75 13.3636C2.75 14.9117 2.75094 16.0152 2.83963 16.8712C2.92696 17.714 3.09291 18.2329 3.36906 18.6387C3.63752 19.0332 3.98309 19.3728 4.38664 19.6375C4.80417 19.9114 5.33844 20.0756 6.20104 20.1618C7.07549 20.2491 8.20193 20.25 9.77778 20.25H14.2222C15.7981 20.25 16.9245 20.2491 17.799 20.1618C18.6616 20.0756 19.1958 19.9114 19.6134 19.6375C20.0169 19.3728 20.3625 19.0332 20.6309 18.6387C20.9071 18.2329 21.073 17.714 21.1604 16.8712C21.2491 16.0152 21.25 14.9117 21.25 13.3636C21.25 11.8156 21.2491 10.7121 21.1604 9.85604C21.073 9.01325 20.9071 8.49435 20.6309 8.08857C20.3625 7.6941 20.0169 7.35452 19.6134 7.08978C19.0746 6.73636 18.3523 6.57069 17.0037 6.51078C15.979 6.50186 15.1274 5.74659 14.9318 4.78607C14.8109 4.19299 14.2748 3.75 13.6337 3.75H10.3663ZM14.5197 8.25C14.9339 8.25 15.2697 8.58579 15.2697 9V10.6799C15.2697 11.0346 15.0213 11.3408 14.6742 11.4138L13.1545 11.7339C12.7492 11.8193 12.3514 11.5599 12.2661 11.1546C12.1928 10.8065 12.3737 10.4641 12.6828 10.3202C11.8617 10.0792 10.9379 10.2825 10.2902 10.9303C9.34597 11.8745 9.34597 13.4053 10.2902 14.3495C11.2343 15.2937 12.7652 15.2937 13.7094 14.3495C14.112 13.9469 14.3422 13.4396 14.4019 12.9152C14.4487 12.5037 14.8203 12.208 15.2319 12.2548C15.6434 12.3016 15.9391 12.6732 15.8923 13.0848C15.7957 13.9341 15.421 14.7592 14.77 15.4101C13.24 16.9401 10.7595 16.9401 9.2295 15.4101C7.69953 13.8802 7.69953 11.3996 9.2295 9.86963C10.4581 8.64105 12.2996 8.39903 13.7697 9.14355V9C13.7697 8.58579 14.1055 8.25 14.5197 8.25Z',
+    },
+
+    info: {
+        size: '24',
+        vb: '0 -960 960 960',
+        fill: 'currentColor',
+        d: 'M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z',
+    },
+
+    settings: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: [
+            'M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 9.7998 12 8ZM12 9.7998C10.785 9.7998 9.7998 10.785 9.7998 12C9.7998 13.215 10.785 14.2002 12 14.2002C13.215 14.2002 14.2002 13.215 14.2002 12C14.2002 10.785 13.215 9.7998 12 9.7998Z',
+            'M12.7119 2.2002C13.1961 2.20028 13.6296 2.49055 13.8164 2.93066L13.8506 3.02051L14.3652 4.56641C14.7875 4.70091 15.1932 4.87075 15.5801 5.07129L17.042 4.3418L17.1299 4.30176C17.5436 4.13502 18.017 4.21245 18.3564 4.50195L18.4268 4.56641L19.4336 5.57324C19.7985 5.93836 19.8889 6.49621 19.6582 6.95801L18.9268 8.41895C19.1274 8.80592 19.2971 9.21159 19.4316 9.63379L20.9795 10.1504C21.4693 10.3138 21.7997 10.7717 21.7998 11.2881V12.7119C21.7997 13.2284 21.4695 13.6873 20.9795 13.8506L19.4316 14.3652C19.2971 14.7875 19.1274 15.1932 18.9268 15.5801L19.6582 17.042C19.8889 17.5038 19.7985 18.0616 19.4336 18.4268L18.4268 19.4336C18.0616 19.7985 17.5038 19.8889 17.042 19.6582L15.5801 18.9268C15.1932 19.1274 14.7875 19.2971 14.3652 19.4316L13.8506 20.9795C13.6873 21.4695 13.2284 21.7997 12.7119 21.7998H11.2881C10.7717 21.7997 10.3138 21.4693 10.1504 20.9795L9.63379 19.4316C9.21159 19.2971 8.80592 19.1274 8.41895 18.9268L6.95801 19.6582C6.49621 19.8889 5.93836 19.7985 5.57324 19.4336L4.56641 18.4268C4.20146 18.0617 4.1112 17.5038 4.3418 17.042L5.07129 15.5801C4.87075 15.1932 4.70091 14.7875 4.56641 14.3652L3.02051 13.8506C2.53057 13.6873 2.20029 13.2283 2.2002 12.7119V11.2881C2.20024 10.7718 2.53076 10.3139 3.02051 10.1504L4.56641 9.63379C4.70094 9.21149 4.86966 8.80498 5.07031 8.41797L4.3418 6.95801C4.11113 6.49617 4.20145 5.93834 4.56641 5.57324L5.57324 4.56641C5.93834 4.20145 6.49617 4.11113 6.95801 4.3418L8.41797 5.07031C8.80498 4.86966 9.21149 4.70094 9.63379 4.56641L10.1504 3.02051L10.1836 2.92969C10.3706 2.49001 10.8042 2.20023 11.2881 2.2002H12.7119ZM11.0186 5.4707L10.8809 5.88477L10.458 5.99316C9.88479 6.13982 9.34317 6.36768 8.84473 6.66309L8.46875 6.88477L8.0791 6.69043L6.50098 5.90137L5.90137 6.50098L6.69043 8.0791L6.88477 8.46875L6.66309 8.84473C6.36768 9.34317 6.13982 9.88479 5.99316 10.458L5.88477 10.8809L5.4707 11.0186L3.7998 11.5762V12.4229L5.4707 12.9805L5.88477 13.1182L5.99316 13.541C6.13969 14.1141 6.36763 14.6556 6.66309 15.1543L6.88477 15.5303L6.69043 15.9199L5.90137 17.498L6.50098 18.0977L8.0791 17.3086L8.46875 17.1133L8.84473 17.3359C9.34314 17.6314 9.88463 17.8591 10.458 18.0059L10.8809 18.1143L11.0186 18.5283L11.5771 20.2002H12.4229L13.1182 18.1143L13.541 18.0059C14.1143 17.8593 14.6556 17.6314 15.1543 17.3359L15.5303 17.1143L15.9199 17.3086L17.498 18.0977L18.0977 17.498L17.3086 15.9199L17.1143 15.5303L17.3359 15.1543C17.6314 14.6556 17.8593 14.1143 18.0059 13.541L18.1143 13.1182L20.2002 12.4229V11.5762L18.1143 10.8809L18.0059 10.458C17.8591 9.88463 17.6314 9.34314 17.3359 8.84473L17.1133 8.46875L17.3086 8.0791L18.0977 6.50098L17.498 5.90137L15.9199 6.69043L15.5303 6.88477L15.1543 6.66309C14.6556 6.36763 14.1141 6.13969 13.541 5.99316L13.1182 5.88477L12.9805 5.4707L12.4229 3.7998H11.5762L11.0186 5.4707Z',
+        ],
+    },
+    stopHotspot: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: ['M6 19h4V5H6v14zm8-14v14h4V5h-4z'],
+    },
+    startHotspot: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: ['M8 5v14l11-7z'],
+    },
+    showHotspotButton: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: ['M4 20h2.5l1-3h9l1 3H20L13.5 4h-3L4 20zm4.6-5 2.4-6.4L13.4 15H8.6z'],
+    },
+    hideHotspotButton: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'currentColor',
+        d: ['M4 20h2.5l1-3h9l1 3H20L13.5 4h-3L4 20zm4.6-5 2.4-6.4L13.4 15H8.6z'],
+    },
+}
+
+function createSVG({ size, vb, fill, attr = {}, d }) {
+    const ns = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(ns, 'svg')
+    svg.setAttribute('width', size + 'px')
+    svg.setAttribute('height', size + 'px')
+    svg.setAttribute('viewBox', vb)
+    svg.setAttribute('fill', fill)
+    svg.setAttribute('xmlns', ns)
+
+    const paths = Array.isArray(d) ? d : [d]
+    paths.forEach((pathD) => {
+        const path = document.createElementNS(ns, 'path')
+        path.setAttribute('d', pathD)
+        Object.entries(attr).forEach(([k, v]) => path.setAttribute(k, v))
+        svg.appendChild(path)
+    })
+    return svg
+}
+
+function createButton(id, iconKey) {
+    const btn = document.createElement('button')
+    btn.id = id
+    btn.className = 'controlButton'
+    btn.appendChild(createSVG(SVG_ICONS[iconKey]))
+    return btn
+}
+function createControlBotGroup() {
+    const group = document.createElement('div')
+    group.className = 'buttonGroup'
+    // buttons: [id, iconKey]
+    const buttons = [
+        ['resetCamera', 'resetCamera'],
+        ['info', 'info'],
+        ['settings', 'settings'],
+    ]
+
+    buttons.forEach(([id, icon]) => group.appendChild(createButton(id, icon)))
+    return group
+}
+function createHotspotActionGroup(tooltip, events, dom) {
+    const group = document.createElement('div')
+    group.id = 'hotspotActionGroup'
+    dom['hotspotActionGroup'] = group
+    group.className = 'buttonGroup'
+    // buttons: [id, iconKey, label, defaultShow, event]
+    const buttons = [
+        ['stopHotspot', 'stopHotspot', 'Stop Auto Play', false, 'stop-auto'],
+        ['startHotspot', 'startHotspot', 'Auto Play', true, 'start-auto'],
+        ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-hotspot-btns'],
+        ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-hotspot-btns'],
+    ]
+    buttons.forEach(([id, icon, label, defaultShow, eventname]) => {
+        const el = createButton(id, icon)
+        dom[id] = el
+        el.addEventListener('click', () => {
+            events.fire(`hotspot:${eventname}`)
+        })
+        if (defaultShow) el.classList.remove('hidden')
+        else el.classList.add('hidden')
+        group.appendChild(el)
+        tooltip.register(el, label, 'top')
+    })
+    return group
+}
+function createControlsWrap() {
+    const wrap = document.createElement('div')
+    wrap.id = 'controlsWrap'
+    wrap.className = 'hidden'
+
+    const container = document.createElement('div')
+    container.id = 'buttonsContainer'
+
+    container.appendChild(createControlBotGroup())
+    wrap.appendChild(container)
+    const hotspotcontainer = document.createElement('div')
+    hotspotcontainer.id = 'hotspotContainer'
+    wrap.appendChild(hotspotcontainer)
+    return wrap
+}
+function createSettingsPanel() {
+    const panel = document.createElement('div')
+    panel.id = 'settingsPanel'
+    panel.className = 'hidden'
+
+    const divider = document.createElement('div')
+    divider.className = 'divider'
+
+    const row = document.createElement('div')
+    row.className = 'settingsRow'
+
+    const buttons = [
+        { id: 'frame', label: '1' },
+        { id: 'reset', label: '2' },
+    ]
+
+    buttons.forEach(({ id, label }) => {
+        const btn = document.createElement('button')
+        btn.id = id
+        btn.textContent = label
+        row.appendChild(btn)
+    })
+
+    panel.appendChild(divider)
+    panel.appendChild(row)
+    return panel
 }
 
 class ConfirmDialog {
@@ -74232,18 +74837,600 @@ class ConfirmDialog {
     }
 }
 
+const v$2 = new Vec33()
+class OtherController {
+    focus = new Vec33()
+    rotation = new Quat3()
+    smoothDamp = new SmoothDamp3(new Array(8).fill(0))
+    distance = 1
+    rotateSpeed = 0.04
+    lerpDuration = 1.5
+    lerpTime = 0
+    targetPose = null
+    startPose = null
+    modelRotation = null
+    originDistance
+    currentYaw = 0
+    currentPitch = 0
+    minPitch = 0
+    maxPitch = Math.PI / 2
+    inertiaVelX = 0
+    inertiaVelY = 0
+    inertiaDamping = 0.93
+    inertiaMinSpeed = 0.0005
+    model = 'spherical'
+    minDistance = 11
+    maxDistance = 200
+    resetPose = null
+    constructor({ global, bbox }) {
+        const { app, events, settings } = global
+        this.app = app
+        this.bbox = bbox
+        this.events = events
+        this.settings = settings
+        if (['spherical', 'hemispherical', 'cylindrical'].includes(settings.model)) {
+            this.model = settings.model
+        } else if (!params.spherical) {
+            this.model = 'hemispherical'
+        } else {
+            this.model = 'spherical'
+        }
+        this.isSphericalRot = this.model === 'spherical'
+        this.originModel = this.model
+        this.initviewPose = settings.initview.pose ?? null
+        if (settings.orientation) {
+            const { rotation: r, position: p } = settings.orientation
+            this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
+            this.basePosition = new Vec33(p.x, p.y, p.z)
+        } else {
+            this.baseRotation = modelEntity.localRotation.clone()
+            this.basePosition = modelEntity.localPosition.clone()
+        }
+        this.originPivot = this.bbox.center.clone()
+        this.listenEvents()
+    }
+    listenEvents() {
+        this.events.on('hotspot:editing', (isEdit) => {
+            this.isEditHotspot = isEdit
+        })
+        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
+            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
+            const startPose = {
+                focus: this.focus.clone(),
+                position: new Vec3(
+                    modelEntity.localPosition.x,
+                    modelEntity.localPosition.y,
+                    modelEntity.localPosition.z,
+                ),
+                rotation: modelEntity.localRotation.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            }
+            const targetPose = {
+                focus: this.getActualFocus(f),
+                position: new Vec3(p.x, p.y, p.z),
+                rotation: new Quat(r.x, r.y, r.z, r.w),
+                distance: this.getActualDistance(d),
+                yaw,
+                pitch,
+            }
+            this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
+        })
+    }
+    getCustomCenterPivot(pos) {
+        const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+        const worldPivotPos = new Vec3()
+        worldMatrix.transformPoint(pos, worldPivotPos)
+        return worldPivotPos
+    }
+    setInitviewPose() {
+        if (this.initviewPose) {
+            const { position: p, rotation: r } = this.initviewPose
+            modelEntity.setLocalPosition(p.x, p.y, p.z)
+            modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
+        }
+    }
+    reset(pose) {
+        if (this.isResetting) return
+        if (!pose) pose = this.resetPose
+        v$2.copy(pose.forward)
+
+        if (!this.originDistance) this.originDistance = pose.distance
+        if (!this.originFocus) this.originFocus = pose.focus.clone()
+
+        const isFirstInit = !this.hasInitializedFocus
+        if (isFirstInit) this.hasInitializedFocus = true
+        let startFocus, startDistance
+        let startYaw = 0,
+            startPitch = 0
+        let targetYaw = 0,
+            targetPitch = 0
+
+        if (isFirstInit) {
+            if (this.initviewPose) {
+                targetYaw = startYaw = this.initviewPose.yaw
+                targetPitch = startPitch = this.initviewPose.pitch
+            }
+        } else {
+            startFocus = this.focus.clone()
+            startDistance = this.distance
+            startYaw = this.currentYaw
+            startPitch = this.currentPitch
+            if (this.initviewPose) {
+                targetYaw = this.initviewPose.yaw
+                targetPitch = this.initviewPose.pitch
+            }
+        }
+
+        let distance
+        if (this.initviewPose) {
+            const { focus: f, distanceScale: d } = this.initviewPose
+            this.focus.copy(this.getActualFocus(f))
+            distance = isMobile ? Math.max(pose.distance, this.getActualDistance(d)) : this.getActualDistance(d)
+            if (!this.initviewDistance) this.initviewDistance = distance
+            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
+        } else {
+            distance = pose.distance
+            this.focus.copy(pose.focus)
+            if (!this.initviewDistance) this.initviewDistance = distance
+            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
+        }
+
+        if (!startFocus) startFocus = this.focus.clone()
+        if (!startDistance) startDistance = distance
+
+        this.rotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
+        this.distance = distance
+        // Sync smoothDamp value để tránh jump frame đầu
+        this.smoothDamp.value[3] = this.rotation.x
+        this.smoothDamp.value[4] = this.rotation.y
+        this.smoothDamp.value[5] = this.rotation.z
+        this.smoothDamp.value[6] = this.rotation.w
+        this.smoothDamp.value[7] = this.distance
+        // Reset velocity để không có momentum cũ
+        this.smoothDamp.velocity[3] = 0
+        this.smoothDamp.velocity[4] = 0
+        this.smoothDamp.velocity[5] = 0
+        this.smoothDamp.velocity[6] = 0
+        this.smoothDamp.velocity[7] = 0
+
+        if (modelEntity && !this.originEntityRotation) {
+            this.originEntityRotation = modelEntity.localRotation.clone()
+            this.originEntityPos = modelEntity.localPosition.clone()
+        }
+        if (modelEntity && this.originEntityRotation) {
+            this.isResetting = true
+            this.setupTransition({
+                startPose: {
+                    focus: startFocus,
+                    rotation: modelEntity.localRotation.clone(),
+                    position: modelEntity.localPosition.clone(),
+                    distance: startDistance,
+                    yaw: startYaw,
+                    pitch: startPitch,
+                },
+                targetPose: {
+                    focus: this.initviewFocus,
+                    rotation: this.originEntityRotation.clone(),
+                    position: this.originEntityPos.clone(),
+                    distance: this.initviewDistance,
+                    yaw: targetYaw,
+                    pitch: targetPitch,
+                },
+                onTransitionFinished: () => {
+                    this.isResetting = false
+                },
+                lerpDuration: HOTSPOT_FADE_TIME,
+            })
+        }
+    }
+    initView() {
+        settings.initview.pose = this.getEntityInfo()
+        this.initviewPose = settings.initview.pose
+        this.originEntityRotation = modelEntity.localRotation.clone()
+        this.originEntityPos = modelEntity.localPosition.clone()
+        this.initviewFocus = this.focus.clone()
+        this.initviewDistance = this.distance
+        showToast('✓ Initial view updated', { duration: 1000, type: 'success' })
+    }
+    update(dt, inputFrame, camera) {
+        const { move, rotate } = inputFrame.read()
+        this.move(move, rotate)
+        this.smooth(dt)
+        this.updateModelEntity(dt)
+        // this.applyInertia()
+        this.getPose(camera)
+    }
+    onEnter(camera) {
+        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
+        const fovDeg = 50
+        let verticalFovRad
+        if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
+            const hFovRad = (fovDeg * Math.PI) / 180
+            verticalFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect)
+        } else {
+            verticalFovRad = (fovDeg * Math.PI) / 180
+        }
+        const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect)
+        const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
+        const h = this.bbox.halfExtents
+        const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
+        const distance = (radius / Math.sin(minFovRad / 2)) * 1.1
+        this.maxDistance = Math.max(distance, 200)
+
+        const pitchRad = (camera.angles.x * Math.PI) / 180
+        const yawRad = (camera.angles.y * Math.PI) / 180
+        const forward = new Vec33(
+            -Math.sin(yawRad) * Math.cos(pitchRad),
+            Math.sin(pitchRad),
+            -Math.cos(yawRad) * Math.cos(pitchRad),
+        ).normalize()
+
+        this.resetPose = {
+            ...camera,
+            distance,
+            forward,
+            focus: this.bbox.center.clone(),
+        }
+        this.reset(this.resetPose)
+    }
+    onExit() {}
+    applyInertia() {
+        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
+        const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
+        if (speed < this.inertiaMinSpeed) {
+            this.inertiaVelX = 0
+            this.inertiaVelY = 0
+            return
+        }
+        const dx = this.inertiaVelX
+        const dy = this.inertiaVelY
+        const speedNorm = Math.min(speed / 0.05, 1)
+        const damping = 0.68 + speedNorm * (this.inertiaDamping - 0.68)
+
+        this.inertiaVelX *= damping
+        this.inertiaVelY *= damping
+
+        if (this.model === 'spherical') {
+            this.sphericalRot(dx, dy)
+        } else {
+            this.setPitchYaw(dx, dy)
+            this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        }
+        this.syncHierarchyAndRender()
+    }
+    resetPivot() {
+        settings.pivotPos = null
+        this.centerPivot = this.originPivot
+        this.events.fire('inputEvent', 'frame')
+    }
+    savePivot(pos) {
+        settings.pivotPos = pos
+        this.centerPivot = this.getCustomCenterPivot(settings.pivotPos)
+    }
+    resetModelType() {
+        this.model = this.originModel
+    }
+    setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
+        this.targetPose = targetPose
+        this.startPose = startPose
+        this.onTransitionFinished = onTransitionFinished
+        this.lerpTime = 0
+        this.lerpDuration = lerpDuration
+    }
+    saveModelOrientation() {
+        this.baseRotation = modelEntity.localRotation.clone()
+        this.basePosition = modelEntity.localPosition.clone()
+        settings.orientation = {
+            rotation: this.baseRotation,
+            position: this.basePosition,
+        }
+        this.currentYaw = 0
+        this.currentPitch = 0
+        this.updateModelRotation()
+        this.resetModelType()
+        if (this.mode === 'cylindrical') {
+            this.minPitch = 0
+            this.maxPitch = 0
+        } else if (this.model === 'hemispherical') {
+            this.minPitch = 0
+            this.maxPitch = Math.PI / 2
+        }
+        if (this.initviewPose) {
+            this.initView()
+        }
+    }
+    lerp(a, b, t) {
+        return a + (b - a) * t
+    }
+    updateModelEntity(dt) {
+        if (!this.targetPose || !modelEntity) return
+        this.lerpTime += dt
+        let t = Math.min(this.lerpTime / this.lerpDuration, 1)
+        t = t * t * (3 - 2 * t)
+        this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
+        this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
+        const newPos = new Vec33(this.startPose.position.x, this.startPose.position.y, this.startPose.position.z).lerp(
+            this.targetPose.position,
+            t,
+        )
+        modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
+        if (this.isSphericalRot) {
+            modelEntity.localRotation = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
+        } else {
+            this.currentYaw = this.lerp(this.startPose.yaw, this.targetPose.yaw, t)
+            this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
+            this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        }
+        if (t >= 0.99 && this.onTransitionFinished) {
+            this.onTransitionFinished()
+            this.onTransitionFinished = null
+        }
+        if (t >= 1) {
+            this.focus.copy(this.targetPose.focus)
+            this.distance = this.clampDistance(this.targetPose.distance, t)
+            modelEntity.localPosition.copy(this.targetPose.position)
+            if (this.isSphericalRot) modelEntity.localRotation.copy(this.targetPose.rotation)
+            else {
+                this.currentYaw = this.targetPose.yaw
+                this.currentPitch = this.targetPose.pitch
+                this.hemisphericalRot(this.currentYaw, this.currentPitch)
+            }
+            this.updateModelRotation()
+            this.targetPose = null
+            this.startPose = null
+        }
+        this.syncHierarchyAndRender()
+    }
+    updateModelRotation() {
+        this.modelRotation = modelEntity.localRotation.clone()
+    }
+    syncHierarchyAndRender() {
+        modelEntity.syncHierarchy()
+        modelEntity._dirtyLocal = true
+        modelEntity._dirtyWorld = true
+        this.app.renderNextFrame = true
+    }
+    getEntityInfo() {
+        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
+        return {
+            rotation: modelEntity.localRotation.clone(),
+            position: modelEntity.localPosition.clone(),
+            distanceScale: this.distance / this.originDistance,
+            focus: {
+                x: (this.focus.x - this.originFocus.x) / aspect,
+                y: (this.focus.y - this.originFocus.y) / aspect,
+                z: (this.focus.z - this.originFocus.z) / aspect,
+                aspect,
+                distance: this.originDistance,
+            },
+            pitch: this.currentPitch,
+            yaw: this.currentYaw,
+        }
+    }
+    getActualFocus(f) {
+        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
+        const aspectScale = aspect > f.aspect ? f.aspect : aspect
+        const distanceScale = aspect > f.aspect ? 1 : this.originDistance / f.distance
+        return new Vec3(
+            this.originFocus.x + f.x * distanceScale * aspectScale,
+            this.originFocus.y + f.y * distanceScale * aspectScale,
+            this.originFocus.z + f.z * distanceScale * aspectScale,
+        )
+    }
+    getActualDistance(distanceScale) {
+        return this.originDistance * distanceScale
+    }
+    clampDistance(distance) {
+        if (!this.settings.lockZoomIn.locked) return Math.min(this.maxDistance, Math.max(this.minDistance, distance))
+        return Math.min(this.maxDistance, Math.max(this.getActualDistance(this.settings.lockZoomIn.value), distance))
+    }
+    move(move, rotate) {
+        if (this.isEditHotspot) return
+
+        const [x, y, z] = move
+        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
+        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
+        this.distance = this.clampDistance(this.distance + this.distance * move[2])
+        if (x !== 0 || y !== 0 || z !== 0) {
+            v$2.copy(this.rightCam).mulScalar(move[0])
+            this.focus.add(v$2)
+            v$2.copy(this.upCam).mulScalar(move[1])
+            this.focus.add(v$2)
+        }
+        const isZooming = z !== 0
+        const isPanning = x !== 0 || y !== 0
+
+        let didRotate = false
+        if (!this.initPivot) {
+            this.centerPivot = settings.pivotPos ? this.getCustomCenterPivot(settings.pivotPos) : this.originPivot
+            this.initPivot = true
+        }
+        if (modelEntity && this.modelRotation) {
+            const deltaX = rotate[0]
+            const deltaY = rotate[1]
+            if (deltaX !== 0 || deltaY !== 0) {
+                this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
+                this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
+                if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
+                else {
+                    if (this.cameraElevation === undefined) {
+                        if (!settings.orientation) {
+                            this.cameraElevation = this.getCameraElevation()
+                            if (this.model === 'cylindrical') {
+                                this.maxPitch = this.cameraElevation
+                                this.minPitch = this.cameraElevation
+                            } else {
+                                this.minPitch -= this.cameraElevation
+                                this.maxPitch -= this.cameraElevation
+                            }
+                        } else this.cameraElevation = 0
+                    }
+                    this.setPitchYaw(deltaX, deltaY)
+                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                }
+                this.syncHierarchyAndRender()
+                didRotate = true
+            }
+        }
+        if (didRotate) {
+            this.events.fire('hotspot:hide-all')
+        }
+        if (isZooming || isPanning || didRotate) {
+            this.events.fire('hotspot:stop-auto')
+            this.updateModelRotation()
+            this.targetPose = null
+            this.startPose = null
+        }
+    }
+    getCameraElevation() {
+        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
+        const camPos = this.focus.clone().sub(forward.mulScalar(this.distance))
+        const dir = new Vec3(
+            camPos.x - this.centerPivot.x,
+            camPos.y - this.centerPivot.y,
+            camPos.z - this.centerPivot.z,
+        )
+        return Math.atan2(dir.y, Math.sqrt(dir.x * dir.x + dir.z * dir.z))
+    }
+    setPitchYaw(deltaX, deltaY) {
+        const maxDelta = 30
+        const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+        const scale = magnitude > maxDelta ? maxDelta / magnitude : 1
+        const safeDeltaX = deltaX * scale
+        const safeDeltaY = deltaY * scale
+        this.currentYaw =
+            ((((this.currentYaw + safeDeltaX * this.rotateSpeed + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
+                (2 * Math.PI)) -
+            Math.PI
+        this.currentPitch += safeDeltaY * this.rotateSpeed
+        this.currentPitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.currentPitch))
+    }
+    sphericalRot(deltaX, deltaY) {
+        const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
+        const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
+        const rotateQuat = yawQuat.mul(pitchQuat).normalize()
+        v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
+        v$2.transformQuat(rotateQuat)
+        modelEntity.localPosition.copy(this.centerPivot).add(v$2)
+        modelEntity.localRotation.copy(rotateQuat.mul(this.modelRotation).normalize())
+        this.modelRotation.copy(modelEntity.localRotation)
+    }
+    hemisphericalRot(yaw, pitch) {
+        const up = new Vec3(0, 1, 0)
+        this.baseRotation.transformVector(up, up)
+        up.normalize()
+        if (up.dot(Vec3.UP) < 0) up.mulScalar(-1)
+        const quatYaw = new Quat3().setFromAxisAngle(up, yaw)
+        const quatPitch = new Quat3().setFromAxisAngle(this.rightCam, pitch)
+        const combinedRotateQuat = quatPitch.mul(quatYaw).normalize()
+        const offset = this.basePosition.clone().sub(this.centerPivot)
+        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
+        modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
+        modelEntity.localRotation.copy(combinedRotateQuat.mul(this.baseRotation).normalize())
+    }
+    rotateOffsetByQuat(offset, q) {
+        const vx = offset.x,
+            vy = offset.y,
+            vz = offset.z
+        const qx = q.x,
+            qy = q.y,
+            qz = q.z,
+            qw = q.w
+        const ix = qw * vx + qy * vz - qz * vy
+        const iy = qw * vy + qz * vx - qx * vz
+        const iz = qw * vz + qx * vy - qy * vx
+        const iw = -qx * vx - qy * vy - qz * vz
+        return new Vec3(
+            ix * qw + iw * -qx + iy * -qz - iz * -qy,
+            iy * qw + iw * -qy + iz * -qx - ix * -qz,
+            iz * qw + iw * -qz + ix * -qy - iy * -qx,
+        )
+    }
+    smooth(dt) {
+        const { focus, rotation, smoothDamp } = this
+        const { value, target } = smoothDamp
+        focus.toArray(target, 0)
+        const dot = value[3] * rotation.x + value[4] * rotation.y + value[5] * rotation.z + value[6] * rotation.w
+        const sign = dot < 0 ? -1 : 1
+        target[3] = rotation.x * sign
+        target[4] = rotation.y * sign
+        target[5] = rotation.z * sign
+        target[6] = rotation.w * sign
+
+        target[7] = this.distance
+        smoothDamp.update(dt)
+        const q = new Quat3(value[3], value[4], value[5], value[6]).normalize()
+        value[3] = q.x
+        value[4] = q.y
+        value[5] = q.z
+        value[6] = q.w
+    }
+  getPose(pose) {
+    const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
+    const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
+    pose.position = newPos
+    pose.distance = this.distance
+}
+}
+
+class HotspotButton {
+    constructor({ name, id, parent, onClick }) {
+        this.id = id
+        this.parent = parent
+        this.onClick = onClick
+        this.create(name)
+    }
+    create(name) {
+        this.el = document.createElement('button')
+        this.el.classList.add('active-hotspot-btn')
+        this.el.textContent = name
+        this.el.dataset.id = this.id
+        this.el.addEventListener('click', () => {
+            this.onClick(this.id)
+        })
+        this.parent.appendChild(this.el)
+        this.setUnactiveColor()
+        this.show(!isMobile)
+    }
+    updateTitle(value) {
+        this.el.textContent = value
+    }
+    setActiveColor() {
+        this.el.style.backgroundColor = '#f95645'
+        this.el.style.color = 'white'
+    }
+    setUnactiveColor() {
+        this.el.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'
+        this.el.style.color = 'black'
+    }
+    updateTitle(value) {
+        this.name = value
+        this.el.textContent = this.name
+    }
+    remove() {
+        this.el.removeEventListener('click', () => this.onClick(this.id))
+        this.el.remove()
+    }
+    show(active) {
+        this.el.style.display = active ? '' : 'none'
+    }
+}
+
 class Hotspot {
-    constructor(camera, dom, data) {
+    dragging = false
+    resizing = false
+    resizeEdge = null
+    hotspotMaxScale = 1.5
+    isEdit = false
+    constructor({ camera, dom, data, display = true, button, editable }) {
         this.camera = camera
         this.dom = dom
         this.data = data
         this.id = data.id
-        this.isDisplay = true
-        this.isEdit = false
-        this.hotspotBtn = null
-        this.dragging = false
-        this.resizing = false
-        this.resizeEdge = null
+        this.isDisplay = display
+        this.button = button
 
         if (data.focus.position && !(data.focus.position instanceof Vec3)) {
             this.data.focus.position = new Vec3(data.focus.position.x, data.focus.position.y, data.focus.position.z)
@@ -74254,16 +75441,19 @@ class Hotspot {
         if (data.text.botRight && !(data.text.botRight instanceof Vec3)) {
             this.data.text.botRight = new Vec3(data.text.botRight.x, data.text.botRight.y, data.text.botRight.z)
         }
-
+        if (data.dot.topLeft && !(data.dot.topLeft instanceof Vec3)) {
+            this.data.dot.topLeft = new Vec3(data.dot.topLeft.x, data.dot.topLeft.y, data.dot.topLeft.z)
+        }
+        if (data.dot.botRight && !(data.dot.botRight instanceof Vec3)) {
+            this.data.dot.botRight = new Vec3(data.dot.botRight.x, data.dot.botRight.y, data.dot.botRight.z)
+        }
         this.createDiv()
         this.createLine()
         this.createDot()
-        this.addDotDragEvents()
-        this.addContentDragEvents()
-    }
-
-    setHotspotBtn(btn) {
-        this.hotspotBtn = btn
+        if(editable){
+            this.addDotDragEvents()
+            this.addContentDragEvents()
+        }
     }
 
     // ── DOM creation ─────────────────────────
@@ -74295,49 +75485,16 @@ class Hotspot {
     }
 
     // ── Update loop ──────────────────────────
-    update(updateContent = true, dotSize) {
+    update(updateContent = true, buttonTitle = '') {
+        if (buttonTitle) this.button.updateTitle(buttonTitle)
         const containerRect = this.dom.ui.getBoundingClientRect()
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-        const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
         const focusWorldPos = new Vec3()
         worldMatrix.transformPoint(this.data.focus.position, focusWorldPos)
         const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
-        this.updateDotLocalBounds(focusWorldPos, invWorldMatrix, dotSize)
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
         this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
-    }
-
-    updateDotLocalBounds(focusWorldPos, invWorldMatrix, size) {
-        if (!size && this.data.dot.topLeft && this.data.dot.botRight) {
-            if (!(this.data.dot.topLeft instanceof Vec3)) {
-                this.data.dot.topLeft = new Vec3(
-                    this.data.dot.topLeft.x,
-                    this.data.dot.topLeft.y,
-                    this.data.dot.topLeft.z,
-                )
-                this.data.dot.botRight = new Vec3(
-                    this.data.dot.botRight.x,
-                    this.data.dot.botRight.y,
-                    this.data.dot.botRight.z,
-                )
-            }
-            return
-        }
-        const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
-        const half = (size ?? this.data.dot.size ?? 30) / 2
-        const cameraPos = this.camera.entity.getPosition()
-        const zDepth = focusWorldPos.distance(cameraPos)
-        const tl = new Vec3(focusScreenPos.x - half, focusScreenPos.y - half, zDepth)
-        const br = new Vec3(focusScreenPos.x + half, focusScreenPos.y + half, zDepth)
-        const worldTL = this.camera.screenToWorld(tl.x, tl.y, tl.z)
-        const worldBR = this.camera.screenToWorld(br.x, br.y, br.z)
-        const localTL = new Vec3()
-        const localBR = new Vec3()
-        invWorldMatrix.transformPoint(worldTL, localTL)
-        invWorldMatrix.transformPoint(worldBR, localBR)
-        this.data.dot.topLeft = localTL
-        this.data.dot.botRight = localBR
     }
 
     updateDot(worldMatrix, focusScreenPos) {
@@ -74415,6 +75572,7 @@ class Hotspot {
     updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent) {
         this.textContentSpan.textContent = this.data.text.content
         this.textContentSpan.style.textAlign = this.data.text.align
+        this.textContentSpan.style.color = this.data.text.color
         const contentWorldTL = new Vec3()
         const contentWorldBR = new Vec3()
         worldMatrix.transformPoint(this.data.text.topLeft, contentWorldTL)
@@ -74434,7 +75592,7 @@ class Hotspot {
             let fontSize = this.data.text.fontSize || 16
             const fontScaleX = width / this.data.text.originWidth
             const fontScaleY = height / this.data.text.originHeight
-            const fontScale = Math.min(fontScaleX, fontScaleY, hotspotMaxScale)
+            const fontScale = Math.min(fontScaleX, fontScaleY, this.hotspotMaxScale)
             const minFontSize = Math.min(16, fontSize)
             fontSize = Math.max(minFontSize, Math.round(fontSize * fontScale))
             this.div.style.fontSize = fontSize + 'px'
@@ -74465,8 +75623,8 @@ class Hotspot {
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
             }
-            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * hotspotMaxScale))
-            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * hotspotMaxScale))
+            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.hotspotMaxScale))
+            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * this.hotspotMaxScale))
             let finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth - 20)
             let finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight - 20)
             const dotCenterX = dotRect.left + dotRect.width / 2
@@ -74560,7 +75718,7 @@ class Hotspot {
         this.div.style.display = 'flex'
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
-        if (this.hotspotBtn) this.hotspotBtn.setActiveColor()
+        if (this.button) this.button.setActiveColor()
     }
 
     hide() {
@@ -74568,13 +75726,14 @@ class Hotspot {
         this.div.style.display = 'none'
         this.lineSvg.style.display = 'none'
         this.dot.style.display = 'none'
-        if (this.hotspotBtn) this.hotspotBtn.setUnactiveColor()
+        if (this.button) this.button.setUnactiveColor()
     }
 
     destroy() {
         this.div.remove()
         this.dot.remove()
         this.lineSvg.remove()
+        this.button.remove()
     }
 
     // ── Drag events ──────────────────────────
@@ -74701,7 +75860,6 @@ class Hotspot {
         })
 
         this.div.addEventListener('pointerup', (e) => {
-            this.isEdit = false
             this.dragging = false
             this.resizing = false
             this.resizeEdge = null
@@ -74772,12 +75930,14 @@ class Hotspot {
 }
 
 class HotspotManager {
-    constructor({ global, dom, editor }) {
+    editor
+    translatingId
+    constructor({ global, dom, tooltip }) {
         this.camera = global.camera.camera
         this.events = global.events
         this.editable = global.config.editable
-        this.editor = editor
         this.dom = dom
+        this.tooltip = tooltip
         this.state = global.state
 
         this.hotspots = []
@@ -74785,12 +75945,42 @@ class HotspotManager {
 
         this.activeHotspot = null
         this.activeData = null
-
+        this.isShowActiveHotspotBtns = !isMobile
         this.isAutoPlay = false
         this.intervalID = null
         this.listenEvents()
         this.controllers = null
         global.app.on('postrender', () => this.update())
+        this.initHotspot()
+    }
+    initHotspot() {
+        this.hotspotData.forEach((h) => {
+            this.hotspots.push(this.createHotspot(h))
+        })
+    }
+    createHotspotActiveBtn(data) {
+        return new HotspotButton({
+            name: data.button.title,
+            id: data.id,
+            parent: this.dom.hotspotContainer,
+            onClick: (id) => {
+                if (this.activeHotspot?.data.id === id) return
+                const hotspot = this.hotspots.find((hotspot) => hotspot.id === id)
+                if (hotspot) {
+                    const data = this.hotspotData.find((h) => h.id === hotspot.id)
+                    this.events.fire('hotspot:editor-selected', data)
+                }
+            },
+        })
+    }
+    createHotspot(data) {
+        return new Hotspot({
+            camera: this.camera,
+            dom: this.dom,
+            data,
+            button: this.createHotspotActiveBtn(data),
+            editable: this.editable,
+        })
     }
 
     listenEvents() {
@@ -74800,22 +75990,32 @@ class HotspotManager {
         this.events.on('hotspot:add', ({ position, entityInfo }) => {
             const data = this.createDefault(position, entityInfo)
             this.hotspotData.push(data)
-            const h = new Hotspot(this.camera, this.dom, data)
-            this.hotspots.push(h)
+            this.hotspots.push(this.createHotspot(data))
             this.events.fire('hotspot:editor-selected', data)
             this.events.fire('hotspot:editing', false)
+            if (this.hotspots.length === 1) {
+                if (this.dom.hotspotActionGroup) this.dom.hotspotActionGroup.classList.remove('hidden')
+                else {
+                    this.dom.buttonsContainer.appendChild(createHotspotActionGroup(this.tooltip, this.events, this.dom))
+                }
+                this.events.fire('hotspot:rebuild-info')
+            }
         })
-        this.events.on('hotspot:editor-selected', (selected) => {
-            this.activeData = selected
-            const activeHotspot =
-                selected === null ? this.activeHotspot : this.hotspots.find((h) => h.id === selected.id)
-            this.update(true)
-            if (activeHotspot) {
-                this.setActive(activeHotspot, HOTSPOT_FADE_TIME)
-            }
-            if (!selected) {
+        this.events.on('hotspot:editor-selected', (selectedData) => {
+            if (this.activeData && selectedData === null) this.resetActiveHotspotBtnName()
+            this.activeData = selectedData
+            if (selectedData === null) {
+                this.activeHotspot?.hide()
+                this.activeHotspot = null
                 this.events.fire('hotspot:editing', false)
+            } else {
+                const activeHotspot = this.hotspots.find((h) => h.id === selectedData.id)
+                if (this.isAutoPlay) this.stopAutoPlay()
+                if (activeHotspot) {
+                    this.setActive(activeHotspot, HOTSPOT_FADE_TIME)
+                }
             }
+            if (this.editable) this.updateUIPanel()
         })
         this.events.on('hotspot:hide-all', () => {
             this.activeData = null
@@ -74823,18 +76023,35 @@ class HotspotManager {
                 this.activeHotspot.hide()
                 this.activeHotspot = null
             }
-            this.update(true)
+            if (this.editable) this.updateUIPanel()
         })
         this.events.on('hotspot:editor-changed', (data) => {
+            if (data.dot.size !== this.activeData.dot.size) {
+                const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(data.focus.position)
+                const { topLeft, botRight } = this.getDotBounder(
+                    focusWorldPos,
+                    invWorldMatrix,
+                    focusScreenPos,
+                    data.dot.size,
+                )
+                data.dot.topLeft = topLeft
+                data.dot.botRight = botRight
+            }
             this.activeData = data
-            this.update()
+            this.updateHotspotData()
         })
         this.events.on('hotspot:editor-cancelled', () => {
             this.activeData = null
-            if(this.activeHotspot)this.activeHotspot.hide()
+            if (this.activeHotspot) {
+                const data = this.hotspotData.find((i) => i.id === this.activeHotspot.data.id)
+                this.activeHotspot.data = JSON.parse(JSON.stringify(data))
+                this.activeHotspot.update(true, this.activeHotspot.data.button.title)
+                this.activeHotspot.hide()
+            }
             this.activeHotspot = null
-            this.update(true)
+            this.updateUIPanel()
             this.events.fire('hotspot:editing', false)
+            if (this.isAutoPlay) this.stopAutoPlay()
         })
         this.events.on('hotspot:delete', (id) => {
             const idx = this.hotspots.findIndex((h) => h.id === id)
@@ -74846,26 +76063,239 @@ class HotspotManager {
             }
             this.hotspots.splice(idx, 1)
             this.hotspotData.splice(idx, 1)
-            this.update(true)
+            this.updateUIPanel()
             this.events.fire('hotspot:editing', false)
+            if (this.hotspots.length === 0) {
+                this.dom?.hotspotActionGroup.classList.add('hidden')
+                this.events.fire('hotspot:rebuild-info')
+            }
         })
 
-        this.events.on('hotspot:apply', (data) => {
+        this.events.on('hotspot:apply', (applyData) => {
             this.hotspotData = this.hotspotData.map((d) => {
-                if (d.id === data.id) return this.activeHotspot.data
+                if (d.id === applyData.id) {
+                    const newData = {
+                        ...applyData,
+                        entityInfo: this.controllers[this.state.cameraMode].getEntityInfo(),
+                    }
+                    if (this.activeHotspot) this.activeHotspot.data = newData
+                    return newData
+                }
                 return d
             })
+
             this.activeData = null
-            this.update(true)
+            this.updateUIPanel(true)
             this.events.fire('hotspot:editing', false)
         })
+        this.events.on('hotspot:reorder', ({ fromId, toId }) => {
+            const fromDataIdx = this.hotspotData.findIndex((d) => d.id === fromId)
+            const toDataIdx = this.hotspotData.findIndex((d) => d.id === toId)
+            if (fromDataIdx < 0 || toDataIdx < 0) return
+            ;[this.hotspotData[fromDataIdx], this.hotspotData[toDataIdx]] = [
+                this.hotspotData[toDataIdx],
+                this.hotspotData[fromDataIdx],
+            ]
+            const fromHotspotIdx = this.hotspots.findIndex((h) => h.id === fromId)
+            const toHotspotIdx = this.hotspots.findIndex((h) => h.id === toId)
+            ;[this.hotspots[fromHotspotIdx], this.hotspots[toHotspotIdx]] = [
+                this.hotspots[toHotspotIdx],
+                this.hotspots[fromHotspotIdx],
+            ]
+            this.hotspots.forEach((h) => {
+                this.dom.hotspotContainer.appendChild(h.button.el)
+            })
+            this.updateUIPanel()
+        })
+        this.events.on('hotspot:editor', (editor) => {
+            this.editor = editor
+            this.updateUIPanel()
+        })
+        this.events.on('hotspot:start-auto', () => {
+            this.startAutoPlay()
+        })
+        this.events.on('hotspot:stop-auto', () => {
+            this.stopAutoPlay()
+        })
+        this.events.on('hotspot:hide-hotspot-btns', () => {
+            this.showActiveHotspotBtns(false)
+        })
+        this.events.on('hotspot:show-hotspot-btns', () => {
+            this.showActiveHotspotBtns(true)
+        })
+        this.events.on('hotspot:toggle-play', () => {
+            if (this.isAutoPlay) this.stopAutoPlay()
+            else this.startAutoPlay()
+        })
+        this.events.on('hotspot:hotspot-btns', () => {
+            this.showActiveHotspotBtns(!this.isShowActiveHotspotBtns)
+        })
     }
-    createDefault(position, entityInfo) {
+    resetActiveHotspotBtnName() {
+        const restoreData = this.hotspotData.find((d) => d.id === this.activeData?.id)
+        if (restoreData && this.activeHotspot) {
+            this.activeHotspot.button.updateTitle(restoreData.button.title)
+        }
+    }
+    getFocusInfo(position) {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const focusWorldPos = new Vec3()
         worldMatrix.transformPoint(position, focusWorldPos)
         const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
         const focusScreenPos = this.camera.worldToScreen(focusWorldPos)
+        return { focusWorldPos, invWorldMatrix, focusScreenPos }
+    }
+
+    createDefault(position, entityInfo) {
+        const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(position)
+        const { topLeft, botRight, originWidth, originHeight } = this.getTextContentBounder(
+            focusWorldPos,
+            invWorldMatrix,
+            focusScreenPos,
+        )
+        const { topLeft: dotTL, botRight: dotBR } = this.getDotBounder(focusWorldPos, invWorldMatrix, focusScreenPos)
+        const defaultName = `hotspot${this.hotspotData.length + 1}`
+        return {
+            id: guid.create(),
+            autoPlay: { time: 3000 },
+            button: { title: defaultName },
+            text: {
+                color: 'black',
+                bold: false,
+                italic: false,
+                align: 'center',
+                content: defaultName,
+                font: 'Lato',
+                background: '#ffffff',
+                backgroundAlpha: 0.8,
+                originWidth,
+                originHeight,
+                topLeft,
+                botRight,
+                fontSize: 16,
+            },
+            focus: { position },
+            dot: {
+                style: 'circle',
+                strokeColor: 'white',
+                stroke: 1,
+                size: 30,
+                topLeft: dotTL,
+                botRight: dotBR,
+            },
+            entityInfo,
+        }
+    }
+    isSameVec3(v1, v2, precision = 1e-5) {
+        return (
+            Math.abs(v1.x - v2.x) < precision && Math.abs(v1.y - v2.y) < precision && Math.abs(v1.z - v2.z) < precision
+        )
+    }
+    isSameFloat(a, b, eps = 1e-4) {
+        return Math.abs(a - b) < eps
+    }
+    isSamePose(hotspot) {
+        const controller = this.controllers[this.state.cameraMode]
+        if (!controller) return false
+        const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
+        const aspect = f.aspect
+        const restoredFocus = {
+            x: f.x * aspect + controller.originFocus.x,
+            y: f.y * aspect + controller.originFocus.y,
+            z: f.z * aspect + controller.originFocus.z,
+        }
+        return (
+            this.isSameVec3(p, modelEntity.localPosition) &&
+            this.isSameVec3(r, modelEntity.localRotation) &&
+            this.isSameVec3(restoredFocus, controller.focus) &&
+            this.isSameFloat(controller.getActualDistance(d), controller.distance)
+        )
+    }
+    setActive(hotspot, lerpDuration = 1.5) {
+        if (!hotspot || !modelEntity) return
+        this.activeHotspot?.hide()
+        const isSamePose = this.isSamePose(hotspot)
+        if (isSamePose && hotspot.id === this.activeHotspot?.id) {
+            hotspot.show()
+            hotspot.update()
+            return true
+        }
+        if (isSamePose) {
+            hotspot.show()
+            hotspot.update()
+            this.activeHotspot = hotspot
+            return true
+        }
+        this.isTranslating = true
+        this.activeHotspot = hotspot
+        hotspot.button.setActiveColor()
+        this.events.fire('ortery-controller:transition', {
+            entityInfo: hotspot.data.entityInfo,
+            lerpDuration,
+            onTransitionFinished: () => {
+                hotspot.show()
+                hotspot.update()
+                this.isTranslating = false
+            },
+        })
+        return false
+    }
+    autoPlay() {
+        if (this.hotspots.length === 0) return
+        this.isAutoPlay = true
+        const currentIdx = this.activeHotspot ? this.hotspots.findIndex((h) => h.id === this.activeHotspot.id) : -1
+        const nextIdx = (currentIdx + 1) % this.hotspots.length
+        const next = this.hotspots[nextIdx]
+        const isSamePose = this.setActive(next, AUTO_PLAY_LERP_TIME)
+        this.intervalID = setTimeout(
+            () => this.autoPlay(),
+            next.data.autoPlay.time + (isSamePose ? 0 : AUTO_PLAY_LERP_TIME * 1000),
+        )
+    }
+    startAutoPlay() {
+        this.dom.stopHotspot.classList.remove('hidden')
+        this.dom.startHotspot.classList.add('hidden')
+        this.autoPlay()
+    }
+
+    stopAutoPlay() {
+        if (this.intervalID) {
+            clearTimeout(this.intervalID)
+            this.intervalID = null
+        }
+        this.dom.stopHotspot.classList.add('hidden')
+        this.dom.startHotspot.classList.remove('hidden')
+        this.isAutoPlay = false
+    }
+    showActiveHotspotBtns(show) {
+        if (show) {
+            this.dom.hideHotspotButton.classList.remove('hidden')
+            this.dom.showHotspotButton.classList.add('hidden')
+        } else {
+            this.dom.hideHotspotButton.classList.add('hidden')
+            this.dom.showHotspotButton.classList.remove('hidden')
+        }
+        this.isShowActiveHotspotBtns = show
+        this.hotspots.forEach((h) => h.button.show(show))
+    }
+    updateHotspotData() {
+        if (this.activeHotspot && this.activeData) {
+            if (this.activeData) this.activeHotspot.data = JSON.parse(JSON.stringify(this.activeData))
+            this.activeHotspot.update(true, this.activeData.button.title)
+        }
+    }
+    updateUIPanel() {
+        this.editor.render(this.hotspotData, this.activeData)
+    }
+    update() {
+        if (this.isTranslating) return
+        this.hotspots.forEach((h) => {
+            if (h.id === this.activeHotspot?.id) {
+                h.update()
+            }
+        })
+    }
+    getTextContentBounder(focusWorldPos, invWorldMatrix, focusScreenPos) {
         const paddingX = 50
         const paddingY = 50
 
@@ -74882,121 +76312,21 @@ class HotspotManager {
         invWorldMatrix.transformPoint(contentWorldBR, botRight)
         const originWidth = Math.abs(contentScreenBR.x - contentScreenTL.x)
         const originHeight = Math.abs(contentScreenBR.y - contentScreenTL.y)
-
-        return {
-            id: guid.create(),
-            autoPlay: { time: 3000 },
-            button: { title: 'hotspot' },
-            text: {
-                color: 'black',
-                bold: false,
-                italic: false,
-                align: 'center',
-                content: 'hotspot',
-                font: 'Lato',
-                background: '#ffffff',
-                backgroundAlpha: 0.8,
-                originWidth,
-                originHeight,
-                topLeft,
-                botRight,
-                fontSize: 16,
-            },
-            focus: { position },
-            dot: {
-                style: 'circle',
-                strokeColor: 'white',
-                stroke: 1,
-                size: 30,
-                topLeft: position,
-                botRight: null,
-            },
-            entityInfo,
-        }
+        return { topLeft, botRight, originWidth, originHeight }
     }
-    isSameVec3(v1, v2, precision = 1e-5) {
-        return (
-            Math.abs(v1.x - v2.x) < precision && Math.abs(v1.y - v2.y) < precision && Math.abs(v1.z - v2.z) < precision
-        )
-    }
-
-    isSamePose(hotspot) {
-        const controller = this.controllers[this.state.cameraMode]
-        if (!controller) return false
-        const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
-        const aspect = f.aspect
-        const restoredFocus = {
-            x: f.x * aspect + controller.originFocus.x,
-            y: f.y * aspect + controller.originFocus.y,
-            z: f.z * aspect + controller.originFocus.z,
-        }
-        return (
-            this.isSameVec3(p, modelEntity.localPosition) &&
-            this.isSameVec3(r, modelEntity.localRotation) &&
-            this.isSameVec3(restoredFocus, controller.focus) &&
-            controller.getActualDistance(d) == controller.distance
-        )
-    }
-    setActive(hotspot, lerpDuration = 1.5) {
-        if (!hotspot || !modelEntity) return
-        const isSamePose = this.isSamePose(hotspot)
-        if (isSamePose && hotspot.id === this.activeHotspot?.id) {
-            hotspot.show()
-            hotspot.update()
-            return
-        }
-        if (isSamePose) {
-            hotspot.show()
-            hotspot.update()
-            this.activeHotspot = hotspot
-            return
-        }
-        this.events.fire('ortery-controller:transition', {
-            entityInfo: hotspot.data.entityInfo,
-            lerpDuration,
-            onTransitionFinished: () => {
-                const h = this.hotspots.find((h) => h.id === hotspot.id)
-                h.show()
-                h.update()
-                this.activeHotspot = hotspot
-            },
-        })
-    }
-
-    setActiveById(id) {
-        const h = this.hotspots.find((h) => h.id === id)
-        if (h) this.setActive(h, HOTSPOT_FADE_TIME)
-    }
-
-    autoPlay() {
-        if (this.hotspots.length === 0) return
-        this.isAutoPlay = true
-        const currentIdx = this.activeHotspot ? this.hotspots.findIndex((h) => h.id === this.activeHotspot.id) : -1
-        const nextIdx = (currentIdx + 1) % this.hotspots.length
-        const next = this.hotspots[nextIdx]
-        this.setActive(next, AUTO_PLAY_LERP_TIME)
-        this.intervalID = setTimeout(() => this.autoPlay(), next.data.autoPlay.time + AUTO_PLAY_LERP_TIME * 1000)
-    }
-
-    stopAutoPlay() {
-        if (this.intervalID) {
-            clearTimeout(this.intervalID)
-            this.intervalID = null
-        }
-        this.isAutoPlay = false
-    }
-
-    update(updateEditor = false) {
-        if (updateEditor) {
-            this.editor.render(this.hotspotData, this.activeData)
-        }
-        this.hotspots.forEach((h) => {
-            if (h.id === this.activeHotspot?.id) {
-                if (this.activeData) h.data = JSON.parse(JSON.stringify(this.activeData))
-                h.show()
-                h.update(true, this.activeData?.dot.size)
-            }
-        })
+    getDotBounder(focusWorldPos, invWorldMatrix, focusScreenPos, size = 30) {
+        const half = size / 2
+        const cameraPos = this.camera.entity.getPosition()
+        const zDepth = focusWorldPos.distance(cameraPos)
+        const tl = new Vec3(focusScreenPos.x - half, focusScreenPos.y - half, zDepth)
+        const br = new Vec3(focusScreenPos.x + half, focusScreenPos.y + half, zDepth)
+        const worldTL = this.camera.screenToWorld(tl.x, tl.y, tl.z)
+        const worldBR = this.camera.screenToWorld(br.x, br.y, br.z)
+        const topLeft = new Vec3()
+        const botRight = new Vec3()
+        invWorldMatrix.transformPoint(worldTL, topLeft)
+        invWorldMatrix.transformPoint(worldBR, botRight)
+        return { topLeft, botRight }
     }
 }
 
@@ -75013,17 +76343,24 @@ class HotspotEditorUI {
         this.activeHotspotData = null
         this.listEl = null
         this.countEl = null
-        
+        this.listenEvents()
+    }
+    listenEvents() {
         this.events.on('controllers:created', (controllers) => {
             this.controllers = controllers
         })
+        this.events.on('hotspot:add-cancelled',()=>{
+            document.body.style.cursor = 'default'
+            this.events.fire('hotspot:editing', false)
+            this.isCreatingHotspot = false
+        })
     }
-
     mount() {
         this.renderHeader()
         this.listEl = document.createElement('div')
         this.listEl.classList.add('hotspot-list')
         this.body.appendChild(this.listEl)
+        this.events.fire('hotspot:editor', this)
     }
 
     // ── Header ───────────────────────────────
@@ -75044,9 +76381,9 @@ class HotspotEditorUI {
         const addBtn = document.createElement('button')
         addBtn.classList.add('hotspot-add-btn')
         addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg> Add`
+                <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg> Add`
         addBtn.addEventListener('click', () => this.onAdd())
 
         header.appendChild(titleGroup)
@@ -75059,6 +76396,7 @@ class HotspotEditorUI {
         document.body.style.cursor = 'crosshair'
         this.isCreatingHotspot = true
         this.events.fire('hotspot:editing', true)
+        this.events.fire('hotspot:editor-selected', null)
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
             const rect = this.dom.ui.getBoundingClientRect()
@@ -75091,14 +76429,39 @@ class HotspotEditorUI {
         this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
         this.listEl.innerHTML = ''
         this.countEl.textContent = `${hotspotData.length} hotspot${hotspotData.length !== 1 ? 's' : ''} configured`
+
         hotspotData.forEach((h) => {
             const isExpanded = this.activeHotspotData?.id === h.id
             const item = document.createElement('div')
             item.classList.add('hotspot-item')
+            item.dataset.id = h.id
             if (isExpanded) item.classList.add('expanded')
+
             const { row, headerTitle } = this.renderItemHeader(h, isExpanded)
             item.appendChild(row)
             if (isExpanded) item.appendChild(this.renderEditPanel(headerTitle))
+
+            // ── Drop target ───────────────────────
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                document.querySelectorAll('.hotspot-item').forEach((el) => el.classList.remove('drag-over'))
+                item.classList.add('drag-over')
+            })
+
+            item.addEventListener('dragleave', () => {
+                item.classList.remove('drag-over')
+            })
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault()
+                item.classList.remove('drag-over')
+                const fromId = e.dataTransfer.getData('text/plain')
+                const toId = h.id
+                if (fromId === toId) return
+                this.events.fire('hotspot:reorder', { fromId, toId })
+            })
+
             this.listEl.appendChild(item)
         })
     }
@@ -75106,6 +76469,32 @@ class HotspotEditorUI {
     renderItemHeader(h, isExpanded) {
         const row = document.createElement('div')
         row.classList.add('hotspot-header')
+        // ── Drag handle ──────────────────────────
+        const handle = document.createElement('div')
+        handle.classList.add('hotspot-drag-handle')
+        handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+        <circle cx="4" cy="2.5" r="1"/><circle cx="8" cy="2.5" r="1"/>
+        <circle cx="4" cy="6"   r="1"/><circle cx="8" cy="6"   r="1"/>
+        <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
+        </svg>`
+
+        // ── Draggable item ────────────────────────
+        const item = row.closest('.hotspot-item') || row.parentElement
+        // lấy item ở render() vì lúc này chưa append, truyền id qua dataset
+        row.dataset.dragId = h.id
+
+        row.setAttribute('draggable', true)
+
+        row.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData('text/plain', h.id)
+            row.classList.add('dragging')
+        })
+
+        row.addEventListener('dragend', () => {
+            row.classList.remove('dragging')
+            document.querySelectorAll('.hotspot-item').forEach((el) => el.classList.remove('drag-over'))
+        })
 
         const name = document.createElement('div')
         name.classList.add('hotspot-header-name')
@@ -75137,7 +76526,7 @@ class HotspotEditorUI {
         return { row, headerTitle: name }
     }
     applyDraft = () => {
-        this.events.fire('hotspot:editor-changed', this.activeHotspotData)
+        this.events.fire('hotspot:editor-changed', JSON.parse(JSON.stringify(this.activeHotspotData)))
     }
     renderEditPanel(headerTitle) {
         const panel = document.createElement('div')
@@ -75152,20 +76541,20 @@ class HotspotEditorUI {
 
         const alignIcons = {
             left: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="0" y="5" width="9" height="2" rx="1"/>
-                <rect x="0" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="0" y="5" width="9" height="2" rx="1"/>
+                    <rect x="0" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
             center: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="2.5" y="5" width="9" height="2" rx="1"/>
-                <rect x="1" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="2.5" y="5" width="9" height="2" rx="1"/>
+                    <rect x="1" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
             right: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                <rect x="0" y="1" width="14" height="2" rx="1"/>
-                <rect x="5" y="5" width="9" height="2" rx="1"/>
-                <rect x="2" y="9" width="12" height="2" rx="1"/>
-            </svg>`,
+                    <rect x="0" y="1" width="14" height="2" rx="1"/>
+                    <rect x="5" y="5" width="9" height="2" rx="1"/>
+                    <rect x="2" y="9" width="12" height="2" rx="1"/>
+                </svg>`,
         }
 
         ;['left', 'center', 'right'].forEach((align) => {
@@ -75387,7 +76776,7 @@ class HotspotEditorUI {
         applyBtn.classList.add('hotspot-apply-btn', 'confirm-btn', 'btn')
         applyBtn.style.flex = '1'
         applyBtn.textContent = 'Apply'
-        applyBtn.addEventListener('click',()=> this.onApply())
+        applyBtn.addEventListener('click', () => this.onApply())
 
         applyRow.appendChild(applyBtn)
         applyRow.appendChild(cancelBtn)
@@ -75522,117 +76911,9 @@ const initPoster = (events) => {
     events.on('progress:changed', blur)
 }
 
-function pickModelLocalPoint(x, y, camera) {
-    const from = camera.screenToWorld(x, y, camera.nearClip)
-    const to = camera.screenToWorld(x, y, camera.farClip)
-    const worldRay = new Ray(from, to.clone().sub(from).normalize())
-
-    let closestHitLocal = null
-    let closestDist = Infinity
-
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const localCenters = gsplatInstance.resource.centers
-    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-    const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
-
-    const localRayOrigin = new Vec3()
-    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
-    const localRayDirection = new Vec3()
-    invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
-    localRayDirection.normalize()
-    const localRay = new Ray(localRayOrigin, localRayDirection)
-
-    const splatRadius = [0.03, 0.05, 0.1]
-
-    for (let k = 0; k < splatRadius.length; k++) {
-        for (let i = 0; i < localCenters.length; i += 3) {
-            const localPos = new Vec3(localCenters[i], localCenters[i + 1], localCenters[i + 2])
-            const distToSplat = localRay.direction.dot(localPos.clone().sub(localRay.origin))
-
-            if (distToSplat > 0) {
-                const pointOnRay = localRay.getPoint(distToSplat)
-                const dist = pointOnRay.distance(localPos)
-
-                if (dist < splatRadius[k]) {
-                    if (distToSplat < closestDist) {
-                        closestDist = distToSplat
-                        closestHitLocal = localPos.clone()
-                    }
-                }
-            }
-        }
-        if (closestHitLocal) break
-    }
-
-    if (closestHitLocal) {
-        const zTarget = closestHitLocal.z
-        const t = (zTarget - localRay.origin.z) / localRay.direction.z
-        return localRay.getPoint(t)
-    }
-
-    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
-}
-
-function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
-    const nearestPoint = findNearestSplatCenter(localRay, centers)
-    if (nearestPoint) return nearestPoint
-    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
-    if (bboxIntersection) return bboxIntersection
-
-    return localRay.getPoint(5.0)
-}
-
-function findNearestSplatCenter(localRay, centers) {
-    let bestT = null
-    let bestDistSq = Infinity
-
-    for (let i = 0; i < centers.length; i += 3) {
-        const p = new Vec3(centers[i], centers[i + 1], centers[i + 2])
-        const v = p.clone().sub(localRay.origin)
-        const t = v.dot(localRay.direction)
-
-        if (t < 0) continue
-
-        const pointOnRay = localRay.getPoint(t)
-        const dx = pointOnRay.x - p.x
-        const dy = pointOnRay.y - p.y
-        const dz = pointOnRay.z - p.z
-        const distSq = dx * dx + dy * dy + dz * dz
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq
-            bestT = t
-        }
-    }
-    return bestT !== null ? localRay.getPoint(bestT) : null
-}
-
-function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
-    const meshInstance = modelEntity.gsplat.instance.meshInstance
-    const aabbWorld = meshInstance.aabb
-    const bboxCenterWorld = aabbWorld.center.clone()
-    const bboxCenterLocal = new Vec3()
-    invWorldMatrix.transformPoint(bboxCenterWorld, bboxCenterLocal)
-
-    const planeNormal = localRay.direction.clone()
-    return intersectRayPlane(localRay, bboxCenterLocal, planeNormal)
-}
-
-function intersectRayPlane(ray, planePoint, planeNormal) {
-    const denom = planeNormal.dot(ray.direction)
-    if (Math.abs(denom) < 1e-6) return null
-
-    const t = planeNormal.dot(planePoint.clone().sub(ray.origin)) / denom
-    if (t < 0) return null
-
-    return ray.getPoint(t)
-}
-
 function initHotspotSection(body, global, dom) {
     const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
-    const manager = new HotspotManager({ global, editor, dom: dom })
-
-    return manager
 }
 
 function createSection({ id, title, body: renderBody, classname = '' }) {
@@ -75672,7 +76953,7 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
 }
 
 function initviewSection(el, global) {}
-function exportSection(el) {
+function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
 
@@ -75704,7 +76985,7 @@ function exportSection(el) {
     btn.textContent = 'Export HTML'
     btn.addEventListener('click', () => {
         const filename = (input.value.trim() || 'index') + '.html'
-        exportHtml(filename, window.sse)
+        exportHtml(filename, { settings: global.settings })
     })
     el.appendChild(btn)
 }
@@ -75715,6 +76996,7 @@ function createSidebar(global, dom) {
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
     sidebar.style.cssText = `width: ${SIDEBAR_WIDTH}`
+    sidebar.style.visibility = 'hidden'
     const header = document.createElement('div')
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
@@ -75740,16 +77022,21 @@ function createSidebar(global, dom) {
             id: 'export',
             title: 'Export',
             classname: 'export-section',
-            body: (el) => exportSection(el),
+            body: (el) => exportSection(el, global),
         }),
     )
     document.body.appendChild(sidebar)
     const canvas = global.app.graphicsDevice.canvas
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
     document.getElementById('ui').style.width = `calc(100% - ${SIDEBAR_WIDTH})`
+    return sidebar
 }
 const initUI = (global) => {
     const { config, events, state, settings } = global
+    const ui = document.getElementById('ui')
+    ui.appendChild(createControlsWrap(events))
+    ui.appendChild(createInfoPanel(settings, events))
+    ui.appendChild(createSettingsPanel())
     const dom = [
         'ui',
         'resetCamera',
@@ -75762,26 +77049,43 @@ const initUI = (global) => {
         'touchInfoPanel',
         'handle',
         'time',
-        'buttonContainer',
+        'buttonsContainer',
         'play',
         'pause',
         'settings',
         'settingsPanel',
-        'reset',
-        'frame',
         'loadingText',
         'loadingBar',
         'tooltip',
+        'hotspotContainer',
+        'hotspotActionGroup',
     ].reduce((acc, id) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
+    const tooltip = new Tooltip(dom.tooltip)
+    document.body.appendChild(dom.tooltip)
+    new HotspotManager({ global, dom, tooltip })
+    let sidebar
+    if (config.editable) {
+        sidebar = createSidebar(global, dom)
+    }
+    // tooltips
+    tooltip.register(dom.resetCamera, 'Reset Camera', 'top')
+    tooltip.register(dom.settings, 'Settings', 'top')
+    tooltip.register(dom.info, 'Controls Guide', 'top')
+    if (settings.hotspots.length > 0) {
+        dom.buttonsContainer.appendChild(createHotspotActionGroup(tooltip, events, dom))
+    }
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
         document.activeElement?.blur()
     })
     // Forward wheel events from UI overlays to the canvas so the camera zooms
     // instead of the page scrolling (e.g. annotation nav, tooltips, hotspots)
+    window.addEventListener('resize', () => {
+        dom.settingsPanel.classList.add('hidden')
+    })
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
         events.fire('pointerup', event)
@@ -75794,18 +77098,10 @@ const initUI = (global) => {
         },
         { passive: false },
     )
-    // Handle loading progress updates
-    events.on('progress:changed', (progress) => {
-        dom.loadingText.textContent = `${progress}%`
-        if (progress < 100) {
-            dom.loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${progress}%, white ${progress}%, white 100%)`
-        } else {
-            dom.loadingBar.style.backgroundImage = 'linear-gradient(90deg, #F60 0%, #F60 100%)'
-        }
-    })
     // Hide loading bar once loaded
     events.on('loaded:changed', () => {
         document.getElementById('loadingWrap').classList.add('hidden')
+        if (sidebar) sidebar.style.visibility = 'visible'
     })
     // Info panel
     const updateInfoTab = (tab) => {
@@ -75830,10 +77126,16 @@ const initUI = (global) => {
     const toggleHelp = () => {
         updateInfoTab(state.inputMode)
         dom.infoPanel.classList.toggle('hidden')
+        if (!dom.infoPanel.classList.contains('hidden')) {
+            dom.settingsPanel.classList.add('hidden')
+        }
     }
     dom.info.addEventListener('click', toggleHelp)
     dom.infoPanel.addEventListener('pointerdown', () => {
         dom.infoPanel.classList.add('hidden')
+    })
+    dom.resetCamera.addEventListener('click', () => {
+        events.fire('inputEvent', 'reset')
     })
     events.on('inputEvent', (event) => {
         if (event === 'toggleHelp') {
@@ -75882,13 +77184,33 @@ const initUI = (global) => {
         showUI()
     })
     dom.settings.addEventListener('click', () => {
-        dom.settingsPanel.classList.toggle('hidden')
-    })
-    dom.reset.addEventListener('click', (event) => {
-        events.fire('inputEvent', 'reset', event)
-    })
-    dom.frame.addEventListener('click', (event) => {
-        events.fire('inputEvent', 'frame', event)
+        const panel = dom.settingsPanel
+        panel.classList.toggle('hidden')
+        if (panel.classList.contains('hidden')) return
+        const GAP = 8
+        const OFFSET = 6
+        panel.style.visibility = 'hidden'
+        panel.style.position = 'absolute'
+        panel.classList.remove('hidden')
+        const btnRect = dom.settings.getBoundingClientRect()
+        const parentRect = panel.offsetParent.getBoundingClientRect()
+        const panelW = panel.offsetWidth
+        const panelH = panel.offsetHeight
+        let left = btnRect.left - parentRect.left + btnRect.width / 2 - panelW / 2
+        let top = btnRect.top - parentRect.top - panelH - OFFSET
+        if (top < GAP) {
+            top = btnRect.bottom - parentRect.top + OFFSET
+        }
+        if (top + panelH > parentRect.height - GAP) {
+            top = parentRect.height - panelH - GAP
+        }
+        if (left + panelW > parentRect.width - GAP) {
+            left = parentRect.width - panelW - GAP
+        }
+        if (left < GAP) left = GAP
+        panel.style.left = left + 'px'
+        panel.style.top = top + 'px'
+        panel.style.visibility = 'visible'
     })
     // Initialize annotation navigator
     // initAnnotationNav(dom, events, state, global.settings.annotations)
@@ -75896,11 +77218,7 @@ const initUI = (global) => {
     if (config.noui) {
         dom.ui.classList.add('hidden')
     }
-    // tooltips
-    const tooltip = new Tooltip(dom.tooltip)
-    tooltip.register(dom.resetCamera, 'Reset Camera', 'top')
-    tooltip.register(dom.settings, 'Settings', 'top')
-    tooltip.register(dom.info, 'Controls', 'top')
+
     const isThirdPartyEmbedded = () => {
         try {
             return window.location.hostname !== window.parent.location.hostname
@@ -75914,9 +77232,6 @@ const initUI = (global) => {
         if (viewUrl.pathname === '/s') {
             viewUrl.pathname = '/view'
         }
-    }
-    if (config.editable) {
-        createSidebar(global, dom)
     }
 }
 
@@ -76907,802 +78222,6 @@ class FlyController {
     }
 }
 
-function showToast(content, opts = {}) {
-    const duration = typeof opts.duration === 'number' ? opts.duration : 1500
-    const type = opts.type || 'default'
-    let toast = document.getElementById('toast')
-    if (!toast) {
-        toast = document.createElement('div')
-        toast.id = 'toast'
-        document.body.appendChild(toast)
-    }
-    toast.textContent = content
-    if (content.length === 1) {
-        toast.classList.add('char')
-    } else {
-        toast.classList.remove('char')
-    }
-    if (type === 'success') {
-        toast.classList.add('success')
-    } else {
-        toast.classList.remove('success')
-    }
-    toast.classList.add('show')
-    if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
-    toast._hideTimeout = setTimeout(() => {
-        toast.classList.remove('show')
-        toast._removeTimeout = setTimeout(() => {}, 300)
-    }, duration)
-}
-class Vec33 {
-    constructor(x = 0, y = 0, z = 0) {
-        this.x = x
-        this.y = y
-        this.z = z
-    }
-    copy(v) {
-        this.x = v.x
-        this.y = v.y
-        this.z = v.z
-        return this
-    }
-    set(x, y, z) {
-        this.x = x
-        this.y = y
-        this.z = z
-        return this
-    }
-    add(v) {
-        this.x += v.x
-        this.y += v.y
-        this.z += v.z
-        return this
-    }
-    sub(v) {
-        this.x -= v.x
-        this.y -= v.y
-        this.z -= v.z
-        return this
-    }
-    mulScalar(s) {
-        this.x *= s
-        this.y *= s
-        this.z *= s
-        return this
-    }
-    lerp(target, t) {
-        this.x += (target.x - this.x) * t
-        this.y += (target.y - this.y) * t
-        this.z += (target.z - this.z) * t
-        return this
-    }
-    length() {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
-    }
-    normalize() {
-        const len = this.length()
-        if (len > 0) {
-            this.mulScalar(1 / len)
-        }
-        return this
-    }
-    cross(v) {
-        const x = this.y * v.z - this.z * v.y
-        const y = this.z * v.x - this.x * v.z
-        const z = this.x * v.y - this.y * v.x
-        this.x = x
-        this.y = y
-        this.z = z
-        return this
-    }
-    toArray(arr, offset = 0) {
-        arr[offset] = this.x
-        arr[offset + 1] = this.y
-        arr[offset + 2] = this.z
-    }
-    fromArray(arr, offset = 0) {
-        this.x = arr[offset]
-        this.y = arr[offset + 1]
-        this.z = arr[offset + 2]
-        return this
-    }
-    transformQuat(q) {
-        const x = this.x,
-            y = this.y,
-            z = this.z
-        const qx = q.x,
-            qy = q.y,
-            qz = q.z,
-            qw = q.w
-        const ix = qw * x + qy * z - qz * y
-        const iy = qw * y + qz * x - qx * z
-        const iz = qw * z + qx * y - qy * x
-        const iw = -qx * x - qy * y - qz * z
-        this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy
-        this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz
-        this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx
-        return this
-    }
-    cloneTransformQuat(q) {
-        const v = this.clone()
-        v.transformQuat(q)
-        return v
-    }
-    static get FORWARD() {
-        return new Vec33(0, 0, -1)
-    }
-    static get UP() {
-        return new Vec33(0, 1, 0)
-    }
-    static get RIGHT() {
-        return new Vec33(1, 0, 0)
-    }
-    clone() {
-        return new Vec33(this.x, this.y, this.z)
-    }
-}
-class Quat3 {
-    constructor(x = 0, y = 0, z = 0, w = 1) {
-        this.x = x
-        this.y = y
-        this.z = z
-        this.w = w
-    }
-    set(x, y, z, w) {
-        this.x = x
-        this.y = y
-        this.z = z
-        this.w = w
-        return this
-    }
-    copy(q) {
-        this.x = q.x
-        this.y = q.y
-        this.z = q.z
-        this.w = q.w
-        return this
-    }
-    clone() {
-        return new Quat3(this.x, this.y, this.z, this.w)
-    }
-    static slerp(a, b, t) {
-        let cosHalfTheta = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
-        if (cosHalfTheta < 0) {
-            b = new Quat3(-b.x, -b.y, -b.z, -b.w)
-            cosHalfTheta = -cosHalfTheta
-        }
-        if (cosHalfTheta > 0.9995) {
-            return new Quat3(
-                a.x + t * (b.x - a.x),
-                a.y + t * (b.y - a.y),
-                a.z + t * (b.z - a.z),
-                a.w + t * (b.w - a.w),
-            ).normalize()
-        }
-        const halfTheta = Math.acos(cosHalfTheta)
-        const sinHalfTheta = Math.sqrt(1 - cosHalfTheta * cosHalfTheta)
-        const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta
-        const ratioB = Math.sin(t * halfTheta) / sinHalfTheta
-        return new Quat3(
-            a.x * ratioA + b.x * ratioB,
-            a.y * ratioA + b.y * ratioB,
-            a.z * ratioA + b.z * ratioB,
-            a.w * ratioA + b.w * ratioB,
-        )
-    }
-    normalize() {
-        const len = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w)
-        if (len > 0) {
-            const invLen = 1 / len
-            this.x *= invLen
-            this.y *= invLen
-            this.z *= invLen
-            this.w *= invLen
-        }
-        return this
-    }
-    mul(q) {
-        const ax = this.x,
-            ay = this.y,
-            az = this.z,
-            aw = this.w
-        const bx = q.x,
-            by = q.y,
-            bz = q.z,
-            bw = q.w
-        this.x = aw * bx + ax * bw + ay * bz - az * by
-        this.y = aw * by - ax * bz + ay * bw + az * bx
-        this.z = aw * bz + ax * by - ay * bx + az * bw
-        this.w = aw * bw - ax * bx - ay * by - az * bz
-        return this
-    }
-    setFromAxisAngle(axis, angleRad) {
-        const halfAngle = angleRad * 0.5
-        const s = Math.sin(halfAngle)
-        this.x = axis.x * s
-        this.y = axis.y * s
-        this.z = axis.z * s
-        this.w = Math.cos(halfAngle)
-        return this
-    }
-    setFromEulerAngles(euler) {
-        const yaw = (euler.y * Math.PI) / 180
-        const pitch = (euler.x * Math.PI) / 180
-        const roll = (euler.z * Math.PI) / 180
-        const cy = Math.cos(yaw * 0.5)
-        const sy = Math.sin(yaw * 0.5)
-        const cp = Math.cos(pitch * 0.5)
-        const sp = Math.sin(pitch * 0.5)
-        const cr = Math.cos(roll * 0.5)
-        const sr = Math.sin(roll * 0.5)
-        this.w = cr * cp * cy + sr * sp * sy
-        this.x = sr * cp * cy - cr * sp * sy
-        this.y = cr * sp * cy + sr * cp * sy
-        this.z = cr * cp * sy - sr * sp * cy
-        return this
-    }
-    transformVector(vec) {
-        return vec.clone().transformQuat(this)
-    }
-    static lookRotation(forward, up) {
-        const z = forward.clone().normalize()
-        const x = up.clone().cross(z).normalize()
-        const y = z.clone().cross(x)
-        const m00 = x.x,
-            m01 = y.x,
-            m02 = z.x
-        const m10 = x.y,
-            m11 = y.y,
-            m12 = z.y
-        const m20 = x.z,
-            m21 = y.z,
-            m22 = z.z
-        const trace = m00 + m11 + m22
-        const q = new Quat3()
-        if (trace > 0) {
-            const s = 0.5 / Math.sqrt(trace + 1)
-            q.w = 0.25 / s
-            q.x = (m21 - m12) * s
-            q.y = (m02 - m20) * s
-            q.z = (m10 - m01) * s
-        } else if (m00 > m11 && m00 > m22) {
-            const s = 2 * Math.sqrt(1 + m00 - m11 - m22)
-            q.w = (m21 - m12) / s
-            q.x = 0.25 * s
-            q.y = (m01 + m10) / s
-            q.z = (m02 + m20) / s
-        } else if (m11 > m22) {
-            const s = 2 * Math.sqrt(1 + m11 - m00 - m22)
-            q.w = (m02 - m20) / s
-            q.x = (m01 + m10) / s
-            q.y = 0.25 * s
-            q.z = (m12 + m21) / s
-        } else {
-            const s = 2 * Math.sqrt(1 + m22 - m00 - m11)
-            q.w = (m10 - m01) / s
-            q.x = (m02 + m20) / s
-            q.y = (m12 + m21) / s
-            q.z = 0.25 * s
-        }
-        return q.normalize()
-    }
-}
-class SmoothDamp3 {
-    constructor(initialValue) {
-        this.value = initialValue.slice()
-        this.target = initialValue.slice()
-        this.velocity = new Array(initialValue.length).fill(0)
-        this.smoothTime = 0
-    }
-    update(dt) {
-        const smoothTime = Math.max(this.smoothTime, 1e-6)
-        const omega = 2 / smoothTime
-        const x = omega * dt
-        const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
-        for (let i = 0; i < this.value.length; i++) {
-            const v = this.velocity[i]
-            const t = this.target[i]
-            let x0 = this.value[i]
-            let xDiff = x0 - t
-            const temp = (v + omega * xDiff) * dt
-            this.velocity[i] = (v - omega * temp) * exp
-            this.value[i] = t + (xDiff + temp) * exp
-        }
-    }
-}
-const v$2 = new Vec33()
-class OtherController {
-    focus = new Vec33()
-    rotation = new Quat3()
-    smoothDamp = new SmoothDamp3(new Array(8).fill(0))
-    distance = 1
-    rotateSpeed = 0.04
-    lerpDuration = 1.5
-    lerpTime = 0
-    targetPose = null
-    startPose = null
-    modelRotation = null
-    originDistance
-    startTransitionDistance
-    currentYaw = 0
-    currentPitch = 0
-    minPitch = 0
-    maxPitch = Math.PI / 2
-    inertiaVelX = 0
-    inertiaVelY = 0
-    inertiaDamping = 0.93
-    inertiaMinSpeed = 0.0005
-    constructor(app, bbox, events, entity) {
-        this.app = app
-        this.bbox = bbox
-        this.events = events
-        this.entity = entity
-        if (['spherical', 'hemispherical', 'cylindrical'].includes(window.sse.settings.model)) {
-            this.model = window.sse.settings.model
-        } else if (!params.spherical) {
-            this.model = 'hemispherical'
-        } else {
-            this.model = 'spherical'
-        }
-        this.isSphericalRot = this.model === 'spherical'
-        this.originModel = this.model
-        this.initviewPose = orterySettings.initview.pose ?? null
-        if (orterySettings.orientation) {
-            const { rotation: r, position: p } = orterySettings.orientation
-            this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
-            this.basePosition = new Vec33(p.x, p.y, p.z)
-        } else {
-            this.baseRotation = modelEntity.localRotation.clone()
-            this.basePosition = modelEntity.localPosition.clone()
-        }
-        this.originPivot = this.bbox.center.clone()
-        this.listenEvents()
-    }
-    listenEvents() {
-        this.events.on('hotspot:editing', (isEdit) => {
-            this.isEditHotspot = isEdit
-        })
-        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
-            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
-            const startPose = {
-                focus: this.focus.clone(),
-                position: new Vec3(
-                    modelEntity.localPosition.x,
-                    modelEntity.localPosition.y,
-                    modelEntity.localPosition.z,
-                ),
-                rotation: modelEntity.localRotation.clone(),
-                distance: this.distance,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
-            }
-            const targetPose = {
-                focus: this.getActualFocus(f),
-                position: new Vec3(p.x, p.y, p.z),
-                rotation: new Quat(r.x, r.y, r.z, r.w),
-                distance: this.getActualDistance(d),
-                yaw,
-                pitch,
-            }
-            this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
-        })
-    }
-    getCustomCenterPivot(pos) {
-        const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-        const worldPivotPos = new Vec3()
-        worldMatrix.transformPoint(pos, worldPivotPos)
-        return worldPivotPos
-    }
-    setInitviewPose() {
-        if (this.initviewPose) {
-            const { position: p, rotation: r } = this.initviewPose
-            modelEntity.setLocalPosition(p.x, p.y, p.z)
-            modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
-        }
-    }
-    reset(pose) {
-        if (!this.originDistance) this.originDistance = pose.distance
-        if (!this.originFocus) this.originFocus = this.bbox.center.clone()
-
-        const isFirstInit = !this.hasInitializedFocus
-        if (isFirstInit) this.hasInitializedFocus = true
-        let startFocus, startDistance
-        let startYaw = 0,
-            startPitch = 0
-        let targetYaw = 0,
-            targetPitch = 0
-
-        if (isFirstInit) {
-            if (this.initviewPose) {
-                targetYaw = startYaw = this.initviewPose.yaw
-                targetPitch = startPitch = this.initviewPose.pitch
-            }
-        } else {
-            startFocus = this.focus.clone()
-            startDistance = this.distance
-            startYaw = this.currentYaw
-            startPitch = this.currentPitch
-            if (this.initviewPose) {
-                targetYaw = this.initviewPose.yaw
-                targetPitch = this.initviewPose.pitch
-            }
-        }
-
-        let distance
-        if (this.initviewPose) {
-            const { focus: f, distanceScale: d } = this.initviewPose
-            this.focus.copy(this.getActualFocus(f))
-            distance = isMobile ? Math.max(pose.distance, this.getActualDistance(d)) : this.getActualDistance(d)
-            if (!this.initviewDistance) this.initviewDistance = distance
-            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
-        } else {
-            const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-            const fovDeg = 50
-            let verticalFovRad
-            if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
-                const hFovRad = (fovDeg * Math.PI) / 180
-                verticalFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect)
-            } else {
-                verticalFovRad = (fovDeg * Math.PI) / 180
-            }
-            const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect)
-            const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
-            const h = this.bbox.halfExtents
-            const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
-            distance = (radius / Math.sin(minFovRad / 2)) * 1.1
-            maxDistance = Math.max(distance, 200)
-
-            this.focus.copy(this.bbox.center)
-            if (!this.initviewDistance) this.initviewDistance = distance
-            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
-        }
-
-        if (!startFocus) startFocus = this.focus.clone()
-        if (!startDistance) startDistance = distance
-
-        const dir = new Vec33(
-            pose.position.x - this.focus.x,
-            pose.position.y - this.focus.y,
-            pose.position.z - this.focus.z,
-        ).normalize()
-        this.rotation = Quat3.lookRotation(dir, Vec33.UP)
-        this.distance = distance
-
-        if (modelEntity && !this.originEntityRotation) {
-            this.originEntityRotation = modelEntity.localRotation.clone()
-            this.originEntityPos = modelEntity.localPosition.clone()
-        }
-        if (modelEntity && this.originEntityRotation) {
-            this.setupTransition({
-                startPose: {
-                    focus: startFocus,
-                    rotation: modelEntity.localRotation.clone(),
-                    position: modelEntity.localPosition.clone(),
-                    distance: startDistance,
-                    yaw: startYaw,
-                    pitch: startPitch,
-                },
-                targetPose: {
-                    focus: this.initviewFocus,
-                    rotation: this.originEntityRotation.clone(),
-                    position: this.originEntityPos.clone(),
-                    distance: this.initviewDistance,
-                    yaw: targetYaw,
-                    pitch: targetPitch,
-                },
-                onTransitionFinished: null,
-                lerpDuration: HOTSPOT_FADE_TIME,
-            })
-        }
-    }
-    initView() {
-        settings.initview.pose = this.getEntityInfo()
-        this.initviewPose = settings.initview.pose
-        this.originEntityRotation = modelEntity.localRotation.clone()
-        this.originEntityPos = modelEntity.localPosition.clone()
-        this.initviewFocus = this.focus.clone()
-        this.initviewDistance = this.distance
-        showToast('✓ Initial view updated', { duration: 1000, type: 'success' })
-    }
-    update(dt, inputFrame, camera) {
-        const { move, rotate } = inputFrame.read()
-        this.move(move, rotate)
-        this.getPose(camera)
-        this.smooth(dt)
-        this.updateModelEntity(dt)
-        // this.applyInertia()
-    }
-    onEnter(camera) {
-        this.reset(camera)
-    }
-    onExit() {}
-    applyInertia() {
-        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
-        const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
-        if (speed < this.inertiaMinSpeed) {
-            this.inertiaVelX = 0
-            this.inertiaVelY = 0
-            return
-        }
-        const dx = this.inertiaVelX
-        const dy = this.inertiaVelY
-        const speedNorm = Math.min(speed / 0.05, 1)
-        const damping = 0.68 + speedNorm * (this.inertiaDamping - 0.68)
-
-        this.inertiaVelX *= damping
-        this.inertiaVelY *= damping
-
-        if (this.model === 'spherical') {
-            this.sphericalRot(dx, dy)
-        } else {
-            this.setPitchYaw(dx, dy)
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
-        this.syncHierarchyAndRender()
-    }
-    resetPivot() {
-        settings.pivotPos = null
-        this.centerPivot = this.originPivot
-        this.events.fire('inputEvent', 'frame')
-    }
-    savePivot(pos) {
-        settings.pivotPos = pos
-        this.centerPivot = this.getCustomCenterPivot(settings.pivotPos)
-    }
-    resetModelType() {
-        this.model = this.originModel
-    }
-    setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
-        this.targetPose = targetPose
-        this.startPose = startPose
-        this.onTransitionFinished = onTransitionFinished
-        this.lerpTime = 0
-        this.lerpDuration = lerpDuration
-    }
-    saveModelOrientation() {
-        this.baseRotation = modelEntity.localRotation.clone()
-        this.basePosition = modelEntity.localPosition.clone()
-        settings.orientation = {
-            rotation: this.baseRotation,
-            position: this.basePosition,
-        }
-        this.currentYaw = 0
-        this.currentPitch = 0
-        this.updateModelRotation()
-        this.resetModelType()
-        if (this.mode === 'cylindrical') {
-            this.minPitch = 0
-            this.maxPitch = 0
-        } else if (this.model === 'hemispherical') {
-            this.minPitch = 0
-            this.maxPitch = Math.PI / 2
-        }
-        if (this.initviewPose) {
-            this.initView()
-        }
-    }
-    lerp(a, b, t) {
-        return a + (b - a) * t
-    }
-    updateModelEntity(dt) {
-        if (!this.targetPose || !modelEntity) return
-        this.lerpTime += dt
-        let t = Math.min(this.lerpTime / this.lerpDuration, 1)
-        t = t * t * (3 - 2 * t)
-        this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
-        this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
-        const newPos = new Vec33(this.startPose.position.x, this.startPose.position.y, this.startPose.position.z).lerp(
-            this.targetPose.position,
-            t,
-        )
-        modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
-        if (this.isSphericalRot) {
-            modelEntity.localRotation = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
-        } else {
-            this.currentYaw = this.lerp(this.startPose.yaw, this.targetPose.yaw, t)
-            this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
-        if (t >= 0.99 && this.onTransitionFinished) this.onTransitionFinished()
-        if (t >= 1) {
-            this.focus.copy(this.targetPose.focus)
-            this.distance = this.clampDistance(this.targetPose.distance, t)
-            modelEntity.localPosition.copy(this.targetPose.position)
-            if (this.isSphericalRot) modelEntity.localRotation.copy(this.targetPose.rotation)
-            else {
-                this.currentYaw = this.targetPose.yaw
-                this.currentPitch = this.targetPose.pitch
-                this.hemisphericalRot(this.currentYaw, this.currentPitch)
-            }
-            this.updateModelRotation()
-            this.targetPose = null
-            this.startPose = null
-        }
-        this.syncHierarchyAndRender()
-    }
-    updateModelRotation() {
-        this.modelRotation = modelEntity.localRotation.clone()
-    }
-    syncHierarchyAndRender() {
-        modelEntity.syncHierarchy()
-        modelEntity._dirtyLocal = true
-        modelEntity._dirtyWorld = true
-        this.app.renderNextFrame = true
-    }
-    getEntityInfo() {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-        return {
-            rotation: modelEntity.localRotation.clone(),
-            position: modelEntity.localPosition.clone(),
-            distanceScale: this.distance / this.originDistance,
-            focus: {
-                x: (this.focus.x - this.originFocus.x) / aspect,
-                y: (this.focus.y - this.originFocus.y) / aspect,
-                z: (this.focus.z - this.originFocus.z) / aspect,
-                aspect,
-                distance: this.originDistance,
-            },
-            pitch: this.currentPitch,
-            yaw: this.currentYaw,
-        }
-    }
-    getActualFocus(f) {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-        const aspectScale = aspect > f.aspect ? f.aspect : aspect
-        const distanceScale = aspect > f.aspect ? 1 : this.originDistance / f.distance
-        return new Vec3(
-            this.originFocus.x + f.x * distanceScale * aspectScale,
-            this.originFocus.y + f.y * distanceScale * aspectScale,
-            this.originFocus.z + f.z * distanceScale * aspectScale,
-        )
-    }
-    getActualDistance(distanceScale) {
-        return this.originDistance * distanceScale
-    }
-    clampDistance(distance) {
-        if (!orterySettings.lockZoomIn.locked) return Math.min(maxDistance, Math.max(minDistance, distance))
-        return Math.min(maxDistance, Math.max(this.getActualDistance(orterySettings.lockZoomIn.value), distance))
-    }
-    move(move, rotate) {
-        if (this.isEditHotspot) return
-        const [x, y, z] = move
-        const isZooming = z !== 0
-        const isPanning = x !== 0 || y !== 0
-        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
-        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
-        this.distance = this.clampDistance(this.distance + this.distance * move[2])
-        v$2.copy(this.rightCam).mulScalar(move[0])
-        this.focus.add(v$2)
-        v$2.copy(this.upCam).mulScalar(move[1])
-        this.focus.add(v$2)
-        let didRotate = false
-        if (!this.initPivot) {
-            this.centerPivot = settings.pivotPos ? this.getCustomCenterPivot(settings.pivotPos) : this.originPivot
-            this.initPivot = true
-        }
-        if (modelEntity && this.modelRotation) {
-            const deltaX = rotate[0]
-            const deltaY = rotate[1]
-            if (deltaX !== 0 || deltaY !== 0) {
-                this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
-                this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
-                if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
-                else {
-                    if (this.cameraElevation === undefined) {
-                        if (!settings.orientation) {
-                            this.cameraElevation = this.getCameraElevation()
-                            if (this.model === 'cylindrical') {
-                                this.maxPitch = this.cameraElevation
-                                this.minPitch = this.cameraElevation
-                            } else {
-                                this.minPitch -= this.cameraElevation
-                                this.maxPitch -= this.cameraElevation
-                            }
-                        } else this.cameraElevation = 0
-                    }
-                    this.setPitchYaw(deltaX, deltaY)
-                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                }
-                this.syncHierarchyAndRender()
-                didRotate = true
-            }
-        }
-        if (didRotate) {
-            this.events.fire('hotspot:hide-all')
-        }
-        if (isZooming || isPanning || didRotate) {
-            // this.hotspotManager.stopAutoPlay()
-            this.updateModelRotation()
-            this.targetPose = null
-            this.startPose = null
-        }
-    }
-    getCameraElevation() {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-        const camPos = this.focus.clone().sub(forward.mulScalar(this.distance))
-        const dir = new Vec3(
-            camPos.x - this.centerPivot.x,
-            camPos.y - this.centerPivot.y,
-            camPos.z - this.centerPivot.z,
-        )
-        return Math.atan2(dir.y, Math.sqrt(dir.x * dir.x + dir.z * dir.z))
-    }
-    setPitchYaw(deltaX, deltaY) {
-        const maxDelta = 30
-        const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-        const scale = magnitude > maxDelta ? maxDelta / magnitude : 1
-        const safeDeltaX = deltaX * scale
-        const safeDeltaY = deltaY * scale
-        this.currentYaw =
-            ((((this.currentYaw + safeDeltaX * this.rotateSpeed + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
-                (2 * Math.PI)) -
-            Math.PI
-        this.currentPitch += safeDeltaY * this.rotateSpeed
-        this.currentPitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.currentPitch))
-    }
-    sphericalRot(deltaX, deltaY) {
-        const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
-        const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
-        const rotateQuat = yawQuat.mul(pitchQuat).normalize()
-        v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
-        v$2.transformQuat(rotateQuat)
-        modelEntity.localPosition.copy(this.centerPivot).add(v$2)
-        modelEntity.localRotation.copy(rotateQuat.mul(this.modelRotation).normalize())
-        this.modelRotation.copy(modelEntity.localRotation)
-    }
-    hemisphericalRot(yaw, pitch) {
-        const up = new Vec3(0, 1, 0)
-        this.baseRotation.transformVector(up, up)
-        up.normalize()
-        if (up.dot(Vec3.UP) < 0) up.mulScalar(-1)
-        const quatYaw = new Quat3().setFromAxisAngle(up, yaw)
-        const quatPitch = new Quat3().setFromAxisAngle(this.rightCam, pitch)
-        const combinedRotateQuat = quatPitch.mul(quatYaw).normalize()
-        const offset = this.basePosition.clone().sub(this.centerPivot)
-        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
-        modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
-        modelEntity.localRotation.copy(combinedRotateQuat.mul(this.baseRotation).normalize())
-    }
-    rotateOffsetByQuat(offset, q) {
-        const vx = offset.x,
-            vy = offset.y,
-            vz = offset.z
-        const qx = q.x,
-            qy = q.y,
-            qz = q.z,
-            qw = q.w
-        const ix = qw * vx + qy * vz - qz * vy
-        const iy = qw * vy + qz * vx - qx * vz
-        const iz = qw * vz + qx * vy - qy * vx
-        const iw = -qx * vx - qy * vy - qz * vz
-        return new Vec3(
-            ix * qw + iw * -qx + iy * -qz - iz * -qy,
-            iy * qw + iw * -qy + iz * -qx - ix * -qz,
-            iz * qw + iw * -qz + ix * -qy - iy * -qx,
-        )
-    }
-    smooth(dt) {
-        const { focus, rotation, smoothDamp } = this
-        const { value, target } = smoothDamp
-        focus.toArray(target, 0)
-        target[3] = rotation.x
-        target[4] = rotation.y
-        target[5] = rotation.z
-        target[6] = rotation.w
-        target[7] = this.distance
-        smoothDamp.update(dt)
-        const q = new Quat3(value[3], value[4], value[5], value[6]).normalize()
-        value[3] = q.x
-        value[4] = q.y
-        value[5] = q.z
-        value[6] = q.w
-    }
-    getPose(pose) {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-        pose.position = this.focus.clone().sub(forward.mulScalar(this.distance))
-        pose.distance = this.distance
-    }
-}
 const p = new Pose()
 class OrbitController {
     controller
@@ -78148,7 +78667,7 @@ class CameraManager {
     controllers
     // holds the camera state
     camera = new Camera()
-    constructor(global, bbox, app, entity, collider = null) {
+    constructor(global, bbox, entity, collider = null) {
         const { events, settings, state } = global
         const defaultFov = 50
         const resetCamera = createFrameCamera(bbox, defaultFov)
@@ -78173,7 +78692,7 @@ class CameraManager {
             fly: new FlyController(),
             walk: new WalkController(),
             anim: animTrack ? new AnimController(animTrack) : null,
-            ortery: new OtherController(app, bbox, events, entity),
+            ortery: new OtherController({ global, bbox }),
         }
         events.fire('controllers:created', this.controllers)
         this.controllers.orbit.fov = resetCamera.fov
@@ -78242,9 +78761,7 @@ class CameraManager {
                     startTransition()
                     break
                 case 'reset':
-                    state.cameraMode = 'orbit'
-                    this.controllers.orbit.goto(resetCamera)
-                    startTransition()
+                    this.controllers.ortery.reset()
                     break
                 case 'playPause':
                     if (state.hasAnimation) {
@@ -78725,6 +79242,7 @@ class InputController {
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
                 return
             if (event.key === 'Escape') {
+                events.fire('hotspot:add-cancelled')
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
                     state.gamingControls = false
@@ -78735,11 +79253,14 @@ class InputController {
                 }
             } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
                 switch (event.key) {
-                    case 'f':
-                        // events.fire('inputEvent', 'frame', event)
+                    case 'p':
+                        events.fire('hotspot:toggle-play')
+                        break
+                    case 't':
+                        events.fire('hotspot:hotspot-btns',)
                         break
                     case 'r':
-                        // events.fire('inputEvent', 'reset', event)
+                        events.fire('inputEvent', 'reset', event)
                         break
                 }
             }
@@ -80075,7 +80596,7 @@ class Viewer {
                     app.renderNextFrame = true
                 })
             }
-            this.cameraManager = new CameraManager(global, sceneBound, app, camera, collider)
+            this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
@@ -82266,47 +82787,36 @@ const createImage = (url) => {
     img.src = url
     return img
 }
-const createProgressFetch = async (input) => {
-    try {
-        const response = await fetch(input)
-        if (!response.ok) throw new Error('HTTP error')
-
-        const total = Number(response.headers.get('content-length')) || 0
-        if (!response.body || total <= 0) return response
-
-        const reader = response.body.getReader()
-        const stream = new ReadableStream({
-            start(controller) {
-                let loaded = 0
-                function pump() {
-                    return reader.read().then(({ done, value }) => {
-                        if (done) {
-                            controller.close()
-                            return
-                        }
-                        loaded += value.length
-                        controller.enqueue(value)
-                        return pump()
-                    })
-                }
-                return pump()
-            },
-        })
-
-        return new Response(stream, {
-            headers: response.headers,
-            status: response.status,
-            statusText: response.statusText,
-        })
-    } catch (e) {
-        return fetch(input)
-    }
+const createProgressFetch = (input, initPoster) => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('GET', input)
+        xhr.responseType = 'arraybuffer'
+        xhr.onprogress = (e) => {
+            if (e.lengthComputable) {
+                updateProgress(e.loaded, e.total, initPoster)
+            }
+        }
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                updateProgress(xhr.response.byteLength, xhr.response.byteLength, initPoster)
+                const blob = new Blob([xhr.response])
+                resolve(new Response(blob))
+            } else {
+                reject(new Error('HTTP error ' + xhr.status))
+            }
+        }
+        xhr.onerror = () => reject(new Error('Network error'))
+        xhr.send()
+    })
 }
+
 const url = new URL(location.href)
 const posterUrl = url.searchParams.get('poster')
 const skyboxUrl = url.searchParams.get('skybox')
 const voxelUrl = url.searchParams.get('voxel')
-const { settings } = window.sse
+const { settings } = window?.sse
+const hasPoster = !!posterUrl
 const config = {
     poster: posterUrl && createImage(posterUrl),
     skyboxUrl,
@@ -82411,7 +82921,6 @@ const main = async (canvas, settingsJson, config) => {
             },
         )
     }
-    // Create the viewer
     return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad, dom)
 }
 const { poster } = config

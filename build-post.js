@@ -15,13 +15,17 @@ function copyDir(src, dest) {
 }
 
 const files = [
-    'src/libs/global-variables.js',
-    'src/libs/engine/engine-1.js',
-    'src/libs/engine/engine-2.js',
-    'src/libs/engine/engine-3.js',
-    'src/libs/engine/engine-4.js',
+    'src/global-variables.js',
+    'src/libs/engine-1.js',
+    'src/libs/engine-2.js',
+    'src/libs/engine-3.js',
+    'src/default-settings.js',
+    'src/libs/engine-4.js',
+    'src/libs/custome-engine.js',
     'src/utils/index.js',
-    'src/components/confirm-dialog.js',
+    'src/components/dialogs/confirm-dialog.js',
+    'src/camera/ortery-controller.js',
+    'src/components/hotspots/hotspot-button.js',
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
     'src/components/hotspots/hotspot-editor-ui.js',

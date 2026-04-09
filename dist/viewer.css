@@ -66,10 +66,17 @@ button {
   background-position: center;
   background-repeat: no-repeat;
 }
-
+#fileSizeInfo {
+  font-size: 14px;
+  color: #f95744;
+  text-align: center;
+  margin-bottom: 4px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0);
+  font-weight: 500;
+}
 /* loadingWrap */
 #loadingWrap {
-  position: absolute;
+  position: fixed;
   bottom: 120px;
   left: 50%;
   transform: translate(-50%, 0);
@@ -80,7 +87,7 @@ button {
 }
 #loadingWrap > #loadingText {
   font-size: 18px;
-  color: #fff;
+  color: #f95744;
   text-align: center;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
@@ -99,7 +106,7 @@ button {
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
-  flex-direction: column;
+  gap: 12px;
 }
 #controlsWrap.faded-in {
   visibility: visible;
@@ -144,13 +151,17 @@ button {
 }
 #controlsWrap > #buttonsContainer {
   display: flex;
+  flex: 1;
   justify-content: end;
+  flex-direction: column-reverse;
   gap: 8px;
+  align-items: end;
 }
 #controlsWrap > #buttonsContainer .buttonGroup {
   display: flex;
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
+  gap: 8px;
 }
 #controlsWrap > #buttonsContainer .buttonGroup:not(:has(> :not(.hidden))) {
   display: none;
@@ -165,11 +176,12 @@ button {
   margin: 0;
   border: 0;
   cursor: pointer;
-  color: #e0dcdd;
-  background-color: transparent;
+  border-radius: 8px;
+  color: black;
+  background-color: #dddd;
 }
 #controlsWrap > #buttonsContainer .controlButton:hover {
-  color: #fff;
+  background-color: #ded7d7;
 }
 #controlsWrap > #buttonsContainer .controlButton {
   /* icon styling */
@@ -225,9 +237,6 @@ button {
 }
 /* settingsPanel */
 #settingsPanel {
-  position: fixed;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px);
   padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -316,58 +325,50 @@ button {
 
 /* infoPanel */
 #infoPanel {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.3);
 }
 #infoPanel > #infoPanelContent {
   position: absolute;
-  top: 50%;
+  top: 40px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  min-height: 280px;
-  min-width: 320px;
+  transform: translate(-50%, 0);
+  min-height: 180px;
+  min-width: 300px;
   padding: 8px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  color: black;
+  background-color: #eeed;
   display: flex;
   flex-direction: column;
-  color: #e0dcdd;
-  background-color: rgba(51, 51, 51, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 #infoPanel > #infoPanelContent > #tabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
-  background-color: #282828;
+  gap: 16px;
+  background-color: #666;
+  padding: 8px;
+  border-radius: 22px;
 }
 #infoPanel > #infoPanelContent > #tabs > .tab {
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 8px;
+  border-radius: 16px;
   cursor: pointer;
   flex-grow: 1;
   text-align: center;
   font-weight: bold;
   font-size: 14px;
-  color: #aaa;
-  transition:
-    background-color 250ms ease,
-    color 250ms ease;
+  color: #222;
+  transition: background-color 250ms ease;
 }
 #infoPanel > #infoPanelContent > #tabs > .tab:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: #eee;
 }
 #infoPanel > #infoPanelContent > #tabs > .tab.active {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #eee;
 }
 #infoPanel > #infoPanelContent > #infoPanels {
   padding: 16px;
@@ -388,15 +389,15 @@ button {
   padding: 5px 8px;
   margin: 0 -8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 16px;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item > .control-action {
   text-align: left;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item > .control-key {
   text-align: right;
-  color: #aaa;
-  font-size: 12px;
+  color: #666;
+  font-size: 16px;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item:nth-child(odd) {
   background-color: rgba(255, 255, 255, 0.03);
@@ -409,9 +410,11 @@ button {
   display: none;
   position: absolute;
   border-radius: 4px;
-  padding: 4px 4px;
-  font-size: 12px;
+  padding: 8px;
+  font-size: 13px;
+  z-index: 1001;
   color: #e0dcdd;
+  width : max-content;
   background-color: #282828;
 }
 
@@ -547,7 +550,8 @@ button {
   border-radius: 6px 0 0 6px;
 }
 .sidebar {
-  position: fixed;
+  position: absolute;
+  visibility: hidden;
   top: 0;
   right: 0;
   height: 100%;
@@ -598,15 +602,20 @@ button {
   background: rgba(0, 0, 0, 0.03);
   padding: 8px 0;
   max-height: 72vh;
-  overflow-y: overlay;
-  scrollbar-gutter: stable both-edges;
+  overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
 }
-.hotspot {
+#hotspotContainer {
   display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: 8px;
+}
+.hotspot {
+  display: none;
   justify-content: center;
-  border-radius: 5px;
+  border-radius: 3px;
   align-items: center;
   position: absolute;
   padding: 8px;
@@ -635,6 +644,26 @@ button {
   -o-transition:
     opacity 1.5s ease,
     visibility 1.5s;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -ms-border-radius: 3px;
+  -o-border-radius: 3px;
+}
+.hotspot-drag-handle {
+  cursor: grab;
+  padding: 0 4px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+}
+.hotspot-drag-handle:active {
+  cursor: grabbing;
+}
+.hotspot-item.dragging {
+  opacity: 0.4;
+}
+.hotspot-item.drag-over {
+  border-top: 2px solid #f95645;
 }
 .hotspot span {
   display: block;
@@ -777,7 +806,7 @@ button {
   border: 0.5px solid rgba(0, 0, 0, 0.07);
   border-radius: 7px;
   padding: 9px 10px;
-  flex:1
+  flex: 1;
 }
 .hotspot-group-title {
   font-size: 10px;
@@ -1041,4 +1070,36 @@ button {
 
 .confirm-btn:hover {
   filter: brightness(0.9);
+}
+.active-hotspot-btn {
+  position: relative;
+  width: 100%;
+  min-width: max-content;
+  padding: 8px;
+  font-size: 16px;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -ms-border-radius: 4px;
+  -o-border-radius: 4px;
+  border-radius: 4px;
+}
+.ative-hotspot-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.active-hotspo-btn:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-color: #e0e0e0;
+  color: #333;
+}
+#showHotspotButton > svg {
+  opacity: 0.3;
 }

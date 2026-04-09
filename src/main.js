@@ -10,117 +10,9 @@ const initPoster = (events) => {
     events.on('progress:changed', blur)
 }
 
-function pickModelLocalPoint(x, y, camera) {
-    const from = camera.screenToWorld(x, y, camera.nearClip)
-    const to = camera.screenToWorld(x, y, camera.farClip)
-    const worldRay = new Ray(from, to.clone().sub(from).normalize())
-
-    let closestHitLocal = null
-    let closestDist = Infinity
-
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const localCenters = gsplatInstance.resource.centers
-    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-    const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
-
-    const localRayOrigin = new Vec3()
-    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
-    const localRayDirection = new Vec3()
-    invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
-    localRayDirection.normalize()
-    const localRay = new Ray(localRayOrigin, localRayDirection)
-
-    const splatRadius = [0.03, 0.05, 0.1]
-
-    for (let k = 0; k < splatRadius.length; k++) {
-        for (let i = 0; i < localCenters.length; i += 3) {
-            const localPos = new Vec3(localCenters[i], localCenters[i + 1], localCenters[i + 2])
-            const distToSplat = localRay.direction.dot(localPos.clone().sub(localRay.origin))
-
-            if (distToSplat > 0) {
-                const pointOnRay = localRay.getPoint(distToSplat)
-                const dist = pointOnRay.distance(localPos)
-
-                if (dist < splatRadius[k]) {
-                    if (distToSplat < closestDist) {
-                        closestDist = distToSplat
-                        closestHitLocal = localPos.clone()
-                    }
-                }
-            }
-        }
-        if (closestHitLocal) break
-    }
-
-    if (closestHitLocal) {
-        const zTarget = closestHitLocal.z
-        const t = (zTarget - localRay.origin.z) / localRay.direction.z
-        return localRay.getPoint(t)
-    }
-
-    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
-}
-
-function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
-    const nearestPoint = findNearestSplatCenter(localRay, centers)
-    if (nearestPoint) return nearestPoint
-    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
-    if (bboxIntersection) return bboxIntersection
-
-    return localRay.getPoint(5.0)
-}
-
-function findNearestSplatCenter(localRay, centers) {
-    let bestT = null
-    let bestDistSq = Infinity
-
-    for (let i = 0; i < centers.length; i += 3) {
-        const p = new Vec3(centers[i], centers[i + 1], centers[i + 2])
-        const v = p.clone().sub(localRay.origin)
-        const t = v.dot(localRay.direction)
-
-        if (t < 0) continue
-
-        const pointOnRay = localRay.getPoint(t)
-        const dx = pointOnRay.x - p.x
-        const dy = pointOnRay.y - p.y
-        const dz = pointOnRay.z - p.z
-        const distSq = dx * dx + dy * dy + dz * dz
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq
-            bestT = t
-        }
-    }
-    return bestT !== null ? localRay.getPoint(bestT) : null
-}
-
-function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
-    const meshInstance = modelEntity.gsplat.instance.meshInstance
-    const aabbWorld = meshInstance.aabb
-    const bboxCenterWorld = aabbWorld.center.clone()
-    const bboxCenterLocal = new Vec3()
-    invWorldMatrix.transformPoint(bboxCenterWorld, bboxCenterLocal)
-
-    const planeNormal = localRay.direction.clone()
-    return intersectRayPlane(localRay, bboxCenterLocal, planeNormal)
-}
-
-function intersectRayPlane(ray, planePoint, planeNormal) {
-    const denom = planeNormal.dot(ray.direction)
-    if (Math.abs(denom) < 1e-6) return null
-
-    const t = planeNormal.dot(planePoint.clone().sub(ray.origin)) / denom
-    if (t < 0) return null
-
-    return ray.getPoint(t)
-}
-
 function initHotspotSection(body, global, dom) {
     const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
-    const manager = new HotspotManager({ global, editor, dom: dom })
-
-    return manager
 }
 
 function createSection({ id, title, body: renderBody, classname = '' }) {
@@ -160,7 +52,7 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
 }
 
 function initviewSection(el, global) {}
-function exportSection(el) {
+function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
 
@@ -192,7 +84,7 @@ function exportSection(el) {
     btn.textContent = 'Export HTML'
     btn.addEventListener('click', () => {
         const filename = (input.value.trim() || 'index') + '.html'
-        exportHtml(filename, window.sse)
+        exportHtml(filename, { settings: global.settings })
     })
     el.appendChild(btn)
 }
@@ -203,6 +95,7 @@ function createSidebar(global, dom) {
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
     sidebar.style.cssText = `width: ${SIDEBAR_WIDTH}`
+    sidebar.style.visibility = 'hidden'
     const header = document.createElement('div')
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
@@ -228,16 +121,21 @@ function createSidebar(global, dom) {
             id: 'export',
             title: 'Export',
             classname: 'export-section',
-            body: (el) => exportSection(el),
+            body: (el) => exportSection(el, global),
         }),
     )
     document.body.appendChild(sidebar)
     const canvas = global.app.graphicsDevice.canvas
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
     document.getElementById('ui').style.width = `calc(100% - ${SIDEBAR_WIDTH})`
+    return sidebar
 }
 const initUI = (global) => {
     const { config, events, state, settings } = global
+    const ui = document.getElementById('ui')
+    ui.appendChild(createControlsWrap(events))
+    ui.appendChild(createInfoPanel(settings, events))
+    ui.appendChild(createSettingsPanel())
     const dom = [
         'ui',
         'resetCamera',
@@ -250,26 +148,43 @@ const initUI = (global) => {
         'touchInfoPanel',
         'handle',
         'time',
-        'buttonContainer',
+        'buttonsContainer',
         'play',
         'pause',
         'settings',
         'settingsPanel',
-        'reset',
-        'frame',
         'loadingText',
         'loadingBar',
         'tooltip',
+        'hotspotContainer',
+        'hotspotActionGroup',
     ].reduce((acc, id) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
+    const tooltip = new Tooltip(dom.tooltip)
+    document.body.appendChild(dom.tooltip)
+    new HotspotManager({ global, dom, tooltip })
+    let sidebar
+    if (config.editable) {
+        sidebar = createSidebar(global, dom)
+    }
+    // tooltips
+    tooltip.register(dom.resetCamera, 'Reset Camera', 'top')
+    tooltip.register(dom.settings, 'Settings', 'top')
+    tooltip.register(dom.info, 'Controls Guide', 'top')
+    if (settings.hotspots.length > 0) {
+        dom.buttonsContainer.appendChild(createHotspotActionGroup(tooltip, events, dom))
+    }
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
         document.activeElement?.blur()
     })
     // Forward wheel events from UI overlays to the canvas so the camera zooms
     // instead of the page scrolling (e.g. annotation nav, tooltips, hotspots)
+    window.addEventListener('resize', () => {
+        dom.settingsPanel.classList.add('hidden')
+    })
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
         events.fire('pointerup', event)
@@ -282,18 +197,10 @@ const initUI = (global) => {
         },
         { passive: false },
     )
-    // Handle loading progress updates
-    events.on('progress:changed', (progress) => {
-        dom.loadingText.textContent = `${progress}%`
-        if (progress < 100) {
-            dom.loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${progress}%, white ${progress}%, white 100%)`
-        } else {
-            dom.loadingBar.style.backgroundImage = 'linear-gradient(90deg, #F60 0%, #F60 100%)'
-        }
-    })
     // Hide loading bar once loaded
     events.on('loaded:changed', () => {
         document.getElementById('loadingWrap').classList.add('hidden')
+        if (sidebar) sidebar.style.visibility = 'visible'
     })
     // Info panel
     const updateInfoTab = (tab) => {
@@ -318,10 +225,16 @@ const initUI = (global) => {
     const toggleHelp = () => {
         updateInfoTab(state.inputMode)
         dom.infoPanel.classList.toggle('hidden')
+        if (!dom.infoPanel.classList.contains('hidden')) {
+            dom.settingsPanel.classList.add('hidden')
+        }
     }
     dom.info.addEventListener('click', toggleHelp)
     dom.infoPanel.addEventListener('pointerdown', () => {
         dom.infoPanel.classList.add('hidden')
+    })
+    dom.resetCamera.addEventListener('click', () => {
+        events.fire('inputEvent', 'reset')
     })
     events.on('inputEvent', (event) => {
         if (event === 'toggleHelp') {
@@ -370,13 +283,33 @@ const initUI = (global) => {
         showUI()
     })
     dom.settings.addEventListener('click', () => {
-        dom.settingsPanel.classList.toggle('hidden')
-    })
-    dom.reset.addEventListener('click', (event) => {
-        events.fire('inputEvent', 'reset', event)
-    })
-    dom.frame.addEventListener('click', (event) => {
-        events.fire('inputEvent', 'frame', event)
+        const panel = dom.settingsPanel
+        panel.classList.toggle('hidden')
+        if (panel.classList.contains('hidden')) return
+        const GAP = 8
+        const OFFSET = 6
+        panel.style.visibility = 'hidden'
+        panel.style.position = 'absolute'
+        panel.classList.remove('hidden')
+        const btnRect = dom.settings.getBoundingClientRect()
+        const parentRect = panel.offsetParent.getBoundingClientRect()
+        const panelW = panel.offsetWidth
+        const panelH = panel.offsetHeight
+        let left = btnRect.left - parentRect.left + btnRect.width / 2 - panelW / 2
+        let top = btnRect.top - parentRect.top - panelH - OFFSET
+        if (top < GAP) {
+            top = btnRect.bottom - parentRect.top + OFFSET
+        }
+        if (top + panelH > parentRect.height - GAP) {
+            top = parentRect.height - panelH - GAP
+        }
+        if (left + panelW > parentRect.width - GAP) {
+            left = parentRect.width - panelW - GAP
+        }
+        if (left < GAP) left = GAP
+        panel.style.left = left + 'px'
+        panel.style.top = top + 'px'
+        panel.style.visibility = 'visible'
     })
     // Initialize annotation navigator
     // initAnnotationNav(dom, events, state, global.settings.annotations)
@@ -384,11 +317,7 @@ const initUI = (global) => {
     if (config.noui) {
         dom.ui.classList.add('hidden')
     }
-    // tooltips
-    const tooltip = new Tooltip(dom.tooltip)
-    tooltip.register(dom.resetCamera, 'Reset Camera', 'top')
-    tooltip.register(dom.settings, 'Settings', 'top')
-    tooltip.register(dom.info, 'Controls', 'top')
+
     const isThirdPartyEmbedded = () => {
         try {
             return window.location.hostname !== window.parent.location.hostname
@@ -402,9 +331,6 @@ const initUI = (global) => {
         if (viewUrl.pathname === '/s') {
             viewUrl.pathname = '/view'
         }
-    }
-    if (config.editable) {
-        createSidebar(global, dom)
     }
 }
 
@@ -1395,802 +1321,6 @@ class FlyController {
     }
 }
 
-function showToast(content, opts = {}) {
-    const duration = typeof opts.duration === 'number' ? opts.duration : 1500
-    const type = opts.type || 'default'
-    let toast = document.getElementById('toast')
-    if (!toast) {
-        toast = document.createElement('div')
-        toast.id = 'toast'
-        document.body.appendChild(toast)
-    }
-    toast.textContent = content
-    if (content.length === 1) {
-        toast.classList.add('char')
-    } else {
-        toast.classList.remove('char')
-    }
-    if (type === 'success') {
-        toast.classList.add('success')
-    } else {
-        toast.classList.remove('success')
-    }
-    toast.classList.add('show')
-    if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
-    toast._hideTimeout = setTimeout(() => {
-        toast.classList.remove('show')
-        toast._removeTimeout = setTimeout(() => {}, 300)
-    }, duration)
-}
-class Vec33 {
-    constructor(x = 0, y = 0, z = 0) {
-        this.x = x
-        this.y = y
-        this.z = z
-    }
-    copy(v) {
-        this.x = v.x
-        this.y = v.y
-        this.z = v.z
-        return this
-    }
-    set(x, y, z) {
-        this.x = x
-        this.y = y
-        this.z = z
-        return this
-    }
-    add(v) {
-        this.x += v.x
-        this.y += v.y
-        this.z += v.z
-        return this
-    }
-    sub(v) {
-        this.x -= v.x
-        this.y -= v.y
-        this.z -= v.z
-        return this
-    }
-    mulScalar(s) {
-        this.x *= s
-        this.y *= s
-        this.z *= s
-        return this
-    }
-    lerp(target, t) {
-        this.x += (target.x - this.x) * t
-        this.y += (target.y - this.y) * t
-        this.z += (target.z - this.z) * t
-        return this
-    }
-    length() {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
-    }
-    normalize() {
-        const len = this.length()
-        if (len > 0) {
-            this.mulScalar(1 / len)
-        }
-        return this
-    }
-    cross(v) {
-        const x = this.y * v.z - this.z * v.y
-        const y = this.z * v.x - this.x * v.z
-        const z = this.x * v.y - this.y * v.x
-        this.x = x
-        this.y = y
-        this.z = z
-        return this
-    }
-    toArray(arr, offset = 0) {
-        arr[offset] = this.x
-        arr[offset + 1] = this.y
-        arr[offset + 2] = this.z
-    }
-    fromArray(arr, offset = 0) {
-        this.x = arr[offset]
-        this.y = arr[offset + 1]
-        this.z = arr[offset + 2]
-        return this
-    }
-    transformQuat(q) {
-        const x = this.x,
-            y = this.y,
-            z = this.z
-        const qx = q.x,
-            qy = q.y,
-            qz = q.z,
-            qw = q.w
-        const ix = qw * x + qy * z - qz * y
-        const iy = qw * y + qz * x - qx * z
-        const iz = qw * z + qx * y - qy * x
-        const iw = -qx * x - qy * y - qz * z
-        this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy
-        this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz
-        this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx
-        return this
-    }
-    cloneTransformQuat(q) {
-        const v = this.clone()
-        v.transformQuat(q)
-        return v
-    }
-    static get FORWARD() {
-        return new Vec33(0, 0, -1)
-    }
-    static get UP() {
-        return new Vec33(0, 1, 0)
-    }
-    static get RIGHT() {
-        return new Vec33(1, 0, 0)
-    }
-    clone() {
-        return new Vec33(this.x, this.y, this.z)
-    }
-}
-class Quat3 {
-    constructor(x = 0, y = 0, z = 0, w = 1) {
-        this.x = x
-        this.y = y
-        this.z = z
-        this.w = w
-    }
-    set(x, y, z, w) {
-        this.x = x
-        this.y = y
-        this.z = z
-        this.w = w
-        return this
-    }
-    copy(q) {
-        this.x = q.x
-        this.y = q.y
-        this.z = q.z
-        this.w = q.w
-        return this
-    }
-    clone() {
-        return new Quat3(this.x, this.y, this.z, this.w)
-    }
-    static slerp(a, b, t) {
-        let cosHalfTheta = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
-        if (cosHalfTheta < 0) {
-            b = new Quat3(-b.x, -b.y, -b.z, -b.w)
-            cosHalfTheta = -cosHalfTheta
-        }
-        if (cosHalfTheta > 0.9995) {
-            return new Quat3(
-                a.x + t * (b.x - a.x),
-                a.y + t * (b.y - a.y),
-                a.z + t * (b.z - a.z),
-                a.w + t * (b.w - a.w),
-            ).normalize()
-        }
-        const halfTheta = Math.acos(cosHalfTheta)
-        const sinHalfTheta = Math.sqrt(1 - cosHalfTheta * cosHalfTheta)
-        const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta
-        const ratioB = Math.sin(t * halfTheta) / sinHalfTheta
-        return new Quat3(
-            a.x * ratioA + b.x * ratioB,
-            a.y * ratioA + b.y * ratioB,
-            a.z * ratioA + b.z * ratioB,
-            a.w * ratioA + b.w * ratioB,
-        )
-    }
-    normalize() {
-        const len = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w)
-        if (len > 0) {
-            const invLen = 1 / len
-            this.x *= invLen
-            this.y *= invLen
-            this.z *= invLen
-            this.w *= invLen
-        }
-        return this
-    }
-    mul(q) {
-        const ax = this.x,
-            ay = this.y,
-            az = this.z,
-            aw = this.w
-        const bx = q.x,
-            by = q.y,
-            bz = q.z,
-            bw = q.w
-        this.x = aw * bx + ax * bw + ay * bz - az * by
-        this.y = aw * by - ax * bz + ay * bw + az * bx
-        this.z = aw * bz + ax * by - ay * bx + az * bw
-        this.w = aw * bw - ax * bx - ay * by - az * bz
-        return this
-    }
-    setFromAxisAngle(axis, angleRad) {
-        const halfAngle = angleRad * 0.5
-        const s = Math.sin(halfAngle)
-        this.x = axis.x * s
-        this.y = axis.y * s
-        this.z = axis.z * s
-        this.w = Math.cos(halfAngle)
-        return this
-    }
-    setFromEulerAngles(euler) {
-        const yaw = (euler.y * Math.PI) / 180
-        const pitch = (euler.x * Math.PI) / 180
-        const roll = (euler.z * Math.PI) / 180
-        const cy = Math.cos(yaw * 0.5)
-        const sy = Math.sin(yaw * 0.5)
-        const cp = Math.cos(pitch * 0.5)
-        const sp = Math.sin(pitch * 0.5)
-        const cr = Math.cos(roll * 0.5)
-        const sr = Math.sin(roll * 0.5)
-        this.w = cr * cp * cy + sr * sp * sy
-        this.x = sr * cp * cy - cr * sp * sy
-        this.y = cr * sp * cy + sr * cp * sy
-        this.z = cr * cp * sy - sr * sp * cy
-        return this
-    }
-    transformVector(vec) {
-        return vec.clone().transformQuat(this)
-    }
-    static lookRotation(forward, up) {
-        const z = forward.clone().normalize()
-        const x = up.clone().cross(z).normalize()
-        const y = z.clone().cross(x)
-        const m00 = x.x,
-            m01 = y.x,
-            m02 = z.x
-        const m10 = x.y,
-            m11 = y.y,
-            m12 = z.y
-        const m20 = x.z,
-            m21 = y.z,
-            m22 = z.z
-        const trace = m00 + m11 + m22
-        const q = new Quat3()
-        if (trace > 0) {
-            const s = 0.5 / Math.sqrt(trace + 1)
-            q.w = 0.25 / s
-            q.x = (m21 - m12) * s
-            q.y = (m02 - m20) * s
-            q.z = (m10 - m01) * s
-        } else if (m00 > m11 && m00 > m22) {
-            const s = 2 * Math.sqrt(1 + m00 - m11 - m22)
-            q.w = (m21 - m12) / s
-            q.x = 0.25 * s
-            q.y = (m01 + m10) / s
-            q.z = (m02 + m20) / s
-        } else if (m11 > m22) {
-            const s = 2 * Math.sqrt(1 + m11 - m00 - m22)
-            q.w = (m02 - m20) / s
-            q.x = (m01 + m10) / s
-            q.y = 0.25 * s
-            q.z = (m12 + m21) / s
-        } else {
-            const s = 2 * Math.sqrt(1 + m22 - m00 - m11)
-            q.w = (m10 - m01) / s
-            q.x = (m02 + m20) / s
-            q.y = (m12 + m21) / s
-            q.z = 0.25 * s
-        }
-        return q.normalize()
-    }
-}
-class SmoothDamp3 {
-    constructor(initialValue) {
-        this.value = initialValue.slice()
-        this.target = initialValue.slice()
-        this.velocity = new Array(initialValue.length).fill(0)
-        this.smoothTime = 0
-    }
-    update(dt) {
-        const smoothTime = Math.max(this.smoothTime, 1e-6)
-        const omega = 2 / smoothTime
-        const x = omega * dt
-        const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
-        for (let i = 0; i < this.value.length; i++) {
-            const v = this.velocity[i]
-            const t = this.target[i]
-            let x0 = this.value[i]
-            let xDiff = x0 - t
-            const temp = (v + omega * xDiff) * dt
-            this.velocity[i] = (v - omega * temp) * exp
-            this.value[i] = t + (xDiff + temp) * exp
-        }
-    }
-}
-const v$2 = new Vec33()
-class OtherController {
-    focus = new Vec33()
-    rotation = new Quat3()
-    smoothDamp = new SmoothDamp3(new Array(8).fill(0))
-    distance = 1
-    rotateSpeed = 0.04
-    lerpDuration = 1.5
-    lerpTime = 0
-    targetPose = null
-    startPose = null
-    modelRotation = null
-    originDistance
-    startTransitionDistance
-    currentYaw = 0
-    currentPitch = 0
-    minPitch = 0
-    maxPitch = Math.PI / 2
-    inertiaVelX = 0
-    inertiaVelY = 0
-    inertiaDamping = 0.93
-    inertiaMinSpeed = 0.0005
-    constructor(app, bbox, events, entity) {
-        this.app = app
-        this.bbox = bbox
-        this.events = events
-        this.entity = entity
-        if (['spherical', 'hemispherical', 'cylindrical'].includes(window.sse.settings.model)) {
-            this.model = window.sse.settings.model
-        } else if (!params.spherical) {
-            this.model = 'hemispherical'
-        } else {
-            this.model = 'spherical'
-        }
-        this.isSphericalRot = this.model === 'spherical'
-        this.originModel = this.model
-        this.initviewPose = orterySettings.initview.pose ?? null
-        if (orterySettings.orientation) {
-            const { rotation: r, position: p } = orterySettings.orientation
-            this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
-            this.basePosition = new Vec33(p.x, p.y, p.z)
-        } else {
-            this.baseRotation = modelEntity.localRotation.clone()
-            this.basePosition = modelEntity.localPosition.clone()
-        }
-        this.originPivot = this.bbox.center.clone()
-        this.listenEvents()
-    }
-    listenEvents() {
-        this.events.on('hotspot:editing', (isEdit) => {
-            this.isEditHotspot = isEdit
-        })
-        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
-            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
-            const startPose = {
-                focus: this.focus.clone(),
-                position: new Vec3(
-                    modelEntity.localPosition.x,
-                    modelEntity.localPosition.y,
-                    modelEntity.localPosition.z,
-                ),
-                rotation: modelEntity.localRotation.clone(),
-                distance: this.distance,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
-            }
-            const targetPose = {
-                focus: this.getActualFocus(f),
-                position: new Vec3(p.x, p.y, p.z),
-                rotation: new Quat(r.x, r.y, r.z, r.w),
-                distance: this.getActualDistance(d),
-                yaw,
-                pitch,
-            }
-            this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
-        })
-    }
-    getCustomCenterPivot(pos) {
-        const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-        const worldPivotPos = new Vec3()
-        worldMatrix.transformPoint(pos, worldPivotPos)
-        return worldPivotPos
-    }
-    setInitviewPose() {
-        if (this.initviewPose) {
-            const { position: p, rotation: r } = this.initviewPose
-            modelEntity.setLocalPosition(p.x, p.y, p.z)
-            modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
-        }
-    }
-    reset(pose) {
-        if (!this.originDistance) this.originDistance = pose.distance
-        if (!this.originFocus) this.originFocus = this.bbox.center.clone()
-
-        const isFirstInit = !this.hasInitializedFocus
-        if (isFirstInit) this.hasInitializedFocus = true
-        let startFocus, startDistance
-        let startYaw = 0,
-            startPitch = 0
-        let targetYaw = 0,
-            targetPitch = 0
-
-        if (isFirstInit) {
-            if (this.initviewPose) {
-                targetYaw = startYaw = this.initviewPose.yaw
-                targetPitch = startPitch = this.initviewPose.pitch
-            }
-        } else {
-            startFocus = this.focus.clone()
-            startDistance = this.distance
-            startYaw = this.currentYaw
-            startPitch = this.currentPitch
-            if (this.initviewPose) {
-                targetYaw = this.initviewPose.yaw
-                targetPitch = this.initviewPose.pitch
-            }
-        }
-
-        let distance
-        if (this.initviewPose) {
-            const { focus: f, distanceScale: d } = this.initviewPose
-            this.focus.copy(this.getActualFocus(f))
-            distance = isMobile ? Math.max(pose.distance, this.getActualDistance(d)) : this.getActualDistance(d)
-            if (!this.initviewDistance) this.initviewDistance = distance
-            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
-        } else {
-            const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-            const fovDeg = 50
-            let verticalFovRad
-            if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
-                const hFovRad = (fovDeg * Math.PI) / 180
-                verticalFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect)
-            } else {
-                verticalFovRad = (fovDeg * Math.PI) / 180
-            }
-            const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect)
-            const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
-            const h = this.bbox.halfExtents
-            const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
-            distance = (radius / Math.sin(minFovRad / 2)) * 1.1
-            maxDistance = Math.max(distance, 200)
-
-            this.focus.copy(this.bbox.center)
-            if (!this.initviewDistance) this.initviewDistance = distance
-            if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
-        }
-
-        if (!startFocus) startFocus = this.focus.clone()
-        if (!startDistance) startDistance = distance
-
-        const dir = new Vec33(
-            pose.position.x - this.focus.x,
-            pose.position.y - this.focus.y,
-            pose.position.z - this.focus.z,
-        ).normalize()
-        this.rotation = Quat3.lookRotation(dir, Vec33.UP)
-        this.distance = distance
-
-        if (modelEntity && !this.originEntityRotation) {
-            this.originEntityRotation = modelEntity.localRotation.clone()
-            this.originEntityPos = modelEntity.localPosition.clone()
-        }
-        if (modelEntity && this.originEntityRotation) {
-            this.setupTransition({
-                startPose: {
-                    focus: startFocus,
-                    rotation: modelEntity.localRotation.clone(),
-                    position: modelEntity.localPosition.clone(),
-                    distance: startDistance,
-                    yaw: startYaw,
-                    pitch: startPitch,
-                },
-                targetPose: {
-                    focus: this.initviewFocus,
-                    rotation: this.originEntityRotation.clone(),
-                    position: this.originEntityPos.clone(),
-                    distance: this.initviewDistance,
-                    yaw: targetYaw,
-                    pitch: targetPitch,
-                },
-                onTransitionFinished: null,
-                lerpDuration: HOTSPOT_FADE_TIME,
-            })
-        }
-    }
-    initView() {
-        settings.initview.pose = this.getEntityInfo()
-        this.initviewPose = settings.initview.pose
-        this.originEntityRotation = modelEntity.localRotation.clone()
-        this.originEntityPos = modelEntity.localPosition.clone()
-        this.initviewFocus = this.focus.clone()
-        this.initviewDistance = this.distance
-        showToast('✓ Initial view updated', { duration: 1000, type: 'success' })
-    }
-    update(dt, inputFrame, camera) {
-        const { move, rotate } = inputFrame.read()
-        this.move(move, rotate)
-        this.getPose(camera)
-        this.smooth(dt)
-        this.updateModelEntity(dt)
-        // this.applyInertia()
-    }
-    onEnter(camera) {
-        this.reset(camera)
-    }
-    onExit() {}
-    applyInertia() {
-        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
-        const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
-        if (speed < this.inertiaMinSpeed) {
-            this.inertiaVelX = 0
-            this.inertiaVelY = 0
-            return
-        }
-        const dx = this.inertiaVelX
-        const dy = this.inertiaVelY
-        const speedNorm = Math.min(speed / 0.05, 1)
-        const damping = 0.68 + speedNorm * (this.inertiaDamping - 0.68)
-
-        this.inertiaVelX *= damping
-        this.inertiaVelY *= damping
-
-        if (this.model === 'spherical') {
-            this.sphericalRot(dx, dy)
-        } else {
-            this.setPitchYaw(dx, dy)
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
-        this.syncHierarchyAndRender()
-    }
-    resetPivot() {
-        settings.pivotPos = null
-        this.centerPivot = this.originPivot
-        this.events.fire('inputEvent', 'frame')
-    }
-    savePivot(pos) {
-        settings.pivotPos = pos
-        this.centerPivot = this.getCustomCenterPivot(settings.pivotPos)
-    }
-    resetModelType() {
-        this.model = this.originModel
-    }
-    setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
-        this.targetPose = targetPose
-        this.startPose = startPose
-        this.onTransitionFinished = onTransitionFinished
-        this.lerpTime = 0
-        this.lerpDuration = lerpDuration
-    }
-    saveModelOrientation() {
-        this.baseRotation = modelEntity.localRotation.clone()
-        this.basePosition = modelEntity.localPosition.clone()
-        settings.orientation = {
-            rotation: this.baseRotation,
-            position: this.basePosition,
-        }
-        this.currentYaw = 0
-        this.currentPitch = 0
-        this.updateModelRotation()
-        this.resetModelType()
-        if (this.mode === 'cylindrical') {
-            this.minPitch = 0
-            this.maxPitch = 0
-        } else if (this.model === 'hemispherical') {
-            this.minPitch = 0
-            this.maxPitch = Math.PI / 2
-        }
-        if (this.initviewPose) {
-            this.initView()
-        }
-    }
-    lerp(a, b, t) {
-        return a + (b - a) * t
-    }
-    updateModelEntity(dt) {
-        if (!this.targetPose || !modelEntity) return
-        this.lerpTime += dt
-        let t = Math.min(this.lerpTime / this.lerpDuration, 1)
-        t = t * t * (3 - 2 * t)
-        this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
-        this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
-        const newPos = new Vec33(this.startPose.position.x, this.startPose.position.y, this.startPose.position.z).lerp(
-            this.targetPose.position,
-            t,
-        )
-        modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
-        if (this.isSphericalRot) {
-            modelEntity.localRotation = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
-        } else {
-            this.currentYaw = this.lerp(this.startPose.yaw, this.targetPose.yaw, t)
-            this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
-        if (t >= 0.99 && this.onTransitionFinished) this.onTransitionFinished()
-        if (t >= 1) {
-            this.focus.copy(this.targetPose.focus)
-            this.distance = this.clampDistance(this.targetPose.distance, t)
-            modelEntity.localPosition.copy(this.targetPose.position)
-            if (this.isSphericalRot) modelEntity.localRotation.copy(this.targetPose.rotation)
-            else {
-                this.currentYaw = this.targetPose.yaw
-                this.currentPitch = this.targetPose.pitch
-                this.hemisphericalRot(this.currentYaw, this.currentPitch)
-            }
-            this.updateModelRotation()
-            this.targetPose = null
-            this.startPose = null
-        }
-        this.syncHierarchyAndRender()
-    }
-    updateModelRotation() {
-        this.modelRotation = modelEntity.localRotation.clone()
-    }
-    syncHierarchyAndRender() {
-        modelEntity.syncHierarchy()
-        modelEntity._dirtyLocal = true
-        modelEntity._dirtyWorld = true
-        this.app.renderNextFrame = true
-    }
-    getEntityInfo() {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-        return {
-            rotation: modelEntity.localRotation.clone(),
-            position: modelEntity.localPosition.clone(),
-            distanceScale: this.distance / this.originDistance,
-            focus: {
-                x: (this.focus.x - this.originFocus.x) / aspect,
-                y: (this.focus.y - this.originFocus.y) / aspect,
-                z: (this.focus.z - this.originFocus.z) / aspect,
-                aspect,
-                distance: this.originDistance,
-            },
-            pitch: this.currentPitch,
-            yaw: this.currentYaw,
-        }
-    }
-    getActualFocus(f) {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-        const aspectScale = aspect > f.aspect ? f.aspect : aspect
-        const distanceScale = aspect > f.aspect ? 1 : this.originDistance / f.distance
-        return new Vec3(
-            this.originFocus.x + f.x * distanceScale * aspectScale,
-            this.originFocus.y + f.y * distanceScale * aspectScale,
-            this.originFocus.z + f.z * distanceScale * aspectScale,
-        )
-    }
-    getActualDistance(distanceScale) {
-        return this.originDistance * distanceScale
-    }
-    clampDistance(distance) {
-        if (!orterySettings.lockZoomIn.locked) return Math.min(maxDistance, Math.max(minDistance, distance))
-        return Math.min(maxDistance, Math.max(this.getActualDistance(orterySettings.lockZoomIn.value), distance))
-    }
-    move(move, rotate) {
-        if (this.isEditHotspot) return
-        const [x, y, z] = move
-        const isZooming = z !== 0
-        const isPanning = x !== 0 || y !== 0
-        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
-        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
-        this.distance = this.clampDistance(this.distance + this.distance * move[2])
-        v$2.copy(this.rightCam).mulScalar(move[0])
-        this.focus.add(v$2)
-        v$2.copy(this.upCam).mulScalar(move[1])
-        this.focus.add(v$2)
-        let didRotate = false
-        if (!this.initPivot) {
-            this.centerPivot = settings.pivotPos ? this.getCustomCenterPivot(settings.pivotPos) : this.originPivot
-            this.initPivot = true
-        }
-        if (modelEntity && this.modelRotation) {
-            const deltaX = rotate[0]
-            const deltaY = rotate[1]
-            if (deltaX !== 0 || deltaY !== 0) {
-                this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
-                this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
-                if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
-                else {
-                    if (this.cameraElevation === undefined) {
-                        if (!settings.orientation) {
-                            this.cameraElevation = this.getCameraElevation()
-                            if (this.model === 'cylindrical') {
-                                this.maxPitch = this.cameraElevation
-                                this.minPitch = this.cameraElevation
-                            } else {
-                                this.minPitch -= this.cameraElevation
-                                this.maxPitch -= this.cameraElevation
-                            }
-                        } else this.cameraElevation = 0
-                    }
-                    this.setPitchYaw(deltaX, deltaY)
-                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                }
-                this.syncHierarchyAndRender()
-                didRotate = true
-            }
-        }
-        if (didRotate) {
-            this.events.fire('hotspot:hide-all')
-        }
-        if (isZooming || isPanning || didRotate) {
-            // this.hotspotManager.stopAutoPlay()
-            this.updateModelRotation()
-            this.targetPose = null
-            this.startPose = null
-        }
-    }
-    getCameraElevation() {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-        const camPos = this.focus.clone().sub(forward.mulScalar(this.distance))
-        const dir = new Vec3(
-            camPos.x - this.centerPivot.x,
-            camPos.y - this.centerPivot.y,
-            camPos.z - this.centerPivot.z,
-        )
-        return Math.atan2(dir.y, Math.sqrt(dir.x * dir.x + dir.z * dir.z))
-    }
-    setPitchYaw(deltaX, deltaY) {
-        const maxDelta = 30
-        const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-        const scale = magnitude > maxDelta ? maxDelta / magnitude : 1
-        const safeDeltaX = deltaX * scale
-        const safeDeltaY = deltaY * scale
-        this.currentYaw =
-            ((((this.currentYaw + safeDeltaX * this.rotateSpeed + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
-                (2 * Math.PI)) -
-            Math.PI
-        this.currentPitch += safeDeltaY * this.rotateSpeed
-        this.currentPitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.currentPitch))
-    }
-    sphericalRot(deltaX, deltaY) {
-        const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
-        const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
-        const rotateQuat = yawQuat.mul(pitchQuat).normalize()
-        v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
-        v$2.transformQuat(rotateQuat)
-        modelEntity.localPosition.copy(this.centerPivot).add(v$2)
-        modelEntity.localRotation.copy(rotateQuat.mul(this.modelRotation).normalize())
-        this.modelRotation.copy(modelEntity.localRotation)
-    }
-    hemisphericalRot(yaw, pitch) {
-        const up = new Vec3(0, 1, 0)
-        this.baseRotation.transformVector(up, up)
-        up.normalize()
-        if (up.dot(Vec3.UP) < 0) up.mulScalar(-1)
-        const quatYaw = new Quat3().setFromAxisAngle(up, yaw)
-        const quatPitch = new Quat3().setFromAxisAngle(this.rightCam, pitch)
-        const combinedRotateQuat = quatPitch.mul(quatYaw).normalize()
-        const offset = this.basePosition.clone().sub(this.centerPivot)
-        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
-        modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
-        modelEntity.localRotation.copy(combinedRotateQuat.mul(this.baseRotation).normalize())
-    }
-    rotateOffsetByQuat(offset, q) {
-        const vx = offset.x,
-            vy = offset.y,
-            vz = offset.z
-        const qx = q.x,
-            qy = q.y,
-            qz = q.z,
-            qw = q.w
-        const ix = qw * vx + qy * vz - qz * vy
-        const iy = qw * vy + qz * vx - qx * vz
-        const iz = qw * vz + qx * vy - qy * vx
-        const iw = -qx * vx - qy * vy - qz * vz
-        return new Vec3(
-            ix * qw + iw * -qx + iy * -qz - iz * -qy,
-            iy * qw + iw * -qy + iz * -qx - ix * -qz,
-            iz * qw + iw * -qz + ix * -qy - iy * -qx,
-        )
-    }
-    smooth(dt) {
-        const { focus, rotation, smoothDamp } = this
-        const { value, target } = smoothDamp
-        focus.toArray(target, 0)
-        target[3] = rotation.x
-        target[4] = rotation.y
-        target[5] = rotation.z
-        target[6] = rotation.w
-        target[7] = this.distance
-        smoothDamp.update(dt)
-        const q = new Quat3(value[3], value[4], value[5], value[6]).normalize()
-        value[3] = q.x
-        value[4] = q.y
-        value[5] = q.z
-        value[6] = q.w
-    }
-    getPose(pose) {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-        pose.position = this.focus.clone().sub(forward.mulScalar(this.distance))
-        pose.distance = this.distance
-    }
-}
 const p = new Pose()
 class OrbitController {
     controller
@@ -2636,7 +1766,7 @@ class CameraManager {
     controllers
     // holds the camera state
     camera = new Camera()
-    constructor(global, bbox, app, entity, collider = null) {
+    constructor(global, bbox, entity, collider = null) {
         const { events, settings, state } = global
         const defaultFov = 50
         const resetCamera = createFrameCamera(bbox, defaultFov)
@@ -2661,7 +1791,7 @@ class CameraManager {
             fly: new FlyController(),
             walk: new WalkController(),
             anim: animTrack ? new AnimController(animTrack) : null,
-            ortery: new OtherController(app, bbox, events, entity),
+            ortery: new OtherController({ global, bbox }),
         }
         events.fire('controllers:created', this.controllers)
         this.controllers.orbit.fov = resetCamera.fov
@@ -2730,9 +1860,7 @@ class CameraManager {
                     startTransition()
                     break
                 case 'reset':
-                    state.cameraMode = 'orbit'
-                    this.controllers.orbit.goto(resetCamera)
-                    startTransition()
+                    this.controllers.ortery.reset()
                     break
                 case 'playPause':
                     if (state.hasAnimation) {
@@ -3213,6 +2341,7 @@ class InputController {
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
                 return
             if (event.key === 'Escape') {
+                events.fire('hotspot:add-cancelled')
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
                     state.gamingControls = false
@@ -3223,11 +2352,14 @@ class InputController {
                 }
             } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
                 switch (event.key) {
-                    case 'f':
-                        // events.fire('inputEvent', 'frame', event)
+                    case 'p':
+                        events.fire('hotspot:toggle-play')
+                        break
+                    case 't':
+                        events.fire('hotspot:hotspot-btns',)
                         break
                     case 'r':
-                        // events.fire('inputEvent', 'reset', event)
+                        events.fire('inputEvent', 'reset', event)
                         break
                 }
             }
@@ -4563,7 +3695,7 @@ class Viewer {
                     app.renderNextFrame = true
                 })
             }
-            this.cameraManager = new CameraManager(global, sceneBound, app, camera, collider)
+            this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
@@ -6754,47 +5886,36 @@ const createImage = (url) => {
     img.src = url
     return img
 }
-const createProgressFetch = async (input) => {
-    try {
-        const response = await fetch(input)
-        if (!response.ok) throw new Error('HTTP error')
-
-        const total = Number(response.headers.get('content-length')) || 0
-        if (!response.body || total <= 0) return response
-
-        const reader = response.body.getReader()
-        const stream = new ReadableStream({
-            start(controller) {
-                let loaded = 0
-                function pump() {
-                    return reader.read().then(({ done, value }) => {
-                        if (done) {
-                            controller.close()
-                            return
-                        }
-                        loaded += value.length
-                        controller.enqueue(value)
-                        return pump()
-                    })
-                }
-                return pump()
-            },
-        })
-
-        return new Response(stream, {
-            headers: response.headers,
-            status: response.status,
-            statusText: response.statusText,
-        })
-    } catch (e) {
-        return fetch(input)
-    }
+const createProgressFetch = (input, initPoster) => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('GET', input)
+        xhr.responseType = 'arraybuffer'
+        xhr.onprogress = (e) => {
+            if (e.lengthComputable) {
+                updateProgress(e.loaded, e.total, initPoster)
+            }
+        }
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                updateProgress(xhr.response.byteLength, xhr.response.byteLength, initPoster)
+                const blob = new Blob([xhr.response])
+                resolve(new Response(blob))
+            } else {
+                reject(new Error('HTTP error ' + xhr.status))
+            }
+        }
+        xhr.onerror = () => reject(new Error('Network error'))
+        xhr.send()
+    })
 }
+
 const url = new URL(location.href)
 const posterUrl = url.searchParams.get('poster')
 const skyboxUrl = url.searchParams.get('skybox')
 const voxelUrl = url.searchParams.get('voxel')
-const { settings } = window.sse
+const { settings } = window?.sse
+const hasPoster = !!posterUrl
 const config = {
     poster: posterUrl && createImage(posterUrl),
     skyboxUrl,
@@ -6899,7 +6020,6 @@ const main = async (canvas, settingsJson, config) => {
             },
         )
     }
-    // Create the viewer
     return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad, dom)
 }
 const { poster } = config
