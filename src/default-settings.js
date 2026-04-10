@@ -8,6 +8,7 @@ const defaultSettings = {
     lockZoomIn: { value: 11, locked: false },
     pivotPos: null,
     initview: { pose: null },
+    inertia: true,
     orientation: null,
     hotspots: [],
 }

@@ -15,14 +15,17 @@ class OtherController {
     currentPitch = 0
     minPitch = 0
     maxPitch = Math.PI / 2
-    inertiaVelX = 0
-    inertiaVelY = 0
-    inertiaDamping = 0.93
-    inertiaMinSpeed = 0.0005
     model = 'spherical'
     minDistance
     maxDistance = 200
     resetPose = null
+    inertiaVelX = 0
+    inertiaVelY = 0
+    inertiaDamping = 0.93
+    inertiaMinSpeed = 0.0005
+    pointerMoveHistory = []
+    isFlick = false
+    inertiaFlickThreshold = 0.005
     constructor({ global, bbox, minDistance }) {
         const { app, events, settings } = global
         this.app = app
@@ -56,6 +59,19 @@ class OtherController {
         this.events.on('hotspot:editing', (isEdit) => {
             this.isEditHotspot = isEdit
         })
+        this.events.on('inputEvent', (eventName, event) => {
+            switch (eventName) {
+                case 'pointermove':
+                    this.savePointerMoveHistory(event)
+                    break
+                case 'pointerdown':
+                    this.closeInertia()
+                    break
+                case 'pointerup':
+                    this.calcInertia()
+                    break
+            }
+        })
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
             const startPose = {
@@ -86,6 +102,32 @@ class OtherController {
         const worldPivotPos = new Vec3()
         worldMatrix.transformPoint(pos, worldPivotPos)
         return worldPivotPos
+    }
+    savePointerMoveHistory(event) {
+        this.pointerMoveHistory.push({ t: performance.now(), x: event.clientX, y: event.clientY })
+        if (this.pointerMoveHistory.length > 20) this.pointerMoveHistory.shift()
+    }
+    calcInertia() {
+        const now = performance.now()
+        const recent = this.pointerMoveHistory.filter((e) => now - e.t <= 80)
+        let isFlick = false
+        if (recent.length >= 2) {
+            const first = recent[0]
+            const last = recent[recent.length - 1]
+            const dt = last.t - first.t || 1
+            const dist = Math.sqrt((last.x - first.x) ** 2 + (last.y - first.y) ** 2)
+            isFlick = dist / dt > 0.5
+        }
+        this.isFlick = isFlick
+        if (!isFlick) {
+            this.nertiaVelX = 0
+            this.inertiaVelY = 0
+        }
+        this.pointerMoveHistory = []
+    }
+    closeInertia() {
+        this.pointerMoveHistory = []
+        this.isFlick = false
     }
     reset(pose) {
         if (this.isResetting) return
@@ -190,7 +232,7 @@ class OtherController {
         this.move(move, rotate)
         this.smooth(dt)
         this.updateModelEntity(dt)
-        // this.applyInertia()
+        if (this.settings.inertia && this.isFlick) this.applyInertia()
         this.getPose(camera)
     }
     getDeafultDistance() {
@@ -437,8 +479,10 @@ class OtherController {
             const deltaX = rotate[0]
             const deltaY = rotate[1]
             if (deltaX !== 0 || deltaY !== 0) {
-                this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
-                this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
+                if(this.settings.inertia){
+                    this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
+                    this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
+                }
                 if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
                 else {
                     if (this.cameraElevation === undefined) {

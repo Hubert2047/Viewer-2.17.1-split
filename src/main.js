@@ -86,8 +86,9 @@ function viewerSettingsSection(el, global) {
     container.appendChild(bgRow)
 
     const toggles = [
-        { key: 'lockZoomIn', label: 'Lock Zoom In', active: settings.lockZoomIn.locked, event: 'lock-zoom-in' },
         { key: 'initalview', label: 'Initial View', active: !!settings.initview.pose, event: 'initview' },
+        { key: 'lockZoomIn', label: 'Lock Zoom In', active: settings.lockZoomIn.locked, event: 'lock-zoom-in' },
+        { key: 'inertia', label: 'Inertia', active: settings.inertia, event: 'inertia' },
     ]
 
     toggles.forEach(({ key, label, active, event }) => {
@@ -256,6 +257,7 @@ const initUI = (global) => {
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
         events.fire('pointerup', event)
+        events.fire('inputEvent', 'pointerup', event)
     })
     dom.ui.addEventListener(
         'wheel',
@@ -1759,6 +1761,7 @@ class InputController {
         })
         canvas.addEventListener('pointermove', (event) => {
             events.fire('inputEvent', 'interact', event)
+            events.fire('inputEvent', 'pointermove', event)
         })
         // Detect double taps manually because iOS doesn't send dblclick events
         const lastTap = { time: 0, x: 0, y: 0 }
@@ -1782,6 +1785,7 @@ class InputController {
                 lastTap.x = event.clientX
                 lastTap.y = event.clientY
             }
+            events.fire('inputEvent', 'pointerdown', event)
         })
         // Desktop click-to-walk: accumulate displacement during mouse drag
         canvas.addEventListener('pointermove', (event) => {
@@ -3195,7 +3199,10 @@ class Viewer {
                 showToast(value ? '✓ Initial view updated' : '✓ Switched to default view', {
                     duration: 1000,
                     type: 'success',
-                })  
+                })
+            })
+            events.on('viewer:inertia', (value) => {
+                global.settings.inertia = value
             })
             applyCamera(this.cameraManager.camera)
             if (collider) {
