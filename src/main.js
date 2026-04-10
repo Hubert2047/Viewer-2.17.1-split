@@ -3769,6 +3769,10 @@ if (poster) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!checkWebGL()) {
+        showNotSupportWebGL()
+        return
+    }
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)

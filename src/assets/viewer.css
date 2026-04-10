@@ -1236,3 +1236,41 @@ button {
 #toast.success {
   background: rgba(34, 150, 76, 0.95);
 }
+.webgl-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+  font-family: sans-serif;
+  text-align: center;
+  margin: 0;
+
+  background-color: #ffffff;
+  color: #1f1f1f;
+}
+
+.webgl-error h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #111111;
+}
+
+.webgl-error p {
+  margin: 0;
+  font-size: 14px;
+  max-width: 320px;
+  line-height: 1.6;
+  color: #333333;
+}
+
+.webgl-error p.hint {
+  font-size: 13px;
+  color: #666666;
+  max-width: 360px;
+}
+
+.webgl-error svg {
+  stroke: #f59e0b;
+}
