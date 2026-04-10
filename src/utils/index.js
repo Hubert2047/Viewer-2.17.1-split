@@ -12,25 +12,16 @@ function updateProgress(loaded, total, initPoster) {
     const progress = (loaded / total) * 100
     if (total > 0) {
         if (progress === 100) modelLoaded = true
-        const displayProgress = Math.min((loaded / total) * 100, 99)
+        const displayProgress = progress
         const loadedSize = formatFileSize(loaded)
         const totalSize = formatFileSize(total)
-        if (fileSizeInfo) {
-            fileSizeInfo.textContent = `${loadedSize} / ${totalSize}`
-        }
-
-        if (loadingText) {
-            loadingText.textContent = `${Math.round(displayProgress)}%`
-        }
+        if (fileSizeInfo) fileSizeInfo.textContent = `${loadedSize} / ${totalSize}`
+        if (loadingText) loadingText.textContent = `${Math.round(displayProgress)}%`
         if (loadingBar)
             loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${displayProgress}%, white ${displayProgress}%, white 100%)`
     } else {
-        if (fileSizeInfo) {
-            fileSizeInfo.textContent = 'Loading...'
-        }
-        if (loadingText) {
-            loadingText.textContent = '0%'
-        }
+        if (fileSizeInfo) fileSizeInfo.textContent = 'Loading...'
+        if (loadingText) loadingText.textContent = '0%'
     }
     if (initPoster) {
         const poster = document.getElementById('poster')

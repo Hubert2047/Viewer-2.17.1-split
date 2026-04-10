@@ -1,30 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">
-    <meta property="og:title" content="3D Model Viewer" />
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <base href>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="viewer.css">
-    <link
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:title" content="3D Model Viewer" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css" />
+        <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
-    <script>
-        const time = Date.now()
-        const params = new URLSearchParams(window.location.search)
-        if (!params.has('nocache')) {
-            const url = new URL(window.location.href)
-            url.searchParams.set('nocache', time)
-            window.location.replace(url.toString())
-        }
-    </script>      
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-      <div id="ui">
+        <script>
+            const time = Date.now()
+            const params = new URLSearchParams(window.location.search)
+            if (!params.has('nocache')) {
+                const url = new URL(window.location.href)
+                url.searchParams.set('nocache', time)
+                window.location.replace(url.toString())
+            }
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
             <div id="poster"></div>
             <div id="loadingWrap">
                 <div id="fileSizeInfo"></div>
@@ -33,9 +35,62 @@
             </div>
             <div id="tooltip"></div>
         </div>
-</body>
-<script>
-            window.sse = {"settings":{"version":2,"contentUrl":"car.ply","autoHideUI":false,"background":{"color":"#c01c28"},"startMode":"default","model":"spherical","lockZoomIn":{"value":11,"locked":false},"pivotPos":null,"initview":{"pose":null},"orientation":null,"hotspots":[{"id":"73934f1a-e503-4857-a994-ba302c0bd371","autoPlay":{"time":3000},"button":{"title":"hotspot1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"hotspot1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":160.99999039046344,"originHeight":53.999998900563355,"topLeft":{"x":13.323797947322342,"y":-12.964899786590635,"z":18.646382457970734},"botRight":{"x":9.86806993391229,"y":-10.130238605188113,"z":13.064889774103285},"fontSize":16},"focus":{"position":{"x":1.9526711073112093,"y":-3.0539483314269127,"z":5.754478454589844}},"dot":{"style":"circle","strokeColor":"white","stroke":1,"size":30,"topLeft":{"x":-4.720547554340466,"y":-7.818470513433328,"z":1.0386198332023255},"botRight":{"x":-6.14915017578394,"y":-6.486345133745812,"z":0.4326921174811318}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"distanceScale":1,"focus":{"x":0,"y":0,"z":0,"aspect":0.9328512396694215,"distance":55.55547295995863},"pitch":0,"yaw":0}}],"tonemapping":"none"}}
-        </script>
-<script src="./viewer.js"></script>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                version: 2,
+                contentUrl: 'car.ply',
+                autoHideUI: false,
+                background: { color: '#000000' },
+                startMode: 'default',
+                model: 'spherical',
+                lockZoomIn: { locked: true, value: 0.797967169502648 },
+                pivotPos: null,
+                initview: { pose: null },
+                orientation: null,
+                hotspots: [
+                    {
+                        id: '73934f1a-e503-4857-a994-ba302c0bd371',
+                        autoPlay: { time: 3000 },
+                        button: { title: 'hotspot1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'hotspot1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 160.99999039046344,
+                            originHeight: 53.999998900563355,
+                            topLeft: { x: 13.323797947322342, y: -12.964899786590635, z: 18.646382457970734 },
+                            botRight: { x: 9.86806993391229, y: -10.130238605188113, z: 13.064889774103285 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 1.9526711073112093, y: -3.0539483314269127, z: 5.754478454589844 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: 'white',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -4.720547554340466, y: -7.818470513433328, z: 1.0386198332023255 },
+                            botRight: { x: -6.14915017578394, y: -6.486345133745812, z: 0.4326921174811318 },
+                        },
+                        entityInfo: {
+                            rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
+                            position: { x: 0, y: 0, z: 0 },
+                            distanceScale: 1,
+                            focus: { x: 0, y: 0, z: 0, aspect: 0.9328512396694215, distance: 55.55547295995863 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                ],
+                tonemapping: 'none',
+            },
+        }
+    </script>
+    <script src="./viewer.js"></script>
 </html>

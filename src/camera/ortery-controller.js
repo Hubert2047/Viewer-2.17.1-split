@@ -20,13 +20,14 @@ class OtherController {
     inertiaDamping = 0.93
     inertiaMinSpeed = 0.0005
     model = 'spherical'
-    minDistance = 11
+    minDistance
     maxDistance = 200
     resetPose = null
-    constructor({ global, bbox }) {
+    constructor({ global, bbox, minDistance }) {
         const { app, events, settings } = global
         this.app = app
         this.bbox = bbox
+        this.minDistance = minDistance
         this.events = events
         this.settings = settings
         if (['spherical', 'hemispherical', 'cylindrical'].includes(settings.model)) {
@@ -358,7 +359,7 @@ class OtherController {
         return {
             rotation: modelEntity.localRotation.clone(),
             position: modelEntity.localPosition.clone(),
-            distanceScale: this.distance / this.originDistance,
+            distanceScale: this.getCurrentDistanceScale(),
             focus: {
                 x: (this.focus.x - this.originFocus.x) / aspect,
                 y: (this.focus.y - this.originFocus.y) / aspect,
@@ -369,6 +370,9 @@ class OtherController {
             pitch: this.currentPitch,
             yaw: this.currentYaw,
         }
+    }
+    getCurrentDistanceScale(){
+        return this.distance / this.originDistance
     }
     getActualFocus(f) {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height

@@ -86,11 +86,11 @@ function viewerSettingsSection(el, global) {
     container.appendChild(bgRow)
 
     const toggles = [
-        { key: 'lockZoomIn', label: 'Lock Zoom In' },
-        { key: 'initalview', label: 'Initial View' },
+        { key: 'lockZoomIn', label: 'Lock Zoom In', active: settings.lockZoomIn.locked, event: 'lock-zoom-in' },
+        { key: 'initalview', label: 'Initial View', active: !!settings.initview.pose, event: 'initview' },
     ]
 
-    toggles.forEach(({ key, label }) => {
+    toggles.forEach(({ key, label, active, event }) => {
         const row = document.createElement('div')
         row.classList.add('viewer-setting-row', 'clickable')
 
@@ -104,15 +104,14 @@ function viewerSettingsSection(el, global) {
         knob.classList.add('toggle-knob')
         toggle.appendChild(knob)
 
-        const value = !!settings[key]
-        if (value) toggle.classList.add('active')
+        if (active) toggle.classList.add('active')
 
         row.addEventListener('click', () => {
             const newValue = !toggle.classList.contains('active')
             toggle.classList.toggle('active', newValue)
             settings[key] = newValue
 
-            global.events?.fire?.(`viewer:${key}-changed`, newValue)
+            global.events.fire(`viewer:${event}`, newValue)
         })
 
         row.appendChild(labelEl)
@@ -1245,6 +1244,7 @@ const createFrameCamera = (bbox, fov) => {
 class CameraManager {
     update
     controllers
+    minDistance = 11
     // holds the camera state
     camera = new Camera()
     constructor(global, bbox, entity, collider = null) {
@@ -1272,7 +1272,7 @@ class CameraManager {
             fly: new FlyController(),
             walk: new WalkController(),
             anim: animTrack ? new AnimController(animTrack) : null,
-            ortery: new OtherController({ global, bbox }),
+            ortery: new OtherController({ global, bbox, minDistance: this.minDistance }),
         }
         events.fire('controllers:created', this.controllers)
         this.controllers.orbit.fov = resetCamera.fov
@@ -3177,6 +3177,15 @@ class Viewer {
                 })
             }
             this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
+            events.on('viewer:lock-zoom-in', (value) => {
+                const lockZoomIn = {
+                    locked: value,
+                    value: value
+                        ? this.cameraManager.controllers[state.cameraMode].getCurrentDistanceScale()
+                        : this.cameraManager.controllers.minDistance,
+                }
+                global.settings.lockZoomIn = lockZoomIn
+            })
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
