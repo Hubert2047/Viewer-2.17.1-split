@@ -48,6 +48,7 @@ class OtherController {
             this.baseRotation = modelEntity.localRotation.clone()
             this.basePosition = modelEntity.localPosition.clone()
         }
+
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -86,20 +87,13 @@ class OtherController {
         worldMatrix.transformPoint(pos, worldPivotPos)
         return worldPivotPos
     }
-    setInitviewPose() {
-        if (this.initviewPose) {
-            const { position: p, rotation: r } = this.initviewPose
-            modelEntity.setLocalPosition(p.x, p.y, p.z)
-            modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
-        }
-    }
     reset(pose) {
         if (this.isResetting) return
         if (!pose) pose = this.resetPose
         v$2.copy(pose.forward)
 
         if (!this.originDistance) this.originDistance = pose.distance
-        if (!this.originFocus) this.originFocus = pose.focus.clone()
+        if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
 
         const isFirstInit = !this.hasInitializedFocus
         if (isFirstInit) this.hasInitializedFocus = true
@@ -144,18 +138,6 @@ class OtherController {
 
         this.rotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
         this.distance = distance
-        // Sync smoothDamp value để tránh jump frame đầu
-        this.smoothDamp.value[3] = this.rotation.x
-        this.smoothDamp.value[4] = this.rotation.y
-        this.smoothDamp.value[5] = this.rotation.z
-        this.smoothDamp.value[6] = this.rotation.w
-        this.smoothDamp.value[7] = this.distance
-        // Reset velocity để không có momentum cũ
-        this.smoothDamp.velocity[3] = 0
-        this.smoothDamp.velocity[4] = 0
-        this.smoothDamp.velocity[5] = 0
-        this.smoothDamp.velocity[6] = 0
-        this.smoothDamp.velocity[7] = 0
 
         if (modelEntity && !this.originEntityRotation) {
             this.originEntityRotation = modelEntity.localRotation.clone()
@@ -188,13 +170,20 @@ class OtherController {
         }
     }
     initView() {
-        settings.initview.pose = this.getEntityInfo()
-        this.initviewPose = settings.initview.pose
+        const pose = this.getEntityInfo()
+        this.initviewPose = pose
         this.originEntityRotation = modelEntity.localRotation.clone()
         this.originEntityPos = modelEntity.localPosition.clone()
         this.initviewFocus = this.focus.clone()
         this.initviewDistance = this.distance
-        showToast('✓ Initial view updated', { duration: 1000, type: 'success' })
+        return pose
+    }
+    resetInitView() {
+        this.initviewPose = null
+        this.originEntityRotation = this.baseRotation.clone()
+        this.originEntityPos = this.basePosition.clone()
+        this.initviewDistance = this.resetPose.distance
+        this.initviewFocus = this.resetPose.focus.clone()
     }
     update(dt, inputFrame, camera) {
         const { move, rotate } = inputFrame.read()
@@ -204,7 +193,7 @@ class OtherController {
         // this.applyInertia()
         this.getPose(camera)
     }
-    onEnter(camera) {
+    getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
         const fovDeg = 50
         let verticalFovRad
@@ -218,9 +207,11 @@ class OtherController {
         const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
         const h = this.bbox.halfExtents
         const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
-        const distance = (radius / Math.sin(minFovRad / 2)) * 1.1
+        return (radius / Math.sin(minFovRad / 2)) * 1.1
+    }
+    onEnter(camera) {
+        const distance = this.getDeafultDistance()
         this.maxDistance = Math.max(distance, 200)
-
         const pitchRad = (camera.angles.x * Math.PI) / 180
         const yawRad = (camera.angles.y * Math.PI) / 180
         const forward = new Vec33(
@@ -228,14 +219,44 @@ class OtherController {
             Math.sin(pitchRad),
             -Math.cos(yawRad) * Math.cos(pitchRad),
         ).normalize()
-
         this.resetPose = {
             ...camera,
             distance,
             forward,
             focus: this.bbox.center.clone(),
         }
+        if (this.initviewPose) {
+            const { position: p, rotation: r } = this.initviewPose
+            this.storeDistance = distance
+            modelEntity.setLocalPosition(p.x, p.y, p.z)
+            modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
+        }
         this.reset(this.resetPose)
+    }
+
+    resetToInitView() {
+        if (!this.initviewPose) return
+        const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = this.initviewPose
+
+        this.focus.copy(this.getActualFocus(f))
+        this.distance = this.getActualDistance(d)
+
+        modelEntity.setLocalPosition(p.x, p.y, p.z)
+        modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
+
+        if (this.model !== 'spherical') {
+            this.currentYaw = yaw || 0
+            this.currentPitch = pitch || 0
+            this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        }
+
+        this.updateModelRotation()
+        this.syncHierarchyAndRender()
+
+        this.initviewFocus = this.focus.clone()
+        this.initviewDistance = this.distance
+        this.originEntityRotation = modelEntity.localRotation.clone()
+        this.originEntityPos = modelEntity.localPosition.clone()
     }
     onExit() {}
     applyInertia() {
@@ -371,7 +392,7 @@ class OtherController {
             yaw: this.currentYaw,
         }
     }
-    getCurrentDistanceScale(){
+    getCurrentDistanceScale() {
         return this.distance / this.originDistance
     }
     getActualFocus(f) {
@@ -532,10 +553,10 @@ class OtherController {
         value[5] = q.z
         value[6] = q.w
     }
-  getPose(pose) {
-    const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-    const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
-    pose.position = newPos
-    pose.distance = this.distance
-}
+    getPose(pose) {
+        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
+        const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
+        pose.position = newPos
+        pose.distance = this.distance
+    }
 }

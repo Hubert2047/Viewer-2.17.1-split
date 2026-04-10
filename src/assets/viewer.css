@@ -1187,8 +1187,52 @@ button {
   border: none;
 }
 .color-input::-moz-color-swatch {
-    border: none;
+  border: none;
 }
 .color-input::-webkit-color-swatch {
-    border: none;
+  border: none;
+}
+#toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 4vh;
+  min-width: 40px;
+  max-width: 90%;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+  z-index: 9999;
+  display: inline-block;
+  line-height: 1;
+}
+
+#toast.char {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+#toast.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+#toast.success {
+  background: rgba(34, 150, 76, 0.95);
 }

@@ -110,7 +110,6 @@ function viewerSettingsSection(el, global) {
             const newValue = !toggle.classList.contains('active')
             toggle.classList.toggle('active', newValue)
             settings[key] = newValue
-
             global.events.fire(`viewer:${event}`, newValue)
         })
 
@@ -3185,6 +3184,18 @@ class Viewer {
                         : this.cameraManager.controllers.minDistance,
                 }
                 global.settings.lockZoomIn = lockZoomIn
+            })
+            events.on('viewer:initview', (value) => {
+                if (value) {
+                    global.settings.initview.pose = this.cameraManager.controllers[state.cameraMode].initView()
+                } else {
+                    this.cameraManager.controllers[state.cameraMode].resetInitView()
+                    global.settings.initview.pose = null
+                }
+                showToast(value ? '✓ Initial view updated' : '✓ Switched to default view', {
+                    duration: 1000,
+                    type: 'success',
+                })  
             })
             applyCamera(this.cameraManager.camera)
             if (collider) {
