@@ -25062,3 +25062,2368 @@ const initAnnotationNav = (dom, events, state, annotations) => {
     // Initial state
     updateDisplay()
 }
+// clamp the vertices of the hotspot so it is never clipped by the near or far plane
+const depthClampGlsl = `
+    float f = gl_Position.z / gl_Position.w;
+    if (f > 1.0) {
+        gl_Position.z = gl_Position.w;
+    } else if (f < -1.0) {
+        gl_Position.z = -gl_Position.w;
+    }
+`
+const depthClampWgsl = `
+    let f = output.position.z / output.position.w;
+    if (f > 1.0) {
+        output.position.z = output.position.w;
+    } else if (f < -1.0) {
+        output.position.z = -output.position.w;
+    }
+`
+const vec$2 = new Vec3()
+/**
+ * A script for creating interactive 3D annotations in a scene. Each annotation consists of:
+ *
+ * - A 3D hotspot that maintains constant screen-space size. The hotspot is rendered with muted
+ * appearance when obstructed by geometry but is still clickable. The hotspot relies on an
+ * invisible DOM element that matches the hotspot's size and position to detect clicks.
+ * - An annotation panel that shows title and description text.
+ */
+class Annotation extends Script {
+    static scriptName = 'annotation'
+    static hotspotSize = 25
+    static hotspotColor = new Color(0.8, 0.8, 0.8)
+    static hoverColor = new Color(1.0, 0.4, 0.0)
+    static parentDom = null
+    static styleSheet = null
+    static camera = null
+    static tooltipDom = null
+    static titleDom = null
+    static textDom = null
+    static layers = []
+    static mesh = null
+    static activeAnnotation = null
+    static hoverAnnotation = null
+    static opacity = 1.0
+    /**
+     * @attribute
+     */
+    label
+    /**
+     * @attribute
+     */
+    title
+    /**
+     * @attribute
+     */
+    text
+    /**
+     * @private
+     */
+    hotspotDom = null
+    /**
+     * @private
+     */
+    texture = null
+    /**
+     * @private
+     */
+    materials = []
+    /**
+     * Injects required CSS styles into the document.
+     * @param {number} size - The size of the hotspot in screen pixels.
+     * @private
+     */
+    static _injectStyles(size) {
+        const css = `
+            .pc-annotation {
+                display: block;
+                position: absolute;
+                background-color: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px;
+                border-radius: 4px;
+                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+                pointer-events: none;
+                max-width: 200px;
+                word-wrap: break-word;
+                overflow-x: visible;
+                white-space: normal;
+                width: fit-content;
+                opacity: 0;
+                transition: opacity 0.2s ease-in-out;
+                visibility: hidden;
+            }
+
+            .pc-annotation-title {
+                font-weight: bold;
+                margin-bottom: 4px;
+            }
+
+            /* Tooltip arrow */
+            .pc-annotation.arrow-right::before,
+            .pc-annotation.arrow-left::before {
+                content: "";
+                position: absolute;
+                top: var(--arrow-top, 50%);
+                transform: translateY(-50%);
+                border-top: 8px solid transparent;
+                border-bottom: 8px solid transparent;
+            }
+
+            .pc-annotation.arrow-right::before {
+                left: -8px;
+                border-right: 8px solid rgba(0, 0, 0, 0.8);
+            }
+
+            .pc-annotation.arrow-left::before {
+                right: -8px;
+                border-left: 8px solid rgba(0, 0, 0, 0.8);
+            }
+
+            .pc-annotation-hotspot {
+                display: none;
+                position: absolute;
+                width: ${size + 5}px;
+                height: ${size + 5}px;
+                opacity: 0;
+                cursor: pointer;
+                transform: translate(-50%, -50%);
+            }
+        `
+        const style = document.createElement('style')
+        style.textContent = css
+        document.head.appendChild(style)
+        Annotation.styleSheet = style
+    }
+    /**
+     * Initialize static resources.
+     * @param {AppBase} app - The application instance
+     * @private
+     */
+    static _initializeStatic(app) {
+        if (Annotation.styleSheet) {
+            return
+        }
+        Annotation._injectStyles(Annotation.hotspotSize)
+        if (Annotation.parentDom === null) {
+            Annotation.parentDom = document.body
+        }
+        const { layers } = app.scene
+        const worldLayer = layers.getLayerByName('World')
+        const createLayer = (name, semitrans) => {
+            const layer = new Layer({ name: name })
+            const idx = semitrans ? layers.getTransparentIndex(worldLayer) : layers.getOpaqueIndex(worldLayer)
+            layers.insert(layer, idx + 1)
+            return layer
+        }
+        Annotation.layers = [createLayer('HotspotBase', false), createLayer('HotspotOverlay', true)]
+        if (Annotation.camera === null) {
+            Annotation.camera = app.root.findComponent('camera').entity
+        }
+        Annotation.camera.camera.layers = [
+            ...Annotation.camera.camera.layers,
+            ...Annotation.layers.map((layer) => layer.id),
+        ]
+        Annotation.mesh = Mesh.fromGeometry(
+            app.graphicsDevice,
+            new PlaneGeometry({
+                widthSegments: 1,
+                lengthSegments: 1,
+            }),
+        )
+        // Initialize tooltip dom
+        Annotation.tooltipDom = document.createElement('div')
+        Annotation.tooltipDom.className = 'pc-annotation'
+        Annotation.titleDom = document.createElement('div')
+        Annotation.titleDom.className = 'pc-annotation-title'
+        Annotation.tooltipDom.appendChild(Annotation.titleDom)
+        Annotation.textDom = document.createElement('div')
+        Annotation.textDom.className = 'pc-annotation-text'
+        Annotation.tooltipDom.appendChild(Annotation.textDom)
+        Annotation.parentDom.appendChild(Annotation.tooltipDom)
+    }
+    /**
+     * Creates a circular hotspot texture.
+     * @param {AppBase} app - The PlayCanvas AppBase
+     * @param {string} label - Label text to draw on the hotspot
+     * @param {number} [size] - The texture size (should be power of 2)
+     * @param {number} [borderWidth] - The border width in pixels
+     * @returns {Texture} The hotspot texture
+     * @private
+     */
+    static _createHotspotTexture(app, label, size = 64, borderWidth = 6) {
+        // Create canvas for hotspot texture
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        // First clear with stroke color at zero alpha
+        ctx.fillStyle = 'white'
+        ctx.globalAlpha = 0
+        ctx.fillRect(0, 0, size, size)
+        ctx.globalAlpha = 1.0
+        // Draw dark circle with light border
+        const centerX = size / 2
+        const centerY = size / 2
+        const radius = size / 2 - 4 // Leave space for border
+        // Draw main circle
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+        ctx.fillStyle = 'black'
+        ctx.fill()
+        // Draw border
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+        ctx.lineWidth = borderWidth
+        ctx.strokeStyle = 'white'
+        ctx.stroke()
+        // Draw text
+        ctx.font = 'bold 32px Arial'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = 'white'
+        ctx.fillText(label, Math.floor(canvas.width / 2), Math.floor(canvas.height / 2) + 1)
+        // get pixel data
+        const imageData = ctx.getImageData(0, 0, size, size)
+        const data = imageData.data
+        // set the color channel of semitransparent pixels to white so the blending at
+        // the edges is correct
+        for (let i = 0; i < data.length; i += 4) {
+            const a = data[i + 3]
+            if (a < 255) {
+                data[i] = 255
+                data[i + 1] = 255
+                data[i + 2] = 255
+            }
+        }
+        const texture = new Texture(app.graphicsDevice, {
+            width: size,
+            height: size,
+            format: PIXELFORMAT_RGBA8,
+            magFilter: FILTER_LINEAR,
+            minFilter: FILTER_LINEAR,
+            mipmaps: false,
+            levels: [new Uint8Array(data.buffer)],
+        })
+        return texture
+    }
+    /**
+     * Creates a material for hotspot rendering.
+     * @param {Texture} texture - The texture to use for emissive and opacity
+     * @param {object} [options] - Material options
+     * @param {number} [options.opacity] - Base opacity multiplier
+     * @param {boolean} [options.depthTest] - Whether to perform depth testing
+     * @param {boolean} [options.depthWrite] - Whether to write to depth buffer
+     * @returns {StandardMaterial} The configured material
+     * @private
+     */
+    static _createHotspotMaterial(texture, { opacity = 1, depthTest = true, depthWrite = true } = {}) {
+        const material = new StandardMaterial()
+        // Base properties
+        material.diffuse = Color.BLACK
+        material.emissive.copy(Annotation.hotspotColor)
+        material.emissiveMap = texture
+        material.opacityMap = texture
+        // Alpha properties
+        material.opacity = opacity
+        material.alphaTest = 0.01
+        material.blendState = new BlendState(
+            true,
+            BLENDEQUATION_ADD,
+            BLENDMODE_SRC_ALPHA,
+            BLENDMODE_ONE_MINUS_SRC_ALPHA,
+            BLENDEQUATION_ADD,
+            BLENDMODE_ONE,
+            BLENDMODE_ONE,
+        )
+        // Depth properties
+        material.depthTest = depthTest
+        material.depthWrite = depthWrite
+        // Rendering properties
+        material.cull = CULLFACE_NONE
+        material.useLighting = false
+        material.shaderChunks.glsl.add({
+            litUserMainEndVS: depthClampGlsl,
+        })
+        material.shaderChunks.wgsl.add({
+            litUserMainEndVS: depthClampWgsl,
+        })
+        material.update()
+        return material
+    }
+    initialize() {
+        // Ensure static resources are initialized
+        Annotation._initializeStatic(this.app)
+        // Create texture
+        this.texture = Annotation._createHotspotTexture(this.app, this.label)
+        // Create material the base and overlay material
+        this.materials = [
+            Annotation._createHotspotMaterial(this.texture, {
+                opacity: 1,
+                depthTest: true,
+                depthWrite: true,
+            }),
+            Annotation._createHotspotMaterial(this.texture, {
+                opacity: 0.25,
+                depthTest: false,
+                depthWrite: false,
+            }),
+        ]
+        const base = new Entity('base')
+        const baseMi = new MeshInstance(Annotation.mesh, this.materials[0])
+        baseMi.cull = false
+        base.addComponent('render', {
+            layers: [Annotation.layers[0].id],
+            meshInstances: [baseMi],
+        })
+        const overlay = new Entity('overlay')
+        const overlayMi = new MeshInstance(Annotation.mesh, this.materials[1])
+        overlayMi.cull = false
+        overlay.addComponent('render', {
+            layers: [Annotation.layers[1].id],
+            meshInstances: [overlayMi],
+        })
+        this.entity.addChild(base)
+        this.entity.addChild(overlay)
+        // Create hotspot dom
+        this.hotspotDom = document.createElement('div')
+        this.hotspotDom.className = 'pc-annotation-hotspot'
+        // Add click handlers
+        this.hotspotDom.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.showTooltip()
+        })
+        const leave = () => {
+            if (Annotation.hoverAnnotation === this) {
+                Annotation.hoverAnnotation = null
+                this.setHover(false)
+            }
+        }
+        const enter = () => {
+            if (Annotation.hoverAnnotation !== null) {
+                Annotation.hoverAnnotation.setHover(false)
+            }
+            Annotation.hoverAnnotation = this
+            this.setHover(true)
+        }
+        this.hotspotDom.addEventListener('pointerenter', enter)
+        this.hotspotDom.addEventListener('pointerleave', leave)
+        document.addEventListener('click', () => {
+            if (Annotation.activeAnnotation === this) {
+                this.hideTooltip()
+            }
+        })
+        Annotation.parentDom.appendChild(this.hotspotDom)
+        // Clean up on entity destruction
+        this.on('destroy', () => {
+            this.hotspotDom.remove()
+            if (Annotation.activeAnnotation === this) {
+                this.hideTooltip()
+            }
+            this.materials.forEach((mat) => mat.destroy())
+            this.materials = []
+            this.texture.destroy()
+            this.texture = null
+        })
+        this.app.on('prerender', () => {
+            this._update()
+        })
+    }
+    /**
+     * Update screen-space elements and materials for this annotation. Called each frame from the
+     * prerender callback, and also directly from showTooltip to ensure the tooltip is positioned
+     * correctly even when the camera hasn't moved (e.g. annotations sharing the same camera pose).
+     * @private
+     */
+    _update() {
+        if (!Annotation.camera) return
+        const position = this.entity.getPosition()
+        const screenPos = Annotation.camera.camera.worldToScreen(position)
+        const { viewMatrix } = Annotation.camera.camera
+        viewMatrix.transformPoint(position, vec$2)
+        if (vec$2.z >= 0) {
+            this._hideElements()
+            return
+        }
+        this._updatePositions(screenPos)
+        this._updateRotationAndScale(-vec$2.z)
+        // update material opacity and also directly on the uniform so we
+        // can avoid a full material update
+        this.materials[0].opacity = Annotation.opacity
+        this.materials[1].opacity = 0.25 * Annotation.opacity
+        this.materials[0].setParameter('material_opacity', Annotation.opacity)
+        this.materials[1].setParameter('material_opacity', 0.25 * Annotation.opacity)
+    }
+    /**
+     * Set the hover state of the annotation.
+     * @param hover - Whether the annotation is hovered
+     * @private
+     */
+    setHover(hover) {
+        this.materials.forEach((material) => {
+            material.emissive.copy(hover ? Annotation.hoverColor : Annotation.hotspotColor)
+            material.update()
+        })
+        this.fire('hover', hover)
+    }
+    /**
+     * @private
+     */
+    showTooltip() {
+        Annotation.activeAnnotation = this
+        Annotation.tooltipDom.style.visibility = 'visible'
+        Annotation.tooltipDom.style.opacity = '1'
+        Annotation.titleDom.textContent = this.title
+        Annotation.textDom.textContent = this.text
+        // Immediately update incase the camera doesn't move
+        this._update()
+        this.fire('show', this)
+    }
+    /**
+     * @private
+     */
+    hideTooltip() {
+        Annotation.activeAnnotation = null
+        Annotation.tooltipDom.style.opacity = '0'
+        // Wait for fade out before hiding
+        setTimeout(() => {
+            if (Annotation.tooltipDom.style.opacity === '0') {
+                Annotation.tooltipDom.style.visibility = 'hidden'
+                this.fire('hide')
+            }
+        }, 200) // Match the transition duration
+    }
+    /**
+     * Hide all elements when annotation is behind camera.
+     * @private
+     */
+    _hideElements() {
+        this.hotspotDom.style.display = 'none'
+        if (Annotation.activeAnnotation === this) {
+            Annotation.tooltipDom.style.visibility = 'hidden'
+            Annotation.tooltipDom.style.opacity = '0'
+        }
+    }
+    /**
+     * Update screen-space positions of HTML elements.
+     * @param {Vec3} screenPos - Screen coordinate
+     * @private
+     */
+    _updatePositions(screenPos) {
+        // Show and position hotspot
+        this.hotspotDom.style.display = 'block'
+        this.hotspotDom.style.left = `${screenPos.x}px`
+        this.hotspotDom.style.top = `${screenPos.y}px`
+        // Re-show tooltip if it was hidden while behind camera
+        if (Annotation.activeAnnotation === this) {
+            Annotation.tooltipDom.style.visibility = 'visible'
+            Annotation.tooltipDom.style.opacity = '1'
+        }
+        // Position tooltip, clamped to viewport
+        if (Annotation.activeAnnotation === this) {
+            const tooltip = Annotation.tooltipDom
+            const margin = 8
+            const arrowOffset = 25
+            const tw = tooltip.offsetWidth
+            const th = tooltip.offsetHeight
+            const vw = window.innerWidth
+            const vh = window.innerHeight
+            // Default position: to the right of hotspot, vertically centered
+            let left = screenPos.x + arrowOffset
+            let top = screenPos.y - th / 2
+            let flipped = false
+            // If tooltip overflows right edge, flip to left side of hotspot
+            if (left + tw > vw - margin) {
+                left = screenPos.x - arrowOffset - tw
+                flipped = true
+            }
+            // Clamp horizontal
+            left = Math.max(margin, Math.min(left, vw - tw - margin))
+            // Clamp vertical
+            top = Math.max(margin, Math.min(top, vh - th - margin))
+            // Position arrow to point at the hotspot, clamped within the tooltip
+            const arrowY = Math.max(16, Math.min(screenPos.y - top, th - 16))
+            tooltip.style.setProperty('--arrow-top', `${arrowY}px`)
+            tooltip.classList.toggle('arrow-right', !flipped)
+            tooltip.classList.toggle('arrow-left', flipped)
+            tooltip.style.transform = 'none'
+            tooltip.style.left = `${left}px`
+            tooltip.style.top = `${top}px`
+        }
+    }
+    /**
+     * Update 3D rotation and scale of hotspot planes.
+     * @param {number} viewDepth - The view-space depth (positive distance along the camera's forward direction)
+     * @private
+     */
+    _updateRotationAndScale(viewDepth) {
+        // Copy camera rotation to align with view plane
+        const cameraRotation = Annotation.camera.getRotation()
+        this._updateHotspotTransform(this.entity, cameraRotation)
+        // Calculate scale based on view depth to maintain constant screen size
+        const scale = this._calculateScreenSpaceScale(viewDepth)
+        this.entity.setLocalScale(scale, scale, scale)
+    }
+    /**
+     * Update rotation of a single hotspot entity.
+     * @param {Entity} hotspot - The hotspot entity to update
+     * @param {Quat} cameraRotation - The camera's current rotation
+     * @private
+     */
+    _updateHotspotTransform(hotspot, cameraRotation) {
+        hotspot.setRotation(cameraRotation)
+        hotspot.rotateLocal(90, 0, 0)
+    }
+    /**
+     * Calculate scale factor to maintain constant screen-space size.
+     * @param {number} viewDepth - The view-space depth (positive distance along the camera's forward direction)
+     * @returns {number} The scale to apply to hotspot entities
+     * @private
+     */
+    _calculateScreenSpaceScale(viewDepth) {
+        // Use the canvas's CSS/client height instead of graphics device height
+        const canvas = this.app.graphicsDevice.canvas
+        const screenHeight = canvas.clientHeight
+        // Use view-space depth (not Euclidean distance) to match the projection matrix
+        const projMatrix = Annotation.camera.camera.projectionMatrix
+        const worldSize = (Annotation.hotspotSize / screenHeight) * ((2 * viewDepth) / projMatrix.data[5])
+        return worldSize
+    }
+}
+
+class Annotations {
+    annotations = []
+    parentDom
+    constructor(global, hasCameraFrame) {
+        // create dom parent
+        const parentDom = document.createElement('div')
+        parentDom.id = 'annotations'
+        Annotation.parentDom = parentDom
+        document.querySelector('#ui').appendChild(parentDom)
+        global.events.on('controlsHidden:changed', (value) => {
+            parentDom.style.display = value ? 'none' : 'block'
+            Annotation.opacity = value ? 0.0 : 1.0
+            if (this.annotations.length > 0) {
+                global.app.renderNextFrame = true
+            }
+        })
+        this.annotations = global.settings.annotations
+        this.parentDom = parentDom
+        if (hasCameraFrame) {
+            Annotation.hotspotColor.gamma()
+            Annotation.hoverColor.gamma()
+        }
+        // create annotation entities
+        const parent = global.app.root
+        const scriptMap = new Map()
+        for (let i = 0; i < this.annotations.length; i++) {
+            const ann = this.annotations[i]
+            const entity = new Entity()
+            entity.addComponent('script')
+            entity.script.create(Annotation)
+            const script = entity.script
+            script.annotation.label = (i + 1).toString()
+            script.annotation.title = ann.title
+            script.annotation.text = ann.text
+            entity.setPosition(ann.position[0], ann.position[1], ann.position[2])
+            parent.addChild(entity)
+            scriptMap.set(ann, script.annotation)
+            // handle an annotation being activated/shown
+            script.annotation.on('show', () => {
+                global.events.fire('annotation.activate', ann)
+            })
+            script.annotation.on('hide', () => {
+                global.events.fire('annotation.deactivate')
+            })
+            // re-render if hover state changes
+            script.annotation.on('hover', (hover) => {
+                global.app.renderNextFrame = true
+            })
+        }
+        // handle navigator requesting an annotation to be shown
+        global.events.on('annotation.navigate', (ann) => {
+            const script = scriptMap.get(ann)
+            if (script) {
+                script.showTooltip()
+            }
+        })
+    }
+}
+/**
+ * Runtime sparse voxel octree collider.
+ *
+ * Loads the two-file format (.voxel.json + .voxel.bin) produced by
+ * splat-transform's writeVoxel and provides point and sphere collision queries.
+ */
+class VoxelCollider {
+    /** Grid-aligned bounds (min xyz) */
+    _gridMinX
+    _gridMinY
+    _gridMinZ
+    /** Number of voxels along each axis */
+    _numVoxelsX
+    _numVoxelsY
+    _numVoxelsZ
+    /** Size of each voxel in world units */
+    _voxelResolution
+    /** Voxels per leaf dimension (always 4) */
+    _leafSize
+    /** Maximum tree depth (number of octree levels above the leaf level) */
+    _treeDepth
+    /** Flat Laine-Karras node array */
+    _nodes
+    /** Leaf voxel masks: pairs of (lo, hi) Uint32 per mixed leaf */
+    _leafData
+    /** Pre-allocated scratch push-out vector to avoid per-frame allocations */
+    _push = { x: 0, y: 0, z: 0 }
+    /** Pre-allocated result for querySurfaceNormal to avoid per-call allocation */
+    _normalResult = { nx: 0, ny: 0, nz: 0 }
+    /** Pre-allocated constraint normals for iterative corner resolution (max 3 walls) */
+    _constraintNormals = [
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+    ]
+    constructor(metadata, nodes, leafData) {
+        this._gridMinX = metadata.gridBounds.min[0]
+        this._gridMinY = metadata.gridBounds.min[1]
+        this._gridMinZ = metadata.gridBounds.min[2]
+        const res = metadata.voxelResolution
+        this._numVoxelsX = Math.round((metadata.gridBounds.max[0] - metadata.gridBounds.min[0]) / res)
+        this._numVoxelsY = Math.round((metadata.gridBounds.max[1] - metadata.gridBounds.min[1]) / res)
+        this._numVoxelsZ = Math.round((metadata.gridBounds.max[2] - metadata.gridBounds.min[2]) / res)
+        this._voxelResolution = res
+        this._leafSize = metadata.leafSize
+        this._treeDepth = metadata.treeDepth
+        this._nodes = nodes
+        this._leafData = leafData
+    }
+    /**
+     * Grid-aligned bounds minimum X in world units.
+     *
+     * @returns {number} The minimum X coordinate.
+     */
+    get gridMinX() {
+        return this._gridMinX
+    }
+    /**
+     * Grid-aligned bounds minimum Y in world units.
+     *
+     * @returns {number} The minimum Y coordinate.
+     */
+    get gridMinY() {
+        return this._gridMinY
+    }
+    /**
+     * Grid-aligned bounds minimum Z in world units.
+     *
+     * @returns {number} The minimum Z coordinate.
+     */
+    get gridMinZ() {
+        return this._gridMinZ
+    }
+    /**
+     * Number of voxels along the X axis.
+     *
+     * @returns {number} The voxel count on X.
+     */
+    get numVoxelsX() {
+        return this._numVoxelsX
+    }
+    /**
+     * Number of voxels along the Y axis.
+     *
+     * @returns {number} The voxel count on Y.
+     */
+    get numVoxelsY() {
+        return this._numVoxelsY
+    }
+    /**
+     * Number of voxels along the Z axis.
+     *
+     * @returns {number} The voxel count on Z.
+     */
+    get numVoxelsZ() {
+        return this._numVoxelsZ
+    }
+    /**
+     * Size of each voxel in world units.
+     *
+     * @returns {number} The voxel resolution.
+     */
+    get voxelResolution() {
+        return this._voxelResolution
+    }
+    /**
+     * Voxels per leaf dimension (always 4).
+     *
+     * @returns {number} The leaf size.
+     */
+    get leafSize() {
+        return this._leafSize
+    }
+    /**
+     * Maximum tree depth (number of octree levels above the leaf level).
+     *
+     * @returns {number} The tree depth.
+     */
+    get treeDepth() {
+        return this._treeDepth
+    }
+    /**
+     * Flat Laine-Karras node array (read-only access for GPU upload).
+     *
+     * @returns {Uint32Array} The node array.
+     */
+    get nodes() {
+        return this._nodes
+    }
+    /**
+     * Leaf voxel masks: pairs of (lo, hi) Uint32 per mixed leaf (read-only access for GPU upload).
+     *
+     * @returns {Uint32Array} The leaf data array.
+     */
+    get leafData() {
+        return this._leafData
+    }
+    /**
+     * Load a VoxelCollider from a .voxel.json URL.
+     * The corresponding .voxel.bin is inferred by replacing the extension.
+     *
+     * @param jsonUrl - URL to the .voxel.json metadata file.
+     * @returns A promise resolving to a VoxelCollider instance.
+     */
+    static async load(jsonUrl) {
+        // Fetch metadata
+        const metaResponse = await fetch(jsonUrl)
+        if (!metaResponse.ok) {
+            throw new Error(`Failed to fetch voxel metadata: ${metaResponse.statusText}`)
+        }
+        const metadata = await metaResponse.json()
+        // Fetch binary data
+        const binUrl = jsonUrl.replace('.voxel.json', '.voxel.bin')
+        const binResponse = await fetch(binUrl)
+        if (!binResponse.ok) {
+            throw new Error(`Failed to fetch voxel binary: ${binResponse.statusText}`)
+        }
+        const buffer = await binResponse.arrayBuffer()
+        const view = new Uint32Array(buffer)
+        const nodes = view.slice(0, metadata.nodeCount)
+        const leafData = view.slice(metadata.nodeCount, metadata.nodeCount + metadata.leafDataCount)
+        return new VoxelCollider(metadata, nodes, leafData)
+    }
+    /**
+     * Query whether a world-space point lies inside a solid voxel.
+     *
+     * @param x - World X coordinate.
+     * @param y - World Y coordinate.
+     * @param z - World Z coordinate.
+     * @returns True if the point is inside a solid voxel.
+     */
+    queryPoint(x, y, z) {
+        const ix = Math.floor((x - this.gridMinX) / this.voxelResolution)
+        const iy = Math.floor((y - this.gridMinY) / this.voxelResolution)
+        const iz = Math.floor((z - this.gridMinZ) / this.voxelResolution)
+        return this.isVoxelSolid(ix, iy, iz)
+    }
+    /**
+     * Compute a stable surface normal at a world-space position using flatness-probability
+     * sampling. Tests 9 candidate directions: 3 axis-aligned and 6 diagonal (45-degree in
+     * each pair of axes). For each camera-facing candidate a 5x5 patch of voxels in the
+     * perpendicular plane is sampled: a voxel counts as a "surface hit" if it is solid and
+     * the adjacent voxel toward the camera is empty. The candidate with the highest hit
+     * count is the surface orientation.
+     *
+     * @param x - World X coordinate of the surface point.
+     * @param y - World Y coordinate of the surface point.
+     * @param z - World Z coordinate of the surface point.
+     * @param rdx - Ray direction X (toward the surface, in voxel space).
+     * @param rdy - Ray direction Y.
+     * @param rdz - Ray direction Z.
+     * @returns Object with nx, ny, nz components of the surface normal.
+     */
+    querySurfaceNormal(x, y, z, rdx, rdy, rdz) {
+        // Nudge the query point slightly along the ray direction so that a hit point
+        // sitting exactly on a voxel face boundary resolves to the solid voxel rather
+        // than the adjacent empty one. Uses Math.sign so the nudge is independent of
+        // ray vector magnitude.
+        const nudge = this._voxelResolution * 0.25
+        const ix = Math.floor((x + Math.sign(rdx) * nudge - this._gridMinX) / this._voxelResolution)
+        const iy = Math.floor((y + Math.sign(rdy) * nudge - this._gridMinY) / this._voxelResolution)
+        const iz = Math.floor((z + Math.sign(rdz) * nudge - this._gridMinZ) / this._voxelResolution)
+        const result = this._normalResult
+        let bestScore = -1
+        let bestNx = 0
+        let bestNy = 1
+        let bestNz = 0
+        for (let c = 0; c < SURFACE_CANDIDATES.length; c++) {
+            const cand = SURFACE_CANDIDATES[c]
+            const dx = cand[0]
+            const dy = cand[1]
+            const dz = cand[2]
+            const dot = rdx * dx + rdy * dy + rdz * dz
+            if (Math.abs(dot) < 1e-6) continue
+            const sign = dot < 0 ? 1 : -1
+            const sx = dx * sign
+            const sy = dy * sign
+            const sz = dz * sign
+            const score = scoreSurfaceCandidate(
+                this,
+                ix,
+                iy,
+                iz,
+                sx,
+                sy,
+                sz,
+                cand[3],
+                cand[4],
+                cand[5],
+                cand[6],
+                cand[7],
+                cand[8],
+            )
+            if (score > bestScore) {
+                bestScore = score
+                const mag = Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1 ? INV_SQRT2 : 1
+                bestNx = sx * mag
+                bestNy = sy * mag
+                bestNz = sz * mag
+            }
+        }
+        result.nx = bestNx
+        result.ny = bestNy
+        result.nz = bestNz
+        return result
+    }
+    /**
+     * Cast a ray through the voxel grid using 3D-DDA and return the entry point on the first
+     * solid voxel hit. Coordinates are in voxel world space (the same frame used by queryPoint).
+     *
+     * @param ox - Ray origin X.
+     * @param oy - Ray origin Y.
+     * @param oz - Ray origin Z.
+     * @param dx - Ray direction X (must be normalized).
+     * @param dy - Ray direction Y (must be normalized).
+     * @param dz - Ray direction Z (must be normalized).
+     * @param maxDist - Maximum ray distance.
+     * @returns The entry point on the first solid voxel, or null if no hit.
+     */
+    queryRay(ox, oy, oz, dx, dy, dz, maxDist) {
+        if (this._nodes.length === 0) {
+            return null
+        }
+        const res = this._voxelResolution
+        const gMinX = this._gridMinX
+        const gMinY = this._gridMinY
+        const gMinZ = this._gridMinZ
+        const gMaxX = gMinX + this._numVoxelsX * res
+        const gMaxY = gMinY + this._numVoxelsY * res
+        const gMaxZ = gMinZ + this._numVoxelsZ * res
+        const EPS = 1e-12
+        // Ray-AABB slab intersection to find the range [tNear, tFar]
+        let tNear = 0
+        let tFar = maxDist
+        if (Math.abs(dx) > EPS) {
+            let t1 = (gMinX - ox) / dx
+            let t2 = (gMaxX - ox) / dx
+            if (t1 > t2) {
+                const tmp = t1
+                t1 = t2
+                t2 = tmp
+            }
+            if (t1 > tNear) {
+                tNear = t1
+            }
+            tFar = Math.min(tFar, t2)
+            if (tNear > tFar) return null
+        } else if (ox < gMinX || ox >= gMaxX) {
+            return null
+        }
+        if (Math.abs(dy) > EPS) {
+            let t1 = (gMinY - oy) / dy
+            let t2 = (gMaxY - oy) / dy
+            if (t1 > t2) {
+                const tmp = t1
+                t1 = t2
+                t2 = tmp
+            }
+            if (t1 > tNear) {
+                tNear = t1
+            }
+            tFar = Math.min(tFar, t2)
+            if (tNear > tFar) return null
+        } else if (oy < gMinY || oy >= gMaxY) {
+            return null
+        }
+        if (Math.abs(dz) > EPS) {
+            let t1 = (gMinZ - oz) / dz
+            let t2 = (gMaxZ - oz) / dz
+            if (t1 > t2) {
+                const tmp = t1
+                t1 = t2
+                t2 = tmp
+            }
+            if (t1 > tNear) {
+                tNear = t1
+            }
+            tFar = Math.min(tFar, t2)
+            if (tNear > tFar) return null
+        } else if (oz < gMinZ || oz >= gMaxZ) {
+            return null
+        }
+        // Entry point on the grid AABB (or origin if already inside)
+        const entryX = ox + dx * tNear
+        const entryY = oy + dy * tNear
+        const entryZ = oz + dz * tNear
+        // Convert to voxel indices, clamping to valid range for boundary cases
+        let ix = Math.max(0, Math.min(Math.floor((entryX - gMinX) / res), this._numVoxelsX - 1))
+        let iy = Math.max(0, Math.min(Math.floor((entryY - gMinY) / res), this._numVoxelsY - 1))
+        let iz = Math.max(0, Math.min(Math.floor((entryZ - gMinZ) / res), this._numVoxelsZ - 1))
+        // DDA setup
+        const stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0
+        const stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0
+        const stepZ = dz > 0 ? 1 : dz < 0 ? -1 : 0
+        const invDx = Math.abs(dx) > EPS ? 1.0 / dx : 0
+        const invDy = Math.abs(dy) > EPS ? 1.0 / dy : 0
+        const invDz = Math.abs(dz) > EPS ? 1.0 / dz : 0
+        let tMaxX = Math.abs(dx) > EPS ? (gMinX + (ix + (dx > 0 ? 1 : 0)) * res - ox) * invDx : Infinity
+        let tMaxY = Math.abs(dy) > EPS ? (gMinY + (iy + (dy > 0 ? 1 : 0)) * res - oy) * invDy : Infinity
+        let tMaxZ = Math.abs(dz) > EPS ? (gMinZ + (iz + (dz > 0 ? 1 : 0)) * res - oz) * invDz : Infinity
+        const tDeltaX = Math.abs(dx) > EPS ? res * Math.abs(invDx) : Infinity
+        const tDeltaY = Math.abs(dy) > EPS ? res * Math.abs(invDy) : Infinity
+        const tDeltaZ = Math.abs(dz) > EPS ? res * Math.abs(invDz) : Infinity
+        let currentT = tNear
+        const maxSteps = this._numVoxelsX + this._numVoxelsY + this._numVoxelsZ
+        for (let step = 0; step < maxSteps; step++) {
+            if (this.isVoxelSolid(ix, iy, iz)) {
+                return {
+                    x: ox + dx * currentT,
+                    y: oy + dy * currentT,
+                    z: oz + dz * currentT,
+                }
+            }
+            // Advance along the axis with the smallest tMax
+            if (tMaxX < tMaxY) {
+                if (tMaxX < tMaxZ) {
+                    currentT = tMaxX
+                    ix += stepX
+                    tMaxX += tDeltaX
+                } else {
+                    currentT = tMaxZ
+                    iz += stepZ
+                    tMaxZ += tDeltaZ
+                }
+            } else if (tMaxY < tMaxZ) {
+                currentT = tMaxY
+                iy += stepY
+                tMaxY += tDeltaY
+            } else {
+                currentT = tMaxZ
+                iz += stepZ
+                tMaxZ += tDeltaZ
+            }
+            if (
+                ix < 0 ||
+                iy < 0 ||
+                iz < 0 ||
+                ix >= this._numVoxelsX ||
+                iy >= this._numVoxelsY ||
+                iz >= this._numVoxelsZ ||
+                currentT > maxDist
+            ) {
+                return null
+            }
+        }
+        return null
+    }
+    /**
+     * Query a sphere against the voxel grid and write a push-out vector to resolve penetration.
+     * Uses iterative single-voxel resolution: each iteration finds the deepest penetrating voxel,
+     * resolves it, then re-checks. This avoids over-push from summing multiple voxels and
+     * naturally handles corners (2 iterations) and flat walls (1 iteration).
+     *
+     * @param cx - Sphere center X in world units.
+     * @param cy - Sphere center Y in world units.
+     * @param cz - Sphere center Z in world units.
+     * @param radius - Sphere radius in world units.
+     * @param out - Object to receive the push-out vector.
+     * @returns True if a collision was detected and out was written.
+     */
+    querySphere(cx, cy, cz, radius, out) {
+        if (this.nodes.length === 0) {
+            return false
+        }
+        const maxIterations = 4
+        let resolvedX = cx
+        let resolvedY = cy
+        let resolvedZ = cz
+        let totalPushX = 0
+        let totalPushY = 0
+        let totalPushZ = 0
+        let hadCollision = false
+        const push = this._push
+        // Constraint normals from previous iterations - prevents oscillation at corners
+        // by ensuring subsequent pushes don't undo previous ones
+        const normals = this._constraintNormals
+        let numNormals = 0
+        for (let iter = 0; iter < maxIterations; iter++) {
+            if (!this.resolveDeepestPenetration(resolvedX, resolvedY, resolvedZ, radius)) {
+                break
+            }
+            hadCollision = true
+            let px = push.x
+            let py = push.y
+            let pz = push.z
+            // Project out components that contradict previous constraint normals
+            for (let i = 0; i < numNormals; i++) {
+                const n = normals[i]
+                const dot = px * n.x + py * n.y + pz * n.z
+                if (dot < 0) {
+                    px -= dot * n.x
+                    py -= dot * n.y
+                    pz -= dot * n.z
+                }
+            }
+            // Record this push direction as a constraint normal
+            const len = Math.sqrt(push.x * push.x + push.y * push.y + push.z * push.z)
+            if (len > PENETRATION_EPSILON && numNormals < 3) {
+                const invLen = 1.0 / len
+                const n = normals[numNormals]
+                n.x = push.x * invLen
+                n.y = push.y * invLen
+                n.z = push.z * invLen
+                numNormals++
+            }
+            resolvedX += px
+            resolvedY += py
+            resolvedZ += pz
+            totalPushX += px
+            totalPushY += py
+            totalPushZ += pz
+        }
+        // Only report collision if the total push is meaningful
+        const totalPushSq = totalPushX * totalPushX + totalPushY * totalPushY + totalPushZ * totalPushZ
+        const hasSignificantPush = hadCollision && totalPushSq > PENETRATION_EPSILON * PENETRATION_EPSILON
+        if (hasSignificantPush) {
+            out.x = totalPushX
+            out.y = totalPushY
+            out.z = totalPushZ
+        }
+        return hasSignificantPush
+    }
+    /**
+     * Query a vertical capsule against the voxel grid and write a push-out vector to resolve
+     * penetration. The capsule is a line segment from (cx, cy - halfHeight, cz) to
+     * (cx, cy + halfHeight, cz) swept by radius. Uses the same iterative deepest-penetration
+     * approach as querySphere.
+     *
+     * @param cx - Capsule center X in world units.
+     * @param cy - Capsule center Y in world units.
+     * @param cz - Capsule center Z in world units.
+     * @param halfHeight - Half-height of the capsule's inner line segment in world units.
+     * @param radius - Capsule radius in world units.
+     * @param out - Object to receive the push-out vector.
+     * @returns True if a collision was detected and out was written.
+     */
+    queryCapsule(cx, cy, cz, halfHeight, radius, out) {
+        if (this.nodes.length === 0) {
+            return false
+        }
+        const maxIterations = 4
+        let resolvedX = cx
+        let resolvedY = cy
+        let resolvedZ = cz
+        let totalPushX = 0
+        let totalPushY = 0
+        let totalPushZ = 0
+        let hadCollision = false
+        const push = this._push
+        // Constraint normals from previous iterations - prevents oscillation at corners
+        // by ensuring subsequent pushes don't undo previous ones
+        const normals = this._constraintNormals
+        let numNormals = 0
+        for (let iter = 0; iter < maxIterations; iter++) {
+            if (!this.resolveDeepestPenetrationCapsule(resolvedX, resolvedY, resolvedZ, halfHeight, radius)) {
+                break
+            }
+            hadCollision = true
+            let px = push.x
+            let py = push.y
+            let pz = push.z
+            // Project out components that contradict previous constraint normals
+            for (let i = 0; i < numNormals; i++) {
+                const n = normals[i]
+                const dot = px * n.x + py * n.y + pz * n.z
+                if (dot < 0) {
+                    px -= dot * n.x
+                    py -= dot * n.y
+                    pz -= dot * n.z
+                }
+            }
+            // Record this push direction as a constraint normal
+            const len = Math.sqrt(push.x * push.x + push.y * push.y + push.z * push.z)
+            if (len > PENETRATION_EPSILON && numNormals < 3) {
+                const invLen = 1.0 / len
+                const n = normals[numNormals]
+                n.x = push.x * invLen
+                n.y = push.y * invLen
+                n.z = push.z * invLen
+                numNormals++
+            }
+            resolvedX += px
+            resolvedY += py
+            resolvedZ += pz
+            totalPushX += px
+            totalPushY += py
+            totalPushZ += pz
+        }
+        // Only report collision if the total push is meaningful
+        const totalPushSq = totalPushX * totalPushX + totalPushY * totalPushY + totalPushZ * totalPushZ
+        const hasSignificantPush = hadCollision && totalPushSq > PENETRATION_EPSILON * PENETRATION_EPSILON
+        if (hasSignificantPush) {
+            out.x = totalPushX
+            out.y = totalPushY
+            out.z = totalPushZ
+        }
+        return hasSignificantPush
+    }
+    /**
+     * Find the single deepest penetrating voxel for the given sphere.
+     * Writes the push-out vector into this._push.
+     *
+     * @param cx - Sphere center X.
+     * @param cy - Sphere center Y.
+     * @param cz - Sphere center Z.
+     * @param radius - Sphere radius.
+     * @returns True if a penetrating voxel was found.
+     */
+    resolveDeepestPenetration(cx, cy, cz, radius) {
+        const { voxelResolution, gridMinX, gridMinY, gridMinZ } = this
+        const radiusSq = radius * radius
+        // Compute bounding box of the sphere in voxel indices
+        const ixMin = Math.floor((cx - radius - gridMinX) / voxelResolution)
+        const iyMin = Math.floor((cy - radius - gridMinY) / voxelResolution)
+        const izMin = Math.floor((cz - radius - gridMinZ) / voxelResolution)
+        const ixMax = Math.floor((cx + radius - gridMinX) / voxelResolution)
+        const iyMax = Math.floor((cy + radius - gridMinY) / voxelResolution)
+        const izMax = Math.floor((cz + radius - gridMinZ) / voxelResolution)
+        let bestPushX = 0
+        let bestPushY = 0
+        let bestPushZ = 0
+        let bestPenetration = PENETRATION_EPSILON
+        let found = false
+        for (let iz = izMin; iz <= izMax; iz++) {
+            for (let iy = iyMin; iy <= iyMax; iy++) {
+                for (let ix = ixMin; ix <= ixMax; ix++) {
+                    if (!this.isVoxelSolid(ix, iy, iz)) {
+                        continue
+                    }
+                    // Compute the world-space AABB of this voxel
+                    const vMinX = gridMinX + ix * voxelResolution
+                    const vMinY = gridMinY + iy * voxelResolution
+                    const vMinZ = gridMinZ + iz * voxelResolution
+                    const vMaxX = vMinX + voxelResolution
+                    const vMaxY = vMinY + voxelResolution
+                    const vMaxZ = vMinZ + voxelResolution
+                    // Find the nearest point on the voxel AABB to the sphere center
+                    const nearX = Math.max(vMinX, Math.min(cx, vMaxX))
+                    const nearY = Math.max(vMinY, Math.min(cy, vMaxY))
+                    const nearZ = Math.max(vMinZ, Math.min(cz, vMaxZ))
+                    // Vector from nearest point to sphere center
+                    const dx = cx - nearX
+                    const dy = cy - nearY
+                    const dz = cz - nearZ
+                    const distSq = dx * dx + dy * dy + dz * dz
+                    if (distSq >= radiusSq) {
+                        continue
+                    }
+                    let px
+                    let py
+                    let pz
+                    let penetration
+                    if (distSq > 1e-12) {
+                        // Center is outside the voxel: push radially outward
+                        const dist = Math.sqrt(distSq)
+                        penetration = radius - dist
+                        const invDist = 1.0 / dist
+                        px = dx * invDist * penetration
+                        py = dy * invDist * penetration
+                        pz = dz * invDist * penetration
+                    } else {
+                        // Center is inside the voxel: push to nearest face + radius
+                        // so the sphere surface ends up flush with the face
+                        const distNegX = cx - vMinX
+                        const distPosX = vMaxX - cx
+                        const distNegY = cy - vMinY
+                        const distPosY = vMaxY - cy
+                        const distNegZ = cz - vMinZ
+                        const distPosZ = vMaxZ - cz
+                        const escapeX = distNegX < distPosX ? -(distNegX + radius) : distPosX + radius
+                        const escapeY = distNegY < distPosY ? -(distNegY + radius) : distPosY + radius
+                        const escapeZ = distNegZ < distPosZ ? -(distNegZ + radius) : distPosZ + radius
+                        const absX = Math.abs(escapeX)
+                        const absY = Math.abs(escapeY)
+                        const absZ = Math.abs(escapeZ)
+                        px = 0
+                        py = 0
+                        pz = 0
+                        if (absX <= absY && absX <= absZ) {
+                            px = escapeX
+                            penetration = absX
+                        } else if (absY <= absZ) {
+                            py = escapeY
+                            penetration = absY
+                        } else {
+                            pz = escapeZ
+                            penetration = absZ
+                        }
+                    }
+                    if (penetration > bestPenetration) {
+                        bestPenetration = penetration
+                        bestPushX = px
+                        bestPushY = py
+                        bestPushZ = pz
+                        found = true
+                    }
+                }
+            }
+        }
+        if (found) {
+            this._push.x = bestPushX
+            this._push.y = bestPushY
+            this._push.z = bestPushZ
+        }
+        return found
+    }
+    /**
+     * Find the single deepest penetrating voxel for the given vertical capsule.
+     * The capsule is a line segment from (cx, cy - halfHeight, cz) to (cx, cy + halfHeight, cz)
+     * swept by radius. For each voxel, the closest point on the segment to the AABB is found,
+     * then a sphere-AABB penetration test is performed from that point.
+     * Writes the push-out vector into this._push.
+     *
+     * @param cx - Capsule center X.
+     * @param cy - Capsule center Y.
+     * @param cz - Capsule center Z.
+     * @param halfHeight - Half-height of the capsule's inner line segment.
+     * @param radius - Capsule radius.
+     * @returns True if a penetrating voxel was found.
+     */
+    resolveDeepestPenetrationCapsule(cx, cy, cz, halfHeight, radius) {
+        const { voxelResolution, gridMinX, gridMinY, gridMinZ } = this
+        const radiusSq = radius * radius
+        const segBottomY = cy - halfHeight
+        const segTopY = cy + halfHeight
+        // Compute bounding box of the capsule in voxel indices
+        const ixMin = Math.floor((cx - radius - gridMinX) / voxelResolution)
+        const iyMin = Math.floor((segBottomY - radius - gridMinY) / voxelResolution)
+        const izMin = Math.floor((cz - radius - gridMinZ) / voxelResolution)
+        const ixMax = Math.floor((cx + radius - gridMinX) / voxelResolution)
+        const iyMax = Math.floor((segTopY + radius - gridMinY) / voxelResolution)
+        const izMax = Math.floor((cz + radius - gridMinZ) / voxelResolution)
+        let bestPushX = 0
+        let bestPushY = 0
+        let bestPushZ = 0
+        let bestPenetration = PENETRATION_EPSILON
+        let found = false
+        for (let iz = izMin; iz <= izMax; iz++) {
+            for (let iy = iyMin; iy <= iyMax; iy++) {
+                for (let ix = ixMin; ix <= ixMax; ix++) {
+                    if (!this.isVoxelSolid(ix, iy, iz)) {
+                        continue
+                    }
+                    // Compute the world-space AABB of this voxel
+                    const vMinX = gridMinX + ix * voxelResolution
+                    const vMinY = gridMinY + iy * voxelResolution
+                    const vMinZ = gridMinZ + iz * voxelResolution
+                    const vMaxX = vMinX + voxelResolution
+                    const vMaxY = vMinY + voxelResolution
+                    const vMaxZ = vMinZ + voxelResolution
+                    // Find the closest Y on the capsule segment to this AABB.
+                    // For a vertical segment, X and Z are fixed so we only optimize Y.
+                    let segY
+                    if (segTopY < vMinY) {
+                        // segment entirely below AABB
+                        segY = segTopY
+                    } else if (segBottomY > vMaxY) {
+                        // segment entirely above AABB
+                        segY = segBottomY
+                    } else {
+                        // ranges overlap - pick segment Y closest to AABB center
+                        const aabbCenterY = (vMinY + vMaxY) * 0.5
+                        segY = Math.max(segBottomY, Math.min(segTopY, aabbCenterY))
+                    }
+                    // Now do sphere-AABB penetration from (cx, segY, cz)
+                    const nearX = Math.max(vMinX, Math.min(cx, vMaxX))
+                    const nearY = Math.max(vMinY, Math.min(segY, vMaxY))
+                    const nearZ = Math.max(vMinZ, Math.min(cz, vMaxZ))
+                    // Vector from nearest point to sphere center on segment
+                    const dx = cx - nearX
+                    const dy = segY - nearY
+                    const dz = cz - nearZ
+                    const distSq = dx * dx + dy * dy + dz * dz
+                    if (distSq >= radiusSq) {
+                        continue
+                    }
+                    let px
+                    let py
+                    let pz
+                    let penetration
+                    if (distSq > 1e-12) {
+                        // Sphere center is outside the voxel: push radially outward
+                        const dist = Math.sqrt(distSq)
+                        penetration = radius - dist
+                        const invDist = 1.0 / dist
+                        px = dx * invDist * penetration
+                        py = dy * invDist * penetration
+                        pz = dz * invDist * penetration
+                    } else {
+                        // Segment point is inside the voxel: push to nearest face + radius
+                        // so the capsule surface ends up flush with the face
+                        const distNegX = cx - vMinX
+                        const distPosX = vMaxX - cx
+                        const distNegY = segY - vMinY
+                        const distPosY = vMaxY - segY
+                        const distNegZ = cz - vMinZ
+                        const distPosZ = vMaxZ - cz
+                        const escapeX = distNegX < distPosX ? -(distNegX + radius) : distPosX + radius
+                        const escapeY = distNegY <= distPosY ? -(distNegY + radius) : distPosY + radius
+                        const escapeZ = distNegZ < distPosZ ? -(distNegZ + radius) : distPosZ + radius
+                        const absX = Math.abs(escapeX)
+                        const absY = Math.abs(escapeY)
+                        const absZ = Math.abs(escapeZ)
+                        px = 0
+                        py = 0
+                        pz = 0
+                        if (absY <= absX && absY <= absZ) {
+                            py = escapeY
+                            penetration = absY
+                        } else if (absX <= absZ) {
+                            px = escapeX
+                            penetration = absX
+                        } else {
+                            pz = escapeZ
+                            penetration = absZ
+                        }
+                    }
+                    if (penetration > bestPenetration) {
+                        bestPenetration = penetration
+                        bestPushX = px
+                        bestPushY = py
+                        bestPushZ = pz
+                        found = true
+                    }
+                }
+            }
+        }
+        // Column-based Y fallback: the per-voxel sphere test loses Y information
+        // when the capsule segment passes through a voxel (segY lands inside the
+        // AABB, zeroing dy). Recover it by finding the topmost solid voxel in the
+        // capsule-center column and computing a direct capsule-bottom push.
+        if (found && Math.abs(bestPushY) <= PENETRATION_EPSILON) {
+            const icx = Math.floor((cx - gridMinX) / voxelResolution)
+            const icz = Math.floor((cz - gridMinZ) / voxelResolution)
+            const capsuleBottom = segTopY + radius
+            for (let iy = iyMin; iy <= iyMax; iy++) {
+                if (this.isVoxelSolid(icx, iy, icz)) {
+                    const surfaceY = gridMinY + iy * voxelResolution
+                    if (capsuleBottom > surfaceY + PENETRATION_EPSILON) {
+                        bestPushY = surfaceY - capsuleBottom
+                    }
+                    break
+                }
+            }
+        }
+        if (found) {
+            this._push.x = bestPushX
+            this._push.y = bestPushY
+            this._push.z = bestPushZ
+        }
+        return found
+    }
+    /**
+     * Test whether a voxel at the given grid indices is solid.
+     *
+     * @param ix - Global voxel X index.
+     * @param iy - Global voxel Y index.
+     * @param iz - Global voxel Z index.
+     * @returns True if the voxel is solid.
+     */
+    isVoxelSolid(ix, iy, iz) {
+        if (
+            this.nodes.length === 0 ||
+            ix < 0 ||
+            iy < 0 ||
+            iz < 0 ||
+            ix >= this.numVoxelsX ||
+            iy >= this.numVoxelsY ||
+            iz >= this.numVoxelsZ
+        ) {
+            return false
+        }
+        const { leafSize, treeDepth } = this
+        // Convert voxel indices to block coordinates
+        const blockX = Math.floor(ix / leafSize)
+        const blockY = Math.floor(iy / leafSize)
+        const blockZ = Math.floor(iz / leafSize)
+        // Traverse octree from root to leaf
+        let nodeIndex = 0
+        for (let level = treeDepth - 1; level >= 0; level--) {
+            const node = this.nodes[nodeIndex] >>> 0
+            // Check for solid leaf sentinel first (has nonzero high byte)
+            if (node === SOLID_LEAF_MARKER) {
+                return true
+            }
+            const childMask = (node >>> 24) & 0xff
+            // If childMask is 0, this is a mixed leaf node
+            if (childMask === 0) {
+                return this.checkLeafByIndex(node, ix, iy, iz)
+            }
+            // Determine which octant the block falls into at this level
+            const bitX = (blockX >>> level) & 1
+            const bitY = (blockY >>> level) & 1
+            const bitZ = (blockZ >>> level) & 1
+            const octant = (bitZ << 2) | (bitY << 1) | bitX
+            // Check if this octant has a child
+            if ((childMask & (1 << octant)) === 0) {
+                return false
+            }
+            // Calculate child offset using popcount of lower bits
+            const baseOffset = node & 0x00ffffff
+            const prefix = (1 << octant) - 1
+            const childOffset = popcount(childMask & prefix)
+            nodeIndex = baseOffset + childOffset
+        }
+        // We've reached the leaf level
+        const node = this.nodes[nodeIndex] >>> 0
+        if (node === SOLID_LEAF_MARKER) {
+            return true
+        }
+        return this.checkLeafByIndex(node, ix, iy, iz)
+    }
+    /**
+     * Check a mixed leaf node using voxel grid indices.
+     * The solid leaf sentinel must be checked before calling this method.
+     *
+     * @param node - The mixed leaf node value (lower 24 bits = leafData index).
+     * @param ix - Global voxel X index.
+     * @param iy - Global voxel Y index.
+     * @param iz - Global voxel Z index.
+     * @returns True if the voxel is solid.
+     */
+    checkLeafByIndex(node, ix, iy, iz) {
+        const leafDataIndex = node & 0x00ffffff
+        // Compute voxel coordinates within the 4x4x4 block
+        const vx = ix & 3
+        const vy = iy & 3
+        const vz = iz & 3
+        // Bit index within the 64-bit mask: z * 16 + y * 4 + x
+        const bitIndex = vz * 16 + vy * 4 + vx
+        // Read the appropriate 32-bit word (lo or hi)
+        if (bitIndex < 32) {
+            const lo = this.leafData[leafDataIndex * 2] >>> 0
+            return ((lo >>> bitIndex) & 1) === 1
+        }
+        const hi = this.leafData[leafDataIndex * 2 + 1] >>> 0
+        return ((hi >>> (bitIndex - 32)) & 1) === 1
+    }
+}
+
+/** @import { XrInputSource } from 'playcanvas' */
+
+/**
+ * Automatically loads and displays WebXR controller models (hands or gamepads) based on the
+ * WebXR Input Profiles specification. The script fetches controller models from the WebXR
+ * Input Profiles asset repository and updates their transforms each frame to match the
+ * tracked input sources.
+ *
+ * Features:
+ * - Automatic controller model loading from WebXR Input Profiles repository
+ * - Support for both hand tracking and gamepad controllers
+ * - Automatic cleanup on input source removal or XR session end
+ * - Visibility control for integration with other XR scripts
+ * - Fires events for controller lifecycle coordination
+ *
+ * This script should be attached to a parent entity (typically the same entity as XrSession).
+ * Use it in conjunction with the `XrNavigation` and `XrMenu` scripts.
+ *
+ * @example
+ * // Add to camera parent entity
+ * cameraParent.addComponent('script');
+ * cameraParent.script.create(XrControllers, {
+ *     properties: {
+ *         basePath: 'https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets/dist/profiles'
+ *     }
+ * });
+ */
+class XrControllers extends Script {
+    static scriptName = 'xrControllers'
+
+    /**
+     * The base URL for fetching the WebXR input profiles.
+     *
+     * @attribute
+     * @type {string}
+     */
+    basePath = 'https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets/dist/profiles'
+
+    /**
+     * Map of input sources to their controller data (entity, joint mappings, and asset).
+     *
+     * @type {Map<XrInputSource, { entity: import('playcanvas').Entity, jointMap: Map, asset: import('playcanvas').Asset }>}
+     */
+    controllers = new Map()
+
+    /**
+     * Set of input sources currently being loaded (to handle race conditions).
+     *
+     * @type {Set<XrInputSource>}
+     * @private
+     */
+    _pendingInputSources = new Set()
+
+    /**
+     * Whether controller models are currently visible.
+     *
+     * @type {boolean}
+     * @private
+     */
+    _visible = true
+
+    /**
+     * Bound event handlers for proper cleanup.
+     *
+     * @type {{ onAdd: (inputSource: XrInputSource) => void, onRemove: (inputSource: XrInputSource) => void, onXrEnd: () => void } | null}
+     * @private
+     */
+    _handlers = null
+
+    initialize() {
+        if (!this.app.xr) {
+            console.error('XrControllers script requires XR to be enabled on the application')
+            return
+        }
+
+        // Create bound handlers for proper cleanup
+        this._handlers = {
+            onAdd: this._onInputSourceAdd.bind(this),
+            onRemove: this._onInputSourceRemove.bind(this),
+            onXrEnd: this._onXrEnd.bind(this),
+        }
+
+        // Listen for input source changes
+        this.app.xr.input.on('add', this._handlers.onAdd)
+        this.app.xr.input.on('remove', this._handlers.onRemove)
+
+        // Listen for XR session end to clean up all controllers
+        this.app.xr.on('end', this._handlers.onXrEnd)
+
+        // Clean up on script destroy
+        this.once('destroy', () => {
+            this._onDestroy()
+        })
+    }
+
+    /**
+     * Cleans up all resources when the script is destroyed.
+     *
+     * @private
+     */
+    _onDestroy() {
+        if (this._handlers && this.app.xr) {
+            this.app.xr.input.off('add', this._handlers.onAdd)
+            this.app.xr.input.off('remove', this._handlers.onRemove)
+            this.app.xr.off('end', this._handlers.onXrEnd)
+        }
+
+        // Destroy all controller entities
+        this._destroyAllControllers()
+
+        this._handlers = null
+        this._pendingInputSources.clear()
+    }
+
+    /**
+     * Handles XR session end by cleaning up all controllers.
+     *
+     * @private
+     */
+    _onXrEnd() {
+        this._destroyAllControllers()
+        this._pendingInputSources.clear()
+    }
+
+    /**
+     * Destroys a single controller and its associated resources.
+     *
+     * @param {XrInputSource} inputSource - The input source to destroy.
+     * @private
+     */
+    _destroyController(inputSource) {
+        const controller = this.controllers.get(inputSource)
+        if (!controller) return
+
+        controller.entity.destroy()
+
+        if (controller.asset) {
+            this.app.assets.remove(controller.asset)
+            controller.asset.unload()
+        }
+
+        this.controllers.delete(inputSource)
+        this.app.fire('xr:controller:remove', inputSource)
+    }
+
+    /**
+     * Destroys all controller entities and clears the map.
+     *
+     * @private
+     */
+    _destroyAllControllers() {
+        for (const inputSource of this.controllers.keys()) {
+            this._destroyController(inputSource)
+        }
+    }
+
+    /**
+     * Tries to load profiles sequentially, returning the first successful result.
+     *
+     * @param {XrInputSource} inputSource - The input source.
+     * @param {string[]} profiles - Array of profile IDs to try.
+     * @param {number} [index=0] - Current index in the profiles array.
+     * @returns {Promise<{ profileId: string, asset: import('playcanvas').Asset } | null>} The result or null.
+     * @private
+     */
+    async _tryLoadProfiles(inputSource, profiles, index = 0) {
+        if (index >= profiles.length) return null
+        if (!this._pendingInputSources.has(inputSource)) return null
+
+        const result = await this._loadProfile(inputSource, profiles[index])
+        if (result) return result
+
+        return this._tryLoadProfiles(inputSource, profiles, index + 1)
+    }
+
+    /**
+     * Called when an input source is added.
+     *
+     * @param {XrInputSource} inputSource - The input source that was added.
+     * @private
+     */
+    async _onInputSourceAdd(inputSource) {
+        if (!inputSource.profiles?.length) {
+            console.warn('XrControllers: No profiles available for input source')
+            return
+        }
+
+        // Track this input source as pending to handle race conditions
+        this._pendingInputSources.add(inputSource)
+
+        // Load profiles sequentially and stop on first success
+        const successfulResult = await this._tryLoadProfiles(inputSource, inputSource.profiles)
+
+        // Check if input source was removed during loading
+        if (!this._pendingInputSources.has(inputSource)) {
+            // Clean up the loaded asset if we got one
+            if (successfulResult?.asset) {
+                this.app.assets.remove(successfulResult.asset)
+                successfulResult.asset.unload()
+            }
+            return
+        }
+
+        // Remove from pending set
+        this._pendingInputSources.delete(inputSource)
+
+        if (successfulResult) {
+            const { asset } = successfulResult
+            const container = asset.resource
+            const entity = container.instantiateRenderEntity()
+            this.app.root.addChild(entity)
+
+            // Apply current visibility state
+            entity.enabled = this._visible
+
+            // Build joint map for hand tracking
+            const jointMap = new Map()
+            if (inputSource.hand) {
+                for (const joint of inputSource.hand.joints) {
+                    const jointEntity = entity.findByName(joint.id)
+                    if (jointEntity) {
+                        jointMap.set(joint, jointEntity)
+                    }
+                }
+            }
+
+            this.controllers.set(inputSource, { entity, jointMap, asset })
+
+            // Fire event for other scripts to coordinate
+            this.app.fire('xr:controller:add', inputSource, entity)
+        } else {
+            console.warn('XrControllers: No compatible profiles found for input source')
+        }
+    }
+
+    /**
+     * Loads a single profile and its model.
+     *
+     * @param {XrInputSource} inputSource - The input source.
+     * @param {string} profileId - The profile ID to load.
+     * @returns {Promise<{ profileId: string, asset: import('playcanvas').Asset } | null>} The result or null on failure.
+     * @private
+     */
+    async _loadProfile(inputSource, profileId) {
+        const profileUrl = `${this.basePath}/${profileId}/profile.json`
+
+        try {
+            const response = await fetch(profileUrl)
+            if (!response.ok) {
+                return null
+            }
+
+            const profile = await response.json()
+            const layoutPath = profile.layouts[inputSource.handedness]?.assetPath || ''
+            const assetPath = `${this.basePath}/${profile.profileId}/${inputSource.handedness}${layoutPath.replace(/^\/?(left|right)/, '')}`
+
+            // Load the model
+            const asset = await new Promise((resolve, reject) => {
+                this.app.assets.loadFromUrl(assetPath, 'container', (err, asset) => {
+                    if (err) reject(err)
+                    else resolve(asset)
+                })
+            })
+
+            return { profileId, asset }
+        } catch (error) {
+            // Silently fail for individual profiles - we'll try the next one
+            return null
+        }
+    }
+
+    /**
+     * Called when an input source is removed.
+     *
+     * @param {XrInputSource} inputSource - The input source that was removed.
+     * @private
+     */
+    _onInputSourceRemove(inputSource) {
+        // Remove from pending set if still loading
+        this._pendingInputSources.delete(inputSource)
+        this._destroyController(inputSource)
+    }
+
+    /**
+     * Sets the visibility state of controller models.
+     *
+     * @type {boolean}
+     */
+    set visible(value) {
+        if (this._visible === value) return
+
+        this._visible = value
+
+        for (const [, controller] of this.controllers) {
+            controller.entity.enabled = value
+        }
+    }
+
+    /**
+     * Gets the visibility state of controller models.
+     *
+     * @type {boolean}
+     */
+    get visible() {
+        return this._visible
+    }
+
+    update(dt) {
+        if (!this.app.xr?.active || !this._visible) return
+
+        for (const [inputSource, { entity, jointMap }] of this.controllers) {
+            if (inputSource.hand) {
+                // Update hand joint positions
+                for (const [joint, jointEntity] of jointMap) {
+                    jointEntity.setPosition(joint.getPosition())
+                    jointEntity.setRotation(joint.getRotation())
+                }
+            } else {
+                // Update controller position
+                const position = inputSource.getPosition()
+                const rotation = inputSource.getRotation()
+                if (position) entity.setPosition(position)
+                if (rotation) entity.setRotation(rotation)
+            }
+        }
+    }
+}
+/** @import { XrInputSource } from 'playcanvas' */
+
+/**
+ * Handles VR navigation with support for teleportation, smooth locomotion, and snap vertical movement.
+ * All methods can be enabled simultaneously, allowing users to choose their preferred
+ * navigation method on the fly.
+ *
+ * Teleportation: Point and teleport using trigger/pinch gestures
+ * Smooth Locomotion: Use left thumbstick for XZ movement
+ * Snap Turn: Use right thumbstick X-axis for snap turning
+ * Snap Vertical: Use right thumbstick Y-axis to snap up/down (right grip for larger jumps)
+ *
+ * This script should be attached to a parent entity of the camera entity used for the XR
+ * session. The entity hierarchy should be: XrNavigationEntity > CameraEntity for proper
+ * locomotion handling. Use it in conjunction with the `XrControllers` script.
+ */
+class XrNavigation extends Script {
+    static scriptName = 'xrNavigation'
+
+    /**
+     * Enable teleportation navigation using trigger/pinch gestures.
+     * @attribute
+     */
+    enableTeleport = true
+
+    /**
+     * Enable smooth locomotion using thumbsticks.
+     * @attribute
+     */
+    enableMove = true
+
+    /**
+     * Speed of smooth locomotion movement in meters per second.
+     * @attribute
+     * @range [0.1, 10]
+     * @enabledif {enableMove}
+     */
+    movementSpeed = 1.5
+
+    /**
+     * Angle in degrees for each snap turn.
+     * @attribute
+     * @range [15, 180]
+     * @enabledif {enableMove}
+     */
+    rotateSpeed = 45
+
+    /**
+     * Thumbstick deadzone threshold for movement.
+     * @attribute
+     * @range [0, 0.5]
+     * @precision 0.01
+     * @enabledif {enableMove}
+     */
+    movementThreshold = 0.1
+
+    /**
+     * Thumbstick threshold to trigger snap turning.
+     * @attribute
+     * @range [0.1, 1]
+     * @precision 0.01
+     * @enabledif {enableMove}
+     */
+    rotateThreshold = 0.5
+
+    /**
+     * Thumbstick threshold to reset snap turn state.
+     * @attribute
+     * @range [0.05, 0.5]
+     * @precision 0.01
+     * @enabledif {enableMove}
+     */
+    rotateResetThreshold = 0.25
+
+    /**
+     * Maximum distance for teleportation in meters.
+     * @attribute
+     * @range [1, 50]
+     * @enabledif {enableTeleport}
+     */
+    maxTeleportDistance = 10
+
+    /**
+     * Radius of the teleport target indicator circle.
+     * @attribute
+     * @range [0.1, 2]
+     * @precision 0.1
+     * @enabledif {enableTeleport}
+     */
+    teleportIndicatorRadius = 0.2
+
+    /**
+     * Number of segments for the teleport indicator circle.
+     * @attribute
+     * @range [8, 64]
+     * @enabledif {enableTeleport}
+     */
+    teleportIndicatorSegments = 16
+
+    /**
+     * Color for valid teleportation areas.
+     * @attribute
+     * @enabledif {enableTeleport}
+     */
+    validTeleportColor = new Color(0, 1, 0)
+
+    /**
+     * Color for invalid teleportation areas.
+     * @attribute
+     * @enabledif {enableTeleport}
+     */
+    invalidTeleportColor = new Color(1, 0, 0)
+
+    /**
+     * Color for controller rays.
+     * @attribute
+     * @enabledif {enableMove}
+     */
+    controllerRayColor = new Color(1, 1, 1)
+
+    /**
+     * Enable snap vertical movement using right thumbstick Y (controllers only).
+     * @attribute
+     */
+    enableSnapVertical = true
+
+    /**
+     * Height in meters for each vertical snap.
+     * @attribute
+     * @range [0.1, 2]
+     * @precision 0.1
+     * @enabledif {enableSnapVertical}
+     */
+    snapVerticalHeight = 0.5
+
+    /**
+     * Height in meters for each vertical snap when holding right grip (boost).
+     * @attribute
+     * @range [0.5, 10]
+     * @precision 0.5
+     * @enabledif {enableSnapVertical}
+     */
+    snapVerticalBoostHeight = 2.0
+
+    /**
+     * Thumbstick Y threshold to trigger vertical snap.
+     * @attribute
+     * @range [0.1, 1]
+     * @precision 0.01
+     * @enabledif {enableSnapVertical}
+     */
+    snapVerticalThreshold = 0.5
+
+    /**
+     * Thumbstick Y threshold to reset vertical snap state.
+     * @attribute
+     * @range [0.05, 0.5]
+     * @precision 0.01
+     * @enabledif {enableSnapVertical}
+     */
+    snapVerticalResetThreshold = 0.25
+
+    /** @type {Set<XrInputSource>} */
+    inputSources = new Set()
+
+    /** @type {Map<XrInputSource, boolean>} */
+    activePointers = new Map()
+
+    /** @type {Map<XrInputSource, { handleSelectStart: Function, handleSelectEnd: Function }>} */
+    inputHandlers = new Map()
+
+    // Rotation state for snap turning
+    lastRotateValue = 0
+
+    // Vertical state for snap vertical movement
+    lastVerticalValue = 0
+
+    // Pre-allocated objects for performance (object pooling)
+    tmpVec2A = new Vec2()
+
+    tmpVec2B = new Vec2()
+
+    tmpVec3A = new Vec3()
+
+    tmpVec3B = new Vec3()
+
+    // Color objects
+    validColor = new Color()
+
+    invalidColor = new Color()
+
+    rayColor = new Color()
+
+    // Camera reference for movement calculations
+    /** @type {import('playcanvas').Entity | null} */
+    cameraEntity = null
+
+    initialize() {
+        if (!this.app.xr) {
+            console.error('XrNavigation script requires XR to be enabled on the application')
+            return
+        }
+
+        // Log enabled navigation methods
+        const methods = []
+        if (this.enableTeleport) methods.push('teleportation')
+        if (this.enableMove) methods.push('smooth movement')
+        if (this.enableSnapVertical) methods.push('snap vertical')
+
+        if (!this.enableTeleport && !this.enableMove && !this.enableSnapVertical) {
+            console.warn('XrNavigation: All navigation methods are disabled. Navigation will not work.')
+        }
+
+        // Initialize color objects from Color attributes
+        this.validColor.copy(this.validTeleportColor)
+        this.invalidColor.copy(this.invalidTeleportColor)
+        this.rayColor.copy(this.controllerRayColor)
+
+        // Find camera entity - should be a child of this entity
+        const cameraComponent = this.entity.findComponent('camera')
+        this.cameraEntity = cameraComponent ? cameraComponent.entity : null
+
+        if (!this.cameraEntity) {
+            console.warn('XrNavigation: Camera entity not found. Looking for camera in children...')
+
+            // First try to find by name - cast to Entity since we know it should be one
+            const foundByName = this.entity.findByName('camera')
+            this.cameraEntity = /** @type {import('playcanvas').Entity | null} */ (foundByName)
+
+            // If not found, search children for entity with camera component
+            if (!this.cameraEntity) {
+                for (const child of this.entity.children) {
+                    const childEntity = /** @type {import('playcanvas').Entity} */ (child)
+                    if (childEntity.camera) {
+                        this.cameraEntity = childEntity
+                        break
+                    }
+                }
+            }
+
+            if (!this.cameraEntity) {
+                console.error('XrNavigation: No camera entity found. Movement calculations may not work correctly.')
+            }
+        }
+
+        this.app.xr.input.on('add', (inputSource) => {
+            const handleSelectStart = () => {
+                this.activePointers.set(inputSource, true)
+            }
+
+            const handleSelectEnd = () => {
+                this.activePointers.set(inputSource, false)
+                this.tryTeleport(inputSource)
+            }
+
+            // Attach the handlers
+            inputSource.on('selectstart', handleSelectStart)
+            inputSource.on('selectend', handleSelectEnd)
+
+            // Store the handlers in the map
+            this.inputHandlers.set(inputSource, { handleSelectStart, handleSelectEnd })
+            this.inputSources.add(inputSource)
+        })
+
+        this.app.xr.input.on('remove', (inputSource) => {
+            const handlers = this.inputHandlers.get(inputSource)
+            if (handlers) {
+                inputSource.off('selectstart', handlers.handleSelectStart)
+                inputSource.off('selectend', handlers.handleSelectEnd)
+                this.inputHandlers.delete(inputSource)
+            }
+            this.activePointers.delete(inputSource)
+            this.inputSources.delete(inputSource)
+        })
+    }
+
+    findPlaneIntersection(origin, direction) {
+        // Find intersection with y=0 plane
+        if (Math.abs(direction.y) < 0.00001) return null // Ray is parallel to plane
+
+        const t = -origin.y / direction.y
+        if (t < 0) return null // Intersection is behind the ray
+
+        return new Vec3(origin.x + direction.x * t, 0, origin.z + direction.z * t)
+    }
+
+    tryTeleport(inputSource) {
+        const origin = inputSource.getOrigin()
+        const direction = inputSource.getDirection()
+
+        const hitPoint = this.findPlaneIntersection(origin, direction)
+        if (hitPoint) {
+            // Adjust for camera's local XZ offset so the user's head ends up at the target
+            if (this.cameraEntity) {
+                const cameraLocalPos = this.cameraEntity.getLocalPosition()
+                hitPoint.x -= cameraLocalPos.x
+                hitPoint.z -= cameraLocalPos.z
+            }
+
+            const cameraY = this.entity.getPosition().y
+            hitPoint.y = cameraY
+            this.entity.setPosition(hitPoint)
+        }
+    }
+
+    update(dt) {
+        // Handle smooth locomotion and snap turning
+        if (this.enableMove) {
+            this.handleSmoothLocomotion(dt)
+        }
+
+        // Handle snap vertical movement (controllers only)
+        if (this.enableSnapVertical) {
+            this.handleSnapVertical()
+        }
+
+        // Handle teleportation
+        if (this.enableTeleport) {
+            this.handleTeleportation()
+        }
+
+        // Always show controller rays for debugging/visualization
+        this.renderControllerRays()
+    }
+
+    handleSmoothLocomotion(dt) {
+        if (!this.cameraEntity) return
+
+        for (const inputSource of this.inputSources) {
+            // Only process controllers with gamepads
+            if (!inputSource.gamepad) continue
+
+            // Left controller - movement
+            if (inputSource.handedness === 'left') {
+                // Get thumbstick input (axes[2] = X, axes[3] = Y)
+                this.tmpVec2A.set(inputSource.gamepad.axes[2], inputSource.gamepad.axes[3])
+
+                // Check if input exceeds deadzone
+                if (this.tmpVec2A.length() > this.movementThreshold) {
+                    this.tmpVec2A.normalize()
+
+                    // Calculate camera-relative movement direction
+                    const forward = this.cameraEntity.forward
+                    this.tmpVec2B.x = forward.x
+                    this.tmpVec2B.y = forward.z
+                    this.tmpVec2B.normalize()
+
+                    // Calculate rotation angle based on camera yaw
+                    const rad = Math.atan2(this.tmpVec2B.x, this.tmpVec2B.y) - Math.PI / 2
+
+                    // Apply rotation to movement vector
+                    const t = this.tmpVec2A.x * Math.sin(rad) - this.tmpVec2A.y * Math.cos(rad)
+                    this.tmpVec2A.y = this.tmpVec2A.y * Math.sin(rad) + this.tmpVec2A.x * Math.cos(rad)
+                    this.tmpVec2A.x = t
+
+                    // Scale by movement speed and delta time
+                    this.tmpVec2A.mulScalar(this.movementSpeed * dt)
+
+                    // Apply movement to camera parent (this entity)
+                    this.entity.translate(this.tmpVec2A.x, 0, this.tmpVec2A.y)
+                }
+            } else if (inputSource.handedness === 'right') {
+                // Right controller - snap turning
+                this.handleSnapTurning(inputSource)
+            }
+        }
+    }
+
+    handleSnapTurning(inputSource) {
+        // Get rotation input from right thumbstick X-axis
+        const rotate = -inputSource.gamepad.axes[2]
+
+        // Hysteresis system to prevent multiple rotations from single gesture
+        if (this.lastRotateValue > 0 && rotate < this.rotateResetThreshold) {
+            this.lastRotateValue = 0
+        } else if (this.lastRotateValue < 0 && rotate > -this.rotateResetThreshold) {
+            this.lastRotateValue = 0
+        }
+
+        // Only rotate when thumbstick crosses threshold from neutral position
+        if (this.lastRotateValue === 0 && Math.abs(rotate) > this.rotateThreshold) {
+            this.lastRotateValue = Math.sign(rotate)
+
+            if (this.cameraEntity) {
+                // Rotate around camera position, not entity origin
+                this.tmpVec3A.copy(this.cameraEntity.getLocalPosition())
+                this.entity.translateLocal(this.tmpVec3A)
+                this.entity.rotateLocal(0, Math.sign(rotate) * this.rotateSpeed, 0)
+                this.entity.translateLocal(this.tmpVec3A.mulScalar(-1))
+            }
+        }
+    }
+
+    /**
+     * Handles snap vertical movement using right thumbstick Y.
+     * Uses hysteresis to prevent multiple snaps from a single gesture.
+     * Hold right grip for larger snap height (boost).
+     *
+     * @private
+     */
+    handleSnapVertical() {
+        // Find right controller
+        let rightController = null
+
+        for (const inputSource of this.inputSources) {
+            if (!inputSource.gamepad) continue
+            if (inputSource.handedness === 'right') {
+                rightController = inputSource
+                break
+            }
+        }
+
+        if (!rightController || !rightController.gamepad) return
+
+        // Get vertical input from right thumbstick Y axis (negative = up on stick)
+        const vertical = -rightController.gamepad.axes[3]
+
+        // Hysteresis system to prevent multiple snaps from single gesture
+        if (this.lastVerticalValue > 0 && vertical < this.snapVerticalResetThreshold) {
+            this.lastVerticalValue = 0
+        } else if (this.lastVerticalValue < 0 && vertical > -this.snapVerticalResetThreshold) {
+            this.lastVerticalValue = 0
+        }
+
+        // Only snap when thumbstick crosses threshold from neutral position
+        if (this.lastVerticalValue === 0 && Math.abs(vertical) > this.snapVerticalThreshold) {
+            this.lastVerticalValue = Math.sign(vertical)
+
+            // Check if right grip is held for boost
+            const rightGripPressed = rightController.gamepad.buttons[1]?.pressed
+            const snapHeight = rightGripPressed ? this.snapVerticalBoostHeight : this.snapVerticalHeight
+
+            // Apply vertical snap (positive = up, negative = down)
+            this.entity.translate(0, Math.sign(vertical) * snapHeight, 0)
+        }
+    }
+
+    handleTeleportation() {
+        for (const inputSource of this.inputSources) {
+            // Only show teleportation ray when trigger/select is pressed
+            if (!this.activePointers.get(inputSource)) continue
+
+            const start = inputSource.getOrigin()
+            const direction = inputSource.getDirection()
+
+            const hitPoint = this.findPlaneIntersection(start, direction)
+
+            if (hitPoint && this.isValidTeleportDistance(hitPoint)) {
+                // Draw line to intersection point
+                this.app.drawLine(start, hitPoint, this.validColor)
+                this.drawTeleportIndicator(hitPoint)
+            } else {
+                // Draw full length ray if no intersection or invalid distance
+                this.tmpVec3B.copy(direction).mulScalar(this.maxTeleportDistance).add(start)
+                this.app.drawLine(start, this.tmpVec3B, this.invalidColor)
+            }
+        }
+    }
+
+    renderControllerRays() {
+        // Only render controller rays when smooth movement is enabled
+        // (teleport rays are handled separately in handleTeleportation)
+        if (!this.enableMove) return
+
+        for (const inputSource of this.inputSources) {
+            // Skip if currently teleporting (handled by handleTeleportation)
+            if (this.activePointers.get(inputSource)) continue
+
+            const start = inputSource.getOrigin()
+            this.tmpVec3B.copy(inputSource.getDirection()).mulScalar(2).add(start)
+            this.app.drawLine(start, this.tmpVec3B, this.rayColor)
+        }
+    }
+
+    isValidTeleportDistance(hitPoint) {
+        const distance = hitPoint.distance(this.entity.getPosition())
+        return distance <= this.maxTeleportDistance
+    }
+
+    drawTeleportIndicator(point) {
+        // Draw a circle at the teleport point using configurable attributes
+        const segments = this.teleportIndicatorSegments
+        const radius = this.teleportIndicatorRadius
+
+        for (let i = 0; i < segments; i++) {
+            const angle1 = (i / segments) * Math.PI * 2
+            const angle2 = ((i + 1) / segments) * Math.PI * 2
+
+            const x1 = point.x + Math.cos(angle1) * radius
+            const z1 = point.z + Math.sin(angle1) * radius
+            const x2 = point.x + Math.cos(angle2) * radius
+            const z2 = point.z + Math.sin(angle2) * radius
+
+            // Use pre-allocated vectors to avoid garbage collection
+            this.tmpVec3A.set(x1, 0.01, z1) // Slightly above ground to avoid z-fighting
+            this.tmpVec3B.set(x2, 0.01, z2)
+
+            this.app.drawLine(this.tmpVec3A, this.tmpVec3B, this.validColor)
+        }
+    }
+}
+// On entering/exiting AR, we need to set the camera clear color to transparent black
+const initXr = (global) => {
+    const { app, events, state, camera } = global
+    state.hasAR = app.xr.isAvailable('immersive-ar')
+    state.hasVR = app.xr.isAvailable('immersive-vr')
+    // initialize ar/vr
+    app.xr.on('available:immersive-ar', (available) => {
+        state.hasAR = available
+    })
+    app.xr.on('available:immersive-vr', (available) => {
+        state.hasVR = available
+    })
+    const parent = camera.parent
+    const clearColor = new Color()
+    const parentPosition = new Vec3()
+    const parentRotation = new Quat()
+    const cameraPosition = new Vec3()
+    const cameraRotation = new Quat()
+    const angles = new Vec3()
+    parent.addComponent('script')
+    parent.script.create(XrControllers)
+    parent.script.create(XrNavigation)
+    app.xr.on('start', () => {
+        app.autoRender = true
+        // cache original camera rig positions and rotations
+        parentPosition.copy(parent.getPosition())
+        parentRotation.copy(parent.getRotation())
+        cameraPosition.copy(camera.getPosition())
+        cameraRotation.copy(camera.getRotation())
+        cameraRotation.getEulerAngles(angles)
+        // copy transform to parent to XR/VR mode starts in the right place
+        parent.setPosition(cameraPosition.x, 0, cameraPosition.z)
+        parent.setEulerAngles(0, angles.y, 0)
+        if (app.xr.type === 'immersive-ar') {
+            clearColor.copy(camera.camera.clearColor)
+            camera.camera.clearColor = new Color(0, 0, 0, 0)
+        }
+    })
+    app.xr.on('end', () => {
+        app.autoRender = false
+        // restore camera to pre-XR state
+        parent.setPosition(parentPosition)
+        parent.setRotation(parentRotation)
+        camera.setPosition(cameraPosition)
+        camera.setRotation(cameraRotation)
+        if (app.xr.type === 'immersive-ar') {
+            camera.camera.clearColor = clearColor
+        }
+        // Restore the canvas to the correct position in the DOM after exiting XR. In
+        // some browsers (e.g. Chrome on Android) the canvas is moved to a new root
+        // during XR, and needs to be moved back on exit.
+        requestAnimationFrame(() => {
+            document.body.prepend(app.graphicsDevice.canvas)
+            app.renderNextFrame = true
+        })
+    })
+    const start = (type) => {
+        camera.camera.nearClip = 0.01
+        camera.camera.farClip = 1000
+        app.xr.start(app.root.findComponent('camera'), type, 'local-floor')
+    }
+    events.on('startAR', () => start('immersive-ar'))
+    events.on('startVR', () => start('immersive-vr'))
+    events.on('inputEvent', (event) => {
+        if (event === 'cancel' && app.xr.active) {
+            app.xr.end()
+        }
+    })
+}

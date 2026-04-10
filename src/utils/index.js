@@ -40,6 +40,38 @@ function updateProgress(loaded, total, initPoster) {
 function blurPoster(poster, progress) {
     poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
 }
+function normalizeColor(input) {
+    if (Array.isArray(input)) {
+        if (input[0] > 1 || input[1] > 1 || input[2] > 1) {
+            return input.slice(0, 3).map((v) => v / 255)
+        }
+        return input.slice(0, 3)
+    }
+    if (typeof input === 'string' && input.startsWith('#')) {
+        let hex = input.replace('#', '')
+        if (hex.length === 3) {
+            hex = hex
+                .split('')
+                .map((c) => c + c)
+                .join('')
+        }
+        const r = parseInt(hex.substring(0, 2), 16)
+        const g = parseInt(hex.substring(2, 4), 16)
+        const b = parseInt(hex.substring(4, 6), 16)
+        return [r / 255, g / 255, b / 255]
+    }
+    if (input.startsWith('rgb')) {
+        const nums = input.match(/\d+/g).map(Number)
+        return [nums[0] / 255, nums[1] / 255, nums[2] / 255]
+    }
+    const temp = document.createElement('div')
+    temp.style.color = input
+    document.body.appendChild(temp)
+    const rgb = getComputedStyle(temp).color
+    document.body.removeChild(temp)
+    const nums = rgb.match(/\d+/g).map(Number)
+    return [nums[0] / 255, nums[1] / 255, nums[2] / 255]
+}
 function showToast(content, opts = {}) {
     const duration = typeof opts.duration === 'number' ? opts.duration : 1500
     const type = opts.type || 'default'
