@@ -31,6 +31,27 @@ button {
   -moz-appearance: none;
   appearance: none;
 }
+.btn {
+  font-family: inherit;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  padding: 8px;
+  background-color: #91a3b7;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 13px;
+  -webkit-transition: background 0.12s;
+  -moz-transition: background 0.12s;
+  -ms-transition: background 0.12s;
+  -o-transition: background 0.12s;
+  transition: background 0.12s;
+}
+.btn:hover {
+  filter: brightness(0.9);
+}
 
 .hidden {
   display: none !important;
@@ -1045,13 +1066,7 @@ button {
     background 0.12s,
     color 0.12s;
 }
-.btn {
-  font-family: inherit;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  outline: none;
-}
+
 .cancel-btn {
   background: transparent;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
@@ -1159,7 +1174,7 @@ button {
   height: 14px;
   border-radius: 50%;
   position: absolute;
-  top: 1.5px;
+  top: 0.5px;
   left: 2px;
   transition: all 0.2s ease;
   background: #fff;
@@ -1273,4 +1288,14 @@ button {
 
 .webgl-error svg {
   stroke: #f59e0b;
+}
+.orientation-btn-wrap {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  gap: 12px;
+}
+.orientation-btn {
+  min-width: 105px;
+  flex: 1;
 }

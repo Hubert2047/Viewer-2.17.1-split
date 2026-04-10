@@ -72,6 +72,8 @@ class OtherController {
                     break
             }
         })
+        this.events.on('orientation:edit',()=> this.startEditModelOrientation())
+        this.events.on('orientation:save',()=> this.saveModelOrientation())
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
             const startPose = {
@@ -334,15 +336,16 @@ class OtherController {
         settings.pivotPos = pos
         this.centerPivot = this.getCustomCenterPivot(settings.pivotPos)
     }
-    resetModelType() {
-        this.model = this.originModel
-    }
     setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
         this.targetPose = targetPose
         this.startPose = startPose
         this.onTransitionFinished = onTransitionFinished
         this.lerpTime = 0
         this.lerpDuration = lerpDuration
+    }
+    startEditModelOrientation() {
+        this.model = "spherical"
+        this.updateModelRotation()
     }
     saveModelOrientation() {
         this.baseRotation = modelEntity.localRotation.clone()
@@ -354,8 +357,8 @@ class OtherController {
         this.currentYaw = 0
         this.currentPitch = 0
         this.updateModelRotation()
-        this.resetModelType()
-        if (this.mode === 'cylindrical') {
+        this.model = this.originModel
+        if (this.model === 'cylindrical') {
             this.minPitch = 0
             this.maxPitch = 0
         } else if (this.model === 'hemispherical') {
@@ -479,7 +482,7 @@ class OtherController {
             const deltaX = rotate[0]
             const deltaY = rotate[1]
             if (deltaX !== 0 || deltaY !== 0) {
-                if(this.settings.inertia){
+                if (this.settings.inertia) {
                     this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
                     this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
                 }

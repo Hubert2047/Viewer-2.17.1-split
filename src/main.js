@@ -55,6 +55,61 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
     section.appendChild(body)
     return section
 }
+function modelOrientationSection(el, global) {
+    const { events } = global
+    let isEditing = false
+    const container = document.createElement('div')
+    container.classList.add('orientation-wrap')
+
+    const buttonContainer = document.createElement('div')
+    buttonContainer.classList.add('orientation-btn-wrap')
+
+    const btnEdit = document.createElement('button')
+    btnEdit.classList.add('btn')
+    btnEdit.textContent = 'Edit Orientation'
+
+    const btnSave = document.createElement('button')
+    btnSave.textContent = 'Apply'
+    btnSave.classList.add('btn', 'confirm-btn', 'orientation-btn')
+
+    const btnCancel = document.createElement('button')
+    btnCancel.classList.add('cancel-btn', 'btn', 'orientation-btn')
+    btnCancel.textContent = 'Cancel'
+
+    btnEdit.onclick = () => {
+        isEditing = true
+        events.fire('orientation:edit')
+        // enableGizmo(true)
+        render()
+    }
+
+    btnSave.onclick = () => {
+        isEditing = false
+        // enableGizmo(false)
+        events.fire('orientation:save')
+        render()
+    }
+
+    btnCancel.onclick = () => {
+        isEditing = false
+        // enableGizmo(false)
+        render()
+    }
+    container.appendChild(buttonContainer)
+    el.appendChild(container)
+
+    function render() {
+        buttonContainer.innerHTML = ''
+        if (isEditing) {
+            buttonContainer.appendChild(btnSave)
+            buttonContainer.appendChild(btnCancel)
+        } else {
+            buttonContainer.appendChild(btnEdit)
+        }
+    }
+
+    render()
+}
 
 function viewerSettingsSection(el, global) {
     const settings = global.settings
@@ -169,9 +224,19 @@ function createSidebar(global, dom) {
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
     sidebar.appendChild(header)
+    if (global.settings.model !== 'spherical') {
+        sidebar.appendChild(
+            createSection({
+                id: 'orientation',
+                title: 'Model Orientation',
+                classname: 'model-orientation-section',
+                body: (el) => modelOrientationSection(el, global),
+            }),
+        )
+    }
     sidebar.appendChild(
         createSection({
-            id: 'viewerSetting',
+            id: 'settings',
             title: 'Viewer Settings',
             classname: 'viewer-setting-section',
             body: (el) => viewerSettingsSection(el, global),
