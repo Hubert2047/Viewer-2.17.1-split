@@ -10,7 +10,7 @@ class HotspotManager {
         this.state = global.state
 
         this.hotspots = []
-        this.hotspotData = global.settings.hotspots
+        this.settings = global.settings
 
         this.activeHotspot = null
         this.activeData = null
@@ -23,7 +23,7 @@ class HotspotManager {
         this.initHotspot()
     }
     initHotspot() {
-        this.hotspotData.forEach((h) => {
+        this.settings.hotspots.forEach((h) => {
             this.hotspots.push(this.createHotspot(h))
         })
     }
@@ -36,7 +36,7 @@ class HotspotManager {
                 if (this.activeHotspot?.data.id === id) return
                 const hotspot = this.hotspots.find((hotspot) => hotspot.id === id)
                 if (hotspot) {
-                    const data = this.hotspotData.find((h) => h.id === hotspot.id)
+                    const data = this.settings.hotspots.find((h) => h.id === hotspot.id)
                     this.events.fire('hotspot:editor-selected', data)
                 }
             },
@@ -58,7 +58,7 @@ class HotspotManager {
         })
         this.events.on('hotspot:add', ({ position, entityInfo }) => {
             const data = this.createDefault(position, entityInfo)
-            this.hotspotData.push(data)
+            this.settings.hotspots.push(data)
             this.hotspots.push(this.createHotspot(data))
             this.events.fire('hotspot:editor-selected', data)
             this.events.fire('hotspot:editing', false)
@@ -112,7 +112,7 @@ class HotspotManager {
         this.events.on('hotspot:editor-cancelled', () => {
             this.activeData = null
             if (this.activeHotspot) {
-                const data = this.hotspotData.find((i) => i.id === this.activeHotspot.data.id)
+                const data = this.settings.hotspots.find((i) => i.id === this.activeHotspot.data.id)
                 this.activeHotspot.data = JSON.parse(JSON.stringify(data))
                 this.activeHotspot.update(true, this.activeHotspot.data.button.title)
                 this.activeHotspot.hide()
@@ -125,13 +125,16 @@ class HotspotManager {
         this.events.on('hotspot:delete', (id) => {
             const idx = this.hotspots.findIndex((h) => h.id === id)
             if (idx < 0) return
+            if (this.hotspots[idx].data.audio.src && this.hotspots[idx].data.audio.src.startsWith('blod:')) {
+                URL.revokeObjectURL(this.hotspots[idx].data.audio.src)
+            }
             this.hotspots[idx].destroy()
             if (this.activeHotspot?.id === id) {
                 this.activeData = null
                 this.activeHotspot = null
             }
             this.hotspots.splice(idx, 1)
-            this.hotspotData.splice(idx, 1)
+            this.settings.hotspots.splice(idx, 1)
             this.updateUIPanel()
             this.events.fire('hotspot:editing', false)
             if (this.hotspots.length === 0) {
@@ -141,7 +144,7 @@ class HotspotManager {
         })
 
         this.events.on('hotspot:apply', (applyData) => {
-            this.hotspotData = this.hotspotData.map((d) => {
+            this.settings.hotspots = this.settings.hotspots.map((d) => {
                 if (d.id === applyData.id) {
                     const newData = {
                         ...applyData,
@@ -152,18 +155,17 @@ class HotspotManager {
                 }
                 return d
             })
-
             this.activeData = null
             this.updateUIPanel(true)
             this.events.fire('hotspot:editing', false)
         })
         this.events.on('hotspot:reorder', ({ fromId, toId }) => {
-            const fromDataIdx = this.hotspotData.findIndex((d) => d.id === fromId)
-            const toDataIdx = this.hotspotData.findIndex((d) => d.id === toId)
+            const fromDataIdx = this.settings.hotspots.findIndex((d) => d.id === fromId)
+            const toDataIdx = this.settings.hotspots.findIndex((d) => d.id === toId)
             if (fromDataIdx < 0 || toDataIdx < 0) return
-            ;[this.hotspotData[fromDataIdx], this.hotspotData[toDataIdx]] = [
-                this.hotspotData[toDataIdx],
-                this.hotspotData[fromDataIdx],
+            ;[this.settings.hotspots[fromDataIdx], this.settings.hotspots[toDataIdx]] = [
+                this.settings.hotspots[toDataIdx],
+                this.settings.hotspots[fromDataIdx],
             ]
             const fromHotspotIdx = this.hotspots.findIndex((h) => h.id === fromId)
             const toHotspotIdx = this.hotspots.findIndex((h) => h.id === toId)
@@ -201,7 +203,7 @@ class HotspotManager {
         })
     }
     resetActiveHotspotBtnName() {
-        const restoreData = this.hotspotData.find((d) => d.id === this.activeData?.id)
+        const restoreData = this.settings.hotspots.find((d) => d.id === this.activeData?.id)
         if (restoreData && this.activeHotspot) {
             this.activeHotspot.button.updateTitle(restoreData.button.title)
         }
@@ -223,7 +225,7 @@ class HotspotManager {
             focusScreenPos,
         )
         const { topLeft: dotTL, botRight: dotBR } = this.getDotBounder(focusWorldPos, invWorldMatrix, focusScreenPos)
-        const defaultName = `hotspot${this.hotspotData.length + 1}`
+        const defaultName = `hotspot${this.settings.hotspots.length + 1}`
         return {
             id: guid.create(),
             autoPlay: { time: 3000 },
@@ -251,6 +253,19 @@ class HotspotManager {
                 size: 30,
                 topLeft: dotTL,
                 botRight: dotBR,
+            },
+            audio: {
+                show: true,
+                src: null,
+                fileName: null,
+                bgColor: '#000000',
+                bgAlpha: 0.8,
+                iconColor: '#ffffff',
+                volume: 1,
+                loop: false,
+                embed: false,
+                persist: false,
+                autoPlay: false,
             },
             entityInfo,
         }
@@ -351,10 +366,11 @@ class HotspotManager {
         if (this.activeHotspot && this.activeData) {
             if (this.activeData) this.activeHotspot.data = JSON.parse(JSON.stringify(this.activeData))
             this.activeHotspot.update(true, this.activeData.button.title)
+            this.activeHotspot.refreshAudio()
         }
     }
     updateUIPanel() {
-        this.editor.render(this.hotspotData, this.activeData)
+        if (this.editor) this.editor.render(this.settings.hotspots, this.activeData)
     }
     update() {
         if (this.isTranslating) return

@@ -17,7 +17,7 @@ class HotspotEditorUI {
         this.events.on('controllers:created', (controllers) => {
             this.controllers = controllers
         })
-        this.events.on('hotspot:add-cancelled',()=>{
+        this.events.on('hotspot:add-cancelled', () => {
             document.body.style.cursor = 'default'
             this.events.fire('hotspot:editing', false)
             this.isCreatingHotspot = false
@@ -258,8 +258,7 @@ class HotspotEditorUI {
         labelField.appendChild(labelRow)
         textGroup.appendChild(labelField)
 
-        const colorGrid = this.makeGrid(3)
-        colorGrid.style.marginTop = '7px'
+        const colorGrid = this.makeGrid(2)
         const colorField = this.makeField('Color')
         colorField.appendChild(
             this.makeColorSwatch(this.activeHotspotData.text.color, (v) => {
@@ -269,31 +268,24 @@ class HotspotEditorUI {
         )
         const bgField = this.makeField('Background')
         bgField.appendChild(
-            this.makeColorSwatch(this.activeHotspotData.text.background, (v) => {
-                this.activeHotspotData.text.background = v
-                this.applyDraft()
-            }),
-        )
-        const alphaField = this.makeField('Alpha')
-        alphaField.appendChild(
-            this.makeInput('number', this.activeHotspotData.text.backgroundAlpha, {
-                min: 0,
-                max: 1,
-                step: 0.1,
-                name: 'anpha',
-                onChange: (v) => {
-                    this.activeHotspotData.text.backgroundAlpha = parseFloat(v)
+            this.makeColorAlpha(
+                this.activeHotspotData.text.background,
+                this.activeHotspotData.text.backgroundAlpha,
+                (v) => {
+                    this.activeHotspotData.text.background = v
                     this.applyDraft()
                 },
-            }),
+                (v) => {
+                    this.activeHotspotData.text.backgroundAlpha = v
+                    this.applyDraft()
+                },
+            ),
         )
         colorGrid.appendChild(colorField)
         colorGrid.appendChild(bgField)
-        colorGrid.appendChild(alphaField)
         textGroup.appendChild(colorGrid)
 
         const fontGrid = this.makeGrid(2)
-        fontGrid.style.marginTop = '7px'
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
             this.makeInput('number', this.activeHotspotData.text.fontSize, {
@@ -346,7 +338,6 @@ class HotspotEditorUI {
         hotspotGroup.appendChild(styleField)
 
         const dotGrid = this.makeGrid(3)
-        dotGrid.style.marginTop = '7px'
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
             this.makeInput('number', this.activeHotspotData.dot.size, {
@@ -373,7 +364,6 @@ class HotspotEditorUI {
             }),
         )
         const strokeColorField = this.makeField('Stroke color')
-        strokeColorField.style.marginTop = '7px'
         strokeColorField.appendChild(
             this.makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
                 this.activeHotspotData.dot.strokeColor = v
@@ -384,8 +374,6 @@ class HotspotEditorUI {
         dotGrid.appendChild(strokeField)
         dotGrid.appendChild(strokeColorField)
         hotspotGroup.appendChild(dotGrid)
-
-        // hotspotGroup.appendChild(strokeColorField)
         panel.appendChild(hotspotGroup)
 
         // GROUP: Auto Play
@@ -428,9 +416,246 @@ class HotspotEditorUI {
         panel.appendChild(autoplayGrid)
         panel.appendChild(buttonGrid)
 
+        // GROUP: Audio
+        const audioGroup = this.makeGroup('Audio')
+
+        const audioFileFieldGroup = this.makeGrid(2)
+        const audioFileField = this.makeField('Audio File')
+        const fileInput = document.createElement('input')
+        fileInput.type = 'file'
+        fileInput.accept = 'audio/*'
+        fileInput.style.display = 'none'
+        fileInput.name = 'audio-file'
+
+        const fileLabel = document.createElement('label')
+        fileLabel.classList.add('audio-file-label')
+
+        const fileBtn = document.createElement('span')
+        fileBtn.classList.add('audio-file-btn')
+        fileBtn.textContent = 'Choose File'
+
+        const fileNameSpan = document.createElement('span')
+        fileNameSpan.classList.add('audio-file-name')
+        fileNameSpan.textContent = this.activeHotspotData.audio?.fileName || 'No file chosen'
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]
+            if (!file) return
+            if (this.activeHotspotData.audio.src && this.activeHotspotData.audio.src.startsWith('blod:')) {
+                URL.revokeObjectURL(this.activeHotspotData.audio.src)
+            }
+            this.activeHotspotData.audio.fileName = file.name
+            this.activeHotspotData.audio.fileType = file.type
+            fileNameSpan.textContent = file.name
+            this.activeHotspotData.audio.src = URL.createObjectURL(file)
+            this.applyDraft()
+        })
+
+        fileLabel.appendChild(fileBtn)
+        fileLabel.appendChild(fileNameSpan)
+        fileLabel.appendChild(fileInput)
+        audioFileField.appendChild(fileLabel)
+        audioFileFieldGroup.appendChild(audioFileField)
+
+        const audioGrid = this.makeGrid(2)
+        const iconColorField = this.makeField('Color')
+        iconColorField.appendChild(
+            this.makeColorSwatch(this.activeHotspotData.audio?.iconColor || '#ffffff', (v) => {
+                this.activeHotspotData.audio.iconColor = v
+                this.applyDraft()
+            }),
+        )
+
+        const iconBgField = this.makeField('Background', 'background-color')
+        iconBgField.appendChild(
+            this.makeColorAlpha(
+                this.activeHotspotData.audio?.bgColor || '#000000',
+                this.activeHotspotData.audio?.bgAlpha ?? 0.35,
+                (v) => {
+                    this.activeHotspotData.audio.bgColor = v
+                    this.applyDraft()
+                },
+                (v) => {
+                    this.activeHotspotData.audio.bgAlpha = v
+                    this.applyDraft()
+                },
+            ),
+        )
+
+        const loopField = this.makeField('Loop')
+        loopField.appendChild(
+            this.makeToggle(this.activeHotspotData.audio.loop, () => {
+                this.activeHotspotData.audio.loop = !this.activeHotspotData.audio.loop
+                return this.activeHotspotData.audio.loop
+            }),
+        )
+
+        const showField = this.makeField('Show')
+        showField.appendChild(
+            this.makeToggle(this.activeHotspotData.audio.show, () => {
+                this.activeHotspotData.audio.show = !this.activeHotspotData.audio.show
+                return this.activeHotspotData.audio.show
+            }),
+        )
+        const persistField = this.makeField('Persist')
+        persistField.appendChild(
+            this.makeToggle(this.activeHotspotData.audio.persist, () => {
+                this.activeHotspotData.audio.persist = !this.activeHotspotData.audio.persist
+                return this.activeHotspotData.audio.persist
+            }),
+        )
+        const autoPlayField = this.makeField('Auto Play')
+        autoPlayField.appendChild(
+            this.makeToggle(this.activeHotspotData.audio.autoPlay, () => {
+                this.activeHotspotData.audio.autoPlay = !this.activeHotspotData.audio.autoPlay
+                return this.activeHotspotData.audio.autoPlay
+            }),
+        )
+
+        const embedField = this.makeField('Embed', 'embed')
+        const embedLabel = embedField.querySelector('div:first-child')
+        if (embedLabel) {
+            const infoIcon = document.createElement('span')
+            infoIcon.classList.add('embed-info-icon')
+            infoIcon.textContent = 'i'
+            infoIcon.setAttribute('tabindex', '0')
+
+            const tooltip = document.createElement('div')
+            tooltip.classList.add('embed-tooltip')
+            tooltip.innerHTML = `
+            <div class="embed-tip-row">
+                <span class="embed-tip-dot amber"></span>
+                <span>Embedding increases the exported file size — not recommended, especially for large files.</span>
+            </div>
+            <div class="embed-tip-row">
+                <span class="embed-tip-dot green"></span>
+                <span>Keep embed off and copy the audio file into the <b>audios/</b> folder — include that folder when sharing.</span>
+            </div>
+            `
+            infoIcon.addEventListener('mouseenter', () => {
+                const rect = infoIcon.getBoundingClientRect()
+                tooltip.style.display = 'block'
+                const tooltipW = tooltip.offsetWidth
+                const tooltipH = tooltip.offsetHeight
+                const margin = 8
+                let left = rect.left + rect.width / 2 - tooltipW / 2
+                let top = rect.top - tooltipH - 6
+                left = Math.max(margin, Math.min(left, window.innerWidth - tooltipW - margin))
+                if (top < margin) {
+                    top = rect.bottom + 6
+                }
+                tooltip.style.left = `${left}px`
+                tooltip.style.top = `${top}px`
+            })
+
+            infoIcon.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none'
+            })
+            document.body.appendChild(tooltip)
+            embedLabel.appendChild(infoIcon)
+        }
+        const embedWrap = document.createElement('div')
+        embedWrap.classList.add('audio-toggle-wrap')
+        const embedToggle = document.createElement('div')
+        embedToggle.classList.add('toggle')
+        if (this.activeHotspotData.audio?.embed) embedToggle.classList.add('active')
+        const embedKnob = document.createElement('div')
+        embedKnob.classList.add('toggle-knob')
+        embedToggle.appendChild(embedKnob)
+
+        embedToggle.addEventListener('click', () => {
+            const isEmbed = !this.activeHotspotData.audio.embed
+            if (isEmbed) {
+                const src = this.activeHotspotData.audio.src
+                const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
+                if (!hasValidSrc && this.activeHotspotData.audio.fileName) {
+                    showToast('To embed, please re-select the audio file using the file picker.', {
+                        duration: 5000,
+                        type: 'warning',
+                    })
+                    return
+                }
+            }
+
+            this.activeHotspotData.audio.embed = isEmbed
+            embedToggle.classList.toggle('active', isEmbed)
+            this.applyDraft()
+        })
+
+        embedWrap.appendChild(embedToggle)
+        embedField.appendChild(embedWrap)
+
+        const audioToggleGrid = this.makeGrid(3)
+        audioGrid.appendChild(iconColorField)
+        audioGrid.appendChild(iconBgField)
+
+        audioToggleGrid.appendChild(showField)
+        audioToggleGrid.appendChild(autoPlayField)
+        audioToggleGrid.appendChild(loopField)
+        audioToggleGrid.appendChild(persistField)
+        audioToggleGrid.appendChild(embedField)
+
+        audioGroup.appendChild(audioFileFieldGroup)
+        audioGroup.appendChild(audioToggleGrid)
+        audioGroup.appendChild(audioGrid)
+
+        // -- Volume
+        const volumeField = this.makeField('Volume', 'volume')
+        const volumeWrap = document.createElement('div')
+        volumeWrap.classList.add('volume-wrap')
+
+        const volumeSlider = document.createElement('input')
+        const updateSlider = (v) => {
+            volumeSlider.style.background = `linear-gradient(
+        to right,
+        #f95f4d 0%,
+        #f95f4d ${v * 100}%,
+        rgba(0,0,0,0.1) ${v * 100}%,
+        rgba(0,0,0,0.1) 100%
+    )`
+        }
+        volumeSlider.type = 'range'
+        volumeSlider.classList.add('volume-slider')
+        volumeSlider.min = 0
+        volumeSlider.max = 1
+        volumeSlider.step = 0.1
+        volumeSlider.value = this.activeHotspotData.audio?.volume ?? 1
+        updateSlider(this.activeHotspotData.audio?.volume ?? 1)
+
+        const volumeInput = document.createElement('input')
+        volumeInput.type = 'number'
+        volumeInput.classList.add('input-field', 'volume-number')
+        volumeInput.min = 0
+        volumeInput.max = 1
+        volumeInput.step = 0.1
+        volumeInput.value = this.activeHotspotData.audio?.volume ?? 1
+
+        volumeSlider.addEventListener('input', () => {
+            const v = parseFloat(volumeSlider.value)
+            volumeInput.value = v
+            this.activeHotspotData.audio.volume = v
+            updateSlider(v)
+            this.applyDraft()
+        })
+
+        volumeInput.addEventListener('input', () => {
+            const v = Math.min(1, Math.max(0, parseFloat(volumeInput.value) || 0))
+            volumeSlider.value = v
+            this.activeHotspotData.audio.volume = v
+            updateSlider(v)
+            this.applyDraft()
+        })
+
+        volumeWrap.appendChild(volumeSlider)
+        volumeWrap.appendChild(volumeInput)
+        volumeField.appendChild(volumeWrap)
+        audioGroup.appendChild(volumeField)
+
+        panel.appendChild(audioGroup)
+
         // Apply / Cancel
         const applyRow = document.createElement('div')
-        applyRow.style.cssText = 'display:flex; gap:6px;'
+        applyRow.classList.add('apply-row')
 
         const cancelBtn = document.createElement('button')
         cancelBtn.classList.add('cancel-btn', 'btn', 'hotspot-cancel-btn')
@@ -451,6 +676,27 @@ class HotspotEditorUI {
         panel.appendChild(applyRow)
         return panel
     }
+    makeToggle(initialValue, onChange) {
+        const wrap = document.createElement('div')
+        wrap.classList.add('audio-toggle-wrap')
+
+        const toggle = document.createElement('div')
+        toggle.classList.add('toggle')
+        if (initialValue) toggle.classList.add('active')
+
+        const knob = document.createElement('div')
+        knob.classList.add('toggle-knob')
+        toggle.appendChild(knob)
+
+        toggle.addEventListener('click', () => {
+            const newVal = onChange()
+            toggle.classList.toggle('active', newVal)
+            this.applyDraft()
+        })
+
+        wrap.appendChild(toggle)
+        return wrap
+    }
     makeTextarea(value, opts = {}) {
         const textarea = document.createElement('textarea')
         textarea.value = value
@@ -470,6 +716,79 @@ class HotspotEditorUI {
         if (opts.placeholder) textarea.placeholder = opts.placeholder
         return textarea
     }
+    makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha) {
+        const block = document.createElement('div')
+        block.classList.add('color-alpha-block')
+        const swatch = this.makeColorSwatch(color, (v) => {
+            swatch.style.background = v
+            checkerColor.style.background = v
+            onChangeColor(v)
+        })
+        const bgRow = document.createElement('div')
+        bgRow.classList.add('color-alpha-bg-row')
+
+        const checkerWrap = document.createElement('div')
+        checkerWrap.classList.add('color-alpha-checker')
+        const checkerColor = document.createElement('div')
+        checkerColor.classList.add('color-alpha-checker-fill')
+        checkerColor.style.background = color
+        checkerColor.style.opacity = alpha
+
+        const colorInput = document.createElement('input')
+        colorInput.type = 'color'
+        colorInput.value = color
+        colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;'
+        colorInput.addEventListener('input', () => {
+            const v = colorInput.value
+            checkerColor.style.background = v
+            swatch.style.background = v
+            onChangeColor(v)
+        })
+
+        checkerWrap.appendChild(checkerColor)
+        checkerWrap.appendChild(colorInput)
+
+        const sliderWrap = document.createElement('div')
+        sliderWrap.classList.add('color-alpha-slider-wrap')
+
+        const slider = document.createElement('input')
+        const alphaVal = document.createElement('span')
+        alphaVal.classList.add('alpha-value')
+
+        const updateTrack = (v) => {
+            slider.style.background = `linear-gradient(
+            to right,
+            rgba(0,0,0,0.6) 0%,
+            rgba(0,0,0,0.6) ${v * 100}%,
+            rgba(0,0,0,0.08) ${v * 100}%,
+            rgba(0,0,0,0.08) 100%
+        )`
+            alphaVal.textContent = Math.round(v * 100) + '%'
+            checkerColor.style.opacity = v
+        }
+
+        slider.type = 'range'
+        slider.classList.add('alpha-slider')
+        slider.min = 0
+        slider.max = 1
+        slider.step = 0.05
+        slider.value = alpha
+        updateTrack(alpha)
+
+        slider.addEventListener('input', () => {
+            const v = parseFloat(slider.value)
+            updateTrack(v)
+            onChangeAlpha(v)
+        })
+
+        sliderWrap.appendChild(slider)
+        sliderWrap.appendChild(alphaVal)
+
+        bgRow.appendChild(checkerWrap)
+        bgRow.appendChild(sliderWrap)
+        block.appendChild(bgRow)
+        return block
+    }
     makeGroup(title) {
         const g = document.createElement('div')
         g.classList.add('hotspot-group')
@@ -480,9 +799,10 @@ class HotspotEditorUI {
         return g
     }
 
-    makeField(label) {
+    makeField(label, classname = '') {
         const wrap = document.createElement('div')
         wrap.classList.add('hotspot-field')
+        if (classname) wrap.classList.add(classname)
         const lbl = document.createElement('div')
         lbl.classList.add('hotspot-label')
         lbl.textContent = label

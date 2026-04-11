@@ -92,7 +92,7 @@ class OtherController {
                 focus: this.getActualFocus(f),
                 position: new Vec3(p.x, p.y, p.z),
                 rotation: new Quat(r.x, r.y, r.z, r.w),
-                distance: this.getActualDistance(d),
+                distance: this.clampDistance(this.getActualDistance(d)),
                 yaw,
                 pitch,
             }
@@ -135,7 +135,6 @@ class OtherController {
         if (this.isResetting) return
         if (!pose) pose = this.resetPose
         v$2.copy(pose.forward)
-
         if (!this.originDistance) this.originDistance = pose.distance
         if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
 
@@ -167,11 +166,11 @@ class OtherController {
         if (this.initviewPose) {
             const { focus: f, distanceScale: d } = this.initviewPose
             this.focus.copy(this.getActualFocus(f))
-            distance = isMobile ? Math.max(pose.distance, this.getActualDistance(d)) : this.getActualDistance(d)
+            distance = isMobile ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d))) : this.clampDistance(this.getActualDistance(d))
             if (!this.initviewDistance) this.initviewDistance = distance
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
         } else {
-            distance = pose.distance
+            distance =  this.clampDistance(pose.distance) 
             this.focus.copy(pose.focus)
             if (!this.initviewDistance) this.initviewDistance = distance
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
@@ -594,7 +593,6 @@ class OtherController {
         target[4] = rotation.y * sign
         target[5] = rotation.z * sign
         target[6] = rotation.w * sign
-
         target[7] = this.distance
         smoothDamp.update(dt)
         const q = new Quat3(value[3], value[4], value[5], value[6]).normalize()

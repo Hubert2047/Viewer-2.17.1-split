@@ -1,11 +1,14 @@
 const defaultSettings = {
-    version: 2,
+    version: 1,
     contentUrl: 'car.sog',
     autoHideUI: false,
-    background: { color: "white" },
+    background: { color: 'white' },
     startMode: 'default',
     model: 'spherical',
-    lockZoomIn: { value: 11, locked: false },
+    lockZoomIn: {
+        value: 11, //distanceScale
+        locked: false,
+    },
     pivotPos: null,
     initview: { pose: null },
     inertia: true,

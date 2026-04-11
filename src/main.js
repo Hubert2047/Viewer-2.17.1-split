@@ -89,7 +89,7 @@ function modelOrientationSection(el, global) {
     }
 
     btnCancel.onclick = () => {
-         isEditing = false
+        isEditing = false
         events.fire('orientation:cancel')
         render()
     }
@@ -121,8 +121,8 @@ function viewerSettingsSection(el, global) {
 
     const colorInput = document.createElement('input')
     colorInput.type = 'color'
-    colorInput.classList.add('color-input')
-    colorInput.value = settings.background.color || '#ffffff'
+    colorInput.classList.add('color-input','viewer-background-input')
+    colorInput.value = settings.background.color 
 
     colorInput.addEventListener('input', () => {
         document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
@@ -1338,14 +1338,14 @@ class CameraManager {
             anim: animTrack ? new AnimController(animTrack) : null,
             ortery: new OtherController({ global, bbox, minDistance: this.minDistance }),
         }
-      const gizmo = new RotationGizmo(app, entity, events, modelEntity)
-gizmo.enable()
-        this.controllers.ortery._gizmo = gizmo
-            events.on('orientation:cancel', () => {
+        // const gizmo = new RotationGizmo(app, entity, events, modelEntity)
+        // gizmo.enable()
+        // this.controllers.ortery._gizmo = gizmo
+        events.on('orientation:cancel', () => {
             gizmo.disable()
             gizmo.restoreSnapshot()
-            const ctrl  = this.controllers.ortery
-            ctrl.model  = ctrl.originModel
+            const ctrl = this.controllers.ortery
+            ctrl.model = ctrl.originModel
             ctrl.updateModelRotation()
         })
         events.on('orientation:cancel', () => {
@@ -3746,7 +3746,7 @@ const config = {
     contentUrl: settings.contentUrl,
     contents: createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
-    editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:',
+    editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:' && !isMobile,
     noanim: true,
     nofx: url.searchParams.has('nofx'),
     hpr: url.searchParams.has('hpr') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('hpr')) : undefined,
@@ -3865,100 +3865,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-    const bboxSetup = (() => {
-        const app = viewer.global.app
-        const layers = app.scene.layers
-        const worldLayer = layers.getLayerByName('World')
+    // const bboxSetup = (() => {
+    //     const app = viewer.global.app
+    //     const layers = app.scene.layers
+    //     const worldLayer = layers.getLayerByName('World')
 
-        const layerBBox = new Layer({ name: 'BBox' })
-        const worldIndex = layers.getOpaqueIndex(worldLayer)
-        layers.insert(layerBBox, worldIndex)
+    //     const layerBBox = new Layer({ name: 'BBox' })
+    //     const worldIndex = layers.getOpaqueIndex(worldLayer)
+    //     layers.insert(layerBBox, worldIndex)
 
-        const cam = viewer.global.camera
-        cam.camera.layers = [...cam.camera.layers, layerBBox.id]
+    //     const cam = viewer.global.camera
+    //     cam.camera.layers = [...cam.camera.layers, layerBBox.id]
 
-        const lineMesh = new Mesh(app.graphicsDevice)
+    //     const lineMesh = new Mesh(app.graphicsDevice)
 
-        const createLineMat = (opacity) => {
-            const mat = new StandardMaterial()
-            mat.emissive = new Color(0, 1, 0.6)
-            mat.diffuse = new Color(0, 0, 0)
-            mat.opacity = opacity
-            mat.blendType = BLEND_NORMAL
-            mat.depthTest = true
-            mat.depthWrite = true
-            mat.useLighting = false
-            mat.cull = CULLFACE_NONE
-            mat.update()
-            return mat
-        }
+    //     const createLineMat = (opacity) => {
+    //         const mat = new StandardMaterial()
+    //         mat.emissive = new Color(0, 1, 0.6)
+    //         mat.diffuse = new Color(0, 0, 0)
+    //         mat.opacity = opacity
+    //         mat.blendType = BLEND_NORMAL
+    //         mat.depthTest = true
+    //         mat.depthWrite = true
+    //         mat.useLighting = false
+    //         mat.cull = CULLFACE_NONE
+    //         mat.update()
+    //         return mat
+    //     }
 
-        const matBBox = createLineMat(1.0)
-        const bboxEntity = new Entity('bbox')
-        app.root.addChild(bboxEntity)
+    //     const matBBox = createLineMat(1.0)
+    //     const bboxEntity = new Entity('bbox')
+    //     app.root.addChild(bboxEntity)
 
-        const mi = new MeshInstance(lineMesh, matBBox)
-        mi.cull = false
+    //     const mi = new MeshInstance(lineMesh, matBBox)
+    //     mi.cull = false
 
-        bboxEntity.addComponent('render', {
-            layers: [layerBBox.id],
-            meshInstances: [mi],
-        })
+    //     bboxEntity.addComponent('render', {
+    //         layers: [layerBBox.id],
+    //         meshInstances: [mi],
+    //     })
 
-        const updateMesh = (gsplatEntity) => {
-            const aabb = gsplatEntity.gsplat.customAabb
-            if (!aabb) return
+    //     const updateMesh = (gsplatEntity) => {
+    //         const aabb = gsplatEntity.gsplat.customAabb
+    //         if (!aabb) return
 
-            const c = aabb.center
-            const he = aabb.halfExtents
-            const wd = gsplatEntity.getWorldTransform().data
+    //         const c = aabb.center
+    //         const he = aabb.halfExtents
+    //         const wd = gsplatEntity.getWorldTransform().data
 
-            const transformPoint = (p) => [
-                wd[0] * p[0] + wd[4] * p[1] + wd[8] * p[2] + wd[12],
-                wd[1] * p[0] + wd[5] * p[1] + wd[9] * p[2] + wd[13],
-                wd[2] * p[0] + wd[6] * p[1] + wd[10] * p[2] + wd[14],
-            ]
+    //         const transformPoint = (p) => [
+    //             wd[0] * p[0] + wd[4] * p[1] + wd[8] * p[2] + wd[12],
+    //             wd[1] * p[0] + wd[5] * p[1] + wd[9] * p[2] + wd[13],
+    //             wd[2] * p[0] + wd[6] * p[1] + wd[10] * p[2] + wd[14],
+    //         ]
 
-            const corners = [
-                [-he.x, -he.y, -he.z],
-                [he.x, -he.y, -he.z],
-                [-he.x, he.y, -he.z],
-                [he.x, he.y, -he.z],
-                [-he.x, -he.y, he.z],
-                [he.x, -he.y, he.z],
-                [-he.x, he.y, he.z],
-                [he.x, he.y, he.z],
-            ].map((p) => transformPoint([c.x + p[0], c.y + p[1], c.z + p[2]]))
+    //         const corners = [
+    //             [-he.x, -he.y, -he.z],
+    //             [he.x, -he.y, -he.z],
+    //             [-he.x, he.y, -he.z],
+    //             [he.x, he.y, -he.z],
+    //             [-he.x, -he.y, he.z],
+    //             [he.x, -he.y, he.z],
+    //             [-he.x, he.y, he.z],
+    //             [he.x, he.y, he.z],
+    //         ].map((p) => transformPoint([c.x + p[0], c.y + p[1], c.z + p[2]]))
 
-            const edges = [
-                [0, 1],
-                [1, 3],
-                [3, 2],
-                [2, 0],
-                [4, 5],
-                [5, 7],
-                [7, 6],
-                [6, 4],
-                [0, 4],
-                [1, 5],
-                [2, 6],
-                [3, 7],
-            ]
+    //         const edges = [
+    //             [0, 1],
+    //             [1, 3],
+    //             [3, 2],
+    //             [2, 0],
+    //             [4, 5],
+    //             [5, 7],
+    //             [7, 6],
+    //             [6, 4],
+    //             [0, 4],
+    //             [1, 5],
+    //             [2, 6],
+    //             [3, 7],
+    //         ]
 
-            const pos = []
-            for (const [i, j] of edges) {
-                pos.push(...corners[i], ...corners[j])
-            }
+    //         const pos = []
+    //         for (const [i, j] of edges) {
+    //             pos.push(...corners[i], ...corners[j])
+    //         }
 
-            lineMesh.setPositions(pos)
-            lineMesh.update(PRIMITIVE_LINES, false)
-        }
+    //         lineMesh.setPositions(pos)
+    //         lineMesh.update(PRIMITIVE_LINES, false)
+    //     }
 
-        app.on('update', () => {
-            const gsplatEntity = app.root.findByName('gsplat')
-            if (!gsplatEntity || !gsplatEntity.gsplat) return
-            updateMesh(gsplatEntity)
-            app.renderNextFrame = true
-        })
-    })()
+    //     app.on('update', () => {
+    //         const gsplatEntity = app.root.findByName('gsplat')
+    //         if (!gsplatEntity || !gsplatEntity.gsplat) return
+    //         updateMesh(gsplatEntity)
+    //         app.renderNextFrame = true
+    //     })
+    // })()
 })

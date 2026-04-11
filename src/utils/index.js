@@ -78,11 +78,11 @@ function showToast(content, opts = {}) {
     } else {
         toast.classList.remove('char')
     }
-    if (type === 'success') {
-        toast.classList.add('success')
-    } else {
-        toast.classList.remove('success')
-    }
+    toast.classList.remove('success', 'warning', 'error')
+
+    if (type === 'success') toast.classList.add('success')
+    else if (type === 'warning') toast.classList.add('warning')
+    else if (type === 'error') toast.classList.add('error')
     toast.classList.add('show')
     if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
     toast._hideTimeout = setTimeout(() => {
@@ -213,11 +213,34 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
 
     return ray.getPoint(t)
 }
+async function exportHtml(name, data) {
+    const hotspots = await Promise.all(
+        (data.settings.hotspots ?? []).map(async (h) => {
+            let src = ''
+            if (h.audio?.embed && h.audio?.src) {
+                if (h.audio.src.startsWith('blob:')) {
+                    try {
+                        const res = await fetch(h.audio.src)
+                        const blob = await res.blob()
+                        src = await new Promise((resolve) => {
+                            const reader = new FileReader()
+                            reader.onload = (e) => resolve(e.target.result)
+                            reader.readAsDataURL(blob)
+                        })
+                    } catch (e) {
+                        console.warn('Failed to encode audio blob:', e)
+                    }
+                } else if (h.audio.src.startsWith('data:')) {
+                    src = h.audio.src
+                }
+            }
+            return { ...h, audio: { ...h.audio, src } }
+        }),
+    )
 
-function exportHtml(name, data) {
     const injectedScript = `<script>
-            window.sse = ${JSON.stringify(data)}
-        <\/script>`
+        window.sse = ${JSON.stringify({ ...data, settings: { ...data.settings, hotspots } })}
+    <\/script>`
     const template = getHtmlTemplate()
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
 
@@ -229,7 +252,6 @@ function exportHtml(name, data) {
     a.click()
     URL.revokeObjectURL(url)
 }
-
 function getHtmlTemplate() {
     return `<!DOCTYPE html>
 <html lang="en">
