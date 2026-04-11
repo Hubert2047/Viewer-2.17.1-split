@@ -344,17 +344,22 @@ class OtherController {
         this.lerpDuration = lerpDuration
     }
     startEditModelOrientation() {
-        this.model = "spherical"
+         this.model = 'spherical'
         this.updateModelRotation()
+        if (this._gizmo) {
+            this._gizmo.saveSnapshot()
+            this._gizmo.enable()
+        }
     }
     saveModelOrientation() {
+        if (this._gizmo) this._gizmo.disable()
         this.baseRotation = modelEntity.localRotation.clone()
         this.basePosition = modelEntity.localPosition.clone()
         settings.orientation = {
             rotation: this.baseRotation,
             position: this.basePosition,
         }
-        this.currentYaw = 0
+        this.currentYaw   = 0
         this.currentPitch = 0
         this.updateModelRotation()
         this.model = this.originModel
@@ -365,9 +370,7 @@ class OtherController {
             this.minPitch = 0
             this.maxPitch = Math.PI / 2
         }
-        if (this.initviewPose) {
-            this.initView()
-        }
+        if (this.initviewPose) this.initView()
     }
     lerp(a, b, t) {
         return a + (b - a) * t
@@ -459,7 +462,7 @@ class OtherController {
     }
     move(move, rotate) {
         if (this.isEditHotspot) return
-
+        if (this._gizmo?.isDragging) return
         const [x, y, z] = move
         this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
         this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()

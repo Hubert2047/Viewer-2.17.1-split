@@ -22,6 +22,7 @@ const files = [
     'src/default-settings.js',
     'src/libs/engine-4.js',
     'src/libs/custome-engine.js',
+    'src/libs/gizmo.js',
     'src/utils/index.js',
     'src/components/dialogs/confirm-dialog.js',
     'src/camera/ortery-controller.js',
