@@ -8,16 +8,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <base href>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="viewer.css?v=3">
+    <link rel="stylesheet" href="viewer.css?v=4">
     <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
     <script>
         const params = new URLSearchParams(window.location.search)
         const currentV = params.get('v')
-        if (currentV !== '3') {
+        if (currentV !== '4') {
             const url = new URL(window.location.href)
-            url.searchParams.set('v', '3')
+            url.searchParams.set('v', '4')
             window.location.replace(url.toString())
         }
     </script>      
@@ -35,7 +35,7 @@
         </div>
 </body>
 <script>
-        window.sse = {"settings":{"version":2,"v":3,"contentUrl":"car.ply","autoHideUI":false,"background":{"color":"#000000"},"startMode":"default","model":"hemispherical","lockZoomIn":{"locked":false,"value":1},"pivotPos":null,"initview":{"pose":null},"inertia":true,"orientation":null,"hotspots":[{"id":"0813e24b-8ffb-4f63-8bdd-751d634c4e28","autoPlay":{"time":3000},"button":{"title":"hotspot1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"hotspot1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-8.421835766603289,"y":-9.366826179793085,"z":0.8087385774400033},"botRight":{"x":-14.31099297066111,"y":-7.621760328056089,"z":-2.4800091040908114},"fontSize":16},"focus":{"position":{"x":-8.7897265424997,"y":-5.07062306553254,"z":2.4394500255584717}},"dot":{"style":"circle","strokeColor":"white","stroke":1,"size":30,"topLeft":{"x":-8.095664025733157,"y":-5.677773909107466,"z":2.693484147333251},"botRight":{"x":-9.490949442598794,"y":-4.47193789196566,"z":2.198556127002952}},"audio":{"src":"","fileName":"test.mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":true,"embed":false,"fileType":"audio/mpeg","show":true},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"distanceScale":1,"focus":{"x":7.821453765816517,"y":3.9107268829082593,"z":7.821453765816525,"aspect":1.2173435784851812,"distance":61.95147627843384},"pitch":0,"yaw":0}}],"tonemapping":"none","initalview":false}}
+        window.sse = {"settings":{"version":2,"v":4,"contentUrl":"car.ply","autoHideUI":false,"background":{"color":"#000000"},"startMode":"default","model":"hemispherical","lockZoomIn":{"locked":false,"value":1},"pivotPos":null,"initview":{"pose":null},"inertia":true,"orientation":null,"hotspots":[{"id":"0813e24b-8ffb-4f63-8bdd-751d634c4e28","autoPlay":{"time":3000},"button":{"title":"hotspot1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"hotspot1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-8.421835766603289,"y":-9.366826179793085,"z":0.8087385774400033},"botRight":{"x":-14.31099297066111,"y":-7.621760328056089,"z":-2.4800091040908114},"fontSize":16},"focus":{"position":{"x":-8.7897265424997,"y":-5.07062306553254,"z":2.4394500255584717}},"dot":{"style":"circle","strokeColor":"white","stroke":1,"size":30,"topLeft":{"x":-8.095664025733157,"y":-5.677773909107466,"z":2.693484147333251},"botRight":{"x":-9.490949442598794,"y":-4.47193789196566,"z":2.198556127002952}},"audio":{"src":"","fileName":"test.mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":true,"embed":false,"fileType":"audio/mpeg","show":true},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"distanceScale":1,"focus":{"x":7.821453765816517,"y":3.9107268829082593,"z":7.821453765816525,"aspect":1.2173435784851812,"distance":61.95147627843384},"pitch":0,"yaw":0}}],"tonemapping":"none","initalview":false}}
     </script>
-<script src="./viewer.js?v=3"></script>
+<script src="./viewer.js?v=4"></script>
 </html>

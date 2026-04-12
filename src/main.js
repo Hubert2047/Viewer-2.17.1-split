@@ -142,6 +142,7 @@ function viewerSettingsSection(el, global) {
         { key: 'initalview', label: 'Initial View', active: !!settings.initview.pose, event: 'initview' },
         { key: 'lockZoomIn', label: 'Lock Zoom In', active: settings.lockZoomIn.locked, event: 'lock-zoom-in' },
         { key: 'inertia', label: 'Inertia', active: settings.inertia, event: 'inertia' },
+        { key: 'autoHideUI', label: 'Auto Hide UI', active: settings.autoHideUI, event: 'auto-hide-ui' },
     ]
 
     toggles.forEach(({ key, label, active, event }) => {
@@ -3292,6 +3293,9 @@ class Viewer {
             })
             events.on('viewer:inertia', (value) => {
                 global.settings.inertia = value
+            })
+             events.on('viewer:auto-hide-ui', (value) => {
+                global.settings.autoHideUI = value
             })
             applyCamera(this.cameraManager.camera)
             if (collider) {
