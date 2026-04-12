@@ -214,8 +214,11 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
     return ray.getPoint(t)
 }
 async function exportHtml(name, data) {
+    const newVersion = (data.settings.v ?? 0) + 1
+    const updatedSettings = { ...data.settings, v: newVersion }
+
     const hotspots = await Promise.all(
-        (data.settings.hotspots ?? []).map(async (h) => {
+        (updatedSettings.hotspots ?? []).map(async (h) => {
             let src = ''
             if (h.audio?.embed && h.audio?.src) {
                 if (h.audio.src.startsWith('blob:')) {
@@ -239,9 +242,9 @@ async function exportHtml(name, data) {
     )
 
     const injectedScript = `<script>
-        window.sse = ${JSON.stringify({ ...data, settings: { ...data.settings, hotspots } })}
+        window.sse = ${JSON.stringify({ ...data, settings: { ...updatedSettings, hotspots } })}
     <\/script>`
-    const template = getHtmlTemplate()
+    const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
 
     const blob = new Blob([html], { type: 'text/html' })
@@ -252,7 +255,7 @@ async function exportHtml(name, data) {
     a.click()
     URL.revokeObjectURL(url)
 }
-function getHtmlTemplate() {
+function getHtmlTemplate(version) {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -263,16 +266,16 @@ function getHtmlTemplate() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <base href>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="viewer.css">
+    <link rel="stylesheet" href="viewer.css?v=${version}">
     <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
     <script>
-        const time = Date.now()
         const params = new URLSearchParams(window.location.search)
-        if (!params.has('nocache')) {
+        const currentV = params.get('v')
+        if (currentV !== '${version}') {
             const url = new URL(window.location.href)
-            url.searchParams.set('nocache', time)
+            url.searchParams.set('v', '${version}')
             window.location.replace(url.toString())
         }
     </script>      
@@ -290,7 +293,7 @@ function getHtmlTemplate() {
         </div>
 </body>
 <!-- INJECT_SCRIPT -->
-<script src="./viewer.js"><\/script>
+<script src="./viewer.js?v=${version}"><\/script>
 </html>`
 }
 

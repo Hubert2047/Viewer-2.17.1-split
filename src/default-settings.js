@@ -1,5 +1,6 @@
 const defaultSettings = {
-    version: 1,
+    version: 2,
+    v: 1,
     contentUrl: 'car.sog',
     autoHideUI: false,
     background: { color: 'white' },
