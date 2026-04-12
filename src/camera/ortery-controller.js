@@ -72,8 +72,8 @@ class OtherController {
                     break
             }
         })
-        this.events.on('orientation:edit',()=> this.startEditModelOrientation())
-        this.events.on('orientation:save',()=> this.saveModelOrientation())
+        this.events.on('orientation:edit', () => this.startEditModelOrientation())
+        this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
             const startPose = {
@@ -104,6 +104,10 @@ class OtherController {
         const worldPivotPos = new Vec3()
         worldMatrix.transformPoint(pos, worldPivotPos)
         return worldPivotPos
+    }
+    resetInertia() {
+        this.inertiaVelX = 0
+        this.inertiaVelY = 0
     }
     savePointerMoveHistory(event) {
         this.pointerMoveHistory.push({ t: performance.now(), x: event.clientX, y: event.clientY })
@@ -166,11 +170,13 @@ class OtherController {
         if (this.initviewPose) {
             const { focus: f, distanceScale: d } = this.initviewPose
             this.focus.copy(this.getActualFocus(f))
-            distance = isMobile ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d))) : this.clampDistance(this.getActualDistance(d))
+            distance = isMobile
+                ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d)))
+                : this.clampDistance(this.getActualDistance(d))
             if (!this.initviewDistance) this.initviewDistance = distance
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
         } else {
-            distance =  this.clampDistance(pose.distance) 
+            distance = this.clampDistance(pose.distance)
             this.focus.copy(pose.focus)
             if (!this.initviewDistance) this.initviewDistance = distance
             if (!this.initviewFocus) this.initviewFocus = this.focus.clone()
@@ -343,7 +349,7 @@ class OtherController {
         this.lerpDuration = lerpDuration
     }
     startEditModelOrientation() {
-         this.model = 'spherical'
+        this.model = 'spherical'
         this.updateModelRotation()
         if (this._gizmo) {
             this._gizmo.saveSnapshot()
@@ -358,7 +364,7 @@ class OtherController {
             rotation: this.baseRotation,
             position: this.basePosition,
         }
-        this.currentYaw   = 0
+        this.currentYaw = 0
         this.currentPitch = 0
         this.updateModelRotation()
         this.model = this.originModel

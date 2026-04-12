@@ -175,6 +175,9 @@ function viewerSettingsSection(el, global) {
 
     el.appendChild(container)
 }
+function dimensionSection(el, global) {
+
+}
 function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
@@ -247,6 +250,14 @@ function createSidebar(global, dom) {
             title: 'Hotspots',
             classname: 'hotspot-section',
             body: (el) => initHotspotSection(el, global, dom),
+        }),
+    )
+    sidebar.appendChild(
+        createSection({
+            id: 'dimension',
+            title: 'Dimension',
+            classname: 'dimension-section',
+            body: (el) => dimensionSection(el, global, dom),
         }),
     )
     sidebar.appendChild(
@@ -3122,7 +3133,7 @@ class Viewer {
     voxelOverlay = null
     walkCursor = null
     origChunks
-    constructor(global, gsplatLoad, skyboxLoad, voxelLoad, dom) {
+    constructor(global, gsplatLoad, skyboxLoad, voxelLoad) {
         this.global = global
         const { app, settings, config, events, state, camera } = global
         const { graphicsDevice } = app
@@ -3293,6 +3304,8 @@ class Viewer {
             })
             events.on('viewer:inertia', (value) => {
                 global.settings.inertia = value
+                this.cameraManager.controllers[state.cameraMode].resetInertia()
+
             })
              events.on('viewer:auto-hide-ui', (value) => {
                 global.settings.autoHideUI = value
@@ -3812,7 +3825,7 @@ const main = async (canvas, settingsJson, config) => {
         initXr(global)
     }
     // Initialize user interface
-    const dom = initUI(global)
+    initUI(global)
     // Load model
     const gsplatLoad = loadGsplat(app, config, (progress) => {
         state.progress = progress
@@ -3847,7 +3860,7 @@ const main = async (canvas, settingsJson, config) => {
             },
         )
     }
-    return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad, dom)
+    return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad)
 }
 const { poster } = config
 // Show the poster image
