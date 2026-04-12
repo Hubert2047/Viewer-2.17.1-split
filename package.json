@@ -4,9 +4,10 @@
     "type": "module",
     "scripts": {
         "dev": "concurrently \"node build-post.js --watch\" \"npx serve dist\"",
-        "build": "node build-post.js"
+        "build": "node build-post.js --production"
     },
     "devDependencies": {
-        "concurrently": "^9.2.1"
+        "concurrently": "^9.2.1",
+        "javascript-obfuscator": "^5.4.1"
     }
 }
