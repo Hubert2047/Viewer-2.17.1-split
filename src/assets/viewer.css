@@ -1589,30 +1589,40 @@ button {
 #toast {
   position: fixed;
   left: 50%;
-  transform: translateX(-50%);
-  top: 2vh;
+  transform: translateX(-50%) translateY(-12px);
+  top: 20px;
   min-width: 40px;
-  max-width: 90%;
-  padding: 8px 14px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  font-size: 16px;
+  max-width: min(420px, 90vw);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #1a1a1a;
+  color: #f5f5f5;
+  font-size: 14px;
+  font-weight: 450;
   text-align: center;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 24px -4px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08);
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 220ms ease,
-    transform 220ms ease;
+    opacity 200ms ease,
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 9999;
   display: inline-block;
-  line-height: 1;
-  -webkit-border-radius: 5px;
-  -moz-border-radius: 5px;
-  -ms-border-radius: 5px;
-  -o-border-radius: 5px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
+
+#toast.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
 #toast.char {
   width: 44px;
   height: 44px;
@@ -1623,20 +1633,29 @@ button {
   justify-content: center;
   border-radius: 50%;
 }
-#toast.show {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
-}
 #toast.success {
-  background: rgba(34, 150, 76, 0.95);
+  background: #14532d;
+  color: #bbf7d0;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 24px -4px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(74, 222, 128, 0.2);
 }
 #toast.warning {
-  background: rgba(186, 117, 23, 0.95);
+  background: #451a03;
+  color: #fde68a;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 24px -4px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(251, 191, 36, 0.2);
 }
-
 #toast.error {
-  background: rgba(162, 45, 45, 0.95);
+  background: #450a0a;
+  color: #fecaca;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 24px -4px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(248, 113, 113, 0.2);
 }
 .webgl-error {
   display: flex;
