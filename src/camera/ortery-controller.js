@@ -151,7 +151,7 @@ class OtherController {
             targetPitch = 0
 
         if (isFirstInit) {
-            if (this.initviewPose) {
+            if (this.settings.initview.enabled && this.initviewPose) {
                 targetYaw = startYaw = this.initviewPose.yaw
                 targetPitch = startPitch = this.initviewPose.pitch
             }
@@ -160,14 +160,14 @@ class OtherController {
             startDistance = this.distance
             startYaw = this.currentYaw
             startPitch = this.currentPitch
-            if (this.initviewPose) {
+            if (this.settings.initview.enabled && this.initviewPose) {
                 targetYaw = this.initviewPose.yaw
                 targetPitch = this.initviewPose.pitch
             }
         }
 
         let distance
-        if (this.initviewPose) {
+        if (this.settings.initview.enabled && this.initviewPose) {
             const { focus: f, distanceScale: d } = this.initviewPose
             this.focus.copy(new Vec3(f.x, f.y, f.z))
             distance = isMobile
@@ -227,13 +227,6 @@ class OtherController {
         this.initviewDistance = this.distance
         return pose
     }
-    resetInitView() {
-        this.initviewPose = null
-        this.originEntityRotation = this.baseRotation.clone()
-        this.originEntityPos = this.basePosition.clone()
-        this.initviewDistance = this.resetPose.distance
-        this.initviewFocus = this.resetPose.focus.clone()
-    }
     update(dt, inputFrame, camera) {
         const { move, rotate } = inputFrame.read()
         this.move(move, rotate)
@@ -274,38 +267,13 @@ class OtherController {
             forward,
             focus: this.bbox.center.clone(),
         }
-        if (this.initviewPose) {
+        if (this.settings.initview.enabled && this.initviewPose) {
             const { position: p, rotation: r } = this.initviewPose
             this.storeDistance = distance
             modelEntity.setLocalPosition(p.x, p.y, p.z)
             modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
         }
         this.reset(this.resetPose)
-    }
-
-    resetToInitView() {
-        if (!this.initviewPose) return
-        const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = this.initviewPose
-
-        this.focus.copy(new Vec3(f.x, f.y.f.z))
-        this.distance = this.getActualDistance(d)
-
-        modelEntity.setLocalPosition(p.x, p.y, p.z)
-        modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
-
-        if (this.model !== 'spherical') {
-            this.currentYaw = yaw || 0
-            this.currentPitch = pitch || 0
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
-
-        this.updateModelRotation()
-        this.syncHierarchyAndRender()
-
-        this.initviewFocus = this.focus.clone()
-        this.initviewDistance = this.distance
-        this.originEntityRotation = modelEntity.localRotation.clone()
-        this.originEntityPos = modelEntity.localPosition.clone()
     }
     onExit() {}
     applyInertia() {

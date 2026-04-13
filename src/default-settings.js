@@ -11,7 +11,7 @@ const defaultSettings = {
         locked: false,
     },
     pivotPos: null,
-    initview: { pose: null },
+    initview: { enabled: false, pose: null },
     inertia: true,
     orientation: null,
     hotspots: [],

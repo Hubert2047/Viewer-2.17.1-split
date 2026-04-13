@@ -113,64 +113,112 @@ function viewerSettingsSection(el, global) {
     const settings = global.settings
     const container = document.createElement('div')
     container.classList.add('viewer-settings-wrap')
-    const bgRow = document.createElement('div')
-    bgRow.classList.add('viewer-setting-row', 'clickable')
 
-    const bgLabel = document.createElement('span')
-    bgLabel.textContent = 'Background'
-
-    const colorInput = document.createElement('input')
-    colorInput.type = 'color'
-    colorInput.classList.add('color-input', 'viewer-background-input')
-    colorInput.value = settings.background.color
-
-    colorInput.addEventListener('input', () => {
-        document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
-        global.events.fire('viewer:background-changed', colorInput.value)
-    })
-
-    bgRow.addEventListener('click', (e) => {
-        if (e.target === colorInput) return
-        colorInput.click()
-    })
-
-    bgRow.appendChild(bgLabel)
-    bgRow.appendChild(colorInput)
-    container.appendChild(bgRow)
-
-    const toggles = [
-        { key: 'initalview', label: 'Initial View', active: !!settings.initview.pose, event: 'initview' },
-        { key: 'lockZoomIn', label: 'Lock Zoom In', active: settings.lockZoomIn.locked, event: 'lock-zoom-in' },
-        { key: 'inertia', label: 'Inertia', active: settings.inertia, event: 'inertia' },
-        { key: 'autoHideUI', label: 'Auto Hide UI', active: settings.autoHideUI, event: 'auto-hide-ui' },
-    ]
-
-    toggles.forEach(({ key, label, active, event }) => {
+    const renderItem = (item) => {
         const row = document.createElement('div')
-        row.classList.add('viewer-setting-row', 'clickable')
+        row.classList.add('viewer-setting-row')
 
         const labelEl = document.createElement('span')
-        labelEl.textContent = label
-
-        const toggle = document.createElement('div')
-        toggle.classList.add('toggle')
-
-        const knob = document.createElement('div')
-        knob.classList.add('toggle-knob')
-        toggle.appendChild(knob)
-
-        if (active) toggle.classList.add('active')
-
-        row.addEventListener('click', () => {
-            const newValue = !toggle.classList.contains('active')
-            toggle.classList.toggle('active', newValue)
-            settings[key] = newValue
-            global.events.fire(`viewer:${event}`, newValue)
-        })
-
+        labelEl.textContent = item.label
         row.appendChild(labelEl)
-        row.appendChild(toggle)
-        container.appendChild(row)
+
+        if (item.type === 'toggle') {
+            row.classList.add('clickable')
+            const toggle = document.createElement('div')
+            toggle.classList.add('toggle')
+            const knob = document.createElement('div')
+            knob.classList.add('toggle-knob')
+            toggle.appendChild(knob)
+            if (item.active) toggle.classList.add('active')
+            row.addEventListener('click', () => {
+                const newValue = !toggle.classList.contains('active')
+                toggle.classList.toggle('active', newValue)
+                settings[item.key] = newValue
+                global.events.fire(`viewer:${item.event}`, newValue)
+            })
+            row.appendChild(toggle)
+        } else if (item.type === 'color') {
+            row.classList.add('clickable')
+            const colorInput = document.createElement('input')
+            colorInput.type = 'color'
+            colorInput.classList.add('color-input', 'viewer-background-input')
+            colorInput.value = item.value
+            colorInput.addEventListener('input', () => {
+                document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
+                global.events.fire(`viewer:${item.event}`, colorInput.value)
+            })
+            row.addEventListener('click', (e) => {
+                if (e.target === colorInput) return
+                colorInput.click()
+            })
+            row.appendChild(colorInput)
+        } else if (item.type === 'button') {
+            const btn = document.createElement('button')
+            btn.classList.add('btn')
+            btn.style.cssText = 'width:"max-content";height:28px; font-size:12px;'
+            btn.textContent = item.label
+            btn.addEventListener('click', item.onClick)
+            row.innerHTML = ''
+            row.appendChild(btn)
+        } else if (item.type === 'custom') {
+            row.appendChild(item.render())
+        }
+
+        return row
+    }
+
+    const groups = [
+        {
+            label: 'General',
+            items: [
+                { type: 'color', label: 'Background', value: settings.background.color, event: 'background-changed' },
+                { type: 'toggle', key: 'inertia', label: 'Inertia', active: settings.inertia, event: 'inertia' },
+                {
+                    type: 'toggle',
+                    key: 'autoHideUI',
+                    label: 'Auto Hide UI',
+                    active: settings.autoHideUI,
+                    event: 'auto-hide-ui',
+                },
+                {
+                    type: 'toggle',
+                    key: 'lockZoomIn',
+                    label: 'Lock Zoom In',
+                    active: settings.lockZoomIn.locked,
+                    event: 'lock-zoom-in',
+                },
+            ],
+        },
+        {
+            label: 'Initial View',
+            items: [
+                {
+                    type: 'toggle',
+                    key: 'initalview',
+                    label: 'Enabled',
+                    active: settings.initview.enabled,
+                    event: 'enable-initview',
+                },
+                {
+                    type: 'button',
+                    label: 'Save current view',
+                    onClick: () => global.events.fire('viewer:save-initview'),
+                },
+            ],
+        },
+    ]
+
+    groups.forEach(({ label, items }) => {
+        const group = document.createElement('div')
+        group.classList.add('hotspot-group')
+
+        const groupTitle = document.createElement('div')
+        groupTitle.classList.add('hotspot-group-title')
+        groupTitle.textContent = label
+        group.appendChild(groupTitle)
+
+        items.forEach((item) => group.appendChild(renderItem(item)))
+        container.appendChild(group)
     })
 
     el.appendChild(container)
@@ -3288,14 +3336,15 @@ class Viewer {
                 }
                 global.settings.lockZoomIn = lockZoomIn
             })
-            events.on('viewer:initview', (value) => {
-                if (value) {
+            events.on('viewer:enable-initview', (value) => {
+                if (value && !global.settings.initview.pose) {
                     global.settings.initview.pose = this.cameraManager.controllers[state.cameraMode].initView()
-                } else {
-                    this.cameraManager.controllers[state.cameraMode].resetInitView()
-                    global.settings.initview.pose = null
                 }
-                showToast(value ? '✓ Initial view updated' : '✓ Switched to default view', {
+                global.settings.initview.enabled = value
+            })
+            events.on('viewer:save-initview', () => {
+                global.settings.initview.pose = this.cameraManager.controllers[state.cameraMode].initView()
+                showToast('✓ Initial view updated', {
                     duration: 1000,
                     type: 'success',
                 })
