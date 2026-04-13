@@ -111,5 +111,13 @@ if (process.argv.includes('--watch')) {
         }, 100)
     }
     fs.watch('src', { recursive: true }, (event, filename) => rebuild(filename))
-    fs.watch('index.html', () => rebuild('index.html'))
+    fs.watch('index.html', () => {
+        let html = fs.readFileSync('index.html', 'utf8')
+        html = html.replace(
+            '<script type="module" src="./src/main.js"></script>',
+            '<script src="./viewer.js"></script>',
+        )
+        fs.writeFileSync('dist/index.html', html)
+        console.log('✓ Copied index.html at', new Date().toLocaleTimeString())
+    })
 }

@@ -824,23 +824,23 @@ button {
   border-color: rgba(249, 87, 68, 0.4);
 }
 /* Edit panel groups */
-.hotspot-group {
+.section-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   background: rgba(0, 0, 0, 0.03);
   border: 0.5px solid rgba(0, 0, 0, 0.07);
   border-radius: 7px;
   padding: 9px 10px;
   flex: 1;
 }
-.hotspot-group-title {
-  font-size: 10px;
+.section-group-title {
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
   color: rgb(140, 159, 180);
   text-transform: uppercase;
 }
+
 .hotspot-field {
   display: flex;
   flex-direction: column;
@@ -1533,24 +1533,25 @@ button {
   -ms-border-radius: 2px !important;
   -o-border-radius: 2px !important;
 }
-.viewer-setting-row {
+.section-group-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #2d3748;
+  color: rgb(140, 159, 180);
   font-size: 14px;
   height: 32px;
+  gap: 8px;
 }
-.viewer-setting-row.clickable:hover span {
+.section-group-row.clickable:hover span {
   color: #f95f4d;
 }
-.viewer-setting-row.clickable {
+.section-group-row.clickable {
   cursor: pointer;
 }
-.viewer-setting-row.clickable span {
+.section-group-row.clickable span {
   transition: color 0.2s ease;
 }
-.viewer-setting-row.clickable:hover span {
+.section-group-row.clickable:hover span {
   color: #f95f4d;
 }
 .toggle {
@@ -1714,13 +1715,123 @@ button {
 .webgl-error svg {
   stroke: #f59e0b;
 }
+
 .orientation-btn-wrap {
   display: flex;
-  justify-content: start;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
 }
+
 .orientation-btn {
-  min-width: 105px;
   flex: 1;
+}
+
+.orientation-inputs {
+  display: flex;
+  gap: 6px;
+}
+
+.orientation-inputs .axis-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.orientation-inputs .axis-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.orientation-inputs input[type="number"] {
+  width: 100%;
+  padding: 5px 0;
+  border-radius: 5px;
+  border: 0.5px solid rgba(0, 0, 0, 0.13);
+  background: rgba(0, 0, 0, 0.04);
+  color: #2d3748;
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.orientation-inputs input[type="number"]:disabled {
+  cursor: not-allowed;
+  color: rgba(0, 0, 0, 0.3);
+  -moz-appearance: textfield;
+}
+
+.orientation-btn-row {
+  display: flex;
+  gap: 6px;
+}
+
+.orientation-btn-row .btn {
+  flex: 1;
+  padding: 7px;
+  font-size: 13px;
+}
+
+.reset-btn {
+  flex: 0 !important;
+  padding: 7px 10px !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: rgba(0, 0, 0, 0.4) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-btn:hover {
+  background-color: rgba(0, 0, 0, 0.09) !important;
+  color: #2d3748 !important;
+  filter: none !important;
+}
+
+.orientation-toggle-track {
+  width: 32px;
+  height: 18px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.1);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  position: relative;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.orientation-toggle-track.active {
+  background: rgba(249, 95, 77, 0.25);
+  border-color: rgba(249, 95, 77, 0.5);
+}
+
+.orientation-toggle-knob {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+
+.orientation-toggle-track.active .orientation-toggle-knob {
+  transform: translateX(14px);
+  background: #f95f4d;
+}
+.vec3-input-label {
+  margin-top: 16px;
 }

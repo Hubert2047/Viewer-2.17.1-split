@@ -1,151 +1,133 @@
 class RotationGizmo {
-    _enabled    = false
-    _dragging   = false
+    _enabled = false
+    _dragging = false
     _activeAxis = null
-    _prevAngle  = 0
-    _svg        = null
-    _paths      = {}
-    _app        = null
-    _camEntity  = null
-    _canvas     = null
-    _snapshot   = null
+    _prevAngle = 0
+    _svg = null
+    _rings = {}
+    _app = null
+    _camEntity = null
+    _canvas = null
+    _snapshot = null
     _modelEntity = null
 
-    static SCREEN_RADIUS = 70
-    static COLORS = { x: '#ff4d4d', y: '#4dff4d', z: '#4d4dff' }
+    static SCREEN_RADIUS = 80
+    static COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     static LABELS = { x: 'X', y: 'Y', z: 'Z' }
-    // Mỗi trục chiếm 120 độ, lệch nhau 120 độ
-    static ANGLES = {
-        x: { start: -60, end: 60 },    // -60° -> 60°
-        y: { start: 60, end: 180 },    // 60° -> 180°
-        z: { start: 180, end: 300 }    // 180° -> 300°
+    static STEPS = 64
+
+    static PLANE = {
+        x: { u: new Vec3(0, 1, 0), v: new Vec3(0, 0, 1) },
+        y: { u: new Vec3(1, 0, 0), v: new Vec3(0, 0, 1) },
+        z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
 
-    constructor(app, camEntity, events, modelEntity) {
+    constructor(app, camEntity, events, modelEntity, controllers) {
         this._app = app
+        this.controllers = controllers
         this._camEntity = camEntity
         this._events = events
         this._canvas = app.graphicsDevice.canvas
         this._modelEntity = modelEntity
         this._buildSVG()
         this._svg.style.display = 'none'
-        console.log('RotationGizmo initialized with modelEntity', modelEntity)
     }
 
     _buildSVG() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: visible;
-            z-index: 500;
-            pointer-events: none;
-        `
+        svg.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;z-index:500;pointer-events:none;`
         this._canvas.parentElement.appendChild(svg)
         this._svg = svg
 
-        for (const axis of ['x', 'y', 'z']) {
+        for (const axis of ['z', 'x', 'y']) {
             const color = RotationGizmo.COLORS[axis]
-            const label = RotationGizmo.LABELS[axis]
-            const angles = RotationGizmo.ANGLES[axis]
 
-            // Đường cong (cung tròn)
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-            path.setAttribute('fill', 'none')
-            path.setAttribute('stroke', color)
-            path.setAttribute('stroke-width', '3')
-            path.setAttribute('stroke-linecap', 'round')
+            const ringBg = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+            ringBg.setAttribute('fill', 'none')
+            ringBg.setAttribute('stroke', color)
+            ringBg.setAttribute('stroke-width', '2')
+            ringBg.setAttribute('stroke-opacity', '0.2')
+            ringBg.setAttribute('stroke-linecap', 'round')
 
-            // Vùng hit (dày hơn)
+            const ring = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+            ring.setAttribute('fill', 'none')
+            ring.setAttribute('stroke', color)
+            ring.setAttribute('stroke-width', '2.5')
+            ring.setAttribute('stroke-opacity', '0.85')
+            ring.setAttribute('stroke-linecap', 'round')
+
+            // Hit area
             const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path')
             hit.setAttribute('fill', 'none')
             hit.setAttribute('stroke', 'transparent')
-            hit.setAttribute('stroke-width', '20')
+            hit.setAttribute('stroke-width', '18')
             hit.style.cursor = 'grab'
             hit.style.pointerEvents = 'stroke'
 
-            // Nhãn
+            // Label
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
-            text.textContent = label
+            text.textContent = axis.toUpperCase()
             text.setAttribute('fill', color)
-            text.setAttribute('font-size', '13')
-            text.setAttribute('font-family', 'monospace')
-            text.setAttribute('font-weight', 'bold')
+            text.setAttribute('font-size', '12')
+            text.setAttribute('font-family', 'system-ui, sans-serif')
+            text.setAttribute('font-weight', '600')
             text.setAttribute('text-anchor', 'middle')
             text.setAttribute('dominant-baseline', 'central')
             text.style.pointerEvents = 'none'
             text.style.userSelect = 'none'
 
-            svg.appendChild(path)
+            svg.appendChild(ringBg)
+            svg.appendChild(ring)
             svg.appendChild(hit)
             svg.appendChild(text)
 
-            // Hover
-            hit.addEventListener('mouseenter', () => {
+            hit.addEventListener('pointerenter', () => {
                 if (this._dragging) return
-                path.setAttribute('stroke-width', '5')
                 this._highlightOnly(axis)
             })
-            hit.addEventListener('mouseleave', () => {
+            hit.addEventListener('pointerleave', () => {
                 if (this._dragging) return
                 this._resetStyle()
             })
-
-            // Drag start
-            hit.addEventListener('mousedown', (e) => {
+            hit.addEventListener('pointerdown', (e) => {
                 if (e.button !== 0) return
                 e.preventDefault()
                 e.stopPropagation()
+                hit.setPointerCapture(e.pointerId)
                 this._startDrag(axis, e.clientX, e.clientY)
             })
+            hit.addEventListener('pointermove', (e) => {
+                if (!this._dragging || this._activeAxis !== axis) return
+                e.preventDefault()
+                this._onDrag(e.clientX, e.clientY)
+            })
+            hit.addEventListener('pointerup', () => {
+                if (!this._dragging) return
+                this._endDrag()
+            })
 
-            this._paths[axis] = { path, hit, text, angles }
+            this._rings[axis] = { ring, ringBg, hit, text }
         }
-
-        window.addEventListener('mousemove', (e) => {
-            if (!this._dragging) return
-            e.preventDefault()
-            this._onDrag(e.clientX, e.clientY)
-        })
-        window.addEventListener('mouseup', () => {
-            if (!this._dragging) return
-            this._endDrag()
-        })
     }
+    _getPlaneVectors(axis) {
+        const modelRot = this._modelEntity.getRotation()
+        const localX = new Vec3(1, 0, 0)
+        const localY = new Vec3(0, 1, 0)
+        const localZ = new Vec3(0, 0, 1)
+        modelRot.transformVector(localX, localX)
+        modelRot.transformVector(localY, localY)
+        modelRot.transformVector(localZ, localZ)
 
-    _w2s(wx, wy, wz) {
-        const sc = new Vec3()
-        this._camEntity.camera.worldToScreen(new Vec3(wx, wy, wz), sc)
-        return { x: sc.x, y: sc.y }
+        return {
+            x: { u: localY, v: localZ },
+            y: { u: localX, v: localZ },
+            z: { u: localX, v: localY },
+        }[axis]
     }
-
-    _computeArcPath(worldCenter, axis, angles) {
-        const R = this._worldRadius()
-        const cx = worldCenter.x, cy = worldCenter.y, cz = worldCenter.z
-        let u, v
-        if (axis === 'x') { u = new Vec3(0, 1, 0); v = new Vec3(0, 0, 1) }
-        if (axis === 'y') { u = new Vec3(1, 0, 0); v = new Vec3(0, 0, 1) }
-        if (axis === 'z') { u = new Vec3(1, 0, 0); v = new Vec3(0, 1, 0) }
-
-        const startRad = angles.start * Math.PI / 180
-        const endRad = angles.end * Math.PI / 180
-        const steps = 48
-        let points = []
-        for (let i = 0; i <= steps; i++) {
-            const t = startRad + (i / steps) * (endRad - startRad)
-            const px = cx + (Math.cos(t) * u.x + Math.sin(t) * v.x) * R
-            const py = cy + (Math.cos(t) * u.y + Math.sin(t) * v.y) * R
-            const pz = cz + (Math.cos(t) * u.z + Math.sin(t) * v.z) * R
-            const screen = this._w2s(px, py, pz)
-            points.push(screen)
-        }
-        if (points.length < 2) return ''
-        let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-        for (let i = 1; i < points.length; i++) d += ` L ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)}`
-        return d
+    _w2s(v3) {
+        const out = new Vec3()
+        this._camEntity.camera.worldToScreen(v3, out)
+        return { x: out.x, y: out.y }
     }
 
     _worldRadius() {
@@ -154,35 +136,84 @@ class RotationGizmo {
         const camPos = this._camEntity.getPosition()
         const dist = new Vec3().copy(worldPos).sub(camPos).length()
         const cam = this._camEntity.camera
-        const ch = this._app.graphicsDevice.clientRect.height
+        const ch = this._canvas.clientHeight
         const fovRad = (cam.fov * Math.PI) / 180
-        const ppu = (ch / 2) / Math.tan(fovRad / 2) / dist
+        const ppu = ch / 2 / Math.tan(fovRad / 2) / dist
         return RotationGizmo.SCREEN_RADIUS / ppu
+    }
+
+    _computeRingPoints(worldCenter, axis) {
+        const R = this._worldRadius()
+        const { u, v } = this._getPlaneVectors(axis)
+        const steps = RotationGizmo.STEPS
+        const camPos = this._camEntity.getPosition()
+        const toCam = new Vec3().copy(camPos).sub(worldCenter).normalize()
+
+        const points = []
+        for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * Math.PI * 2
+            const wx = worldCenter.x + (Math.cos(t) * u.x + Math.sin(t) * v.x) * R
+            const wy = worldCenter.y + (Math.cos(t) * u.y + Math.sin(t) * v.y) * R
+            const wz = worldCenter.z + (Math.cos(t) * u.z + Math.sin(t) * v.z) * R
+            const s = this._w2s(new Vec3(wx, wy, wz))
+            const toPoint = new Vec3(wx - worldCenter.x, wy - worldCenter.y, wz - worldCenter.z).normalize()
+            const visible = toPoint.dot(toCam) > -0.1
+            points.push({ ...s, visible })
+        }
+        return points
+    }
+
+    _pointsToPath(points, visibleOnly) {
+        let d = ''
+        let penDown = false
+        for (const p of points) {
+            if (visibleOnly && !p.visible) {
+                penDown = false
+                continue
+            }
+            if (!penDown) {
+                d += `M ${p.x.toFixed(1)} ${p.y.toFixed(1)} `
+                penDown = true
+            } else {
+                d += `L ${p.x.toFixed(1)} ${p.y.toFixed(1)} `
+            }
+        }
+        return d
     }
 
     _update() {
         if (!this._enabled || !this._modelEntity) return
         const worldPos = this._modelEntity.getPosition()
-        for (const axis of ['x', 'y', 'z']) {
-            const { path, hit, text, angles } = this._paths[axis]
-            const pathData = this._computeArcPath(worldPos, axis, angles)
-            path.setAttribute('d', pathData)
-            hit.setAttribute('d', pathData)
 
-            // Vị trí nhãn: ở giữa cung, cách tâm một đoạn = R + 15
-            const midAngle = (angles.start + angles.end) / 2 * Math.PI / 180
-            const R = this._worldRadius() + 15
-            let u, v
-            if (axis === 'x') { u = new Vec3(0, 1, 0); v = new Vec3(0, 0, 1) }
-            if (axis === 'y') { u = new Vec3(1, 0, 0); v = new Vec3(0, 0, 1) }
-            if (axis === 'z') { u = new Vec3(1, 0, 0); v = new Vec3(0, 1, 0) }
-            const px = worldPos.x + (Math.cos(midAngle) * u.x + Math.sin(midAngle) * v.x) * R
-            const py = worldPos.y + (Math.cos(midAngle) * u.y + Math.sin(midAngle) * v.y) * R
-            const pz = worldPos.z + (Math.cos(midAngle) * u.z + Math.sin(midAngle) * v.z) * R
-            const labelPos = this._w2s(px, py, pz)
-            text.setAttribute('x', labelPos.x.toFixed(1))
-            text.setAttribute('y', labelPos.y.toFixed(1))
+        for (const axis of ['x', 'y', 'z']) {
+            const { ring, ringBg, hit, text } = this._rings[axis]
+            const points = this._computeRingPoints(worldPos, axis)
+
+            const frontPath = this._pointsToPath(points, true)
+            ring.setAttribute('d', frontPath)
+            hit.setAttribute('d', frontPath)
+
+            const fullPath = this._pointsToPath(points, false)
+            ringBg.setAttribute('d', fullPath)
+
+            const center = this._w2s(worldPos)
+            let maxDist = -1,
+                labelPt = points[0]
+            for (const p of points) {
+                if (!p.visible) continue
+                const d = Math.sqrt((p.x - center.x) ** 2 + (p.y - center.y) ** 2)
+                if (d > maxDist) {
+                    maxDist = d
+                    labelPt = p
+                }
+            }
+            const dx = labelPt.x - center.x,
+                dy = labelPt.y - center.y
+            const len = Math.sqrt(dx * dx + dy * dy) || 1
+            text.setAttribute('x', (labelPt.x + (dx / len) * 14).toFixed(1))
+            text.setAttribute('y', (labelPt.y + (dy / len) * 14).toFixed(1))
         }
+
         this._app.renderNextFrame = true
     }
 
@@ -190,78 +221,127 @@ class RotationGizmo {
         if (!this._modelEntity) return
         this._dragging = true
         this._activeAxis = axis
+        this._dragPlane = this._getPlaneVectors(axis)
+        this._prevMouse = { x: cx, y: cy }
+        this._highlightOnly(axis)
+        document.body.style.cursor = 'grabbing'
+    }
+
+    _screenAngle(axis, cx, cy) {
         const worldPos = this._modelEntity.getPosition()
-        const center = this._w2s(worldPos.x, worldPos.y, worldPos.z)
-        this._prevAngle = Math.atan2(cy - center.y, cx - center.x)
-        for (const [id, { path }] of Object.entries(this._paths)) {
-            path.setAttribute('stroke-width', id === axis ? '5' : '2')
-            path.setAttribute('stroke-opacity', id === axis ? '1' : '0.3')
-        }
+        const center = this._w2s(worldPos)
+        const R = this._worldRadius()
+        const { u, v } = this._dragging ? this._dragPlane : this._getPlaneVectors(axis)
+
+        const pu = this._w2s(new Vec3(worldPos.x + u.x * R, worldPos.y + u.y * R, worldPos.z + u.z * R))
+        const pv = this._w2s(new Vec3(worldPos.x + v.x * R, worldPos.y + v.y * R, worldPos.z + v.z * R))
+
+        const screenU = { x: pu.x - center.x, y: pu.y - center.y }
+        const screenV = { x: pv.x - center.x, y: pv.y - center.y }
+        const mx = cx - center.x,
+            my = cy - center.y
+        const dotU = mx * screenU.x + my * screenU.y
+        const dotV = mx * screenV.x + my * screenV.y
+        return Math.atan2(dotV, dotU)
     }
 
     _onDrag(cx, cy) {
         if (!this._dragging || !this._modelEntity) return
-        const worldPos = this._modelEntity.getPosition()
-        const center = this._w2s(worldPos.x, worldPos.y, worldPos.z)
-        const angle = Math.atan2(cy - center.y, cx - center.x)
-        let delta = angle - this._prevAngle
-        this._prevAngle = angle
-        delta *= 1.5 // độ nhạy
 
-        console.log(`Dragging ${this._activeAxis} - delta:`, delta) // Kiểm tra console
+        const prev = this._prevMouse
+        if (!prev) {
+            this._prevMouse = { x: cx, y: cy }
+            return
+        }
 
-        const sign = this._axisSign(this._activeAxis)
-        const axisVec = new Vec3(
-            this._activeAxis === 'x' ? 1 : 0,
-            this._activeAxis === 'y' ? 1 : 0,
-            this._activeAxis === 'z' ? 1 : 0,
-        )
-        const rot = new Quat().setFromAxisAngle(axisVec, delta * sign * 50)
-        const pivot = this._modelEntity.getPosition()
+        const dx = cx - prev.x
+        const dy = cy - prev.y
+        if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
+        const SENSITIVITY = 0.4
+        const { worldAxis, sign } = this._getDragAxis(this._activeAxis, dx, dy)
 
-        const curRot = this._modelEntity.localRotation.clone()
-        const newRot = rot.clone().mul(curRot).normalize()
-        this._modelEntity.localRotation.copy(newRot)
+        const deltaDeg = sign * SENSITIVITY
 
-        // Nếu muốn xoay quanh tâm model (không làm thay đổi vị trí)
-        // Không cần cập nhật localPosition nếu xoay quanh tâm
-        // Dòng dưới giữ nguyên vị trí
-        this._modelEntity.localPosition.copy(pivot)
-
-        this._modelEntity.syncHierarchy()
+        const rot = new Quat().setFromAxisAngle(worldAxis, deltaDeg)
+        const curRot = this._modelEntity.getRotation()
+        const newRot = new Quat().mul2(rot, curRot).normalize()
+        this._modelEntity.setRotation(newRot)
         this._app.renderNextFrame = true
+        const euler =  this._modelEntity.getLocalEulerAngles(new Vec3())
+        this._events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+        this._prevMouse = { x: cx, y: cy }
     }
 
-    _axisSign(axis) {
-        const camPos = this._camEntity.getPosition()
-        const modelPos = this._modelEntity.getPosition()
-        const dir = new Vec3().copy(camPos).sub(modelPos).normalize()
-        if (axis === 'x') return dir.x >= 0 ? 1 : -1
-        if (axis === 'y') return dir.y >= 0 ? 1 : -1
-        return dir.z >= 0 ? 1 : -1
+    _getDragAxis(axis, dx, dy) {
+        const worldAxis = this._dragAxisSnapshot[axis].clone()
+        const worldPos = this._modelEntity.getPosition()
+        const center = this._w2s(worldPos)
+
+        const tip = new Vec3().copy(worldPos).add(worldAxis)
+        const tipScr = this._w2s(tip)
+        const axScr = { x: tipScr.x - center.x, y: tipScr.y - center.y }
+        const axLen = Math.sqrt(axScr.x ** 2 + axScr.y ** 2) || 1
+
+        const tangent = { x: -axScr.y / axLen, y: axScr.x / axLen }
+
+        const dot = dx * tangent.x + dy * tangent.y
+        const sign = dot > 0 ? 1 : -1
+
+        const mag = Math.sqrt(dx * dx + dy * dy)
+
+        return { worldAxis, sign: sign * mag }
+    }
+
+    _startDrag(axis, cx, cy) {
+        if (!this._modelEntity) return
+        this._dragging = true
+        this._activeAxis = axis
+        this._prevMouse = { x: cx, y: cy }
+        const rot = this._modelEntity.getRotation()
+        const lx = new Vec3(1, 0, 0)
+        rot.transformVector(lx, lx)
+        const ly = new Vec3(0, 1, 0)
+        rot.transformVector(ly, ly)
+        const lz = new Vec3(0, 0, 1)
+        rot.transformVector(lz, lz)
+        this._dragAxisSnapshot = { x: lx, y: ly, z: lz }
+
+        this._highlightOnly(axis)
+        document.body.style.cursor = 'grabbing'
     }
 
     _endDrag() {
         this._dragging = false
+        this.controllers.ortery.updateModelRotation()
         this._activeAxis = null
+        this._prevMouse = null
+        this._dragAxisSnapshot = null
         this._resetStyle()
+        document.body.style.cursor = ''
+        const euler = this._modelEntity.getLocalEulerAngles(new Vec3())
+        this._events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
     }
 
     _highlightOnly(activeAxis) {
-        for (const [id, { path }] of Object.entries(this._paths)) {
-            path.setAttribute('stroke-width', id === activeAxis ? '5' : '2.5')
-            path.setAttribute('stroke-opacity', id === activeAxis ? '1' : '0.4')
+        for (const [id, { ring, ringBg }] of Object.entries(this._rings)) {
+            const active = id === activeAxis
+            ring.setAttribute('stroke-width', active ? '4' : '1.5')
+            ring.setAttribute('stroke-opacity', active ? '1' : '0.25')
+            ringBg.setAttribute('stroke-opacity', active ? '0.15' : '0.08')
         }
     }
 
     _resetStyle() {
-        for (const { path } of Object.values(this._paths)) {
-            path.setAttribute('stroke-width', '3')
-            path.setAttribute('stroke-opacity', '0.85')
+        for (const { ring, ringBg } of Object.values(this._rings)) {
+            ring.setAttribute('stroke-width', '2.5')
+            ring.setAttribute('stroke-opacity', '0.85')
+            ringBg.setAttribute('stroke-opacity', '0.2')
         }
     }
 
-    get isDragging() { return this._dragging }
+    get isDragging() {
+        return this._dragging
+    }
 
     enable() {
         this._enabled = true
@@ -275,13 +355,14 @@ class RotationGizmo {
         this._dragging = false
         this._svg.style.display = 'none'
         if (this._updateFn) this._app.off('update', this._updateFn)
+        document.body.style.cursor = ''
     }
 
     saveSnapshot() {
         if (!this._modelEntity) return
         this._snapshot = {
             rot: this._modelEntity.localRotation.clone(),
-            pos: this._modelEntity.localPosition.clone()
+            pos: this._modelEntity.localPosition.clone(),
         }
     }
 

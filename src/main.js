@@ -55,58 +55,230 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
     section.appendChild(body)
     return section
 }
-function modelOrientationSection(el, global) {
-    const { events } = global
+
+function renderOrientation(group, events, settings) {
     let isEditing = false
+
     const container = document.createElement('div')
-    container.classList.add('orientation-wrap')
+    container.classList.add('orientation-btn-wrap')
 
-    const buttonContainer = document.createElement('div')
-    buttonContainer.classList.add('orientation-btn-wrap')
-
-    const btnEdit = document.createElement('button')
-    btnEdit.classList.add('btn')
-    btnEdit.textContent = 'Edit Orientation'
-
-    const btnSave = document.createElement('button')
-    btnSave.textContent = 'Apply'
-    btnSave.classList.add('btn', 'confirm-btn', 'orientation-btn')
-
-    const btnCancel = document.createElement('button')
-    btnCancel.classList.add('cancel-btn', 'btn', 'orientation-btn')
-    btnCancel.textContent = 'Cancel'
-
-    btnEdit.onclick = () => {
-        isEditing = true
-        events.fire('orientation:edit')
-        render()
-    }
-
-    btnSave.onclick = () => {
-        isEditing = false
-        events.fire('orientation:save')
-        render()
-    }
-
-    btnCancel.onclick = () => {
-        isEditing = false
-        events.fire('orientation:cancel')
-        render()
-    }
-    container.appendChild(buttonContainer)
-    el.appendChild(container)
-
-    function render() {
-        buttonContainer.innerHTML = ''
-        if (isEditing) {
-            buttonContainer.appendChild(btnSave)
-            buttonContainer.appendChild(btnCancel)
+    const {
+        row: rotationRow,
+        setEditable: setInputsEditable,
+        setValues: setInputValues,
+    } = createVec3Inputs({
+        title: 'Rotation',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            events.fire('orientation:eulerchange', { x, y, z })
+        },
+    })
+    events.on('modelEntity:loaded', () => {
+        if (settings.orientation) {
+            const { rotation: r } = settings.orientation
+            const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
+            setInputValues(euler)
         } else {
-            buttonContainer.appendChild(btnEdit)
+            const euler = modelEntity.getLocalEulerAngles(new Vec3())
+            setInputValues(euler)
+        }
+    })  
+
+    const gizmoRow = document.createElement('div')
+    gizmoRow.classList.add('section-group-row')
+    gizmoRow.style.display = 'none'
+    const gizmoLabel = document.createElement('span')
+    gizmoLabel.textContent = 'Rotation Gizmo'
+
+    const track = document.createElement('div')
+    track.classList.add('toggle')
+    const knob = document.createElement('div')
+    knob.classList.add('toggle-knob')
+    track.appendChild(knob)
+
+    const setGizmo = (on) => {
+        track.classList.toggle('active', on)
+        events.fire('gizmo:rotation-enable', on)
+    }
+    track.addEventListener('click', () => setGizmo(!track.classList.contains('active')))
+
+    gizmoRow.appendChild(gizmoLabel)
+    gizmoRow.appendChild(track)
+
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('orientation-btn-row')
+    function onCancel() {
+        if (settings.orientation) {
+            const { rotation: r } = settings.orientation
+            const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
+            setInputValues(euler)
+        } else {
+            const euler = modelEntity.getLocalEulerAngles(new Vec3())
+            setInputValues(euler)
+        }
+        events.fire('orientation:cancel')
+    }
+    let savedOrientation = null
+    const updateResetBtn = (btn) => {
+        btn.disabled = savedOrientation === null
+        btn.style.opacity = savedOrientation === null ? '0.4' : '1'
+        btn.style.cursor = savedOrientation === null ? 'not-allowed' : 'pointer'
+    }
+    const renderBtns = () => {
+        btnRow.innerHTML = ''
+        if (isEditing) {
+            const btnCancel = document.createElement('button')
+            btnCancel.classList.add('btn', 'cancel-btn')
+            btnCancel.textContent = 'Cancel'
+            btnCancel.onclick = () => {
+                isEditing = false
+                setInputsEditable(false)
+                gizmoRow.style.display = 'none'
+                setGizmo(false)
+                onCancel()
+                renderBtns()
+            }
+
+            const btnSave = document.createElement('button')
+            btnSave.classList.add('btn', 'confirm-btn')
+            btnSave.textContent = 'Apply'
+            btnSave.onclick = () => {
+                savedOrientation = settings.orientation ? { ...settings.orientation } : null
+                isEditing = false
+                setInputsEditable(false)
+                gizmoRow.style.display = 'none'
+                setGizmo(false)
+                events.fire('orientation:save')
+                renderBtns()
+            }
+
+            btnRow.appendChild(btnCancel)
+            btnRow.appendChild(btnSave)
+        } else {
+            const btnEdit = document.createElement('button')
+            btnEdit.classList.add('btn')
+            btnEdit.textContent = 'Edit'
+            btnEdit.onclick = () => {
+                isEditing = true
+                setInputsEditable(true)
+                gizmoRow.style.display = 'flex'
+                events.fire('orientation:edit')
+                renderBtns()
+                const euler = modelEntity.getLocalEulerAngles(new Vec3())
+                setInputValues(euler)
+                events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+            }
+
+            const btnReset = document.createElement('button')
+            btnReset.classList.add('btn', 'reset-btn')
+            btnReset.title = 'Reset'
+            btnReset.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5A4.5 4.5 0 1 1 6.5 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><polyline points="2,4 2,7 5,7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+            btnReset.onclick = () => {
+                if (savedOrientation === null) return
+                const { rotation: r } = savedOrientation
+                const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
+                setInputValues(euler)
+                savedOrientation = null
+                events.fire('orientation:reset')
+                updateResetBtn(btnReset)
+            }
+            updateResetBtn(btnReset)
+            btnRow.appendChild(btnEdit)
+            btnRow.appendChild(btnReset)
         }
     }
 
-    render()
+    events.on('orientation:eulersynced', ({ x, y, z }) => {
+        if (!isEditing) return
+        setInputValues({ x, y, z })
+    })
+
+    container.appendChild(rotationRow)
+    container.appendChild(gizmoRow)
+    container.appendChild(btnRow)
+    group.appendChild(container)
+
+    renderBtns()
+}
+function modelSection(el, global) {
+    const { events } = global
+    const groups = [
+        {
+            show: global.settings.model !== 'spherical',
+            label: 'Orientation',
+            render: renderOrientation,
+        },
+        {
+            show: true,
+            label: 'Pivot Position',
+            render: (group) => {
+                const buttonContainer = document.createElement('div')
+                buttonContainer.classList.add('orientation-btn-wrap')
+
+                const btnEdit = document.createElement('button')
+                btnEdit.classList.add('btn')
+                btnEdit.textContent = 'Edit Pivot'
+
+                const btnSave = document.createElement('button')
+                btnSave.classList.add('btn', 'confirm-btn', 'orientation-btn')
+                btnSave.textContent = 'Apply'
+
+                const btnCancel = document.createElement('button')
+                btnCancel.classList.add('btn', 'cancel-btn', 'orientation-btn')
+                btnCancel.textContent = 'Cancel'
+
+                let isPivotEditing = false
+                const renderBtns = () => {
+                    buttonContainer.innerHTML = ''
+                    if (isPivotEditing) {
+                        buttonContainer.appendChild(btnSave)
+                        buttonContainer.appendChild(btnCancel)
+                    } else {
+                        buttonContainer.appendChild(btnEdit)
+                    }
+                }
+
+                btnEdit.onclick = () => {
+                    isPivotEditing = true
+                    events.fire('pivot:edit')
+                    renderBtns()
+                }
+                btnSave.onclick = () => {
+                    isPivotEditing = false
+                    events.fire('pivot:save')
+                    renderBtns()
+                }
+                btnCancel.onclick = () => {
+                    isPivotEditing = false
+                    events.fire('pivot:cancel')
+                    renderBtns()
+                }
+
+                renderBtns()
+                group.appendChild(buttonContainer)
+            },
+        },
+    ]
+
+    const container = document.createElement('div')
+    container.classList.add('viewer-settings-wrap')
+
+    groups
+        .filter((g) => g.show)
+        .forEach(({ label, render }) => {
+            const group = document.createElement('div')
+            group.classList.add('section-group')
+
+            const groupTitle = document.createElement('div')
+            groupTitle.classList.add('section-group-title')
+            groupTitle.textContent = label
+            group.appendChild(groupTitle)
+
+            render(group, events, global.settings)
+            container.appendChild(group)
+        })
+
+    el.appendChild(container)
 }
 
 function viewerSettingsSection(el, global) {
@@ -116,14 +288,13 @@ function viewerSettingsSection(el, global) {
 
     const renderItem = (item) => {
         const row = document.createElement('div')
-        row.classList.add('viewer-setting-row')
+        row.classList.add('section-group-row')
 
         const labelEl = document.createElement('span')
         labelEl.textContent = item.label
         row.appendChild(labelEl)
 
         if (item.type === 'toggle') {
-            row.classList.add('clickable')
             const toggle = document.createElement('div')
             toggle.classList.add('toggle')
             const knob = document.createElement('div')
@@ -138,7 +309,6 @@ function viewerSettingsSection(el, global) {
             })
             row.appendChild(toggle)
         } else if (item.type === 'color') {
-            row.classList.add('clickable')
             const colorInput = document.createElement('input')
             colorInput.type = 'color'
             colorInput.classList.add('color-input', 'viewer-background-input')
@@ -165,6 +335,18 @@ function viewerSettingsSection(el, global) {
         }
 
         return row
+    }
+
+    const renderInitViewFooter = (events) => {
+        const btnRow = document.createElement('div')
+        btnRow.classList.add('orientation-btn-row')
+        const btnSave = document.createElement('button')
+        btnSave.classList.add('btn', 'confirm-btn')
+        btnSave.textContent = 'Save current view'
+        btnSave.onclick = () => events.fire('viewer:save-initview')
+        btnRow.appendChild(btnSave)
+
+        return btnRow
     }
 
     const groups = [
@@ -199,25 +381,22 @@ function viewerSettingsSection(el, global) {
                     active: settings.initview.enabled,
                     event: 'enable-initview',
                 },
-                {
-                    type: 'button',
-                    label: 'Save current view',
-                    onClick: () => global.events.fire('viewer:save-initview'),
-                },
             ],
+            footer: () => renderInitViewFooter(global.events),
         },
     ]
 
-    groups.forEach(({ label, items }) => {
+    groups.forEach(({ label, items, footer }) => {
         const group = document.createElement('div')
-        group.classList.add('hotspot-group')
+        group.classList.add('section-group')
 
         const groupTitle = document.createElement('div')
-        groupTitle.classList.add('hotspot-group-title')
+        groupTitle.classList.add('section-group-title')
         groupTitle.textContent = label
         group.appendChild(groupTitle)
 
         items.forEach((item) => group.appendChild(renderItem(item)))
+        if (footer) group.appendChild(footer())
         container.appendChild(group)
     })
 
@@ -272,16 +451,16 @@ function createSidebar(global, dom) {
     header.classList.add('sidebar-header')
     header.textContent = 'Settings'
     sidebar.appendChild(header)
-    if (global.settings.model !== 'spherical') {
-        sidebar.appendChild(
-            createSection({
-                id: 'orientation',
-                title: 'Model Orientation',
-                classname: 'model-orientation-section',
-                body: (el) => modelOrientationSection(el, global),
-            }),
-        )
-    }
+
+    sidebar.appendChild(
+        createSection({
+            id: 'orientation',
+            title: 'Model',
+            classname: 'model-orientation-section',
+            body: (el) => modelSection(el, global),
+        }),
+    )
+
     sidebar.appendChild(
         createSection({
             id: 'settings',
@@ -1396,31 +1575,6 @@ class CameraManager {
             anim: animTrack ? new AnimController(animTrack) : null,
             ortery: new OtherController({ global, bbox, minDistance: this.minDistance }),
         }
-        // const gizmo = new RotationGizmo(app, entity, events, modelEntity)
-        // gizmo.enable()
-        // this.controllers.ortery._gizmo = gizmo
-        events.on('orientation:cancel', () => {
-            gizmo.disable()
-            gizmo.restoreSnapshot()
-            const ctrl = this.controllers.ortery
-            ctrl.model = ctrl.originModel
-            ctrl.updateModelRotation()
-        })
-        events.on('orientation:cancel', () => {
-            gizmo.disable()
-            if (modelEntity && _savedRotBeforeEdit) {
-                modelEntity.localRotation.copy(_savedRotBeforeEdit)
-                modelEntity.localPosition.copy(_savedPosBeforeEdit)
-                modelEntity.syncHierarchy()
-                modelEntity._dirtyLocal = true
-                modelEntity._dirtyWorld = true
-                app.renderNextFrame = true
-            }
-            // Restore về model gốc
-            const ctrl = this.controllers.ortery
-            ctrl.model = ctrl.originModel
-            ctrl.updateModelRotation()
-        })
 
         events.fire('controllers:created', this.controllers)
         this.controllers.orbit.fov = resetCamera.fov
@@ -3327,23 +3481,37 @@ class Viewer {
                 })
             }
             this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
+            const rotationGizmo = new RotationGizmo(app, camera, events, modelEntity, this.cameraManager.controllers)
+            events.on('gizmo:rotation-enable', (enable) => {
+                if (enable) rotationGizmo.enable()
+                else rotationGizmo.disable()
+            })
             events.on('viewer:lock-zoom-in', (value) => {
                 const lockZoomIn = {
                     locked: value,
                     value: value
-                        ? this.cameraManager.controllers[state.cameraMode].getCurrentDistanceScale()
+                        ? this.cameraManager.controllers.ortery.getCurrentDistanceScale()
                         : this.cameraManager.controllers.minDistance,
                 }
                 global.settings.lockZoomIn = lockZoomIn
             })
             events.on('viewer:enable-initview', (value) => {
                 if (value && !global.settings.initview.pose) {
-                    global.settings.initview.pose = this.cameraManager.controllers[state.cameraMode].initView()
+                    global.settings.initview.pose = this.cameraManager.controllers.ortery.initView()
                 }
                 global.settings.initview.enabled = value
             })
+            events.on('orientation:eulerchange', ({ x, y, z }) => {
+                const quat = new Quat()
+                quat.setFromEulerAngles(x, y, z)
+                modelEntity.setLocalRotation(quat)
+                modelEntity._dirtyLocal = true
+                modelEntity._dirtyWorld = true
+                app.renderNextFrame = true
+                this.cameraManager.controllers.ortery.updateModelRotation()
+            })
             events.on('viewer:save-initview', () => {
-                global.settings.initview.pose = this.cameraManager.controllers[state.cameraMode].initView()
+                this.cameraManager.controllers.ortery.initView()
                 showToast('✓ Initial view updated', {
                     duration: 1000,
                     type: 'success',
@@ -3622,7 +3790,7 @@ function popcount(n) {
     return (((n + (n >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24
 }
 
-const loadGsplat = async (app, config, progressCallback) => {
+const loadGsplat = async (app, config, events, progressCallback) => {
     const { contents, contentUrl, unified, aa } = config
     const c = contents
     const filename = new URL(contentUrl, location.href).pathname.split('/').pop()
@@ -3641,6 +3809,7 @@ const loadGsplat = async (app, config, progressCallback) => {
             material.setParameter('alphaClip', 1 / 255)
             app.root.addChild(entity)
             modelEntity = entity
+            events.fire('modelEntity:loaded')
             resolve(entity)
         })
         let watermark = 0
@@ -3873,7 +4042,7 @@ const main = async (canvas, settingsJson, config) => {
     // Initialize user interface
     initUI(global)
     // Load model
-    const gsplatLoad = loadGsplat(app, config, (progress) => {
+    const gsplatLoad = loadGsplat(app, config, events, (progress) => {
         state.progress = progress
     })
     // Load skybox

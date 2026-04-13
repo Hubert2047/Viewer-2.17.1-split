@@ -846,9 +846,9 @@ class HotspotEditorUI {
     }
     makeGroup(title) {
         const g = document.createElement('div')
-        g.classList.add('hotspot-group')
+        g.classList.add('section-group')
         const t = document.createElement('div')
-        t.classList.add('hotspot-group-title')
+        t.classList.add('section-group-title')
         t.textContent = title
         g.appendChild(t)
         return g

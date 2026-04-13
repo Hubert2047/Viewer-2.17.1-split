@@ -40,7 +40,6 @@ class OtherController {
         } else {
             this.model = 'spherical'
         }
-        this.isSphericalRot = this.model === 'spherical'
         this.originModel = this.model
         this.initviewPose = settings.initview.pose ?? null
         if (settings.orientation) {
@@ -72,8 +71,12 @@ class OtherController {
                     break
             }
         })
+
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
+        this.events.on('orientation:cancel', () => this.cancelOrientation())
+        this.events.on('orientation:reset', () => this.resetOrientation())
+
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
             const startPose = {
@@ -225,7 +228,7 @@ class OtherController {
         this.originEntityPos = modelEntity.localPosition.clone()
         this.initviewFocus = this.focus.clone()
         this.initviewDistance = this.distance
-        return pose
+        this.settings.initview = { enabled: true, pose }
     }
     update(dt, inputFrame, camera) {
         const { move, rotate } = inputFrame.read()
@@ -317,21 +320,67 @@ class OtherController {
         this.lerpDuration = lerpDuration
     }
     startEditModelOrientation() {
+        this.preEditRotation = modelEntity.localRotation.clone()
+        this.preEditPosition = modelEntity.localPosition.clone()
+        this.preDistance = this.distance
+        this.prefocus = this.focus.clone()
         this.model = 'spherical'
         this.updateModelRotation()
-        if (this._gizmo) {
-            this._gizmo.saveSnapshot()
-            this._gizmo.enable()
+    }
+    cancelOrientation() {
+        if (!this.preEditRotation) return
+        this.model = 'spherical'
+        this.updateModelRotation()
+        const startPose = {
+            focus: this.focus.clone(),
+            rotation: modelEntity.localRotation.clone(),
+            position: modelEntity.localPosition.clone(),
+            distance: this.distance,
+            yaw: this.currentYaw,
+            pitch: this.currentPitch,
         }
+
+        const targetPose = {
+            focus: this.prefocus.clone(),
+            rotation: this.preEditRotation,
+            position: this.preEditPosition,
+            distance: this.preDistance,
+            yaw: this.currentYaw,
+            pitch: this.currentPitch,
+        }
+
+        this.setupTransition({
+            startPose,
+            targetPose,
+            lerpDuration: HOTSPOT_FADE_TIME,
+            onTransitionFinished: () => {
+                this.model = this.originModel
+                this.preEditRotation = null
+                this.preEditPosition = null
+                this.preDistance = null
+                this.prefocus = null
+                if (this.model === 'cylindrical') {
+                    this.minPitch = 0
+                    this.maxPitch = 0
+                } else if (this.model === 'hemispherical') {
+                    this.minPitch = 0
+                    this.maxPitch = Math.PI / 2
+                }
+            },
+        })
     }
     saveModelOrientation() {
-        if (this._gizmo) this._gizmo.disable()
+        this.preSaveBaseRotation = this.baseRotation.clone()
+        this.preSaveBasePosition = this.basePosition.clone()
+        this.preSaveEntityRotation = modelEntity.localRotation.clone()
+        this.preSaveEntityPosition = modelEntity.localPosition.clone()
+        this.preSaveDistance = this.distance
+        this.preSaveFocus = this.focus.clone()
+        this.preSaveOrientation = this.settings.orientation ? { ...this.settings.orientation } : null
+
         this.baseRotation = modelEntity.localRotation.clone()
         this.basePosition = modelEntity.localPosition.clone()
-        settings.orientation = {
-            rotation: this.baseRotation,
-            position: this.basePosition,
-        }
+        this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
         this.currentYaw = 0
         this.currentPitch = 0
         this.updateModelRotation()
@@ -344,6 +393,52 @@ class OtherController {
             this.maxPitch = Math.PI / 2
         }
         if (this.initviewPose) this.initView()
+    }
+
+    resetOrientation() {
+        if (!this.preSaveBaseRotation) return
+        this.model = 'spherical'
+        this.updateModelRotation()
+
+        this.setupTransition({
+            startPose: {
+                focus: this.focus.clone(),
+                rotation: modelEntity.localRotation.clone(),
+                position: modelEntity.localPosition.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            },
+            targetPose: {
+                focus: this.preSaveFocus,
+                rotation: this.preSaveBaseRotation,
+                position: this.preSaveBasePosition,
+                distance: this.preSaveDistance,
+                yaw: 0,
+                pitch: 0,
+            },
+            lerpDuration: HOTSPOT_FADE_TIME,
+            onTransitionFinished: () => {
+                this.baseRotation = this.preSaveBaseRotation
+                this.basePosition = this.preSaveBasePosition
+                this.settings.orientation = this.preSaveOrientation
+                this.currentYaw = 0
+                this.currentPitch = 0
+                this.preSaveBaseRotation = null
+                this.preSaveBasePosition = null
+                this.preSaveEntityRotation = null
+                this.preSaveEntityPosition = null
+                this.updateModelRotation()
+                this.model = this.originModel
+                if (this.model === 'cylindrical') {
+                    this.minPitch = 0
+                    this.maxPitch = 0
+                } else if (this.model === 'hemispherical') {
+                    this.minPitch = 0
+                    this.maxPitch = Math.PI / 2
+                }
+            },
+        })
     }
     lerp(a, b, t) {
         return a + (b - a) * t
@@ -360,8 +455,9 @@ class OtherController {
             t,
         )
         modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
-        if (this.isSphericalRot) {
-            modelEntity.localRotation = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
+        if (this.model === 'spherical') {
+            const r = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
+            modelEntity.localRotation.set(r.x, r.y, r.z, r.w)
         } else {
             this.currentYaw = this.lerp(this.startPose.yaw, this.targetPose.yaw, t)
             this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
@@ -375,7 +471,7 @@ class OtherController {
             this.focus.copy(this.targetPose.focus)
             this.distance = this.clampDistance(this.targetPose.distance, t)
             modelEntity.localPosition.copy(this.targetPose.position)
-            if (this.isSphericalRot) modelEntity.localRotation.copy(this.targetPose.rotation)
+            if (this.model === 'spherical') modelEntity.localRotation.copy(this.targetPose.rotation)
             else {
                 this.currentYaw = this.targetPose.yaw
                 this.currentPitch = this.targetPose.pitch
@@ -463,6 +559,8 @@ class OtherController {
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
                 this.syncHierarchyAndRender()
+                const euler = modelEntity.getLocalEulerAngles(new Vec3())
+                this.events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
                 didRotate = true
             }
         }
@@ -499,6 +597,7 @@ class OtherController {
         this.currentPitch += safeDeltaY * this.rotateSpeed
         this.currentPitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.currentPitch))
     }
+
     sphericalRot(deltaX, deltaY) {
         const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
         const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
@@ -506,9 +605,11 @@ class OtherController {
         v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
         v$2.transformQuat(rotateQuat)
         modelEntity.localPosition.copy(this.centerPivot).add(v$2)
-        modelEntity.localRotation.copy(rotateQuat.mul(this.modelRotation).normalize())
+        const result = rotateQuat.mul(this.modelRotation).normalize()
+        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
         this.modelRotation.copy(modelEntity.localRotation)
     }
+
     hemisphericalRot(yaw, pitch) {
         const up = new Vec3(0, 1, 0)
         this.baseRotation.transformVector(up, up)
@@ -520,7 +621,8 @@ class OtherController {
         const offset = this.basePosition.clone().sub(this.centerPivot)
         const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
         modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
-        modelEntity.localRotation.copy(combinedRotateQuat.mul(this.baseRotation).normalize())
+        const result = combinedRotateQuat.mul(this.baseRotation).normalize()
+        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
     }
     rotateOffsetByQuat(offset, q) {
         const vx = offset.x,
