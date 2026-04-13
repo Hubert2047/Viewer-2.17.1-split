@@ -89,7 +89,7 @@ class OtherController {
                 pitch: this.currentPitch,
             }
             const targetPose = {
-                focus: this.getActualFocus(f),
+                focus: new Vec3(f.x, f.y, f.z),
                 position: new Vec3(p.x, p.y, p.z),
                 rotation: new Quat(r.x, r.y, r.z, r.w),
                 distance: this.clampDistance(this.getActualDistance(d)),
@@ -169,7 +169,7 @@ class OtherController {
         let distance
         if (this.initviewPose) {
             const { focus: f, distanceScale: d } = this.initviewPose
-            this.focus.copy(this.getActualFocus(f))
+            this.focus.copy(new Vec3(f.x, f.y, f.z))
             distance = isMobile
                 ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d)))
                 : this.clampDistance(this.getActualDistance(d))
@@ -287,7 +287,7 @@ class OtherController {
         if (!this.initviewPose) return
         const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = this.initviewPose
 
-        this.focus.copy(this.getActualFocus(f))
+        this.focus.copy(new Vec3(f.x, f.y.f.z))
         this.distance = this.getActualDistance(d)
 
         modelEntity.setLocalPosition(p.x, p.y, p.z)
@@ -429,34 +429,17 @@ class OtherController {
         this.app.renderNextFrame = true
     }
     getEntityInfo() {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
         return {
             rotation: modelEntity.localRotation.clone(),
             position: modelEntity.localPosition.clone(),
             distanceScale: this.getCurrentDistanceScale(),
-            focus: {
-                x: (this.focus.x - this.originFocus.x) / aspect,
-                y: (this.focus.y - this.originFocus.y) / aspect,
-                z: (this.focus.z - this.originFocus.z) / aspect,
-                aspect,
-                distance: this.originDistance,
-            },
+            focus: this.focus.clone(),
             pitch: this.currentPitch,
             yaw: this.currentYaw,
         }
     }
     getCurrentDistanceScale() {
         return this.distance / this.originDistance
-    }
-    getActualFocus(f) {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
-        const aspectScale = aspect > f.aspect ? f.aspect : aspect
-        const distanceScale = aspect > f.aspect ? 1 : this.originDistance / f.distance
-        return new Vec3(
-            this.originFocus.x + f.x * distanceScale * aspectScale,
-            this.originFocus.y + f.y * distanceScale * aspectScale,
-            this.originFocus.z + f.z * distanceScale * aspectScale,
-        )
     }
     getActualDistance(distanceScale) {
         return this.originDistance * distanceScale

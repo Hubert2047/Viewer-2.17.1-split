@@ -12,6 +12,7 @@ class HotspotEditorUI {
         this.listEl = null
         this.countEl = null
         this.listenEvents()
+        this.createEmbedTooltip()
     }
     listenEvents() {
         this.events.on('controllers:created', (controllers) => {
@@ -22,6 +23,40 @@ class HotspotEditorUI {
             this.events.fire('hotspot:editing', false)
             this.isCreatingHotspot = false
         })
+        this.events.on('hotspot:update-ui-data', (data) => {
+            if (this.activeHotspotData.dot.size !== data.dot.size) {
+                if (!this.dotSizeInput) this.dotSizeInput = this.body.querySelector('input[name="dot-size"]')
+                if (this.dotSizeInput && document.activeElement !== this.dotSizeInput) {
+                    this.dotSizeInput.value = data.dot.size
+                }
+            }
+            if (this.activeHotspotData.text.fontSize !== data.text.fontSize) {
+                if (!this.fontSizeInput) this.fontSizeInput = this.body.querySelector('input[name="font-size"]')
+                if (this.fontSizeInput && document.activeElement !== this.fontSizeInput) {
+                    this.fontSizeInput.value = data.text.fontSize
+                }
+            }
+            this.activeHotspotData = data
+        })
+    }
+    createEmbedTooltip() {
+        if (!document.getElementById('embed-tooltip-global')) {
+            const t = document.createElement('div')
+            t.id = 'embed-tooltip-global'
+            t.classList.add('embed-tooltip')
+            t.innerHTML = `
+            <div class="embed-tip-row">
+                <span class="embed-tip-dot amber"></span>
+                <span>Embedding increases the exported file size — not recommended, especially for large files.</span>
+            </div>
+            <div class="embed-tip-row">
+                <span class="embed-tip-dot green"></span>
+                <span>Keep embed off and copy the audio file into the <b>audios/</b> folder — include that folder when sharing.</span>
+            </div>
+            `
+            document.body.appendChild(t)
+            this.embedTooltip = t
+        }
     }
     mount() {
         this.renderHeader()
@@ -52,7 +87,7 @@ class HotspotEditorUI {
                 <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg> Add`
-        addBtn.addEventListener('click', () => this.onAdd())
+        addBtn.addEventListener('click', (e) => this.onAdd(e))
 
         header.appendChild(titleGroup)
         header.appendChild(addBtn)
@@ -60,13 +95,14 @@ class HotspotEditorUI {
     }
 
     // ── Actions ──────────────────────────────
-    onAdd() {
+    onAdd(e) {
         document.body.style.cursor = 'crosshair'
         this.isCreatingHotspot = true
         this.events.fire('hotspot:editing', true)
         this.events.fire('hotspot:editor-selected', null)
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
+            // cleanup()
             const rect = this.dom.ui.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
@@ -76,6 +112,38 @@ class HotspotEditorUI {
             document.body.style.cursor = 'default'
             this.isCreatingHotspot = false
         })
+        //         const hint = document.createElement('div')
+        //         hint.style.cssText = `
+        //     position: fixed;
+        //     padding: 6px 10px;
+        //     background: rgba(20,20,20,0.85);
+        //     color: #fff;
+        //     font-size: 12px;
+        //     border-radius: 6px;
+        //     pointer-events: none;
+        //     z-index: 9999;
+        //     white-space: nowrap;
+        //     transform: translate(calc(-100% - 12px), calc(-100% - 12px));
+        //     box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.4);
+        // `
+        //         hint.textContent = 'Click to place hotspot'
+        //         document.body.appendChild(hint)
+
+        //         const onMove = (e) => {
+        //             hint.style.left = e.clientX + 'px'
+        //             hint.style.top = e.clientY + 'px'
+        //         }
+        //         onMove(e)
+        //         const cleanup = () => {
+        //             hint.remove()
+        //             document.removeEventListener('pointermove', onMove)
+        //         }
+
+        //         document.addEventListener('pointermove', onMove)
+
+        //         this.events.on('hotspot:add-cancelled', () => {
+        //             cleanup()
+        //         })
     }
 
     async onDelete(id) {
@@ -520,23 +588,11 @@ class HotspotEditorUI {
             infoIcon.textContent = 'i'
             infoIcon.setAttribute('tabindex', '0')
 
-            const tooltip = document.createElement('div')
-            tooltip.classList.add('embed-tooltip')
-            tooltip.innerHTML = `
-            <div class="embed-tip-row">
-                <span class="embed-tip-dot amber"></span>
-                <span>Embedding increases the exported file size — not recommended, especially for large files.</span>
-            </div>
-            <div class="embed-tip-row">
-                <span class="embed-tip-dot green"></span>
-                <span>Keep embed off and copy the audio file into the <b>audios/</b> folder — include that folder when sharing.</span>
-            </div>
-            `
             infoIcon.addEventListener('mouseenter', () => {
                 const rect = infoIcon.getBoundingClientRect()
-                tooltip.style.display = 'block'
-                const tooltipW = tooltip.offsetWidth
-                const tooltipH = tooltip.offsetHeight
+                this.embedTooltip.style.display = 'block'
+                const tooltipW = this.embedTooltip.offsetWidth
+                const tooltipH = this.embedTooltip.offsetHeight
                 const margin = 8
                 let left = rect.left + rect.width / 2 - tooltipW / 2
                 let top = rect.top - tooltipH - 6
@@ -544,14 +600,13 @@ class HotspotEditorUI {
                 if (top < margin) {
                     top = rect.bottom + 6
                 }
-                tooltip.style.left = `${left}px`
-                tooltip.style.top = `${top}px`
+                this.embedTooltip.style.left = `${left}px`
+                this.embedTooltip.style.top = `${top}px`
             })
 
             infoIcon.addEventListener('mouseleave', () => {
-                tooltip.style.display = 'none'
+                this.embedTooltip.style.display = 'none'
             })
-            document.body.appendChild(tooltip)
             embedLabel.appendChild(infoIcon)
         }
         const embedWrap = document.createElement('div')

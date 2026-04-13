@@ -121,8 +121,8 @@ function viewerSettingsSection(el, global) {
 
     const colorInput = document.createElement('input')
     colorInput.type = 'color'
-    colorInput.classList.add('color-input','viewer-background-input')
-    colorInput.value = settings.background.color 
+    colorInput.classList.add('color-input', 'viewer-background-input')
+    colorInput.value = settings.background.color
 
     colorInput.addEventListener('input', () => {
         document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
@@ -175,9 +175,7 @@ function viewerSettingsSection(el, global) {
 
     el.appendChild(container)
 }
-function dimensionSection(el, global) {
-
-}
+function dimensionSection(el, global) {}
 function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
@@ -3305,9 +3303,8 @@ class Viewer {
             events.on('viewer:inertia', (value) => {
                 global.settings.inertia = value
                 this.cameraManager.controllers[state.cameraMode].resetInertia()
-
             })
-             events.on('viewer:auto-hide-ui', (value) => {
+            events.on('viewer:auto-hide-ui', (value) => {
                 global.settings.autoHideUI = value
             })
             applyCamera(this.cameraManager.camera)

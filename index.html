@@ -1,30 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">
-    <meta property="og:title" content="3D Model Viewer" />
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <base href>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="viewer.css?v=5">
-    <link
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:title" content="3D Model Viewer" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=22" />
+        <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (currentV !== '5') {
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', '5')
-            window.location.replace(url.toString())
-        }
-    </script>      
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-      <div id="ui">
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
+                const url = new URL(window.location.href)
+                url.searchParams.set('v', now)
+                window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 0.1 * 60 * 1000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
             <div id="poster"></div>
             <div id="loadingWrap">
                 <div id="fileSizeInfo"></div>
@@ -33,9 +48,83 @@
             </div>
             <div id="tooltip"></div>
         </div>
-</body>
-<script>
-        window.sse = {"settings":{"version":2,"v":5,"contentUrl":"car.ply","autoHideUI":false,"background":{"color":"#000000"},"startMode":"default","model":"hemispherical","lockZoomIn":{"locked":false,"value":1},"pivotPos":null,"initview":{"pose":{"rotation":{"x":0.2526073806935644,"y":0.046173358735608294,"z":0.9664272594463087,"w":-0.008711163028354044},"position":{"x":-0.21123458018970198,"y":-0.034021453459726736,"z":-0.13308668415968405},"distanceScale":1,"focus":{"x":7.5576707542236425,"y":3.778835377111822,"z":7.5576707542236505,"aspect":1.1701427003293086,"distance":59.86212722969676},"pitch":0,"yaw":-1.7291853071795504}},"inertia":true,"orientation":null,"hotspots":[{"id":"0813e24b-8ffb-4f63-8bdd-751d634c4e28","autoPlay":{"time":3000},"button":{"title":"hotspot1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"hotspot1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-8.421835766603289,"y":-9.366826179793085,"z":0.8087385774400033},"botRight":{"x":-14.31099297066111,"y":-7.621760328056089,"z":-2.4800091040908114},"fontSize":16},"focus":{"position":{"x":-8.7897265424997,"y":-5.07062306553254,"z":2.4394500255584717}},"dot":{"style":"circle","strokeColor":"white","stroke":1,"size":30,"topLeft":{"x":-8.095664025733157,"y":-5.677773909107466,"z":2.693484147333251},"botRight":{"x":-9.490949442598794,"y":-4.47193789196566,"z":2.198556127002952}},"audio":{"src":"","fileName":"test.mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":true,"embed":false,"fileType":"audio/mpeg","show":true},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"distanceScale":1,"focus":{"x":7.821453765816517,"y":3.9107268829082593,"z":7.821453765816525,"aspect":1.2173435784851812,"distance":61.95147627843384},"pitch":0,"yaw":0}}],"tonemapping":"none","initalview":true}}
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                version: 2,
+                v: 22,
+                contentUrl: 'car.ply',
+                autoHideUI: false,
+                background: { color: '#000000' },
+                startMode: 'default',
+                model: 'hemispherical',
+                lockZoomIn: { locked: false, value: 1 },
+                pivotPos: null,
+                initview: { pose: null },
+                inertia: true,
+                orientation: null,
+                hotspots: [
+                    {
+                        id: 'fed9f6c2-a060-427c-8217-fa4d2e196bd2',
+                        autoPlay: { time: 3000 },
+                        button: { title: 'hotspot1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'hotspot1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 8.385669514766894, y: -8.037463007408459, z: 6.9282614524968515 },
+                            botRight: { x: 16.015298063388887, y: -6.879412641479064, z: 5.694785149536122 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 7.99826587920637, y: -3.946650468471809, z: 3.8063127994537354 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: 'white',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 7.151797232455181, y: -4.480722451695366, z: 4.208689947742842 },
+                            botRight: { x: 8.843016408585642, y: -3.4259763284947216, z: 3.3904844162323293 },
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: null,
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            embed: false,
+                            persist: false,
+                            autoPlay: false,
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.9392075605863345,
+                                y: 0.08647757533558006,
+                                z: 0.28929272963999814,
+                                w: 0.16346407458210735,
+                            },
+                            position: { x: -3.065833533618032, y: 0.2130600984009181, z: 0.3977521988155892 },
+                            distanceScale: 1.540071072016,
+                            focus: { x: -11.96067598277092, y: 13.999749737196783, z: 6.523103537228845 },
+                            pitch: 0.3719999999999999,
+                            yaw: -2.544000000000004,
+                        },
+                    },
+                ],
+                tonemapping: 'none',
+                initalview: true,
+            },
+        }
     </script>
-<script src="./viewer.js?v=5"></script>
+    <script src="./viewer.js?v=22"></script>
 </html>

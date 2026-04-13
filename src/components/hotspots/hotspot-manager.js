@@ -49,6 +49,7 @@ class HotspotManager {
             data,
             button: this.createHotspotActiveBtn(data),
             editable: this.editable,
+            events: this.events,
         })
     }
 
@@ -109,6 +110,10 @@ class HotspotManager {
             this.activeData = data
             this.updateHotspotData()
         })
+        this.events.on('hotspot:drag-changed', (data) => {
+            this.activeData = data
+            this.events.fire('hotspot:update-ui-data', data)
+        })
         this.events.on('hotspot:editor-cancelled', () => {
             this.activeData = null
             if (this.activeHotspot) {
@@ -156,7 +161,7 @@ class HotspotManager {
                 return d
             })
             this.activeData = null
-            this.updateUIPanel(true)
+            this.updateUIPanel()
             this.events.fire('hotspot:editing', false)
         })
         this.events.on('hotspot:reorder', ({ fromId, toId }) => {
@@ -282,16 +287,10 @@ class HotspotManager {
         const controller = this.controllers[this.state.cameraMode]
         if (!controller) return false
         const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
-        const aspect = f.aspect
-        const restoredFocus = {
-            x: f.x * aspect + controller.originFocus.x,
-            y: f.y * aspect + controller.originFocus.y,
-            z: f.z * aspect + controller.originFocus.z,
-        }
         return (
             this.isSameVec3(p, modelEntity.localPosition) &&
             this.isSameVec3(r, modelEntity.localRotation) &&
-            this.isSameVec3(restoredFocus, controller.focus) &&
+            this.isSameVec3(f, controller.focus) &&
             this.isSameFloat(controller.getActualDistance(d), controller.distance)
         )
     }
@@ -343,6 +342,7 @@ class HotspotManager {
     }
 
     stopAutoPlay() {
+        if (!this.isAutoPlay) return
         if (this.intervalID) {
             clearTimeout(this.intervalID)
             this.intervalID = null

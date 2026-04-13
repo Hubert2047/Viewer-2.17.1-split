@@ -4,8 +4,10 @@ class Hotspot {
     resizeEdge = null
     hotspotMaxScale = 1.5
     isEdit = false
-    constructor({ camera, dom, data, display = true, button, editable }) {
+    constructor({ camera, events, dom, data, button, editable, display = true }) {
         this.camera = camera
+        this.editable = editable
+        this.events = events
         this.dom = dom
         this.data = data
         this.id = data.id
@@ -212,7 +214,6 @@ class Hotspot {
         const dotScreenTL = this.camera.worldToScreen(dotWorldTL)
         const dotScreenBR = this.camera.worldToScreen(dotWorldBR)
         const dotSize = Math.abs(dotScreenBR.x - dotScreenTL.x)
-
         this.dot.style.width = dotSize + 'px'
         this.dot.style.height = dotSize + 'px'
 
@@ -288,8 +289,8 @@ class Hotspot {
         const contentScreenBR = this.camera.worldToScreen(contentWorldBR)
         const width = Math.abs(contentScreenBR.x - contentScreenTL.x)
         const height = Math.abs(contentScreenBR.y - contentScreenTL.y)
-        this.div.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
-        this.div.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
+        this.textContentSpan.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
+        this.textContentSpan.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
         this.div.style.backgroundColor = this.transparentColor(
             this.data.text.background,
             this.data.text.backgroundAlpha,
@@ -496,7 +497,10 @@ class Hotspot {
             const screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
             const screenY = parseFloat(this.dot.style.top) + this.dot.offsetHeight / 2
             const newPos = pickModelLocalPoint(screenX, screenY, this.camera)
-            if (newPos) this.data.focus.position = newPos.clone()
+            if (newPos) {
+                this.data.focus.position = newPos
+                this.events.fire('hotspot:drag-changed', this.data)
+            }
         })
     }
 
@@ -595,6 +599,7 @@ class Hotspot {
             this.data.text.botRight = botRight
             this.data.text.originWidth = originWidth
             this.data.text.originHeight = originHeight
+            this.events.fire('hotspot:drag-changed', this.data)
         })
     }
     getLocalContentPosByDiv() {

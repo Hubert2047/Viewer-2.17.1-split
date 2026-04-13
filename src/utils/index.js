@@ -264,8 +264,9 @@ function getHtmlTemplate(version) {
     <meta property="og:title" content="3D Model Viewer" />
     <meta property="og:description" content=" " />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <base href>
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="data:," >
     <link rel="stylesheet" href="viewer.css?v=${version}">
     <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
@@ -273,12 +274,24 @@ function getHtmlTemplate(version) {
     <script>
         const params = new URLSearchParams(window.location.search)
         const currentV = params.get('v')
-        if (currentV !== '${version}') {
+        if (!currentV) {
+            const now = Date.now()  
             const url = new URL(window.location.href)
-            url.searchParams.set('v', '${version}')
+            url.searchParams.set('v', now)
             window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 0.1 * 60 * 1000) {
+                const url = new URL(window.location.href)
+                url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
+                window.location.replace(url.toString())
+            }
         }
-    </script>      
+    </script>     
 </head>
 <body>
     <canvas id="application-canvas"></canvas>
