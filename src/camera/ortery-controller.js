@@ -71,11 +71,16 @@ class OtherController {
                     break
             }
         })
+        this.events.on('pivot:positionsynced', (position) => this.syncPivotPoint(position))
+        this.events.on('pivot:delete', () => {
+            this.applyAabbPivot()
+            this.reset()
+        })
+        this.events.on('pivot:use', (data) => this.usePivotPoint(data))
 
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        this.events.on('orientation:reset', () => this.resetOrientation())
 
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
@@ -101,6 +106,28 @@ class OtherController {
             }
             this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
         })
+    }
+    resetPivot() {
+        this.isResetPivot = true
+    }
+    usePivotPoint({ enabled, position }) {
+        if (enabled) {
+            this.syncPivotPoint(position)
+        } else {
+            this.applyAabbPivot()
+        }
+    }
+    applyAabbPivot() {
+        const worldOrigin = this.originPivot.clone()
+        this.centerPivot = worldOrigin
+        this.basePosition = this.calcBasePositionFromPivot(worldOrigin)
+    }
+
+    syncPivotPoint(position) {
+        if (!this.settings.pivot.enabled || !position) return
+        const newCenterPivot = this.getCustomCenterPivot(position)
+        this.centerPivot = newCenterPivot
+        this.basePosition = this.calcBasePositionFromPivot(newCenterPivot)
     }
     getCustomCenterPivot(pos) {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
@@ -197,6 +224,7 @@ class OtherController {
         }
         if (modelEntity && this.originEntityRotation) {
             this.isResetting = true
+            if (this.model !== 'spherical') this.basePosition = this.originEntityPos
             this.setupTransition({
                 startPose: {
                     focus: startFocus,
@@ -303,15 +331,7 @@ class OtherController {
         }
         this.syncHierarchyAndRender()
     }
-    resetPivot() {
-        settings.pivotPos = null
-        this.centerPivot = this.originPivot
-        this.events.fire('inputEvent', 'frame')
-    }
-    savePivot(pos) {
-        settings.pivotPos = pos
-        this.centerPivot = this.getCustomCenterPivot(settings.pivotPos)
-    }
+
     setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
         this.targetPose = targetPose
         this.startPose = startPose
@@ -377,7 +397,6 @@ class OtherController {
         this.preSaveDistance = this.distance
         this.preSaveFocus = this.focus.clone()
         this.preSaveOrientation = this.settings.orientation ? { ...this.settings.orientation } : null
-
         this.baseRotation = modelEntity.localRotation.clone()
         this.basePosition = modelEntity.localPosition.clone()
         this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
@@ -394,52 +413,6 @@ class OtherController {
         }
         if (this.initviewPose) this.initView()
     }
-
-    resetOrientation() {
-        if (!this.preSaveBaseRotation) return
-        this.model = 'spherical'
-        this.updateModelRotation()
-
-        this.setupTransition({
-            startPose: {
-                focus: this.focus.clone(),
-                rotation: modelEntity.localRotation.clone(),
-                position: modelEntity.localPosition.clone(),
-                distance: this.distance,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
-            },
-            targetPose: {
-                focus: this.preSaveFocus,
-                rotation: this.preSaveBaseRotation,
-                position: this.preSaveBasePosition,
-                distance: this.preSaveDistance,
-                yaw: 0,
-                pitch: 0,
-            },
-            lerpDuration: HOTSPOT_FADE_TIME,
-            onTransitionFinished: () => {
-                this.baseRotation = this.preSaveBaseRotation
-                this.basePosition = this.preSaveBasePosition
-                this.settings.orientation = this.preSaveOrientation
-                this.currentYaw = 0
-                this.currentPitch = 0
-                this.preSaveBaseRotation = null
-                this.preSaveBasePosition = null
-                this.preSaveEntityRotation = null
-                this.preSaveEntityPosition = null
-                this.updateModelRotation()
-                this.model = this.originModel
-                if (this.model === 'cylindrical') {
-                    this.minPitch = 0
-                    this.maxPitch = 0
-                } else if (this.model === 'hemispherical') {
-                    this.minPitch = 0
-                    this.maxPitch = Math.PI / 2
-                }
-            },
-        })
-    }
     lerp(a, b, t) {
         return a + (b - a) * t
     }
@@ -450,12 +423,13 @@ class OtherController {
         t = t * t * (3 - 2 * t)
         this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
         this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
-        const newPos = new Vec33(this.startPose.position.x, this.startPose.position.y, this.startPose.position.z).lerp(
-            this.targetPose.position,
-            t,
-        )
-        modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
         if (this.model === 'spherical') {
+            const newPos = new Vec33(
+                this.startPose.position.x,
+                this.startPose.position.y,
+                this.startPose.position.z,
+            ).lerp(this.targetPose.position, t)
+            modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
             const r = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
             modelEntity.localRotation.set(r.x, r.y, r.z, r.w)
         } else {
@@ -463,19 +437,21 @@ class OtherController {
             this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
             this.hemisphericalRot(this.currentYaw, this.currentPitch)
         }
-        if (t >= 0.99 && this.onTransitionFinished) {
-            this.onTransitionFinished()
-            this.onTransitionFinished = null
-        }
+
         if (t >= 1) {
             this.focus.copy(this.targetPose.focus)
             this.distance = this.clampDistance(this.targetPose.distance, t)
-            modelEntity.localPosition.copy(this.targetPose.position)
-            if (this.model === 'spherical') modelEntity.localRotation.copy(this.targetPose.rotation)
-            else {
+            if (this.model === 'spherical') {
+                modelEntity.localPosition.copy(this.targetPose.position)
+                modelEntity.localRotation.copy(this.targetPose.rotation)
+            } else {
                 this.currentYaw = this.targetPose.yaw
                 this.currentPitch = this.targetPose.pitch
                 this.hemisphericalRot(this.currentYaw, this.currentPitch)
+            }
+            if (this.onTransitionFinished) {
+                this.onTransitionFinished()
+                this.onTransitionFinished = null
             }
             this.updateModelRotation()
             this.targetPose = null
@@ -530,7 +506,9 @@ class OtherController {
 
         let didRotate = false
         if (!this.initPivot) {
-            this.centerPivot = settings.pivotPos ? this.getCustomCenterPivot(settings.pivotPos) : this.originPivot
+            this.centerPivot = this.settings.pivot.position
+                ? this.getCustomCenterPivot(this.settings.pivot.position)
+                : this.originPivot
             this.initPivot = true
         }
         if (modelEntity && this.modelRotation) {
@@ -611,18 +589,29 @@ class OtherController {
     }
 
     hemisphericalRot(yaw, pitch) {
+        const combinedRotateQuat = this.buildCombinedQuat(yaw, pitch)
+        const offset = this.basePosition.clone().sub(this.centerPivot)
+        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
+        modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
+        const result = combinedRotateQuat.mul(this.baseRotation).normalize()
+        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
+    }
+    buildCombinedQuat(yaw, pitch) {
         const up = new Vec3(0, 1, 0)
         this.baseRotation.transformVector(up, up)
         up.normalize()
         if (up.dot(Vec3.UP) < 0) up.mulScalar(-1)
         const quatYaw = new Quat3().setFromAxisAngle(up, yaw)
         const quatPitch = new Quat3().setFromAxisAngle(this.rightCam, pitch)
-        const combinedRotateQuat = quatPitch.mul(quatYaw).normalize()
-        const offset = this.basePosition.clone().sub(this.centerPivot)
-        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
-        modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
-        const result = combinedRotateQuat.mul(this.baseRotation).normalize()
-        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
+        return quatPitch.mul(quatYaw).normalize()
+    }
+
+    calcBasePositionFromPivot(centerPivot) {
+        const combinedQuat = this.buildCombinedQuat(this.currentYaw, this.currentPitch)
+        const invQuat = new Quat3(-combinedQuat.x, -combinedQuat.y, -combinedQuat.z, combinedQuat.w)
+        const currentOffset = modelEntity.localPosition.clone().sub(centerPivot)
+        const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
+        return centerPivot.clone().add(baseOffset)
     }
     rotateOffsetByQuat(offset, q) {
         const vx = offset.x,

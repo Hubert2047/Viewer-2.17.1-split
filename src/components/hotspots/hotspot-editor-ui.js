@@ -82,7 +82,7 @@ class HotspotEditorUI {
         titleGroup.appendChild(this.countEl)
 
         const addBtn = document.createElement('button')
-        addBtn.classList.add('hotspot-add-btn')
+        addBtn.classList.add('add-btn')
         addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -102,7 +102,6 @@ class HotspotEditorUI {
         this.events.fire('hotspot:editor-selected', null)
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
-            // cleanup()
             const rect = this.dom.ui.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
@@ -112,38 +111,6 @@ class HotspotEditorUI {
             document.body.style.cursor = 'default'
             this.isCreatingHotspot = false
         })
-        //         const hint = document.createElement('div')
-        //         hint.style.cssText = `
-        //     position: fixed;
-        //     padding: 6px 10px;
-        //     background: rgba(20,20,20,0.85);
-        //     color: #fff;
-        //     font-size: 12px;
-        //     border-radius: 6px;
-        //     pointer-events: none;
-        //     z-index: 9999;
-        //     white-space: nowrap;
-        //     transform: translate(calc(-100% - 12px), calc(-100% - 12px));
-        //     box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.4);
-        // `
-        //         hint.textContent = 'Click to place hotspot'
-        //         document.body.appendChild(hint)
-
-        //         const onMove = (e) => {
-        //             hint.style.left = e.clientX + 'px'
-        //             hint.style.top = e.clientY + 'px'
-        //         }
-        //         onMove(e)
-        //         const cleanup = () => {
-        //             hint.remove()
-        //             document.removeEventListener('pointermove', onMove)
-        //         }
-
-        //         document.addEventListener('pointermove', onMove)
-
-        //         this.events.on('hotspot:add-cancelled', () => {
-        //             cleanup()
-        //         })
     }
 
     async onDelete(id) {

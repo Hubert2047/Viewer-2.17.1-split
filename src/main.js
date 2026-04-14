@@ -56,7 +56,8 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
     return section
 }
 
-function renderOrientation(group, events, settings) {
+function renderOrientation(group, global) {
+    const { events, settings } = global
     let isEditing = false
 
     const container = document.createElement('div')
@@ -82,7 +83,7 @@ function renderOrientation(group, events, settings) {
             const euler = modelEntity.getLocalEulerAngles(new Vec3())
             setInputValues(euler)
         }
-    })  
+    })
 
     const gizmoRow = document.createElement('div')
     gizmoRow.classList.add('section-group-row')
@@ -106,7 +107,7 @@ function renderOrientation(group, events, settings) {
     gizmoRow.appendChild(track)
 
     const btnRow = document.createElement('div')
-    btnRow.classList.add('orientation-btn-row')
+    btnRow.classList.add('btn-row')
     function onCancel() {
         if (settings.orientation) {
             const { rotation: r } = settings.orientation
@@ -118,12 +119,7 @@ function renderOrientation(group, events, settings) {
         }
         events.fire('orientation:cancel')
     }
-    let savedOrientation = null
-    const updateResetBtn = (btn) => {
-        btn.disabled = savedOrientation === null
-        btn.style.opacity = savedOrientation === null ? '0.4' : '1'
-        btn.style.cursor = savedOrientation === null ? 'not-allowed' : 'pointer'
-    }
+
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
@@ -143,7 +139,6 @@ function renderOrientation(group, events, settings) {
             btnSave.classList.add('btn', 'confirm-btn')
             btnSave.textContent = 'Apply'
             btnSave.onclick = () => {
-                savedOrientation = settings.orientation ? { ...settings.orientation } : null
                 isEditing = false
                 setInputsEditable(false)
                 gizmoRow.style.display = 'none'
@@ -169,22 +164,16 @@ function renderOrientation(group, events, settings) {
                 events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
             }
 
-            const btnReset = document.createElement('button')
-            btnReset.classList.add('btn', 'reset-btn')
-            btnReset.title = 'Reset'
-            btnReset.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5A4.5 4.5 0 1 1 6.5 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><polyline points="2,4 2,7 5,7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-            btnReset.onclick = () => {
-                if (savedOrientation === null) return
-                const { rotation: r } = savedOrientation
-                const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
-                setInputValues(euler)
-                savedOrientation = null
-                events.fire('orientation:reset')
-                updateResetBtn(btnReset)
-            }
-            updateResetBtn(btnReset)
+            const btnDelete = document.createElement('button')
+            btnDelete.classList.add('btn', 'delete-btn')
+            btnDelete.title = 'Delete'
+            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>`
+            btnDelete.onclick = () => {}
             btnRow.appendChild(btnEdit)
-            btnRow.appendChild(btnReset)
+            btnRow.appendChild(btnDelete)
         }
     }
 
@@ -200,8 +189,166 @@ function renderOrientation(group, events, settings) {
 
     renderBtns()
 }
+function renderPivot(group, global) {
+    const { events, settings } = global
+    let editPivotPos = settings.pivot.position
+    let currrentPivotPos = null
+    let isEditing = false
+    const container = document.createElement('div')
+    container.classList.add('pivot-wrap')
+
+    const usePivotRow = document.createElement('div')
+    usePivotRow.classList.add('section-group-row')
+    const usePivotLabel = document.createElement('span')
+    usePivotLabel.textContent = 'Enabled'
+    const usePivotTrack = document.createElement('div')
+    usePivotTrack.classList.add('toggle')
+    if (settings.pivot.enabled) usePivotTrack.classList.add('active')
+    const usePivotKnob = document.createElement('div')
+    usePivotKnob.classList.add('toggle-knob')
+    usePivotTrack.appendChild(usePivotKnob)
+    usePivotTrack.addEventListener('click', () => {
+        const on = !usePivotTrack.classList.contains('active')
+        usePivotTrack.classList.toggle('active', on)
+        settings.pivot.enabled = on
+        events.fire('pivot:use', { enabled: on, position: currrentPivotPos ?? settings.pivot.position })
+    })
+    usePivotRow.appendChild(usePivotLabel)
+    usePivotRow.appendChild(usePivotTrack)
+
+    const {
+        row: positionRow,
+        setEditable: setInputsEditable,
+        setValues: setInputValues,
+    } = createVec3Inputs({
+        title: 'Position',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            events.fire('pivot:positionsynced', { x, y, z })
+        },
+    })
+    if (settings.pivot.position) {
+        setInputValues(settings.pivot.position)
+    }
+    const noPivotRow = document.createElement('div')
+    noPivotRow.classList.add('no-pivot-row')
+    const noPivotText = document.createElement('span')
+    noPivotText.textContent = 'No pivot configured'
+    noPivotText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
+    const addBtn = document.createElement('button')
+    addBtn.classList.add('add-btn')
+    addBtn.textContent = '+ Add'
+    addBtn.onclick = () => {
+        const center = global.bbox.center.clone()
+        const invWorld = new Mat4().copy(modelEntity.getWorldTransform()).invert()
+        const localCenter = new Vec3()
+        invWorld.transformPoint(center, localCenter)
+        settings.pivot.position = localCenter.clone()
+        setInputValues(localCenter)
+        setPivotConfigured(true)
+        onEdit(localCenter)
+    }
+    noPivotRow.appendChild(noPivotText)
+    noPivotRow.appendChild(addBtn)
+
+    const hasPivotWrap = document.createElement('div')
+    hasPivotWrap.classList.add('pivot-row')
+
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
+    const onEdit = ({ x, y, z }) => {
+        isEditing = true
+        editPivotPos = { x, y, z }
+        setInputsEditable(true)
+        renderBtns()
+        events.fire('pivot:enable-edit', { position: { x, y, z }, enable: true })
+    }
+
+    const renderBtns = () => {
+        btnRow.innerHTML = ''
+        if (isEditing) {
+            const btnCancel = document.createElement('button')
+            btnCancel.classList.add('btn', 'cancel-btn')
+            btnCancel.textContent = 'Cancel'
+            btnCancel.onclick = () => {
+                setInputsEditable(false)
+                if (editPivotPos) {
+                    events.fire('pivot:positionsynced', editPivotPos)
+                }
+                events.fire('pivot:cancel')
+                isEditing = false
+                renderBtns()
+            }
+            const btnSave = document.createElement('button')
+            btnSave.classList.add('btn', 'confirm-btn')
+            btnSave.textContent = 'Apply'
+            btnSave.onclick = () => {
+                const { x, y, z } = currrentPivotPos
+                editPivotPos = { x, y, z }
+                settings.pivot.position = { x, y, z }
+                isEditing = false
+                setInputsEditable(false)
+                renderBtns()
+                events.fire('pivot:save')
+            }
+            btnRow.appendChild(btnCancel)
+            btnRow.appendChild(btnSave)
+        } else {
+            const btnEdit = document.createElement('button')
+            btnEdit.classList.add('btn')
+            btnEdit.textContent = 'Edit'
+            btnEdit.onclick = () => onEdit(editPivotPos)
+
+            const btnDelete = document.createElement('button')
+            btnDelete.classList.add('btn', 'delete-btn')
+            btnDelete.title = 'Delete'
+            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>`
+            btnDelete.onclick = () => {
+                settings.pivot.position = null
+                editPivotPos = null
+                currrentPivotPos = null
+                setPivotConfigured(false)
+                events.fire('pivot:delete')
+                renderBtns()
+            }
+
+            btnRow.appendChild(btnEdit)
+            btnRow.appendChild(btnDelete)
+        }
+    }
+
+    hasPivotWrap.appendChild(positionRow)
+    hasPivotWrap.appendChild(btnRow)
+
+    const setPivotConfigured = (has) => {
+        noPivotRow.style.display = has ? 'none' : 'flex'
+        hasPivotWrap.style.display = has ? 'flex' : 'none'
+        usePivotRow.style.display = has ? 'flex' : 'none'
+    }
+
+    events.on('pivot:positionsynced', ({ x, y, z }) => {
+        setInputValues({ x, y, z })
+        currrentPivotPos = { x, y, z }
+    })
+
+    if (settings.pivotPos) {
+        const p = settings.pivotPos
+        setInputValues({ x: p.x, y: p.y, z: p.z })
+    }
+
+    container.appendChild(usePivotRow)
+    container.appendChild(noPivotRow)
+    container.appendChild(hasPivotWrap)
+    group.appendChild(container)
+
+    renderBtns()
+    setPivotConfigured(!!settings.pivot.position)
+}
 function modelSection(el, global) {
-    const { events } = global
     const groups = [
         {
             show: global.settings.model !== 'spherical',
@@ -210,53 +357,8 @@ function modelSection(el, global) {
         },
         {
             show: true,
-            label: 'Pivot Position',
-            render: (group) => {
-                const buttonContainer = document.createElement('div')
-                buttonContainer.classList.add('orientation-btn-wrap')
-
-                const btnEdit = document.createElement('button')
-                btnEdit.classList.add('btn')
-                btnEdit.textContent = 'Edit Pivot'
-
-                const btnSave = document.createElement('button')
-                btnSave.classList.add('btn', 'confirm-btn', 'orientation-btn')
-                btnSave.textContent = 'Apply'
-
-                const btnCancel = document.createElement('button')
-                btnCancel.classList.add('btn', 'cancel-btn', 'orientation-btn')
-                btnCancel.textContent = 'Cancel'
-
-                let isPivotEditing = false
-                const renderBtns = () => {
-                    buttonContainer.innerHTML = ''
-                    if (isPivotEditing) {
-                        buttonContainer.appendChild(btnSave)
-                        buttonContainer.appendChild(btnCancel)
-                    } else {
-                        buttonContainer.appendChild(btnEdit)
-                    }
-                }
-
-                btnEdit.onclick = () => {
-                    isPivotEditing = true
-                    events.fire('pivot:edit')
-                    renderBtns()
-                }
-                btnSave.onclick = () => {
-                    isPivotEditing = false
-                    events.fire('pivot:save')
-                    renderBtns()
-                }
-                btnCancel.onclick = () => {
-                    isPivotEditing = false
-                    events.fire('pivot:cancel')
-                    renderBtns()
-                }
-
-                renderBtns()
-                group.appendChild(buttonContainer)
-            },
+            label: 'Pivot Point',
+            render: renderPivot,
         },
     ]
 
@@ -274,7 +376,7 @@ function modelSection(el, global) {
             groupTitle.textContent = label
             group.appendChild(groupTitle)
 
-            render(group, events, global.settings)
+            render(group, global)
             container.appendChild(group)
         })
 
@@ -339,7 +441,7 @@ function viewerSettingsSection(el, global) {
 
     const renderInitViewFooter = (events) => {
         const btnRow = document.createElement('div')
-        btnRow.classList.add('orientation-btn-row')
+        btnRow.classList.add('btn-row')
         const btnSave = document.createElement('button')
         btnSave.classList.add('btn', 'confirm-btn')
         btnSave.textContent = 'Save current view'
@@ -454,9 +556,9 @@ function createSidebar(global, dom) {
 
     sidebar.appendChild(
         createSection({
-            id: 'orientation',
+            id: 'model',
             title: 'Model',
-            classname: 'model-orientation-section',
+            classname: 'model-section',
             body: (el) => modelSection(el, global),
         }),
     )
@@ -464,7 +566,7 @@ function createSidebar(global, dom) {
     sidebar.appendChild(
         createSection({
             id: 'settings',
-            title: 'Viewer Settings',
+            title: 'Viewer',
             classname: 'viewer-setting-section',
             body: (el) => viewerSettingsSection(el, global),
         }),
@@ -480,7 +582,7 @@ function createSidebar(global, dom) {
     sidebar.appendChild(
         createSection({
             id: 'dimension',
-            title: 'Dimension',
+            title: 'Dimensions',
             classname: 'dimension-section',
             body: (el) => dimensionSection(el, global, dom),
         }),
@@ -646,6 +748,9 @@ const initUI = (global) => {
     // keep UI visible while an annotation tooltip is shown
     events.on('annotation.activate', () => {
         annotationVisible = true
+        showUI()
+    })
+    events.on('viewer:auto-hide-ui', (value) => {
         showUI()
     })
     events.on('annotation.deactivate', () => {
@@ -3390,6 +3495,7 @@ class Viewer {
         const prevProj = new Mat4()
         const prevWorld = new Mat4()
         const sceneBound = new BoundingBox()
+        global.bbox = sceneBound
         // track the camera state and trigger a render when it changes
         app.on('framerender', () => {
             const world = camera.getWorldTransform()
@@ -3482,10 +3588,46 @@ class Viewer {
             }
             this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
             const rotationGizmo = new RotationGizmo(app, camera, events, modelEntity, this.cameraManager.controllers)
+            const pivotDot = new PivotDot(app, camera, modelEntity)
+            const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
+                onMove: (pos) => {
+                    events.fire('pivot:positionsynced', pos)
+                },
+            })
+
+            events.on('pivot:enable-edit', ({ position, enable }) => {
+                if (enable) {
+                    pivotDot.setPivot(position)
+                    pivotGizmo.setPosition(position)
+                    pivotDot.enable()
+                    pivotGizmo.enable()
+                } else {
+                    pivotDot.disable()
+                    pivotGizmo.disable()
+                }
+            })
+            events.on('pivot:positionsynced', ({ x, y, z }) => {
+                pivotDot.setPivot({ x, y, z })
+                pivotGizmo.setPosition({ x, y, z })
+            })
+            events.on('pivot:save', () => {
+                pivotGizmo.disable()
+                pivotDot.disable()
+            })
+            events.on('pivot:cancel', () => {
+                pivotGizmo.disable()
+                pivotDot.disable()
+            })
+
+            events.on('gizmo:position-enable', (enable) => {
+                if (enable) pivotGizmo.enable()
+                else pivotGizmo.disable()
+            })
             events.on('gizmo:rotation-enable', (enable) => {
                 if (enable) rotationGizmo.enable()
                 else rotationGizmo.disable()
             })
+
             events.on('viewer:lock-zoom-in', (value) => {
                 const lockZoomIn = {
                     locked: value,

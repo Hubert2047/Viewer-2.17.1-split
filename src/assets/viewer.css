@@ -746,7 +746,7 @@ button {
   flex-direction: column;
   gap: 10px;
 }
-.hotspot-add-btn {
+.add-btn {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -759,7 +759,7 @@ button {
   cursor: pointer;
   transition: background 0.12s;
 }
-.hotspot-add-btn:hover {
+.add-btn:hover {
   background-color: rgba(249, 87, 68, 0.18);
 }
 .hotspot-label {
@@ -1768,12 +1768,12 @@ button {
   -moz-appearance: textfield;
 }
 
-.orientation-btn-row {
+.btn-row {
   display: flex;
   gap: 6px;
 }
 
-.orientation-btn-row .btn {
+.btn-row .btn {
   flex: 1;
   padding: 7px;
   font-size: 13px;
@@ -1834,4 +1834,32 @@ button {
 }
 .vec3-input-label {
   margin-top: 16px;
+}
+.no-pivot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pivot-row {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.pivot-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.delete-btn {
+  color: #f95f4d;
+  border-color: rgba(229, 62, 62, 0.3);
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  flex: 0 !important;
+  padding: 7px 10px !important;
+}
+
+.delete-btn:hover {
+  background: rgba(229, 62, 62, 0.1) !important;
+  color: #c53030 !important;
+  filter: none !important;
 }

@@ -36,10 +36,12 @@ const files = [
     'src/default-settings.js',
     'src/libs/engine-4.js',
     'src/libs/custome-engine.js',
-    'src/libs/gizmo.js',
+    'src/libs/rotation-gizmo.js',
+    'src/libs/position-gizmo.js',
     'src/utils/index.js',
     'src/components/dialogs/confirm-dialog.js',
     'src/camera/ortery-controller.js',
+    'src/components/pivot/pivot-dot.js',
     'src/components/hotspots/hotspot-button.js',
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
@@ -103,15 +105,8 @@ build()
 if (process.argv.includes('--watch')) {
     console.log('👀 Watching for changes...')
     let timeout = null
-    const rebuild = (filename) => {
-        clearTimeout(timeout)
-        timeout = setTimeout(() => {
-            console.log(`  changed: ${filename}`)
-            build()
-        }, 100)
-    }
-    fs.watch('src', { recursive: true }, (event, filename) => rebuild(filename))
-    fs.watch('index.html', () => {
+
+    const copyHtml = () => {
         let html = fs.readFileSync('index.html', 'utf8')
         html = html.replace(
             '<script type="module" src="./src/main.js"></script>',
@@ -119,5 +114,17 @@ if (process.argv.includes('--watch')) {
         )
         fs.writeFileSync('dist/index.html', html)
         console.log('✓ Copied index.html at', new Date().toLocaleTimeString())
-    })
+    }
+
+    const rebuild = (filename) => {
+        clearTimeout(timeout)
+        timeout = setTimeout(() => {
+            console.log(`  changed: ${filename}`)
+            build()
+            copyHtml()
+        }, 100)
+    }
+
+    fs.watch('src', { recursive: true }, (event, filename) => rebuild(filename))
+    fs.watch('index.html', () => copyHtml())
 }

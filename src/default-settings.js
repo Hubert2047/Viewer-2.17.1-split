@@ -10,7 +10,7 @@ const defaultSettings = {
         value: 11, //distanceScale
         locked: false,
     },
-    pivotPos: null,
+    pivot: { position: null, enabled: true },
     initview: { enabled: false, pose: null },
     inertia: true,
     orientation: null,
