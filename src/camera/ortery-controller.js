@@ -50,7 +50,6 @@ class OtherController {
             this.baseRotation = modelEntity.localRotation.clone()
             this.basePosition = modelEntity.localPosition.clone()
         }
-
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -71,7 +70,14 @@ class OtherController {
                     break
             }
         })
+
+        this.events.on('viewer:save-initview', () => this.initView())
+        this.events.on('viewer:remove-saved-view', () => this.removeInitview())
+
         this.events.on('pivot:positionsynced', (position) => this.syncPivotPoint(position))
+        this.events.on('pivot:save', () => {
+            if (this.initviewPose) this.initView()
+        })
         this.events.on('pivot:delete', () => {
             this.applyAabbPivot()
             this.reset()
@@ -81,6 +87,13 @@ class OtherController {
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
+        this.events.on('orientation:eulerchange', () => {
+            const quat = new Quat()
+            quat.setFromEulerAngles(x, y, z)
+            modelEntity.setLocalRotation(quat)
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+        })
 
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
@@ -168,6 +181,8 @@ class OtherController {
     reset(pose) {
         if (this.isResetting) return
         if (!pose) pose = this.resetPose
+        this.inertiaVelX = 0
+        this.inertiaVelY = 0
         v$2.copy(pose.forward)
         if (!this.originDistance) this.originDistance = pose.distance
         if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
@@ -224,7 +239,6 @@ class OtherController {
         }
         if (modelEntity && this.originEntityRotation) {
             this.isResetting = true
-            if (this.model !== 'spherical') this.basePosition = this.originEntityPos
             this.setupTransition({
                 startPose: {
                     focus: startFocus,
@@ -257,6 +271,17 @@ class OtherController {
         this.initviewFocus = this.focus.clone()
         this.initviewDistance = this.distance
         this.settings.initview = { enabled: true, pose }
+        showToast('✓ Initial view updated', {
+            duration: 1000,
+            type: 'success',
+        })
+    }
+    removeInitview() {
+        this.settings.initview = { enabled: false, pose: null }
+        showToast('✓ Switched to default view', {
+            duration: 1000,
+            type: 'success',
+        })
     }
     update(dt, inputFrame, camera) {
         const { move, rotate } = inputFrame.read()
@@ -298,9 +323,8 @@ class OtherController {
             forward,
             focus: this.bbox.center.clone(),
         }
-        if (this.settings.initview.enabled && this.initviewPose) {
+        if (this.initviewPose) {
             const { position: p, rotation: r } = this.initviewPose
-            this.storeDistance = distance
             modelEntity.setLocalPosition(p.x, p.y, p.z)
             modelEntity.setLocalRotation(r.x, r.y, r.z, r.w)
         }
@@ -506,9 +530,12 @@ class OtherController {
 
         let didRotate = false
         if (!this.initPivot) {
-            this.centerPivot = this.settings.pivot.position
-                ? this.getCustomCenterPivot(this.settings.pivot.position)
-                : this.originPivot
+            if (this.settings.pivot.enabled && this.settings.pivot.position) {
+                const { x, y, z } = this.settings.pivot.position
+                this.syncPivotPoint(new Vec3(x, y, z))
+            } else {
+                this.applyAabbPivot()
+            }
             this.initPivot = true
         }
         if (modelEntity && this.modelRotation) {

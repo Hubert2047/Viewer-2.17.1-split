@@ -284,7 +284,7 @@ function getHtmlTemplate(version) {
             const now = Date.now()
             if (!stored) {
                 sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 0.1 * 60 * 1000) {
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
                 sessionStorage.setItem('page-v', now)
@@ -612,4 +612,19 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
     wrapper.appendChild(row)
 
     return { row: wrapper, setEditable, setValues }
+}
+function createEditGroup(events) {
+    const members = new Map() // name -> { cancel }
+
+    return {
+        register(name, { cancel }) {
+            members.set(name, { cancel })
+        },
+        startEdit(name) {
+            members.forEach((member, key) => {
+                if (key !== name) member.cancel()
+            })
+            events.fire('editGroup:changed', name)
+        },
+    }
 }

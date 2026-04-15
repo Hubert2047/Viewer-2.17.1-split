@@ -52,7 +52,11 @@ button {
 .btn:hover {
   filter: brightness(0.9);
 }
-
+.btn.disabled,
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
 .hidden {
   display: none !important;
 }
@@ -1864,11 +1868,11 @@ button {
   filter: none !important;
 }
 .add-btn.cancel-mode {
-    background: rgba(220, 60, 60, 0.15);
-    color: #e05555;
-    border-color: rgba(220, 60, 60, 0.3);
+  background: rgba(220, 60, 60, 0.15);
+  color: #e05555;
+  border-color: rgba(220, 60, 60, 0.3);
 }
 
 .add-btn.cancel-mode:hover {
-    background: rgba(220, 60, 60, 0.25);
+  background: rgba(220, 60, 60, 0.25);
 }
