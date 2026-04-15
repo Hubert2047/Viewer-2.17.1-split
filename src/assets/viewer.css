@@ -1863,3 +1863,12 @@ button {
   color: #c53030 !important;
   filter: none !important;
 }
+.add-btn.cancel-mode {
+    background: rgba(220, 60, 60, 0.15);
+    color: #e05555;
+    border-color: rgba(220, 60, 60, 0.3);
+}
+
+.add-btn.cancel-mode:hover {
+    background: rgba(220, 60, 60, 0.25);
+}

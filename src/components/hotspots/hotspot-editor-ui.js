@@ -22,6 +22,7 @@ class HotspotEditorUI {
             document.body.style.cursor = 'default'
             this.events.fire('hotspot:editing', false)
             this.isCreatingHotspot = false
+            this.resetAddBtn()
         })
         this.events.on('hotspot:update-ui-data', (data) => {
             if (this.activeHotspotData.dot.size !== data.dot.size) {
@@ -88,7 +89,7 @@ class HotspotEditorUI {
                 <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg> Add`
         addBtn.addEventListener('click', (e) => this.onAdd(e))
-
+        this.addBtn = addBtn
         header.appendChild(titleGroup)
         header.appendChild(addBtn)
         this.body.appendChild(header)
@@ -96,10 +97,18 @@ class HotspotEditorUI {
 
     // ── Actions ──────────────────────────────
     onAdd(e) {
+        if (this.isCreatingHotspot) {
+            this.events.fire('hotspot:add-cancelled')
+            this.resetAddBtn()
+            return
+        }
         document.body.style.cursor = 'crosshair'
         this.isCreatingHotspot = true
         this.events.fire('hotspot:editing', true)
         this.events.fire('hotspot:editor-selected', null)
+
+        this.setAddBtnCancel(true)
+
         this.events.on('pointerup', (e) => {
             if (!this.isCreatingHotspot) return
             const rect = this.dom.ui.getBoundingClientRect()
@@ -110,7 +119,28 @@ class HotspotEditorUI {
             this.events.fire('hotspot:add', { position, entityInfo })
             document.body.style.cursor = 'default'
             this.isCreatingHotspot = false
+            this.setAddBtnCancel(false)
         })
+    }
+    setAddBtnCancel(isCancel) {
+        if (!this.addBtn) return
+        if (isCancel) {
+            this.addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg> Cancel`
+            this.addBtn.classList.add('cancel-mode')
+        } else {
+            this.addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg> Add`
+            this.addBtn.classList.remove('cancel-mode')
+        }
+    }
+
+    resetAddBtn() {
+        this.setAddBtnCancel(false)
     }
 
     async onDelete(id) {
@@ -483,6 +513,7 @@ class HotspotEditorUI {
             this.activeHotspotData.audio.fileType = file.type
             fileNameSpan.textContent = file.name
             this.activeHotspotData.audio.src = URL.createObjectURL(file)
+            clearAudioBtn.style.display = ''
             this.applyDraft()
         })
 
@@ -490,7 +521,29 @@ class HotspotEditorUI {
         fileLabel.appendChild(fileNameSpan)
         fileLabel.appendChild(fileInput)
         audioFileField.appendChild(fileLabel)
+        const clearAudioBtn = document.createElement('button')
+        clearAudioBtn.classList.add('icon-btn', 'del')
+        if (!this.activeHotspotData.audio.fileName) clearAudioBtn.style.display = 'none'
+        clearAudioBtn.title = 'Remove audio'
+        clearAudioBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`
+
+        clearAudioBtn.addEventListener('click', () => {
+            if (this.activeHotspotData.audio.src?.startsWith('blob:')) {
+                URL.revokeObjectURL(this.activeHotspotData.audio.src)
+            }
+            this.activeHotspotData.audio.src = ''
+            this.activeHotspotData.audio.fileName = ''
+            this.activeHotspotData.audio.fileType = ''
+            this.activeHotspotData.audio.embed = false
+            fileInput.value = ''
+            fileNameSpan.textContent = 'No file chosen'
+            clearAudioBtn.style.display = 'none'
+            this.applyDraft()
+        })
         audioFileFieldGroup.appendChild(audioFileField)
+        audioFileFieldGroup.appendChild(clearAudioBtn)
 
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Color')
