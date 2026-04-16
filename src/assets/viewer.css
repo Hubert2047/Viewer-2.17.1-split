@@ -1,5 +1,14 @@
 :root {
   --canvas-opacity: 1;
+    --primary: #f95f4d;
+  --primary-hover: #e14c3a;
+  --primary-soft: rgba(249, 95, 77, 0.12);
+
+  --text-main: #2d3748;
+  --text-muted: #8c9fb4;
+
+  --border: rgba(0,0,0,0.08);
+  --bg-hover: rgba(0,0,0,0.04);
 }
 
 * {
@@ -259,94 +268,6 @@ button {
 #controlsWrap > #buttonsContainer .controlButton.toggle.right:not(.active) {
   background-position: 200% 0%;
 }
-/* settingsPanel */
-#settingsPanel {
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  font-size: 14px;
-  color: #e0dcdd;
-  background-color: rgba(51, 51, 51, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-#settingsPanel > .settingsRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  width: 100%;
-}
-#settingsPanel > .settingsRow > button {
-  flex-grow: 1;
-  height: 34px;
-  padding: 0 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-  color: #aaa;
-  background-color: rgba(255, 255, 255, 0.04);
-  transition:
-    background-color 250ms ease,
-    color 250ms ease;
-}
-#settingsPanel > .settingsRow > button:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-#settingsPanel > .settingsRow > div {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  cursor: pointer;
-  color: #aaa;
-}
-#settingsPanel > .settingsRow > div.toggleSwitch {
-  padding: 0 4px;
-}
-#settingsPanel > .settingsRow > div.toggleSwitch .toggleTrack {
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.15);
-  position: relative;
-  transition: background-color 200ms ease;
-}
-#settingsPanel > .settingsRow > div.toggleSwitch .toggleTrack .toggleThumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: #777;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition:
-    transform 200ms ease,
-    background-color 200ms ease;
-}
-#settingsPanel > .settingsRow > div.toggleSwitch.active .toggleTrack {
-  background-color: rgba(255, 102, 0, 0.35);
-}
-#settingsPanel > .settingsRow > div.toggleSwitch.active .toggleTrack .toggleThumb {
-  transform: translateX(16px);
-  background-color: #f60;
-}
-#settingsPanel > .settingsRow > div:hover {
-  color: #e0dcdd;
-}
-#settingsPanel > .divider {
-  width: 100%;
-  height: 1px;
-  margin: 8px 0;
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
 /* infoPanel */
 #infoPanel {
   position: absolute;
@@ -614,7 +535,7 @@ button {
   transition: color 0.2s ease;
 }
 .section-header.active {
-  color: #f95f4d;
+  color: var(--primary);
 }
 .section-header:hover {
   background: rgba(0, 0, 0, 0.04);
@@ -702,7 +623,7 @@ button {
   background: #e8f0fe;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
   border-radius: 5px;
-  color: #2d3748;
+  color: var(--text-main);
   font-size: 12px;
   padding: 8px;
   outline: none;
@@ -733,7 +654,7 @@ button {
 .hotspot-header-name {
   font-size: 13px;
   font-weight: 500;
-  color: #2d3748;
+  color: var(--text-main);
   max-width: 100%;
   flex: 1;
   word-break: break-word;
@@ -758,7 +679,7 @@ button {
   background-color: rgba(249, 87, 68, 0.1);
   border: 0.5px solid rgba(249, 87, 68, 0.4);
   border-radius: 6px;
-  color: #f95f4d;
+  color: var(--primary);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.12s;
@@ -774,7 +695,7 @@ button {
   background: #e8f0fe;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
   border-radius: 5px;
-  color: #2d3748;
+  color: var(--text-main);
   font-size: 12px;
   padding: 0 7px;
   outline: none;
@@ -815,7 +736,7 @@ button {
 .hotspot-title {
   font-size: 12px;
   font-weight: 400;
-  color: #2d3748;
+  color: var(--text-main);
 }
 .hotspot-item {
   border-radius: 8px;
@@ -958,7 +879,7 @@ button {
 }
 .fmt-btn.active {
   background: rgba(249, 87, 68, 0.12);
-  color: #f95f4d;
+  color: var(--primary);
   border-color: rgba(249, 87, 68, 0.4);
 }
 /* Style toggle */
@@ -983,7 +904,7 @@ button {
 .hotspot-style-btn.active {
   background: rgba(249, 87, 68, 0.12);
   border-color: rgba(249, 87, 68, 0.45);
-  color: #f95f4d;
+  color: var(--primary);
 }
 .viewr-icon-btn {
   width: 26px;
@@ -1015,12 +936,12 @@ button {
 
 .icon-btn:hover {
   background: rgba(0, 0, 0, 0.07);
-  color: #2d3748;
+  color: var(--text-main);
 }
 .icon-btn.active {
   background: rgba(249, 87, 68, 0.12);
   border-color: rgba(249, 87, 68, 0.4);
-  color: #f95f4d;
+  color: var(--primary);
 }
 .icon-btn.del:hover {
   background: rgba(239, 68, 68, 0.1);
@@ -1067,7 +988,7 @@ button {
   border-radius: 5px;
   border: 0.5px solid rgba(249, 87, 68, 0.4);
   background: rgba(249, 87, 68, 0.08);
-  color: #f95f4d;
+  color: var(--primary);
   cursor: pointer;
   transition: background 0.12s;
   white-space: nowrap;
@@ -1109,7 +1030,7 @@ button {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #f95f4d;
+  background: var(--primary);
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: transform 0.1s ease;
@@ -1123,7 +1044,7 @@ button {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #f95f4d;
+  background: var(--primary);
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   cursor: pointer;
@@ -1393,7 +1314,7 @@ button {
   border-radius: 5px;
   border: 1px solid #ddd;
   color: white;
-  background-color: #f95f4d;
+  background-color: var(--primary);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -1547,7 +1468,7 @@ button {
   gap: 8px;
 }
 .section-group-row.clickable:hover span {
-  color: #f95f4d;
+  color: var(--primary);
 }
 .section-group-row.clickable {
   cursor: pointer;
@@ -1556,7 +1477,7 @@ button {
   transition: color 0.2s ease;
 }
 .section-group-row.clickable:hover span {
-  color: #f95f4d;
+  color: var(--primary);
 }
 .toggle {
   width: 36px;
@@ -1591,7 +1512,7 @@ button {
 }
 .toggle.active .toggle-knob {
   left: 16px;
-  background: #f95f4d;
+  background: var(--primary);
 }
 .color-input {
   width: 36px;
@@ -1756,7 +1677,7 @@ button {
   border-radius: 5px;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
   background: rgba(0, 0, 0, 0.04);
-  color: #2d3748;
+  color: var(--text-main);
   font-size: 12px;
   text-align: center;
   outline: none;
@@ -1795,7 +1716,7 @@ button {
 
 .reset-btn:hover {
   background-color: rgba(0, 0, 0, 0.09) !important;
-  color: #2d3748 !important;
+  color: var(--text-main) !important;
   filter: none !important;
 }
 
@@ -1834,7 +1755,7 @@ button {
 
 .orientation-toggle-track.active .orientation-toggle-knob {
   transform: translateX(14px);
-  background: #f95f4d;
+  background: var(--primary);
 }
 .vec3-input-label {
   margin-top: 16px;
@@ -1855,7 +1776,7 @@ button {
   gap: 10px;
 }
 .delete-btn {
-  color: #f95f4d;
+  color: var(--primary);
   border-color: rgba(229, 62, 62, 0.3);
   background-color: rgba(0, 0, 0, 0.05) !important;
   flex: 0 !important;
@@ -1877,12 +1798,144 @@ button {
   background: rgba(220, 60, 60, 0.25);
 }
 .btn-row .initview-btn.active {
-    background-color: #f95f4d;
-    color: white;
+  background-color: var(--primary);
+  color: white;
 }
-
 .btn-row .initview-btn:not(.active) {
-    background-color: rgba(0, 0, 0, 0.05);
-    color: rgba(0, 0, 0, 0.4);
-    border: 0.5px solid rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.4);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+.setting-panel {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  position: absolute;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  overflow: hidden;
+  font-size: 14px;
+}
+.view-option-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  background: var(--primary-soft);
+}
+.view-option-content {
+  padding: 12px;
+  width: max-content;
+}
+.option-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.quality-options {
+  display: flex;
+  gap: 6px;
+}
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: all 0.15s ease;
+}
+.option-item:hover {
+  background: var(--bg-hover);
+}
+.option-item:has(input:checked) {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.option-item input[type="radio"] {
+  accent-color: var(--primary);
+}
+.md-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s ease;
+  z-index: 9999;
+}
+.md-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.md-modal {
+  width: 285px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(1);
+  transition: opacity 0.2s ease;
+}
+.md-modal.center {
+  align-self: center;
+}
+.md-modal.top {
+  align-self: flex-start;
+  margin-top: 80px;
+}
+.md-modal.bottom {
+  align-self: flex-end;
+  margin-bottom: 40px;
+}
+.md-overlay.show .md-modal {
+  transform: scale(1);
+  opacity: 1;
+}
+.md-title {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  padding: 16px 16px 4px;
+}
+.md-message {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  padding: 0 16px 16px;
+}
+.md-actions {
+  display: flex;
+  border-top: 1px solid #eee;
+}
+.md-btn {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 16px;
+  height: 44px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.md-btn + .md-btn {
+  border-left: 1px solid #eee;
+}
+.md-btn.cancel {
+  color: #555;
+}
+.md-btn.ok {
+  color: #007aff;
+  font-weight: 500;
+}
+.md-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
 }

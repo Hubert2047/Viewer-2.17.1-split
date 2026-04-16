@@ -40,6 +40,7 @@ const files = [
     'src/libs/position-gizmo.js',
     'src/utils/index.js',
     'src/components/dialogs/confirm-dialog.js',
+    'src/components/dialogs/modal-dialog.js',
     'src/camera/ortery-controller.js',
     'src/components/pivot/pivot-dot.js',
     'src/components/hotspots/hotspot-button.js',

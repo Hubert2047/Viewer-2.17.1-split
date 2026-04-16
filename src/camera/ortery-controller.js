@@ -363,7 +363,7 @@ class OtherController {
         const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
         const h = this.bbox.halfExtents
         const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
-        return (radius / Math.sin(minFovRad / 2)) * 1.1
+        return (radius / Math.sin(minFovRad / 2))
     }
     onEnter(camera) {
         const distance = this.getDeafultDistance()

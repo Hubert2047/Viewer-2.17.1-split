@@ -672,12 +672,12 @@ const initUI = (global) => {
         'play',
         'pause',
         'settings',
-        'settingsPanel',
         'loadingText',
         'loadingBar',
         'tooltip',
         'hotspotContainer',
         'hotspotActionGroup',
+        'settingsPanel',
     ].reduce((acc, id) => {
         acc[id] = document.getElementById(id)
         return acc
@@ -3609,6 +3609,7 @@ class Viewer {
         events.on('firstFrame', () => {
             state.loaded = true
             state.animationPaused = !!config.noanim
+            checkPerformance(app, global)
         })
         // wait for the model to load
         Promise.all([gsplatLoad, skyboxLoad, voxelLoad]).then((results) => {
@@ -4188,6 +4189,7 @@ const main = async (canvas, settingsJson, config) => {
         gamingControls: localStorage.getItem('gamingControls') === 'true',
     })
     const confirmDialog = new ConfirmDialog()
+    const modal = new ModalConfirm()
     const global = {
         app,
         settings: importSettings(settingsJson),
@@ -4196,6 +4198,7 @@ const main = async (canvas, settingsJson, config) => {
         events,
         camera,
         confirmDialog,
+        modal,
     }
     initCanvas(global)
     // start the application

@@ -223,8 +223,8 @@ async function exportHtml(name, data, fileAudioStore) {
     const hotspots = await Promise.all(
         (updatedSettings.hotspots ?? []).map(async (h) => {
             if (!h.audio) return h
-            const audio = { ...h.audio }    
-            let src = ""
+            const audio = { ...h.audio }
+            let src = ''
             if (audio.embed && fileAudioStore) {
                 const file = fileAudioStore.get(audio.fileId)
                 if (!file) {
@@ -246,7 +246,7 @@ async function exportHtml(name, data, fileAudioStore) {
                     src,
                 },
             }
-        })
+        }),
     )
     delete updatedSettings.fileAudioStore
     const payload = {
@@ -536,28 +536,53 @@ function createControlsWrap() {
 function createSettingsPanel() {
     const panel = document.createElement('div')
     panel.id = 'settingsPanel'
-    panel.className = 'hidden'
+    panel.classList.add('setting-panel', 'hidden')
 
-    const divider = document.createElement('div')
-    divider.className = 'divider'
+    const viewOptionHeader = document.createElement('div')
+    viewOptionHeader.className = 'view-option-header'
+    viewOptionHeader.textContent = 'View Options'
 
-    const row = document.createElement('div')
-    row.className = 'settingsRow'
+    const viewOptionContent = document.createElement('div')
+    viewOptionContent.className = 'view-option-content'
 
-    const buttons = [
-        { id: 'frame', label: '1' },
-        { id: 'reset', label: '2' },
+    const optionGroup = document.createElement('div')
+    optionGroup.className = 'optionGroup'
+
+    const optionTitle = document.createElement('div')
+    optionTitle.className = 'option-title'
+    optionTitle.textContent = 'Quality'
+
+    const qualityOptions = document.createElement('div')
+    qualityOptions.className = 'quality-options'
+
+    const qualities = [
+        { id: 'lowQuality', value: '0', label: 'Low' },
+        { id: '', value: '1', label: 'Medium' },
+        { id: '', value: '2', label: 'High' },
+        { id: '', value: '3', label: 'Ultra', checked: true },
     ]
 
-    buttons.forEach(({ id, label }) => {
-        const btn = document.createElement('button')
-        btn.id = id
-        btn.textContent = label
-        row.appendChild(btn)
+    qualities.forEach(({ id, value, label, checked }) => {
+        const labelEl = document.createElement('label')
+        labelEl.className = 'option-item'
+
+        const input = document.createElement('input')
+        input.type = 'radio'
+        input.name = 'quality'
+        input.value = value
+        if (id) input.id = id
+        if (checked) input.checked = true
+
+        labelEl.appendChild(input)
+        labelEl.append(` ${label}`)
+        qualityOptions.appendChild(labelEl)
     })
 
-    panel.appendChild(divider)
-    panel.appendChild(row)
+    optionGroup.appendChild(optionTitle)
+    optionGroup.appendChild(qualityOptions)
+    viewOptionContent.appendChild(optionGroup)
+    panel.appendChild(viewOptionHeader)
+    panel.appendChild(viewOptionContent)
     return panel
 }
 function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, step = '1', onChange } = {}) {
@@ -641,4 +666,33 @@ function createEditGroup(events) {
             events.fire('editGroup:changed', name)
         },
     }
+}
+function checkPerformance(app, global) {
+    let benchFrames = 0
+    let benchStart = performance.now()
+    let benchDone = false
+    const BENCH_DURATION = 1000
+
+    const benchHandle = app.on('frameend', () => {
+        if (benchDone) return
+        benchFrames++
+        app.renderNextFrame = true
+        const elapsed = performance.now() - benchStart
+        if (elapsed >= BENCH_DURATION) {
+            benchDone = true
+            benchHandle.off()
+            app.renderNextFrame = false
+            const avgFps = ((benchFrames / elapsed) * 1000).toFixed(1)
+            if (avgFps <= 10) {
+                // viewer.setSHBands(0)
+                // dom.lowQuality.checked = true
+                global.modal.open(
+                    'Performance Warning',
+                    'Your device seems to be running slowly.<br>' +
+                        'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
+                        'top'
+                )
+            }
+        }
+    })
 }
