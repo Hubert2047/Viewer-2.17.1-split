@@ -449,18 +449,28 @@ function viewerSettingsSection(el, global) {
     const renderInitViewFooter = (events) => {
         const btnRow = document.createElement('div')
         btnRow.classList.add('btn-row')
+
+        const hasPose = !!settings.initview.pose
+
         const btnSave = document.createElement('button')
         btnSave.classList.add('btn', 'confirm-btn')
-        btnSave.textContent = 'Save current view'
-        btnSave.onclick = () => events.fire('viewer:save-initview')
+        if (hasPose) btnSave.classList.add('active')
+        btnSave.textContent = hasPose ? 'Update saved view' : 'Save current view'
+        btnSave.onclick = () => {
+            events.fire('viewer:save-initview')
+            events.fire('viewer:re-render')
+        }
+
         const btnDefault = document.createElement('button')
         btnDefault.classList.add('btn', 'confirm-btn')
+        if (!hasPose) btnDefault.classList.add('active')
         btnDefault.textContent = 'Default view'
-        btnDefault.onclick = () => events.fire('viewer:save-initview')
         btnDefault.onclick = () => {
             if (!settings.initview.pose) return
             events.fire('viewer:remove-saved-view')
+            events.fire('viewer:re-render')
         }
+
         btnRow.appendChild(btnSave)
         btnRow.appendChild(btnDefault)
 
@@ -491,8 +501,7 @@ function viewerSettingsSection(el, global) {
         },
         {
             label: 'Initial View',
-            items: [
-            ],
+            items: [],
             footer: () => renderInitViewFooter(global.events),
         },
     ]
@@ -3614,7 +3623,7 @@ class Viewer {
                     pivotGizmo.enable()
                 } else {
                     pivotDot.disable()
-                    pivotGizmo.disable()    
+                    pivotGizmo.disable()
                 }
             })
             events.on('pivot:positionsynced', ({ x, y, z }) => {
