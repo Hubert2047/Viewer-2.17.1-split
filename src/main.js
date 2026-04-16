@@ -15,24 +15,32 @@ function initHotspotSection(body, global, dom) {
     editor.mount()
 }
 
-function createSection({ id, title, body: renderBody, classname = '' }) {
+function createSection({ id, title, body: renderBody, classname = '', events }) {
     const section = document.createElement('div')
     section.classList.add('section')
+
     const header = document.createElement('div')
     header.classList.add('section-header')
+
     const titleEl = document.createElement('span')
     titleEl.textContent = title
+
     const chevron = document.createElement('span')
     chevron.classList.add('section-icon')
+
     header.appendChild(titleEl)
     header.appendChild(chevron)
+
     const body = document.createElement('div')
     body.classList.add('section-body', classname)
     body.id = `sidebar-section-${id}`
+    body.dataset.sidebarBody = id
+    chevron.dataset.sidebarChevron = id
+
     renderBody(body)
     body.style.display = 'none'
-    header.addEventListener('click', () => {
-        const isOpen = body.style.display !== 'none'
+
+    const open = () => {
         document.querySelectorAll('[data-sidebar-body]').forEach((el) => {
             el.style.display = 'none'
         })
@@ -42,33 +50,45 @@ function createSection({ id, title, body: renderBody, classname = '' }) {
         document.querySelectorAll('.section-header').forEach((el) => {
             el.classList.remove('active')
         })
-        if (!isOpen) {
-            body.style.display = 'block'
-            chevron.style.transform = 'rotate(90deg)'
-            header.classList.add('active')
+
+        body.style.display = 'block'
+        chevron.style.transform = 'rotate(90deg)'
+        header.classList.add('active')
+    }
+
+    const toggle = () => {
+        const isOpen = body.style.display !== 'none'
+
+        if (isOpen) {
+            body.style.display = 'none'
+            chevron.style.transform = ''
+            header.classList.remove('active')
+            return
+        }
+
+        open()
+    }
+
+    header.addEventListener('click', toggle)
+
+    events.on('hotspot:active', (activeId) => {
+        if (activeId === id) {
+            open()
         }
     })
 
-    body.dataset.sidebarBody = id
-    chevron.dataset.sidebarChevron = id
     section.appendChild(header)
     section.appendChild(body)
+
     return section
 }
 
 function renderOrientation(group, global, editGroup) {
     const { events, settings } = global
     editGroup.register('orientation', {
-        cancel: () => {
-            if (!isEditing) return
-            isEditing = false
-            setInputsEditable(false)
-            gizmoRow.style.display = 'none'
-            setGizmo(false)
-            onCancel()
-            renderBtns()
-        },
+        cancel: () => onCancel(),
     })
+    events.on('hotspot:active', () => onCancel())
     let isEditing = false
 
     const container = document.createElement('div')
@@ -119,7 +139,11 @@ function renderOrientation(group, global, editGroup) {
 
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row')
-    function onCancel() {
+    const onCancel = () => {
+        isEditing = false
+        setInputsEditable(false)
+        gizmoRow.style.display = 'none'
+        setGizmo(false)
         if (settings.orientation) {
             const { rotation: r } = settings.orientation
             const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
@@ -128,6 +152,7 @@ function renderOrientation(group, global, editGroup) {
             const euler = modelEntity.getLocalEulerAngles(new Vec3())
             setInputValues(euler)
         }
+        renderBtns()
         events.fire('orientation:cancel')
     }
 
@@ -138,12 +163,7 @@ function renderOrientation(group, global, editGroup) {
             btnCancel.classList.add('btn', 'cancel-btn')
             btnCancel.textContent = 'Cancel'
             btnCancel.onclick = () => {
-                isEditing = false
-                setInputsEditable(false)
-                gizmoRow.style.display = 'none'
-                setGizmo(false)
                 onCancel()
-                renderBtns()
             }
 
             const btnSave = document.createElement('button')
@@ -198,6 +218,10 @@ function renderPivot(group, global, editGroup) {
             if (!isEditing) return
             onCancel()
         },
+    })
+    events.on('hotspot:active', () => {
+        if (!isEditing) return
+        onCancel()
     })
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
@@ -453,7 +477,7 @@ function viewerSettingsSection(el, global) {
         const hasPose = !!settings.initview.pose
 
         const btnSave = document.createElement('button')
-        btnSave.classList.add('btn', 'confirm-btn')
+        btnSave.classList.add('btn', 'initview-btn')
         if (hasPose) btnSave.classList.add('active')
         btnSave.textContent = hasPose ? 'Update saved view' : 'Save current view'
         btnSave.onclick = () => {
@@ -462,7 +486,7 @@ function viewerSettingsSection(el, global) {
         }
 
         const btnDefault = document.createElement('button')
-        btnDefault.classList.add('btn', 'confirm-btn')
+        btnDefault.classList.add('btn', 'initview-btn')
         if (!hasPose) btnDefault.classList.add('active')
         btnDefault.textContent = 'Default view'
         btnDefault.onclick = () => {
@@ -563,6 +587,7 @@ function exportSection(el, global) {
     el.appendChild(btn)
 }
 function createSidebar(global, dom) {
+    const { events } = global
     const SIDEBAR_WIDTH = '360px'
     const sidebar = document.createElement('div')
     sidebar.id = 'app-sidebar'
@@ -580,6 +605,7 @@ function createSidebar(global, dom) {
             title: 'Model',
             classname: 'model-section',
             body: (el) => modelSection(el, global),
+            events,
         }),
     )
 
@@ -589,6 +615,7 @@ function createSidebar(global, dom) {
             title: 'Viewer',
             classname: 'viewer-setting-section',
             body: (el) => viewerSettingsSection(el, global),
+            events,
         }),
     )
     sidebar.appendChild(
@@ -597,6 +624,7 @@ function createSidebar(global, dom) {
             title: 'Hotspots',
             classname: 'hotspot-section',
             body: (el) => initHotspotSection(el, global, dom),
+            events,
         }),
     )
     // sidebar.appendChild(
@@ -613,6 +641,7 @@ function createSidebar(global, dom) {
             title: 'Export',
             classname: 'export-section',
             body: (el) => exportSection(el, global),
+            events,
         }),
     )
     document.body.appendChild(sidebar)

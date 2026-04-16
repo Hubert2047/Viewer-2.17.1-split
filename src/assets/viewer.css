@@ -1876,12 +1876,12 @@ button {
 .add-btn.cancel-mode:hover {
   background: rgba(220, 60, 60, 0.25);
 }
-.btn-row .confirm-btn.active {
+.btn-row .initview-btn.active {
     background-color: #f95f4d;
     color: white;
 }
 
-.btn-row .confirm-btn:not(.active) {
+.btn-row .initview-btn:not(.active) {
     background-color: rgba(0, 0, 0, 0.05);
     color: rgba(0, 0, 0, 0.4);
     border: 0.5px solid rgba(0, 0, 0, 0.12);

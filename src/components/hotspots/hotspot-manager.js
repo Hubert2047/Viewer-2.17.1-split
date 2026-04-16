@@ -73,6 +73,7 @@ class HotspotManager {
             }
         })
         this.events.on('hotspot:editor-selected', (selectedData) => {
+            this.events.fire('hotspot:stop-auto')
             if (this.activeData && selectedData === null) this.resetActiveHotspotBtnName()
             this.activeData = selectedData
             if (selectedData === null) {
@@ -89,12 +90,12 @@ class HotspotManager {
             if (this.editable) this.updateUIPanel()
         })
         this.events.on('hotspot:hide-all', () => {
+            if (this.activeData) this.events.fire('hotspot:editor-cancelled')
             this.activeData = null
             if (this.activeHotspot) {
                 this.activeHotspot.hide()
                 this.activeHotspot = null
             }
-            if (this.editable) this.updateUIPanel()
         })
         this.events.on('hotspot:editor-changed', ({ data, refreshUIPanel = false }) => {
             if (data.dot.size !== this.activeData.dot.size) {
@@ -285,6 +286,7 @@ class HotspotManager {
     }
     setActive(hotspot, lerpDuration = 1.5) {
         if (!hotspot || !modelEntity) return
+        this.events.fire('hotspot:active', 'hotspot')
         this.activeHotspot?.hide()
         const isSamePose = this.isSamePose(hotspot)
         if (isSamePose && hotspot.id === this.activeHotspot?.id) {
@@ -325,6 +327,7 @@ class HotspotManager {
         )
     }
     startAutoPlay() {
+        this.events.fire('hotspot:editor-selected', null)
         this.dom.stopHotspot.classList.remove('hidden')
         this.dom.startHotspot.classList.add('hidden')
         this.autoPlay()

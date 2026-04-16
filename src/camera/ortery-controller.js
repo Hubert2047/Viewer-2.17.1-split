@@ -80,6 +80,9 @@ class OtherController {
             this.reset()
         })
         this.events.on('pivot:use', (data) => this.usePivotPoint(data))
+        this.events.on('pivot:save', () => {
+            this.initView()
+        })
 
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
@@ -314,6 +317,7 @@ class OtherController {
         const pose = this.getEntityInfo()
         this.initviewPose = pose
         this.settings.initview = { pose }
+        this.initviewPose.basePosition = this.basePosition.clone()
         showToast('✓ Initial view updated', {
             duration: 1000,
             type: 'success',
@@ -429,7 +433,6 @@ class OtherController {
         this.preEditPosition = modelEntity.localPosition.clone()
         this.preDistance = this.distance
         this.prefocus = this.focus.clone()
-        this.model = 'spherical'
         this.updateModelRotation()
     }
     cancelOrientation() {
@@ -508,37 +511,27 @@ class OtherController {
         t = t * t * (3 - 2 * t)
         this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
         this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
-        if (this.model === 'spherical') {
-            const newPos = new Vec33(
-                this.startPose.position.x,
-                this.startPose.position.y,
-                this.startPose.position.z,
-            ).lerp(this.targetPose.position, t)
-            modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
-            const r = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
-            modelEntity.localRotation.set(r.x, r.y, r.z, r.w)
-        } else {
-            this.currentYaw = this.lerp(this.startPose.yaw, this.targetPose.yaw, t)
-            this.currentPitch = this.lerp(this.startPose.pitch, this.targetPose.pitch, t)
-            this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        }
+        const newPos = new Vec33(this.startPose.position.x, this.startPose.position.y, this.startPose.position.z).lerp(
+            this.targetPose.position,
+            t,
+        )
+        modelEntity.localPosition.copy({ x: newPos.x, y: newPos.y, z: newPos.z })
+        const r = Quat3.slerp(this.startPose.rotation, this.targetPose.rotation, t)
+        modelEntity.localRotation.set(r.x, r.y, r.z, r.w)
 
         if (t >= 1) {
             this.focus.copy(this.targetPose.focus)
-            this.distance = this.clampDistance(this.targetPose.distance, t)
-            if (this.model === 'spherical') {
-                modelEntity.localPosition.copy(this.targetPose.position)
-                modelEntity.localRotation.copy(this.targetPose.rotation)
-            } else {
-                this.currentYaw = this.targetPose.yaw
-                this.currentPitch = this.targetPose.pitch
-                this.hemisphericalRot(this.currentYaw, this.currentPitch)
-            }
+            this.distance = this.clampDistance(this.targetPose.distance)
+            modelEntity.localPosition.copy(this.targetPose.position)
+            modelEntity.localRotation.copy(this.targetPose.rotation)
+
             if (this.onTransitionFinished) {
                 this.onTransitionFinished()
                 this.onTransitionFinished = null
             }
             this.updateModelRotation()
+            this.currentYaw = this.targetPose.yaw
+            this.currentPitch = this.targetPose.pitch
             this.targetPose = null
             this.startPose = null
         }
@@ -604,6 +597,7 @@ class OtherController {
             const deltaX = rotate[0]
             const deltaY = rotate[1]
             if (deltaX !== 0 || deltaY !== 0) {
+                if (this.targetPose) return
                 if (this.settings.inertia) {
                     this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
                     this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
@@ -637,8 +631,6 @@ class OtherController {
         if (isZooming || isPanning || didRotate) {
             this.events.fire('hotspot:stop-auto')
             this.updateModelRotation()
-            this.targetPose = null
-            this.startPose = null
         }
     }
     getCameraElevation() {
