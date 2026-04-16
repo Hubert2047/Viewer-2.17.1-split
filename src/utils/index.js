@@ -213,40 +213,54 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
 
     return ray.getPoint(t)
 }
-async function exportHtml(name, data) {
+async function exportHtml(name, data, fileAudioStore) {
     const newVersion = (data.settings.v ?? 0) + 1
-    const updatedSettings = { ...data.settings, v: newVersion }
 
+    const updatedSettings = {
+        ...data.settings,
+        v: newVersion,
+    }
     const hotspots = await Promise.all(
         (updatedSettings.hotspots ?? []).map(async (h) => {
-            let src = ''
-            if (h.audio?.embed && h.audio?.src) {
-                if (h.audio.src.startsWith('blob:')) {
-                    try {
-                        const res = await fetch(h.audio.src)
-                        const blob = await res.blob()
-                        src = await new Promise((resolve) => {
-                            const reader = new FileReader()
-                            reader.onload = (e) => resolve(e.target.result)
-                            reader.readAsDataURL(blob)
-                        })
-                    } catch (e) {
-                        console.warn('Failed to encode audio blob:', e)
-                    }
-                } else if (h.audio.src.startsWith('data:')) {
-                    src = h.audio.src
+            if (!h.audio) return h
+            const audio = { ...h.audio }    
+            let src = ""
+            if (audio.embed && fileAudioStore) {
+                const file = fileAudioStore.get(audio.fileId)
+                if (!file) {
+                    console.warn('Missing audio file:', h.id)
+                    return h
                 }
+                src = await new Promise((resolve, reject) => {
+                    const reader = new FileReader()
+                    reader.onload = () => resolve(reader.result)
+                    reader.onerror = reject
+                    reader.readAsDataURL(file)
+                })
             }
-            return { ...h, audio: { ...h.audio, src } }
-        }),
+            delete audio.fileId
+            return {
+                ...h,
+                audio: {
+                    ...audio,
+                    src,
+                },
+            }
+        })
     )
-
+    delete updatedSettings.fileAudioStore
+    const payload = {
+        ...data,
+        settings: {
+            ...updatedSettings,
+            hotspots,
+        },
+    }
     const injectedScript = `<script>
-        window.sse = ${JSON.stringify({ ...data, settings: { ...updatedSettings, hotspots } })}
+        window.sse = ${JSON.stringify(payload)}
     <\/script>`
     const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
-
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

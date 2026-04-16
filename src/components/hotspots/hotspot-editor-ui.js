@@ -8,6 +8,7 @@ class HotspotEditorUI {
         this.camera = global.camera.camera
         this.events = global.events
         this.state = global.state
+        this.settings = global.settings
         this.activeHotspotData = null
         this.listEl = null
         this.countEl = null
@@ -25,6 +26,7 @@ class HotspotEditorUI {
             this.resetAddBtn()
         })
         this.events.on('hotspot:update-ui-data', (data) => {
+            if (!this.activeHotspotData) return
             if (this.activeHotspotData.dot.size !== data.dot.size) {
                 if (!this.dotSizeInput) this.dotSizeInput = this.body.querySelector('input[name="dot-size"]')
                 if (this.dotSizeInput && document.activeElement !== this.dotSizeInput) {
@@ -67,7 +69,6 @@ class HotspotEditorUI {
         this.events.fire('hotspot:editor', this)
     }
 
-    // ── Header ───────────────────────────────
     renderHeader() {
         const header = document.createElement('div')
         header.classList.add('hotspot-section-header')
@@ -95,7 +96,6 @@ class HotspotEditorUI {
         this.body.appendChild(header)
     }
 
-    // ── Actions ──────────────────────────────
     onAdd(e) {
         if (this.isCreatingHotspot) {
             this.events.fire('hotspot:add-cancelled')
@@ -157,7 +157,6 @@ class HotspotEditorUI {
         this.events.fire('hotspot:apply', this.activeHotspotData)
     }
 
-    // ── Render list ──────────────────────────
     render(hotspotData, activeHotspotData) {
         this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
         this.listEl.innerHTML = ''
@@ -174,7 +173,6 @@ class HotspotEditorUI {
             item.appendChild(row)
             if (isExpanded) item.appendChild(this.renderEditPanel(headerTitle))
 
-            // ── Drop target ───────────────────────
             item.addEventListener('dragover', (e) => {
                 e.preventDefault()
                 e.dataTransfer.dropEffect = 'move'
@@ -202,7 +200,6 @@ class HotspotEditorUI {
     renderItemHeader(h, isExpanded) {
         const row = document.createElement('div')
         row.classList.add('hotspot-header')
-        // ── Drag handle ──────────────────────────
         const handle = document.createElement('div')
         handle.classList.add('hotspot-drag-handle')
         handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
@@ -211,9 +208,6 @@ class HotspotEditorUI {
         <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
         </svg>`
 
-        // ── Draggable item ────────────────────────
-        const item = row.closest('.hotspot-item') || row.parentElement
-        // lấy item ở render() vì lúc này chưa append, truyền id qua dataset
         row.dataset.dragId = h.id
 
         row.setAttribute('draggable', true)
@@ -258,13 +252,18 @@ class HotspotEditorUI {
         row.appendChild(actions)
         return { row, headerTitle: name }
     }
-    applyDraft = () => {
-        this.events.fire('hotspot:editor-changed', JSON.parse(JSON.stringify(this.activeHotspotData)))
+
+    applyDraft = (refreshUIPanel = false) => {
+        this.events.fire('hotspot:editor-changed', {
+            data: JSON.parse(JSON.stringify(this.activeHotspotData)),
+            refreshUIPanel,
+        })
     }
+
     renderEditPanel(headerTitle) {
         const panel = document.createElement('div')
         panel.classList.add('hotspot-edit-panel')
-        // GROUP: Text
+
         const textGroup = this.makeGroup('Text')
         const labelField = this.makeField('Label')
         const formatRow = document.createElement('div')
@@ -372,9 +371,7 @@ class HotspotEditorUI {
                     this.activeHotspotData.text.font = v
                     this.applyDraft()
                 },
-                {
-                    name: 'font-family',
-                },
+                { name: 'font-family' },
             ),
         )
         fontGrid.appendChild(fontSizeField)
@@ -382,7 +379,6 @@ class HotspotEditorUI {
         textGroup.appendChild(fontGrid)
         panel.appendChild(textGroup)
 
-        // GROUP: Hotspot
         const hotspotGroup = this.makeGroup('Hotspot')
         const styleField = this.makeField('Style')
         const styleRow = document.createElement('div')
@@ -441,7 +437,6 @@ class HotspotEditorUI {
         hotspotGroup.appendChild(dotGrid)
         panel.appendChild(hotspotGroup)
 
-        // GROUP: Auto Play
         const autoplayGrid = document.createElement('div')
         autoplayGrid.classList.add('hotspot-autoplay')
 
@@ -481,8 +476,9 @@ class HotspotEditorUI {
         panel.appendChild(autoplayGrid)
         panel.appendChild(buttonGrid)
 
-        // GROUP: Audio
         const audioGroup = this.makeGroup('Audio')
+
+        const hasAudio = !!(this.activeHotspotData.audio?.fileName || this.activeHotspotData.audio?.src)
 
         const audioFileFieldGroup = this.makeGrid(2)
         const audioFileField = this.makeField('Audio File')
@@ -503,47 +499,87 @@ class HotspotEditorUI {
         fileNameSpan.classList.add('audio-file-name')
         fileNameSpan.textContent = this.activeHotspotData.audio?.fileName || 'No file chosen'
 
+        const audioSettings = document.createElement('div')
+        audioSettings.classList.add('audio-settings')
+        if (!hasAudio) audioSettings.style.display = 'none'
+
+        const clearAudioBtn = document.createElement('button')
+        clearAudioBtn.classList.add('icon-btn', 'del')
+        if (!hasAudio) clearAudioBtn.style.display = 'none'
+        clearAudioBtn.title = 'Remove audio'
+        clearAudioBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`
+
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0]
             if (!file) return
-            if (this.activeHotspotData.audio.src && this.activeHotspotData.audio.src.startsWith('blod:')) {
+
+            if (this.activeHotspotData.audio?.src?.startsWith('blob:')) {
                 URL.revokeObjectURL(this.activeHotspotData.audio.src)
             }
+
+            if (!this.activeHotspotData.audio || !this.activeHotspotData.audio.fileName) {
+                this.activeHotspotData.audio = {
+                    show: true,
+                    src: null,
+                    fileName: null,
+                    bgColor: '#000000',
+                    bgAlpha: 0.8,
+                    iconColor: '#ffffff',
+                    volume: 1,
+                    loop: false,
+                    embed: false,
+                    persist: false,
+                    autoPlay: false,
+                }
+            }
+
             this.activeHotspotData.audio.fileName = file.name
-            this.activeHotspotData.audio.fileType = file.type
-            fileNameSpan.textContent = file.name
             this.activeHotspotData.audio.src = URL.createObjectURL(file)
+            fileNameSpan.textContent = file.name
             clearAudioBtn.style.display = ''
-            this.applyDraft()
+            audioSettings.style.display = ''
+            if (!(this.settings.fileAudioStore instanceof Map)) {
+                this.settings.fileAudioStore = new Map()
+            }
+            if (!(this.settings.fileAudioStore instanceof Map)) {
+                this.settings.fileAudioStore = new Map()
+            }
+
+            const store = this.settings.fileAudioStore
+            const fileId = guid.create()
+
+            this.activeHotspotData.audio.fileId = fileId
+            store.set(fileId, file)
+            this.applyDraft(true)
+        })
+
+        clearAudioBtn.addEventListener('click', () => {
+            const audio = this.activeHotspotData.audio
+            const store = this.settings.fileAudioStore
+            if (audio?.src?.startsWith('blob:')) {
+                URL.revokeObjectURL(audio.src)
+            }
+            if (audio?.fileId && store instanceof Map) {
+                store.delete(audio.fileId)
+            }
+            delete this.activeHotspotData.audio
+            fileInput.value = ''
+            fileNameSpan.textContent = 'No file chosen'
+            clearAudioBtn.style.display = 'none'
+            audioSettings.style.display = 'none'
+
+            this.applyDraft(true)
         })
 
         fileLabel.appendChild(fileBtn)
         fileLabel.appendChild(fileNameSpan)
         fileLabel.appendChild(fileInput)
         audioFileField.appendChild(fileLabel)
-        const clearAudioBtn = document.createElement('button')
-        clearAudioBtn.classList.add('icon-btn', 'del')
-        if (!this.activeHotspotData.audio.fileName) clearAudioBtn.style.display = 'none'
-        clearAudioBtn.title = 'Remove audio'
-        clearAudioBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>`
-
-        clearAudioBtn.addEventListener('click', () => {
-            if (this.activeHotspotData.audio.src?.startsWith('blob:')) {
-                URL.revokeObjectURL(this.activeHotspotData.audio.src)
-            }
-            this.activeHotspotData.audio.src = ''
-            this.activeHotspotData.audio.fileName = ''
-            this.activeHotspotData.audio.fileType = ''
-            this.activeHotspotData.audio.embed = false
-            fileInput.value = ''
-            fileNameSpan.textContent = 'No file chosen'
-            clearAudioBtn.style.display = 'none'
-            this.applyDraft()
-        })
         audioFileFieldGroup.appendChild(audioFileField)
         audioFileFieldGroup.appendChild(clearAudioBtn)
+        audioGroup.appendChild(audioFileFieldGroup)
 
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Color')
@@ -572,7 +608,7 @@ class HotspotEditorUI {
 
         const loopField = this.makeField('Loop')
         loopField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio.loop, () => {
+            this.makeToggle(this.activeHotspotData.audio?.loop, () => {
                 this.activeHotspotData.audio.loop = !this.activeHotspotData.audio.loop
                 return this.activeHotspotData.audio.loop
             }),
@@ -580,21 +616,21 @@ class HotspotEditorUI {
 
         const showField = this.makeField('Show')
         showField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio.show, () => {
+            this.makeToggle(this.activeHotspotData.audio?.show, () => {
                 this.activeHotspotData.audio.show = !this.activeHotspotData.audio.show
                 return this.activeHotspotData.audio.show
             }),
         )
         const persistField = this.makeField('Persist')
         persistField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio.persist, () => {
+            this.makeToggle(this.activeHotspotData.audio?.persist, () => {
                 this.activeHotspotData.audio.persist = !this.activeHotspotData.audio.persist
                 return this.activeHotspotData.audio.persist
             }),
         )
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio.autoPlay, () => {
+            this.makeToggle(this.activeHotspotData.audio?.autoPlay, () => {
                 this.activeHotspotData.audio.autoPlay = !this.activeHotspotData.audio.autoPlay
                 return this.activeHotspotData.audio.autoPlay
             }),
@@ -670,11 +706,6 @@ class HotspotEditorUI {
         audioToggleGrid.appendChild(persistField)
         audioToggleGrid.appendChild(embedField)
 
-        audioGroup.appendChild(audioFileFieldGroup)
-        audioGroup.appendChild(audioToggleGrid)
-        audioGroup.appendChild(audioGrid)
-
-        // -- Volume
         const volumeField = this.makeField('Volume', 'volume')
         const volumeWrap = document.createElement('div')
         volumeWrap.classList.add('volume-wrap')
@@ -724,11 +755,14 @@ class HotspotEditorUI {
         volumeWrap.appendChild(volumeSlider)
         volumeWrap.appendChild(volumeInput)
         volumeField.appendChild(volumeWrap)
-        audioGroup.appendChild(volumeField)
 
+        audioSettings.appendChild(audioToggleGrid)
+        audioSettings.appendChild(audioGrid)
+        audioSettings.appendChild(volumeField)
+
+        audioGroup.appendChild(audioSettings)
         panel.appendChild(audioGroup)
 
-        // Apply / Cancel
         const applyRow = document.createElement('div')
         applyRow.classList.add('apply-row')
 
@@ -751,6 +785,7 @@ class HotspotEditorUI {
         panel.appendChild(applyRow)
         return panel
     }
+
     makeToggle(initialValue, onChange) {
         const wrap = document.createElement('div')
         wrap.classList.add('audio-toggle-wrap')
@@ -772,6 +807,7 @@ class HotspotEditorUI {
         wrap.appendChild(toggle)
         return wrap
     }
+
     makeTextarea(value, opts = {}) {
         const textarea = document.createElement('textarea')
         textarea.value = value
@@ -791,6 +827,7 @@ class HotspotEditorUI {
         if (opts.placeholder) textarea.placeholder = opts.placeholder
         return textarea
     }
+
     makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha) {
         const block = document.createElement('div')
         block.classList.add('color-alpha-block')
@@ -864,6 +901,7 @@ class HotspotEditorUI {
         block.appendChild(bgRow)
         return block
     }
+
     makeGroup(title) {
         const g = document.createElement('div')
         g.classList.add('section-group')

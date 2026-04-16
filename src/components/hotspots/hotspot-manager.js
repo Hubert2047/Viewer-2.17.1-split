@@ -42,6 +42,7 @@ class HotspotManager {
             },
         })
     }
+
     createHotspot(data) {
         return new Hotspot({
             camera: this.camera,
@@ -95,7 +96,7 @@ class HotspotManager {
             }
             if (this.editable) this.updateUIPanel()
         })
-        this.events.on('hotspot:editor-changed', (data) => {
+        this.events.on('hotspot:editor-changed', ({ data, refreshUIPanel = false }) => {
             if (data.dot.size !== this.activeData.dot.size) {
                 const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(data.focus.position)
                 const { topLeft, botRight } = this.getDotBounder(
@@ -109,6 +110,7 @@ class HotspotManager {
             }
             this.activeData = data
             this.updateHotspotData()
+            if (refreshUIPanel) this.updateUIPanel()
         })
         this.events.on('hotspot:drag-changed', (data) => {
             this.activeData = data
@@ -258,19 +260,6 @@ class HotspotManager {
                 size: 30,
                 topLeft: dotTL,
                 botRight: dotBR,
-            },
-            audio: {
-                show: true,
-                src: null,
-                fileName: null,
-                bgColor: '#000000',
-                bgAlpha: 0.8,
-                iconColor: '#ffffff',
-                volume: 1,
-                loop: false,
-                embed: false,
-                persist: false,
-                autoPlay: false,
             },
             entityInfo,
         }

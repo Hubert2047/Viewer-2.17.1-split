@@ -558,7 +558,7 @@ function exportSection(el, global) {
     btn.textContent = 'Export HTML'
     btn.addEventListener('click', () => {
         const filename = (input.value.trim() || 'index') + '.html'
-        exportHtml(filename, { settings: global.settings })
+        exportHtml(filename, { settings: global.settings }, global.settings.fileAudioStore)
     })
     el.appendChild(btn)
 }

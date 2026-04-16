@@ -68,8 +68,8 @@ class Hotspot {
     }
     createAudioBtn() {
         if (this._audioBtn) this._audioBtn.remove()
-        if (!this.data.audio.fileName) return
-        if (!this.data.audio.show) return
+        if (!this.data.audio?.fileName) return
+        if (!this.data.audio?.show) return
         this._isPlaying = false
         let src = this.data.audio.src ? this.data.audio.src : `./audios/${this.data.audio.fileName}`
         this._audio = new Audio(src)
@@ -80,73 +80,58 @@ class Hotspot {
         btn.classList.add('hotspot-audio-btn')
         btn.style.color = this.data.audio.iconColor
         btn.style.backgroundColor = this.transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
-        const ringsvg = () => `
-        <svg style="position:absolute;top:-4px;left:-4px;width:36px;height:36px;transform:rotate(-90deg);pointer-events:none;" viewBox="0 0 36 36">
-            <circle fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4.5" cx="18" cy="18" r="16"/>
-            <circle fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="3" cx="18" cy="18" r="16"/>
-            <circle class="audio-progress-ring" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round"
-                cx="18" cy="18" r="16"
-                stroke-dasharray="100.53"
-                stroke-dashoffset="100.53"/>
-        </svg>
-        `
+
+        const isCurrentlyPlaying = this._isPlaying
+        btn.innerHTML = this._ringsvg() + (isCurrentlyPlaying ? this._iconPlaying() : this._iconMuted())
         this._progressRing = btn.querySelector('.audio-progress-ring')
-        btn.innerHTML = ringsvg() + this._iconMuted()
-        this._progressRing = btn.querySelector('.audio-progress-ring')
-        this._audio.addEventListener('timeupdate', () => {
-            if (!this._audio.duration) return
+
+        const updateProgress = () => {
+            if (!this._audio || !this._audio.duration) return
             const pct = this._audio.currentTime / this._audio.duration
-            this._progressRing.style.strokeDashoffset = circumference * (1 - pct)
-        })
+            if (this._progressRing) this._progressRing.style.strokeDashoffset = circumference * (1 - pct)
+        }
+
+        this._audio.addEventListener('timeupdate', updateProgress)
+
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation()
             e.preventDefault()
             if (this._isPlaying) {
                 this._audio.pause()
-                this._audio.currentTime = 0
                 this._isPlaying = false
-                this._progressRing.style.strokeDashoffset = circumference
+                if (this._progressRing) this._progressRing.style.strokeDashoffset = circumference
                 btn.classList.remove('playing')
-                btn.innerHTML = ringsvg() + this._iconMuted()
+                btn.innerHTML = this._ringsvg() + this._iconMuted()
                 this._progressRing = btn.querySelector('.audio-progress-ring')
+                this._audio.removeEventListener('timeupdate', updateProgress)
+                this._audio.addEventListener('timeupdate', updateProgress)
             } else {
                 this._audio.play()
                 this._isPlaying = true
                 btn.classList.add('playing')
-                btn.innerHTML = ringsvg() + this._iconPlaying()
+                btn.innerHTML = this._ringsvg() + this._iconPlaying()
                 this._progressRing = btn.querySelector('.audio-progress-ring')
+                this._audio.removeEventListener('timeupdate', updateProgress)
+                this._audio.addEventListener('timeupdate', updateProgress)
             }
         })
+
         this._audio.addEventListener('ended', () => {
             if (!this.data.audio.loop) {
                 this._isPlaying = false
-                this._progressRing.style.strokeDashoffset = circumference
+                if (this._progressRing) this._progressRing.style.strokeDashoffset = circumference
                 btn.classList.remove('playing')
-                btn.innerHTML = ringsvg() + this._iconMuted()
+                btn.innerHTML = this._ringsvg() + this._iconMuted()
                 this._progressRing = btn.querySelector('.audio-progress-ring')
             }
         })
+
         this._audioBtn = btn
         this.div.appendChild(btn)
     }
-    _iconMuted() {
-        return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 5H4.5L7.5 2.5V11.5L4.5 9H2V5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-        <line x1="10" y1="4.5" x2="12.5" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="12.5" y1="4.5" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-    </svg>`
-    }
 
-    _iconPlaying() {
-        return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 5H4.5L7.5 2.5V11.5L4.5 9H2V5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-        <path class="wave w1" d="M9.5 5C10.3 5.6 10.8 6.2 10.8 7C10.8 7.8 10.3 8.4 9.5 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-        <path class="wave w2" d="M11 3.8C12.3 4.7 13 5.8 13 7C13 8.2 12.3 9.3 11 10.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-    </svg>`
-    }
     refreshAudio() {
-        const wasPlaying = this._isPlaying
-        if (!this.data.audio.fileName) {
+        if (!this.data.audio || !this.data.audio?.fileName) {
             if (this._audio) {
                 this._audio.pause()
                 this._audio = null
@@ -158,16 +143,19 @@ class Hotspot {
             this._isPlaying = false
             return
         }
-        if (this._audio) {
-            const newSrc = this.data.audio.src || `./audios/${this.data.audio.fileName}`
-            if (this._audio.src !== newSrc && !wasPlaying) {
-                this._audio.src = newSrc
+
+        const src = this.data.audio.src || `./audios/${this.data.audio.fileName}`
+        const shouldRecreate = !this._audio || this._audio.src !== src
+
+        if (shouldRecreate) {
+            if (this._audio) {
+                this._audio.pause()
             }
+            this._audio = new Audio(src)
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
+            this._isPlaying = false
         } else {
-            const src = this.data.audio.src || `./audios/${this.data.audio.fileName}`
-            this._audio = new Audio(src)
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
         }
@@ -188,7 +176,7 @@ class Hotspot {
                 this.data.audio.bgColor,
                 this.data.audio.bgAlpha,
             )
-        } else {
+        } else if (this.data.audio.show) {
             this.createAudioBtn()
         }
     }
@@ -420,48 +408,6 @@ class Hotspot {
         }
     }
 
-    // ── Show / Hide / Destroy ─────────────────
-    show() {
-        this.isDisplay = true
-        this.div.style.display = 'flex'
-        this.lineSvg.style.display = 'block'
-        this.dot.style.display = 'block'
-        if (this.button) this.button.setActiveColor()
-        if (this.data.audio.autoPlay && this._audio && !this._isPlaying) {
-            this._audio.play()
-            this._isPlaying = true
-            if (this._audioBtn) {
-                this._audioBtn.classList.add('playing')
-                this._audioBtn.innerHTML = this._iconPlaying()
-                this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
-            }
-        }
-    }
-
-    hide() {
-        this.isDisplay = false
-        this.div.style.display = 'none'
-        this.lineSvg.style.display = 'none'
-        this.dot.style.display = 'none'
-        if (this.button) this.button.setUnactiveColor()
-        if (!this.data.audio.persist && this._audio && this._isPlaying) {
-            this._audio.pause()
-            this._audio.currentTime = 0
-            this._isPlaying = false
-            if (this._audioBtn) {
-                this._audioBtn.classList.remove('playing')
-                this._audioBtn.innerHTML = this._iconMuted()
-            }
-        }
-    }
-
-    destroy() {
-        this.div.remove()
-        this.dot.remove()
-        this.lineSvg.remove()
-        this.button.remove()
-    }
-
     // ── Drag events ──────────────────────────
     addDotDragEvents() {
         let dragging = false
@@ -601,6 +547,81 @@ class Hotspot {
             this.data.text.originHeight = originHeight
             this.events.fire('hotspot:drag-changed', this.data)
         })
+    }
+
+    // ── Show / Hide / Destroy ─────────────────
+    show() {
+        this.isDisplay = true
+        this.div.style.display = 'flex'
+        this.lineSvg.style.display = 'block'
+        this.dot.style.display = 'block'
+        if (this.button) this.button.setActiveColor()
+        if (this.data.audio?.autoPlay && this._audio && !this._isPlaying) {
+            this._audio.play()
+            this._isPlaying = true
+            if (this._audioBtn) {
+                this._audioBtn.classList.add('playing')
+                this._audioBtn.innerHTML = this._ringsvg() + this._iconPlaying()
+                this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
+                const circumference = 100.53
+                this._audio.addEventListener('timeupdate', () => {
+                    if (!this._audio || !this._audio.duration) return
+                    const pct = this._audio.currentTime / this._audio.duration
+                    if (this._progressRing) this._progressRing.style.strokeDashoffset = circumference * (1 - pct)
+                })
+            }
+        }
+    }
+
+    hide() {
+        this.isDisplay = false
+        this.div.style.display = 'none'
+        this.lineSvg.style.display = 'none'
+        this.dot.style.display = 'none'
+        if (this.button) this.button.setUnactiveColor()
+        if (!this.data.audio.persist && this._audio && this._isPlaying) {
+            this._audio.pause()
+            this._audio.currentTime = 0
+            this._isPlaying = false
+            if (this._audioBtn) {
+                this._audioBtn.classList.remove('playing')
+                this._audioBtn.innerHTML = this._iconMuted()
+            }
+        }
+    }
+    destroy() {
+        this.div.remove()
+        this.dot.remove()
+        this.lineSvg.remove()
+        this.button.remove()
+    }
+    _iconMuted() {
+        return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 5H4.5L7.5 2.5V11.5L4.5 9H2V5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        <line x1="10" y1="4.5" x2="12.5" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="12.5" y1="4.5" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>`
+    }
+
+    _iconPlaying() {
+        return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 5H4.5L7.5 2.5V11.5L4.5 9H2V5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        <path class="wave w1" d="M9.5 5C10.3 5.6 10.8 6.2 10.8 7C10.8 7.8 10.3 8.4 9.5 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        <path class="wave w2" d="M11 3.8C12.3 4.7 13 5.8 13 7C13 8.2 12.3 9.3 11 10.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>`
+    }
+    _ringsvg() {
+        const circumference = 100.53
+        return `
+        <svg style="position:absolute;top:-4px;left:-4px;width:36px;height:36px;transform:rotate(-90deg);pointer-events:none;" viewBox="0 0 36 36">
+            <circle fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4.5" cx="18" cy="18" r="16"/>
+            <circle fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="3" cx="18" cy="18" r="16"/>
+            <circle class="audio-progress-ring" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round"
+                cx="18" cy="18" r="16"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${circumference}"/>
+        </svg>
+    `
     }
     getLocalContentPosByDiv() {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
