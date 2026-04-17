@@ -264,6 +264,24 @@ class HotspotEditorUI {
         const panel = document.createElement('div')
         panel.classList.add('hotspot-edit-panel')
 
+        const buttonGrid = document.createElement('div')
+        const buttonGroup = this.makeGroup('Button')
+        const btnTitleField = this.makeField('Title')
+        btnTitleField.appendChild(
+            this.makeInput('text', this.activeHotspotData.button.title, {
+                placeholder: 'Title...',
+                name: 'button-title',
+                onChange: (v) => {
+                    this.activeHotspotData.button.title = v
+                    headerTitle.textContent = v
+                    this.applyDraft()
+                },
+            }),
+        )
+        buttonGroup.appendChild(btnTitleField)
+        buttonGrid.appendChild(buttonGroup)
+        panel.appendChild(buttonGrid)
+        
         const textGroup = this.makeGroup('Text')
         const labelField = this.makeField('Label')
         const formatRow = document.createElement('div')
@@ -455,26 +473,8 @@ class HotspotEditorUI {
         )
         autoPlayGroup.appendChild(timeField)
 
-        const buttonGrid = document.createElement('div')
-        const buttonGroup = this.makeGroup('Button')
-        const btnTitleField = this.makeField('Title')
-        btnTitleField.appendChild(
-            this.makeInput('text', this.activeHotspotData.button.title, {
-                placeholder: 'Title...',
-                name: 'button-title',
-                onChange: (v) => {
-                    this.activeHotspotData.button.title = v
-                    headerTitle.textContent = v
-                    this.applyDraft()
-                },
-            }),
-        )
-        buttonGroup.appendChild(btnTitleField)
-
         autoplayGrid.appendChild(autoPlayGroup)
-        buttonGrid.appendChild(buttonGroup)
         panel.appendChild(autoplayGrid)
-        panel.appendChild(buttonGrid)
 
         const audioGroup = this.makeGroup('Audio')
 

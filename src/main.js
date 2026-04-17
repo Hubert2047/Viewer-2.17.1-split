@@ -3641,7 +3641,7 @@ class Viewer {
                 })
             }
             this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
-            const rotationGizmo = new RotationGizmo(app, camera, events, modelEntity, this.cameraManager.controllers)
+            const rotationGizmo = new RotationGizmo(app, camera, events)
             const pivotDot = new PivotDot(app, camera, modelEntity)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
                 onMove: (pos) => {
@@ -3678,7 +3678,7 @@ class Viewer {
                 else pivotGizmo.disable()
             })
             events.on('gizmo:rotation-enable', (enable) => {
-                if (enable) rotationGizmo.enable()
+                if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity), 'orientation:eulersynced')
                 else rotationGizmo.disable()
             })
 

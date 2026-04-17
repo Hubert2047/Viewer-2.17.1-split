@@ -1,3 +1,16 @@
+class EntityRotatable {
+    constructor(entity) {
+        this._entity = entity
+    }
+    getPosition() { return this._entity.getPosition() }
+    getRotation() { return this._entity.getRotation() }
+    applyRotation(quatDelta) {
+        const cur = this._entity.getRotation()
+        const next = new Quat().mul2(quatDelta, cur).normalize()
+        this._entity.setRotation(next)
+    }
+    getEuler() { return this._entity.getLocalEulerAngles(new Vec3()) }
+}
 class RotationGizmo {
     _enabled = false
     _dragging = false
@@ -9,7 +22,8 @@ class RotationGizmo {
     _camEntity = null
     _canvas = null
     _snapshot = null
-    _modelEntity = null
+    _target = null
+    _eventName = ""
 
     static SCREEN_RADIUS = 80
     static COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
@@ -22,13 +36,11 @@ class RotationGizmo {
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
 
-    constructor(app, camEntity, events, modelEntity, controllers) {
+    constructor(app, camEntity, events) {
         this._app = app
-        this.controllers = controllers
         this._camEntity = camEntity
         this._events = events
         this._canvas = app.graphicsDevice.canvas
-        this._modelEntity = modelEntity
         this._buildSVG()
         this._svg.style.display = 'none'
     }
@@ -110,7 +122,7 @@ class RotationGizmo {
         }
     }
     _getPlaneVectors(axis) {
-        const modelRot = this._modelEntity.getRotation()
+        const modelRot = this._target.getRotation()
         const localX = new Vec3(1, 0, 0)
         const localY = new Vec3(0, 1, 0)
         const localZ = new Vec3(0, 0, 1)
@@ -131,8 +143,8 @@ class RotationGizmo {
     }
 
     _worldRadius() {
-        if (!this._modelEntity) return 1
-        const worldPos = this._modelEntity.getPosition()
+        if (!this._target) return 1
+        const worldPos = this._target.getPosition()
         const camPos = this._camEntity.getPosition()
         const dist = new Vec3().copy(worldPos).sub(camPos).length()
         const cam = this._camEntity.camera
@@ -182,8 +194,8 @@ class RotationGizmo {
     }
 
     _update() {
-        if (!this._enabled || !this._modelEntity) return
-        const worldPos = this._modelEntity.getPosition()
+        if (!this._enabled || !this._target) return
+        const worldPos = this._target.getPosition()
 
         for (const axis of ['x', 'y', 'z']) {
             const { ring, ringBg, hit, text } = this._rings[axis]
@@ -217,16 +229,6 @@ class RotationGizmo {
         this._app.renderNextFrame = true
     }
 
-    _startDrag(axis, cx, cy) {
-        if (!this._modelEntity) return
-        this._dragging = true
-        this._activeAxis = axis
-        this._dragPlane = this._getPlaneVectors(axis)
-        this._prevMouse = { x: cx, y: cy }
-        this._highlightOnly(axis)
-        document.body.style.cursor = 'grabbing'
-    }
-
     _screenAngle(axis, cx, cy) {
         const worldPos = this._modelEntity.getPosition()
         const center = this._w2s(worldPos)
@@ -246,7 +248,7 @@ class RotationGizmo {
     }
 
     _onDrag(cx, cy) {
-        if (!this._dragging || !this._modelEntity) return
+        if (!this._dragging || !this._target) return
 
         const prev = this._prevMouse
         if (!prev) {
@@ -257,24 +259,21 @@ class RotationGizmo {
         const dx = cx - prev.x
         const dy = cy - prev.y
         if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
+
         const SENSITIVITY = 0.4
         const { worldAxis, sign } = this._getDragAxis(this._activeAxis, dx, dy)
-
-        const deltaDeg = sign * SENSITIVITY
-
-        const rot = new Quat().setFromAxisAngle(worldAxis, deltaDeg)
-        const curRot = this._modelEntity.getRotation()
-        const newRot = new Quat().mul2(rot, curRot).normalize()
-        this._modelEntity.setRotation(newRot)
+        const rot = new Quat().setFromAxisAngle(worldAxis, sign * SENSITIVITY)
+        this._target.applyRotation(rot)
         this._app.renderNextFrame = true
-        const euler = this._modelEntity.getLocalEulerAngles(new Vec3())
-        this._events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+
+        const euler = this._target.getEuler()
+        if (euler) this._events.fire(this._eventName, { x: euler.x, y: euler.y, z: euler.z })
         this._prevMouse = { x: cx, y: cy }
     }
 
     _getDragAxis(axis, dx, dy) {
         const worldAxis = this._dragAxisSnapshot[axis].clone()
-        const worldPos = this._modelEntity.getPosition()
+        const worldPos = this._target.getPosition()
         const center = this._w2s(worldPos)
 
         const tip = new Vec3().copy(worldPos).add(worldAxis)
@@ -283,21 +282,19 @@ class RotationGizmo {
         const axLen = Math.sqrt(axScr.x ** 2 + axScr.y ** 2) || 1
 
         const tangent = { x: -axScr.y / axLen, y: axScr.x / axLen }
-
         const dot = dx * tangent.x + dy * tangent.y
         const sign = dot > 0 ? 1 : -1
-
         const mag = Math.sqrt(dx * dx + dy * dy)
 
         return { worldAxis, sign: sign * mag }
     }
 
     _startDrag(axis, cx, cy) {
-        if (!this._modelEntity) return
+        if (!this._target) return
         this._dragging = true
         this._activeAxis = axis
         this._prevMouse = { x: cx, y: cy }
-        const rot = this._modelEntity.getRotation()
+        const rot = this._target.getRotation()
         const lx = new Vec3(1, 0, 0)
         rot.transformVector(lx, lx)
         const ly = new Vec3(0, 1, 0)
@@ -305,21 +302,20 @@ class RotationGizmo {
         const lz = new Vec3(0, 0, 1)
         rot.transformVector(lz, lz)
         this._dragAxisSnapshot = { x: lx, y: ly, z: lz }
-
         this._highlightOnly(axis)
         document.body.style.cursor = 'grabbing'
     }
 
     _endDrag() {
         this._dragging = false
-        this.controllers.ortery.updateModelRotation()
         this._activeAxis = null
         this._prevMouse = null
         this._dragAxisSnapshot = null
         this._resetStyle()
         document.body.style.cursor = ''
-        const euler = this._modelEntity.getLocalEulerAngles(new Vec3())
-        this._events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+
+        const euler = this._target?.getEuler()
+        if (euler) this._events.fire(this._eventName, { x: euler.x, y: euler.y, z: euler.z })
     }
 
     _highlightOnly(activeAxis) {
@@ -343,7 +339,10 @@ class RotationGizmo {
         return this._dragging
     }
 
-    enable() {
+    enable(rotatable, eventName) {
+        if (!rotatable || !eventName) return
+        this._eventName = eventName
+        this._target = rotatable
         this._enabled = true
         this._svg.style.display = ''
         this._updateFn = () => this._update()
@@ -359,18 +358,20 @@ class RotationGizmo {
     }
 
     saveSnapshot() {
-        if (!this._modelEntity) return
+        if (!this._target) return
+        const entity = this._target._entity
         this._snapshot = {
-            rot: this._modelEntity.localRotation.clone(),
-            pos: this._modelEntity.localPosition.clone(),
+            rot: entity.localRotation.clone(),
+            pos: entity.localPosition.clone(),
         }
     }
 
     restoreSnapshot() {
-        if (!this._modelEntity || !this._snapshot) return
-        this._modelEntity.localRotation.copy(this._snapshot.rot)
-        this._modelEntity.localPosition.copy(this._snapshot.pos)
-        this._modelEntity.syncHierarchy()
+        if (!this._target || !this._snapshot) return
+        const entity = this._target._entity
+        entity.localRotation.copy(this._snapshot.rot)
+        entity.localPosition.copy(this._snapshot.pos)
+        entity.syncHierarchy()
         this._app.renderNextFrame = true
         this._snapshot = null
     }

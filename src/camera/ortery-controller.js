@@ -87,13 +87,20 @@ class OtherController {
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        this.events.on('orientation:eulerchange', () => {
+        this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
-            modelEntity.setLocalRotation(quat)
+            const currentRot = modelEntity.localRotation.clone()
+            const invCurrent = currentRot.clone().invert()
+            const deltaQuat = quat.clone().mul(invCurrent)
+            const offset = modelEntity.localPosition.clone().sub(this.centerPivot)
+            const rotatedOffset = this.rotateOffsetByQuat(offset, deltaQuat)
+            modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
+            modelEntity.localRotation.copy(quat)
             this.updateModelRotation()
             this.syncHierarchyAndRender()
         })
+        this.events.on('orientation:eulersynced', () => this.updateModelRotation())
 
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
             const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
@@ -363,7 +370,7 @@ class OtherController {
         const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
         const h = this.bbox.halfExtents
         const radius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z)
-        return (radius / Math.sin(minFovRad / 2))
+        return radius / Math.sin(minFovRad / 2)
     }
     onEnter(camera) {
         const distance = this.getDeafultDistance()
@@ -429,6 +436,7 @@ class OtherController {
         this.inertiaVelY = 0
     }
     startEditModelOrientation() {
+        this.model = 'spherical'
         this.preEditRotation = modelEntity.localRotation.clone()
         this.preEditPosition = modelEntity.localPosition.clone()
         this.preDistance = this.distance
@@ -437,7 +445,6 @@ class OtherController {
     }
     cancelOrientation() {
         if (!this.preEditRotation) return
-        this.model = 'spherical'
         this.updateModelRotation()
         const startPose = {
             focus: this.focus.clone(),
@@ -478,13 +485,6 @@ class OtherController {
         })
     }
     saveModelOrientation() {
-        this.preSaveBaseRotation = this.baseRotation.clone()
-        this.preSaveBasePosition = this.basePosition.clone()
-        this.preSaveEntityRotation = modelEntity.localRotation.clone()
-        this.preSaveEntityPosition = modelEntity.localPosition.clone()
-        this.preSaveDistance = this.distance
-        this.preSaveFocus = this.focus.clone()
-        this.preSaveOrientation = this.settings.orientation ? { ...this.settings.orientation } : null
         this.baseRotation = modelEntity.localRotation.clone()
         this.basePosition = modelEntity.localPosition.clone()
         this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
