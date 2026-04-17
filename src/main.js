@@ -3641,7 +3641,7 @@ class Viewer {
                 })
             }
             this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
-            const rotationGizmo = new RotationGizmo(app, camera, events)
+            const rotationGizmo = new RotationGizmo(app, camera)
             const pivotDot = new PivotDot(app, camera, modelEntity)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
                 onMove: (pos) => {
@@ -3672,13 +3672,13 @@ class Viewer {
                 pivotGizmo.disable()
                 pivotDot.disable()
             })
-
             events.on('gizmo:position-enable', (enable) => {
                 if (enable) pivotGizmo.enable()
                 else pivotGizmo.disable()
             })
             events.on('gizmo:rotation-enable', (enable) => {
-                if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity), 'orientation:eulersynced')
+                if (enable)
+                    rotationGizmo.enable(new EntityRotatable(modelEntity, events))
                 else rotationGizmo.disable()
             })
 
@@ -4130,12 +4130,12 @@ function base64ToBlobWithProgress(base64, chunkSize = 1024 * 1024) {
                 bytes[i] = byteChars.charCodeAt(offset + i)
             }
             chunks.push(bytes)
-            offset = end 
+            offset = end
             updateProgress(offset, total)
             if (offset < total) {
-                requestAnimationFrame(processChunk) 
+                requestAnimationFrame(processChunk)
             } else {
-                updateProgress(total, total) 
+                updateProgress(total, total)
                 const blob = new Blob(chunks, { type: 'application/ply' })
                 resolve(new Response(blob))
             }
@@ -4178,9 +4178,7 @@ const config = {
     skyboxUrl,
     voxelUrl,
     contentUrl: settings.contentUrl,
-    contents: settings.base64
-    ? base64ToBlobWithProgress(settings.base64)
-    : createProgressFetch(settings.contentUrl),
+    contents: settings.base64 ? base64ToBlobWithProgress(settings.base64) : createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
     editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:' && !isMobile,
     noanim: true,

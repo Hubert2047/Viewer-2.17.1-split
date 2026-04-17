@@ -1,16 +1,3 @@
-class EntityRotatable {
-    constructor(entity) {
-        this._entity = entity
-    }
-    getPosition() { return this._entity.getPosition() }
-    getRotation() { return this._entity.getRotation() }
-    applyRotation(quatDelta) {
-        const cur = this._entity.getRotation()
-        const next = new Quat().mul2(quatDelta, cur).normalize()
-        this._entity.setRotation(next)
-    }
-    getEuler() { return this._entity.getLocalEulerAngles(new Vec3()) }
-}
 class RotationGizmo {
     _enabled = false
     _dragging = false
@@ -23,9 +10,8 @@ class RotationGizmo {
     _canvas = null
     _snapshot = null
     _target = null
-    _eventName = ""
 
-    static SCREEN_RADIUS = 80
+    static SCREEN_RADIUS = 60
     static COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     static LABELS = { x: 'X', y: 'Y', z: 'Z' }
     static STEPS = 64
@@ -36,10 +22,9 @@ class RotationGizmo {
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
 
-    constructor(app, camEntity, events) {
+    constructor(app, camEntity) {
         this._app = app
         this._camEntity = camEntity
-        this._events = events
         this._canvas = app.graphicsDevice.canvas
         this._buildSVG()
         this._svg.style.display = 'none'
@@ -142,35 +127,36 @@ class RotationGizmo {
         return { x: out.x, y: out.y }
     }
 
-    _worldRadius() {
-        if (!this._target) return 1
-        const worldPos = this._target.getPosition()
-        const camPos = this._camEntity.getPosition()
-        const dist = new Vec3().copy(worldPos).sub(camPos).length()
-        const cam = this._camEntity.camera
-        const ch = this._canvas.clientHeight
-        const fovRad = (cam.fov * Math.PI) / 180
-        const ppu = ch / 2 / Math.tan(fovRad / 2) / dist
-        return RotationGizmo.SCREEN_RADIUS / ppu
-    }
-
     _computeRingPoints(worldCenter, axis) {
-        const R = this._worldRadius()
+        const center = this._w2s(worldCenter)
+        const R = RotationGizmo.SCREEN_RADIUS
         const { u, v } = this._getPlaneVectors(axis)
         const steps = RotationGizmo.STEPS
         const camPos = this._camEntity.getPosition()
         const toCam = new Vec3().copy(camPos).sub(worldCenter).normalize()
+        const su = this._w2s(new Vec3(worldCenter.x + u.x, worldCenter.y + u.y, worldCenter.z + u.z))
+        const sv = this._w2s(new Vec3(worldCenter.x + v.x, worldCenter.y + v.y, worldCenter.z + v.z))
+        const screenU = { x: su.x - center.x, y: su.y - center.y }
+        const screenV = { x: sv.x - center.x, y: sv.y - center.y }
+        const lenU = Math.sqrt(screenU.x ** 2 + screenU.y ** 2) || 1
+        const lenV = Math.sqrt(screenV.x ** 2 + screenV.y ** 2) || 1
+        const scale = R / Math.max(lenU, lenV)
 
         const points = []
         for (let i = 0; i <= steps; i++) {
             const t = (i / steps) * Math.PI * 2
-            const wx = worldCenter.x + (Math.cos(t) * u.x + Math.sin(t) * v.x) * R
-            const wy = worldCenter.y + (Math.cos(t) * u.y + Math.sin(t) * v.y) * R
-            const wz = worldCenter.z + (Math.cos(t) * u.z + Math.sin(t) * v.z) * R
-            const s = this._w2s(new Vec3(wx, wy, wz))
+            const cos = Math.cos(t),
+                sin = Math.sin(t)
+            const wx = worldCenter.x + cos * u.x + sin * v.x
+            const wy = worldCenter.y + cos * u.y + sin * v.y
+            const wz = worldCenter.z + cos * u.z + sin * v.z
             const toPoint = new Vec3(wx - worldCenter.x, wy - worldCenter.y, wz - worldCenter.z).normalize()
             const visible = toPoint.dot(toCam) > -0.1
-            points.push({ ...s, visible })
+
+            const x = center.x + (cos * screenU.x + sin * screenV.x) * scale
+            const y = center.y + (cos * screenU.y + sin * screenV.y) * scale
+
+            points.push({ x, y, visible })
         }
         return points
     }
@@ -192,11 +178,18 @@ class RotationGizmo {
         }
         return d
     }
-
+    _getGizmoWorldPos() {
+        const sw = this._canvas.clientWidth
+        const screenX = sw - 100
+        const screenY = 90
+        const cam = this._camEntity.camera
+        const worldPos = new Vec3()
+        cam.screenToWorld(screenX, screenY, 5, worldPos)
+        return worldPos
+    }
     _update() {
         if (!this._enabled || !this._target) return
-        const worldPos = this._target.getPosition()
-
+        const worldPos = this._getGizmoWorldPos()
         for (const axis of ['x', 'y', 'z']) {
             const { ring, ringBg, hit, text } = this._rings[axis]
             const points = this._computeRingPoints(worldPos, axis)
@@ -229,24 +222,6 @@ class RotationGizmo {
         this._app.renderNextFrame = true
     }
 
-    _screenAngle(axis, cx, cy) {
-        const worldPos = this._modelEntity.getPosition()
-        const center = this._w2s(worldPos)
-        const R = this._worldRadius()
-        const { u, v } = this._dragging ? this._dragPlane : this._getPlaneVectors(axis)
-
-        const pu = this._w2s(new Vec3(worldPos.x + u.x * R, worldPos.y + u.y * R, worldPos.z + u.z * R))
-        const pv = this._w2s(new Vec3(worldPos.x + v.x * R, worldPos.y + v.y * R, worldPos.z + v.z * R))
-
-        const screenU = { x: pu.x - center.x, y: pu.y - center.y }
-        const screenV = { x: pv.x - center.x, y: pv.y - center.y }
-        const mx = cx - center.x,
-            my = cy - center.y
-        const dotU = mx * screenU.x + my * screenU.y
-        const dotV = mx * screenV.x + my * screenV.y
-        return Math.atan2(dotV, dotU)
-    }
-
     _onDrag(cx, cy) {
         if (!this._dragging || !this._target) return
 
@@ -267,7 +242,7 @@ class RotationGizmo {
         this._app.renderNextFrame = true
 
         const euler = this._target.getEuler()
-        if (euler) this._events.fire(this._eventName, { x: euler.x, y: euler.y, z: euler.z })
+        if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
         this._prevMouse = { x: cx, y: cy }
     }
 
@@ -315,7 +290,7 @@ class RotationGizmo {
         document.body.style.cursor = ''
 
         const euler = this._target?.getEuler()
-        if (euler) this._events.fire(this._eventName, { x: euler.x, y: euler.y, z: euler.z })
+        if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
     }
 
     _highlightOnly(activeAxis) {
@@ -339,9 +314,8 @@ class RotationGizmo {
         return this._dragging
     }
 
-    enable(rotatable, eventName) {
-        if (!rotatable || !eventName) return
-        this._eventName = eventName
+    enable(rotatable) {
+        if (!rotatable) return
         this._target = rotatable
         this._enabled = true
         this._svg.style.display = ''
@@ -355,24 +329,5 @@ class RotationGizmo {
         this._svg.style.display = 'none'
         if (this._updateFn) this._app.off('update', this._updateFn)
         document.body.style.cursor = ''
-    }
-
-    saveSnapshot() {
-        if (!this._target) return
-        const entity = this._target._entity
-        this._snapshot = {
-            rot: entity.localRotation.clone(),
-            pos: entity.localPosition.clone(),
-        }
-    }
-
-    restoreSnapshot() {
-        if (!this._target || !this._snapshot) return
-        const entity = this._target._entity
-        entity.localRotation.copy(this._snapshot.rot)
-        entity.localPosition.copy(this._snapshot.pos)
-        entity.syncHierarchy()
-        this._app.renderNextFrame = true
-        this._snapshot = null
     }
 }

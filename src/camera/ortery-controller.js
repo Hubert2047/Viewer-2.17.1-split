@@ -127,6 +127,126 @@ class OtherController {
             this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
         })
     }
+    createGroundPlaneEntity() {
+        const device = this.app.graphicsDevice
+        const h = this.bbox.halfExtents
+        const modelRadius = Math.sqrt(h.x * h.x + h.y * h.y + h.z * h.z) * 1.5
+        const planeSize = Math.max(modelRadius, 1)
+
+        const planeMesh = Mesh.fromGeometry(
+            device,
+            new PlaneGeometry({
+                halfExtents: new Vec2(planeSize, planeSize),
+                widthSegments: 1,
+                lengthSegments: 1,
+            }),
+        )
+
+        const planeMat = new StandardMaterial()
+        planeMat.diffuse = new Color(0.5, 0.5, 0.5)
+        planeMat.opacity = 0.25
+        planeMat.blendType = BLEND_NORMAL
+        planeMat.depthWrite = true
+        planeMat.depthTest = true
+        planeMat.cull = CULLFACE_NONE
+        planeMat.update()
+
+        const planeEntity = new Entity('_groundPlaneFill')
+        planeEntity.addComponent('render', {
+            meshInstances: [new MeshInstance(planeMesh, planeMat)],
+            layers: [LAYERID_WORLD],
+            castShadows: false,
+            receiveShadows: false,
+        })
+        this.app.root.addChild(planeEntity)
+        const gridEntity = this.createGridLines(planeSize)
+        planeEntity.addChild(gridEntity)
+        this._groundPlaneEntities = [planeEntity, gridEntity]
+    }
+
+    createGridLines(size) {
+        const device = this.app.graphicsDevice
+        const divisions = 30
+        const step = (size * 2) / divisions
+        const lines = []
+
+        for (let i = 0; i <= divisions; i++) {
+            const x = -size + i * step
+            lines.push(new Vec3(x, 0.02, -size), new Vec3(x, 0.02, size))
+            const z = -size + i * step
+            lines.push(new Vec3(-size, 0.02, z), new Vec3(size, 0.02, z))
+        }
+
+        const positions = []
+        lines.forEach((v) => positions.push(v.x, v.y, v.z))
+
+        const mesh = new Mesh(device)
+        mesh.setPositions(positions)
+        const indices = []
+        for (let i = 0; i < lines.length; i++) indices.push(i)
+        mesh.setIndices(indices)
+        mesh.update(PRIMITIVE_LINES)
+
+        const mat = new StandardMaterial()
+        mat.emissive = new Color(0.4, 0.4, 0.4)
+        mat.opacity = 0.5
+        mat.blendType = BLEND_NORMAL
+        mat.depthWrite = false
+        mat.update()
+
+        const entity = new Entity('_groundPlaneGrid')
+        entity.addComponent('render', {
+            meshInstances: [new MeshInstance(mesh, mat)],
+            layers: [LAYERID_WORLD],
+            castShadows: false,
+        })
+        return entity
+    }
+
+    updateGroundPlanePose() {
+        if (!this._groundPlaneEntities) return
+        const up = new Vec3(0, 1, 0)
+        const corners = this.getBBoxCorners(this.bbox)
+        let minDot = Infinity
+        corners.forEach((corner) => {
+            const dot = corner.dot(up)
+            if (dot < minDot) minDot = dot
+        })
+        const bboxCenter = this.bbox.center
+        const centerDot = bboxCenter.dot(up)
+        const groundPos = new Vec3(bboxCenter.x, bboxCenter.y, bboxCenter.z).sub(
+            up.clone().mulScalar(centerDot - minDot),
+        )
+        const planeEntity = this._groundPlaneEntities[0]
+        if (planeEntity) {
+            planeEntity.setPosition(groundPos)
+            planeEntity.setRotation(new Quat())
+        }
+
+        this.app.renderNextFrame = true
+    }
+    destroyGroundPlane() {
+        if (!this._groundPlaneEntities) return
+        this._groundPlaneEntities.forEach((e) => {
+            e.destroy()
+        })
+        this._groundPlaneEntities = null
+        this.app.renderNextFrame = true
+    }
+    getBBoxCorners(bbox) {
+        const c = bbox.center
+        const h = bbox.halfExtents
+        return [
+            new Vec3(c.x - h.x, c.y - h.y, c.z - h.z),
+            new Vec3(c.x + h.x, c.y - h.y, c.z - h.z),
+            new Vec3(c.x - h.x, c.y + h.y, c.z - h.z),
+            new Vec3(c.x + h.x, c.y + h.y, c.z - h.z),
+            new Vec3(c.x - h.x, c.y - h.y, c.z + h.z),
+            new Vec3(c.x + h.x, c.y - h.y, c.z + h.z),
+            new Vec3(c.x - h.x, c.y + h.y, c.z + h.z),
+            new Vec3(c.x + h.x, c.y + h.y, c.z + h.z),
+        ]
+    }
     resetPivot() {
         this.isResetPivot = true
     }
@@ -437,52 +557,14 @@ class OtherController {
     }
     startEditModelOrientation() {
         this.model = 'spherical'
-        this.preEditRotation = modelEntity.localRotation.clone()
-        this.preEditPosition = modelEntity.localPosition.clone()
-        this.preDistance = this.distance
-        this.prefocus = this.focus.clone()
         this.updateModelRotation()
+        this.destroyGroundPlane()
+        this.createGroundPlaneEntity()
+        this.updateGroundPlanePose()
     }
     cancelOrientation() {
-        if (!this.preEditRotation) return
+        this.destroyGroundPlane()
         this.updateModelRotation()
-        const startPose = {
-            focus: this.focus.clone(),
-            rotation: modelEntity.localRotation.clone(),
-            position: modelEntity.localPosition.clone(),
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.currentPitch,
-        }
-
-        const targetPose = {
-            focus: this.prefocus.clone(),
-            rotation: this.preEditRotation,
-            position: this.preEditPosition,
-            distance: this.preDistance,
-            yaw: this.currentYaw,
-            pitch: this.currentPitch,
-        }
-
-        this.setupTransition({
-            startPose,
-            targetPose,
-            lerpDuration: HOTSPOT_FADE_TIME,
-            onTransitionFinished: () => {
-                this.model = this.originModel
-                this.preEditRotation = null
-                this.preEditPosition = null
-                this.preDistance = null
-                this.prefocus = null
-                if (this.model === 'cylindrical') {
-                    this.minPitch = 0
-                    this.maxPitch = 0
-                } else if (this.model === 'hemispherical') {
-                    this.minPitch = 0
-                    this.maxPitch = Math.PI / 2
-                }
-            },
-        })
     }
     saveModelOrientation() {
         this.baseRotation = modelEntity.localRotation.clone()
@@ -499,6 +581,7 @@ class OtherController {
             this.minPitch = 0
             this.maxPitch = Math.PI / 2
         }
+        this.destroyGroundPlane()
         if (this.initviewPose) this.initView()
     }
     lerp(a, b, t) {
@@ -581,7 +664,18 @@ class OtherController {
         }
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
-
+        if (this.cameraElevation === undefined) {
+            if (!settings.orientation) {
+                this.cameraElevation = this.getCameraElevation()
+                if (this.model === 'cylindrical') {
+                    this.maxPitch = this.cameraElevation
+                    this.minPitch = this.cameraElevation
+                } else {
+                    this.minPitch -= this.cameraElevation
+                    this.maxPitch -= this.cameraElevation
+                }
+            } else this.cameraElevation = 0
+        }
         let didRotate = false
         if (!this.initPivot) {
             if (this.settings.pivot.enabled && this.settings.pivot.position) {
@@ -604,18 +698,6 @@ class OtherController {
                 }
                 if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
                 else {
-                    if (this.cameraElevation === undefined) {
-                        if (!settings.orientation) {
-                            this.cameraElevation = this.getCameraElevation()
-                            if (this.model === 'cylindrical') {
-                                this.maxPitch = this.cameraElevation
-                                this.minPitch = this.cameraElevation
-                            } else {
-                                this.minPitch -= this.cameraElevation
-                                this.maxPitch -= this.cameraElevation
-                            }
-                        } else this.cameraElevation = 0
-                    }
                     this.setPitchYaw(deltaX, deltaY)
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
