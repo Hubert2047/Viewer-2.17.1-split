@@ -533,35 +533,28 @@ function createControlsWrap() {
     wrap.appendChild(hotspotcontainer)
     return wrap
 }
-function createSettingsPanel() {
-    const panel = document.createElement('div')
-    panel.id = 'settingsPanel'
-    panel.classList.add('setting-panel', 'hidden')
+function createGroupWrapper(title) {
+    const group = document.createElement('div')
+    group.className = 'optionGroup'
 
-    const viewOptionHeader = document.createElement('div')
-    viewOptionHeader.className = 'view-option-header'
-    viewOptionHeader.textContent = 'View Options'
+    const groupTitle = document.createElement('div')
+    groupTitle.className = 'option-title'
+    groupTitle.textContent = title
 
-    const viewOptionContent = document.createElement('div')
-    viewOptionContent.className = 'view-option-content'
+    group.appendChild(groupTitle)
+    return group
+}
 
-    const optionGroup = document.createElement('div')
-    optionGroup.className = 'optionGroup'
-
-    const optionTitle = document.createElement('div')
-    optionTitle.className = 'option-title'
-    optionTitle.textContent = 'Quality'
-
-    const qualityOptions = document.createElement('div')
-    qualityOptions.className = 'quality-options'
-
+function createQualityGroup(app) {
+    const group = createGroupWrapper('Quality')
+    const optionsEl = document.createElement('div')
+    optionsEl.className = 'quality-options'
     const qualities = [
         { id: 'lowQuality', value: '0', label: 'Low' },
-        { id: '', value: '1', label: 'Medium' },
-        { id: '', value: '2', label: 'High' },
-        { id: '', value: '3', label: 'Ultra', checked: true },
+        { id: '',           value: '1', label: 'Medium' },
+        { id: '',           value: '2', label: 'High' },
+        { id: '',           value: '3', label: 'Ultra', checked: true },
     ]
-
     qualities.forEach(({ id, value, label, checked }) => {
         const labelEl = document.createElement('label')
         labelEl.className = 'option-item'
@@ -573,14 +566,49 @@ function createSettingsPanel() {
         if (id) input.id = id
         if (checked) input.checked = true
 
+        input.addEventListener('change', (e) => {
+            const bands = parseInt(e.target.value)
+            const coeffs = bands > 0 ? (bands + 1) * (bands + 1) - 1 : 0
+
+            app.root.findComponents('gsplat').forEach((gsplatComp) => {
+                const instance = gsplatComp.instance
+                const meshInstance = instance?.meshInstance
+                if (!meshInstance) return
+
+                const material = meshInstance.material
+                material.setDefine('SH_BANDS', bands)
+                material.setDefine('SH_COEFFS', coeffs)
+                material.clearVariants()
+                material.update()
+                meshInstance.clearShaders()
+            })
+
+            app.renderNextFrame = true
+        })
+
         labelEl.appendChild(input)
         labelEl.append(` ${label}`)
-        qualityOptions.appendChild(labelEl)
+        optionsEl.appendChild(labelEl)
     })
 
-    optionGroup.appendChild(optionTitle)
-    optionGroup.appendChild(qualityOptions)
-    viewOptionContent.appendChild(optionGroup)
+    group.appendChild(optionsEl)
+    return group
+}
+
+function createSettingsPanel(app) {
+    const panel = document.createElement('div')
+    panel.id = 'settingsPanel'
+    panel.classList.add('setting-panel', 'hidden')
+
+    const viewOptionHeader = document.createElement('div')
+    viewOptionHeader.className = 'view-option-header'
+    viewOptionHeader.textContent = 'View Options'
+
+    const viewOptionContent = document.createElement('div')
+    viewOptionContent.className = 'view-option-content'
+
+    viewOptionContent.appendChild(createQualityGroup(app))
+
     panel.appendChild(viewOptionHeader)
     panel.appendChild(viewOptionContent)
     return panel
@@ -684,13 +712,11 @@ function checkPerformance(app, global) {
             app.renderNextFrame = false
             const avgFps = ((benchFrames / elapsed) * 1000).toFixed(1)
             if (avgFps <= 10) {
-                // viewer.setSHBands(0)
-                // dom.lowQuality.checked = true
                 global.modal.open(
                     'Performance Warning',
                     'Your device seems to be running slowly.<br>' +
                         'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
-                        'top'
+                    'top',
                 )
             }
         }

@@ -659,7 +659,7 @@ const initUI = (global) => {
     const ui = document.getElementById('ui')
     ui.appendChild(createControlsWrap(events))
     ui.appendChild(createInfoPanel(settings, events))
-    ui.appendChild(createSettingsPanel())
+    ui.appendChild(createSettingsPanel(global.app))
     const dom = [
         'ui',
         'resetCamera',
