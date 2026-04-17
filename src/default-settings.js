@@ -2,6 +2,7 @@ const defaultSettings = {
     version: 2,
     v: 1,
     contentUrl: '',
+    base64: '',
     autoHideUI: false,
     background: { color: 'white' },
     startMode: 'default',

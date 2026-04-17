@@ -4116,6 +4116,33 @@ const createImage = (url) => {
     img.src = url
     return img
 }
+function base64ToBlobWithProgress(base64, chunkSize = 1024 * 1024) {
+    return new Promise((resolve) => {
+        const byteChars = atob(base64)
+        const total = byteChars.length
+        let offset = 0
+        const chunks = []
+        function processChunk() {
+            const end = Math.min(offset + chunkSize, total)
+            const sliceLength = end - offset
+            const bytes = new Uint8Array(sliceLength)
+            for (let i = 0; i < sliceLength; i++) {
+                bytes[i] = byteChars.charCodeAt(offset + i)
+            }
+            chunks.push(bytes)
+            offset = end 
+            updateProgress(offset, total)
+            if (offset < total) {
+                requestAnimationFrame(processChunk) 
+            } else {
+                updateProgress(total, total) 
+                const blob = new Blob(chunks, { type: 'application/ply' })
+                resolve(new Response(blob))
+            }
+        }
+        processChunk()
+    })
+}
 const createProgressFetch = (input, initPoster) => {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest()
@@ -4151,7 +4178,9 @@ const config = {
     skyboxUrl,
     voxelUrl,
     contentUrl: settings.contentUrl,
-    contents: createProgressFetch(settings.contentUrl),
+    contents: settings.base64
+    ? base64ToBlobWithProgress(settings.base64)
+    : createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
     editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:' && !isMobile,
     noanim: true,
