@@ -176,7 +176,7 @@ class OtherController {
     }
     reset(pose) {
         if (this.isResetting) return
-        this.events.fire('hotspot:hide-all')
+        this.events.fire('ortery:reset')
         if (!pose) pose = this.resetPose
         let forward
         if (pose.forward) {
@@ -620,16 +620,14 @@ class OtherController {
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
                 this.syncHierarchyAndRender()
-                const euler = modelEntity.getLocalEulerAngles(new Vec3())
-                this.events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
                 didRotate = true
             }
         }
         if (didRotate) {
-            this.events.fire('hotspot:hide-all')
+            this.events.fire('ortery:rotate')
         }
         if (isZooming || isPanning || didRotate) {
-            this.events.fire('hotspot:stop-auto')
+            this.events.fire('ortery:interaction')
             this.updateModelRotation()
         }
     }

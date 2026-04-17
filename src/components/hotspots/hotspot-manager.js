@@ -73,7 +73,7 @@ class HotspotManager {
             }
         })
         this.events.on('hotspot:editor-selected', (selectedData) => {
-            this.events.fire('hotspot:stop-auto')
+            this.stopAutoPlay()
             if (this.activeData && selectedData === null) this.resetActiveHotspotBtnName()
             this.activeData = selectedData
             if (selectedData === null) {
@@ -88,14 +88,6 @@ class HotspotManager {
                 }
             }
             if (this.editable) this.updateUIPanel()
-        })
-        this.events.on('hotspot:hide-all', () => {
-            if (this.activeData) this.events.fire('hotspot:editor-cancelled')
-            this.activeData = null
-            if (this.activeHotspot) {
-                this.activeHotspot.hide()
-                this.activeHotspot = null
-            }
         })
         this.events.on('hotspot:editor-changed', ({ data, refreshUIPanel = false }) => {
             if (data.dot.size !== this.activeData.dot.size) {
@@ -190,18 +182,6 @@ class HotspotManager {
             this.editor = editor
             this.updateUIPanel()
         })
-        this.events.on('hotspot:start-auto', () => {
-            this.startAutoPlay()
-        })
-        this.events.on('hotspot:stop-auto', () => {
-            this.stopAutoPlay()
-        })
-        this.events.on('hotspot:hide-hotspot-btns', () => {
-            this.showActiveHotspotBtns(false)
-        })
-        this.events.on('hotspot:show-hotspot-btns', () => {
-            this.showActiveHotspotBtns(true)
-        })
         this.events.on('hotspot:toggle-play', () => {
             if (this.isAutoPlay) this.stopAutoPlay()
             else this.startAutoPlay()
@@ -209,6 +189,17 @@ class HotspotManager {
         this.events.on('hotspot:hotspot-btns', () => {
             this.showActiveHotspotBtns(!this.isShowActiveHotspotBtns)
         })
+        this.events.on('ortery:rotate', () => this.hideAllHotspot())
+        this.events.on('ortery:reset', () => this.hideAllHotspot())
+        this.events.on('ortery:interaction', () => this.stopAutoPlay())
+    }
+    hideAllHotspot() {
+        if (this.activeData) this.events.fire('hotspot:editor-cancelled')
+        this.activeData = null
+        if (this.activeHotspot) {
+            this.activeHotspot.hide()
+            this.activeHotspot = null
+        }
     }
     resetActiveHotspotBtnName() {
         const restoreData = this.settings.hotspots.find((d) => d.id === this.activeData?.id)

@@ -105,6 +105,10 @@ function renderOrientation(group, global, editGroup) {
             events.fire('orientation:eulerchange', { x, y, z })
         },
     })
+    events.on('ortery:rotate', () => {
+        const euler = modelEntity.getLocalEulerAngles(new Vec3())
+        events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+    })
     events.on('modelEntity:loaded', () => {
         if (settings.orientation) {
             const { rotation: r } = settings.orientation
