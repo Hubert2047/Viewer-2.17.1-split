@@ -38,6 +38,7 @@ const files = [
     'src/libs/custome-engine.js',
     'src/libs/rotation-gizmo.js',
     'src/libs/entity-rotatable.js',
+    'src/libs/dimension-rotatable.js',
     'src/libs/position-gizmo.js',
     'src/utils/index.js',
     'src/components/dialogs/confirm-dialog.js',

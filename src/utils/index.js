@@ -619,7 +619,7 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
     const inputEls = {}
 
     const row = document.createElement('div')
-    row.classList.add('orientation-inputs')
+    row.classList.add('vec-inputs')
 
     AXIS.forEach((axis) => {
         const col = document.createElement('div')
@@ -667,12 +667,12 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
         inputEls.z.value = z.toFixed(1)
     }
     const wrapper = document.createElement('div')
-    wrapper.classList.add('section-group-row')
+    wrapper.classList.add('section-group-row','vec-row')
 
     if (title) {
         const titleEl = document.createElement('span')
         titleEl.textContent = title
-        titleEl.classList.add('vec3-input-label')
+        titleEl.classList.add('vec3-input-label',)
         wrapper.appendChild(titleEl)
     }
 

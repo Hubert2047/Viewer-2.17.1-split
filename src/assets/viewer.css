@@ -755,9 +755,13 @@ button {
   gap: 10px;
   background: rgba(0, 0, 0, 0.03);
   border: 0.5px solid rgba(0, 0, 0, 0.07);
-  border-radius: 7px;
-  padding: 9px 10px;
+  border-radius: 8px;
+  padding: 10px;
   flex: 1;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  -ms-border-radius: 8px;
+  -o-border-radius: 8px;
 }
 .section-group-title {
   font-size: 12px;
@@ -1652,26 +1656,29 @@ button {
   flex: 1;
 }
 
-.orientation-inputs {
+.vec-inputs {
   display: flex;
   gap: 6px;
 }
+.vec-row{
+  margin: 4px 0;
+}
 
-.orientation-inputs .axis-col {
+.vec-inputs .axis-col {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.orientation-inputs .axis-label {
+.vec-inputs .axis-label {
   font-size: 10px;
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.04em;
 }
 
-.orientation-inputs input[type="number"] {
+.vec-inputs input[type="number"] {
   width: 100%;
   padding: 5px 0;
   border-radius: 5px;
@@ -1687,7 +1694,7 @@ button {
     background 0.15s;
 }
 
-.orientation-inputs input[type="number"]:disabled {
+.vec-inputs input[type="number"]:disabled {
   cursor: not-allowed;
   color: rgba(0, 0, 0, 0.3);
   -moz-appearance: textfield;
@@ -1759,8 +1766,9 @@ button {
 }
 .vec3-input-label {
   margin-top: 16px;
+  min-width: 52px;
 }
-.no-pivot-row {
+.no-pivot-row,.no-dimension-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1770,7 +1778,7 @@ button {
   flex-direction: column;
   gap: 18px;
 }
-.pivot-wrap {
+.pivot-wrap,.dimension-wrap {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1938,4 +1946,29 @@ button {
 }
 .md-btn:hover {
   background: rgba(0, 0, 0, 0.04);
+}
+.unit-select {
+    background: #e8f0fe;
+    border: 0.5px solid rgba(0, 0, 0, 0.13);
+    border-radius: 5px;
+    color: var(--text-main);
+    font-size: 12px;
+    padding: 0 7px;
+    outline: none;
+    height: 30px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.unit-select:hover {
+    border-color: rgba(0, 0, 0, 0.22);
+}
+
+.unit-select:focus {
+    border-color: rgba(249, 87, 68, 0.4);
+}
+.dimension-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

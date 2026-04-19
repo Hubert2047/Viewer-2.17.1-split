@@ -553,7 +553,293 @@ function viewerSettingsSection(el, global) {
     renderGroup()
     el.appendChild(container)
 }
-function dimensionSection(el, global) {}
+function dimensionSection(el, global) {
+    const { events, settings } = global
+
+    let isEditing = false
+    let editDimension = settings.dimension ?? null
+    let currentDimension = settings.dimension ?? null
+
+    const container = document.createElement('div')
+    container.classList.add('dimension-wrap')
+
+    // ── No dimension row ──
+    const noDimRow = document.createElement('div')
+    noDimRow.classList.add('no-dimension-row')
+    const noDimText = document.createElement('span')
+    noDimText.textContent = 'No dimension configured'
+    noDimText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
+    const addBtn = document.createElement('button')
+    addBtn.classList.add('add-btn')
+    addBtn.textContent = '+ Add'
+    addBtn.onclick = () => {
+        const center = global.bbox.center.clone()
+        const halfExtents = global.bbox.halfExtents.clone()
+        currentDimension = {
+            position: { x: center.x, y: center.y, z: center.z },
+            rotation: { x: 0, y: 0, z: 0 },
+            size: { x: halfExtents.x * 2, y: halfExtents.y * 2, z: halfExtents.z * 2 },
+        }
+        editDimension = { ...currentDimension }
+        settings.dimension = currentDimension
+        setDimConfigured(true)
+        setValues(currentDimension)
+        events.fire('dimension:add', currentDimension)
+    }
+    noDimRow.appendChild(noDimText)
+    noDimRow.appendChild(addBtn)
+
+    // ── Has dimension ──
+    const hasDimWrap = document.createElement('div')
+    hasDimWrap.classList.add('dimension-row')
+
+    // ── Group 1: Box Transform ──
+    const boxGroup = document.createElement('div')
+    boxGroup.classList.add('section-group')
+    const boxGroupTitle = document.createElement('div')
+    boxGroupTitle.classList.add('section-group-title')
+    boxGroupTitle.textContent = 'Box transform'
+    boxGroup.appendChild(boxGroupTitle)
+    const {
+        row: positionRow,
+        setEditable: setPosEditable,
+        setValues: setPosValues,
+    } = createVec3Inputs({
+        title: 'Position',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimension = { ...currentDimension, position: { x, y, z } }
+            events.fire('dimension:change', currentDimension)
+        },
+    })
+
+    const {
+        row: rotationRow,
+        setEditable: setRotEditable,
+        setValues: setRotValues,
+    } = createVec3Inputs({
+        title: 'Rotation',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimension = { ...currentDimension, rotation: { x, y, z } }
+            events.fire('dimension:change', currentDimension)
+        },
+    })
+
+    const {
+        row: sizeRow,
+        setEditable: setSizeEditable,
+        setValues: setSizeValues,
+    } = createVec3Inputs({
+        title: 'Size',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimension = { ...currentDimension, size: { x, y, z } }
+            events.fire('dimension:change', currentDimension)
+        },
+    })
+
+    // Position gizmo toggle
+    const posGizmoRow = document.createElement('div')
+    posGizmoRow.classList.add('section-group-row')
+    posGizmoRow.style.display = 'none'
+    const posGizmoLabel = document.createElement('span')
+    posGizmoLabel.textContent = 'Position Gizmo'
+    const posGizmoTrack = document.createElement('div')
+    posGizmoTrack.classList.add('toggle')
+    const posGizmoKnob = document.createElement('div')
+    posGizmoKnob.classList.add('toggle-knob')
+    posGizmoTrack.appendChild(posGizmoKnob)
+    const setPosGizmo = (on) => {
+        posGizmoTrack.classList.toggle('active', on)
+        events.fire('dimension:gizmo-position', on)
+    }
+    posGizmoTrack.addEventListener('click', () => setPosGizmo(!posGizmoTrack.classList.contains('active')))
+    posGizmoRow.appendChild(posGizmoLabel)
+    posGizmoRow.appendChild(posGizmoTrack)
+
+    // Rotation gizmo toggle
+    const rotGizmoRow = document.createElement('div')
+    rotGizmoRow.classList.add('section-group-row')
+    rotGizmoRow.style.display = 'none'
+    const rotGizmoLabel = document.createElement('span')
+    rotGizmoLabel.textContent = 'Rotation Gizmo'
+    const rotGizmoTrack = document.createElement('div')
+    rotGizmoTrack.classList.add('toggle')
+    const rotGizmoKnob = document.createElement('div')
+    rotGizmoKnob.classList.add('toggle-knob')
+    rotGizmoTrack.appendChild(rotGizmoKnob)
+    const setRotGizmo = (on) => {
+        rotGizmoTrack.classList.toggle('active', on)
+        events.fire('dimension:gizmo-rotation', on)
+    }
+    rotGizmoTrack.addEventListener('click', () => setRotGizmo(!rotGizmoTrack.classList.contains('active')))
+    rotGizmoRow.appendChild(rotGizmoLabel)
+    rotGizmoRow.appendChild(rotGizmoTrack)
+
+    boxGroup.appendChild(positionRow)
+    boxGroup.appendChild(rotationRow)
+    boxGroup.appendChild(sizeRow)
+    boxGroup.appendChild(posGizmoRow)
+    boxGroup.appendChild(rotGizmoRow)
+
+    // ── Group 2: Real Dimensions ──
+    const realGroup = document.createElement('div')
+    realGroup.classList.add('section-group')
+    const realGroupTitle = document.createElement('div')
+    realGroupTitle.classList.add('section-group-title')
+    realGroupTitle.textContent = 'Real dimensions'
+    realGroup.appendChild(realGroupTitle)
+
+    const realUnitRow = document.createElement('div')
+    realUnitRow.classList.add('section-group-row')
+    const realUnitLabel = document.createElement('span')
+    realUnitLabel.textContent = 'Unit'
+    const realUnitSelect = document.createElement('select')
+    realUnitSelect.classList.add('unit-select')
+    ;['mm', 'cm', 'm', 'inch'].forEach((u) => {
+        const opt = document.createElement('option')
+        opt.value = u
+        opt.textContent = u
+        if (u === (settings.realSizeUnit ?? 'cm')) opt.selected = true
+        realUnitSelect.appendChild(opt)
+    })
+    realUnitSelect.onchange = () => {
+        settings.realSizeUnit = realUnitSelect.value
+        events.fire('dimension:realunit', { unit: realUnitSelect.value })
+    }
+    realUnitRow.appendChild(realUnitLabel)
+    realUnitRow.appendChild(realUnitSelect)
+
+    const {
+        row: realSizeRow,
+        setEditable: setRealEditable,
+        setValues: setRealValues,
+    } = createVec3Inputs({
+        title: 'Size',
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            settings.realSize = { x, y, z }
+            events.fire('dimension:realsize', { x, y, z })
+        },
+    })
+    if (settings.realSize) setRealValues(settings.realSize)
+    realGroup.appendChild(realSizeRow)
+    realGroup.appendChild(realUnitRow)
+
+    // ── Shared helpers ──
+    const setValues = (dim) => {
+        if (!dim) return
+        setPosValues(dim.position)
+        setRotValues(dim.rotation)
+        setSizeValues(dim.size)
+    }
+
+    const setEditable = (on) => {
+        setPosEditable(on)
+        setRotEditable(on)
+        setSizeEditable(on)
+        setRealEditable(on)
+    }
+
+    // ── Buttons ──
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
+    const onEdit = () => {
+        isEditing = true
+        setEditable(true)
+        posGizmoRow.style.display = 'flex'
+        rotGizmoRow.style.display = 'flex'
+        renderBtns()
+        events.fire('dimension:enable-edit', { enable: true, dimension: currentDimension })
+    }
+
+    const onCancel = () => {
+        isEditing = false
+        setEditable(false)
+        posGizmoRow.style.display = 'none'
+        rotGizmoRow.style.display = 'none'
+        setPosGizmo(false)
+        setRotGizmo(false)
+        if (editDimension) setValues(editDimension)
+        currentDimension = { ...editDimension }
+        renderBtns()
+        events.fire('dimension:cancel')
+    }
+
+    const renderBtns = () => {
+        btnRow.innerHTML = ''
+        if (isEditing) {
+            const btnCancel = document.createElement('button')
+            btnCancel.classList.add('btn', 'cancel-btn')
+            btnCancel.textContent = 'Cancel'
+            btnCancel.onclick = onCancel
+
+            const btnApply = document.createElement('button')
+            btnApply.classList.add('btn', 'confirm-btn')
+            btnApply.textContent = 'Apply'
+            btnApply.onclick = () => {
+                editDimension = { ...currentDimension }
+                settings.dimension = { ...currentDimension }
+                isEditing = false
+                setEditable(false)
+                posGizmoRow.style.display = 'none'
+                rotGizmoRow.style.display = 'none'
+                setPosGizmo(false)
+                setRotGizmo(false)
+                renderBtns()
+                events.fire('dimension:save', currentDimension)
+            }
+
+            btnRow.appendChild(btnCancel)
+            btnRow.appendChild(btnApply)
+        } else {
+            const btnEdit = document.createElement('button')
+            btnEdit.classList.add('btn')
+            btnEdit.textContent = 'Edit'
+            btnEdit.onclick = onEdit
+
+            const btnDelete = document.createElement('button')
+            btnDelete.classList.add('btn', 'delete-btn')
+            btnDelete.title = 'Delete'
+            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>`
+            btnDelete.onclick = () => {
+                settings.dimension = null
+                editDimension = null
+                currentDimension = null
+                setDimConfigured(false)
+                events.fire('dimension:delete')
+            }
+
+            btnRow.appendChild(btnEdit)
+            btnRow.appendChild(btnDelete)
+        }
+    }
+
+    hasDimWrap.appendChild(boxGroup)
+    hasDimWrap.appendChild(realGroup)
+    hasDimWrap.appendChild(btnRow)
+
+    // ── Toggle configured state ──
+    const setDimConfigured = (has) => {
+        noDimRow.style.display = has ? 'none' : 'flex'
+        hasDimWrap.style.display = has ? 'flex' : 'none'
+    }
+
+    // ── Assemble ──
+    container.appendChild(noDimRow)
+    container.appendChild(hasDimWrap)
+    el.appendChild(container)
+
+    renderBtns()
+    setEditable(false)
+    setDimConfigured(!!settings.dimension)
+    if (settings.dimension) setValues(settings.dimension)
+}
 function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
@@ -631,14 +917,15 @@ function createSidebar(global, dom) {
             events,
         }),
     )
-    // sidebar.appendChild(
-    //     createSection({
-    //         id: 'dimension',
-    //         title: 'Dimensions',
-    //         classname: 'dimension-section',
-    //         body: (el) => dimensionSection(el, global, dom),
-    //     }),
-    // )
+    sidebar.appendChild(
+        createSection({
+            id: 'dimension',
+            title: 'Dimensions',
+            classname: 'dimension-section',
+            body: (el) => dimensionSection(el, global, dom),
+            events,
+        }),
+    )
     sidebar.appendChild(
         createSection({
             id: 'export',
@@ -3580,15 +3867,7 @@ class Viewer {
             cameraEntity.setEulerAngles(camera.angles)
             cameraEntity.camera.fov = camera.fov
             cameraEntity.camera.horizontalFov = graphicsDevice.width > graphicsDevice.height
-            // fit clipping planes to bounding box
-            const boundRadius = sceneBound.halfExtents.length()
-            // calculate the forward distance between the camera to the bound center
             vec.sub2(sceneBound.center, camera.position)
-            const dist = vec.dot(cameraEntity.forward)
-            const far = Math.max(dist + boundRadius, 1e-2)
-            const near = Math.max(dist - boundRadius, far / (1024 * 16))
-            cameraEntity.camera.farClip = far
-            cameraEntity.camera.nearClip = near
         }
         // handle application update
         app.on('update', (deltaTime) => {
@@ -3648,6 +3927,7 @@ class Viewer {
                     events.fire('pivot:positionsynced', pos)
                 },
             })
+            let dimensionRotatable = null
 
             events.on('pivot:enable-edit', ({ position, enable }) => {
                 if (enable) {
@@ -3677,9 +3957,41 @@ class Viewer {
                 else pivotGizmo.disable()
             })
             events.on('gizmo:rotation-enable', (enable) => {
-                if (enable)
-                    rotationGizmo.enable(new EntityRotatable(modelEntity, events))
+                if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
                 else rotationGizmo.disable()
+            })
+
+            events.on('dimension:gizmo-rotation', (enabled) => {
+                if (enabled) {
+                    dimensionRotatable = new DimensionRotatable(
+                        app,
+                        () => global.settings.dimension,
+                        ({ x, y, z }) => {
+                            events.fire('dimension:eulersynced', { x, y, z })
+                            global.bbox.draw(global.settings.dimension)
+                        },
+                    )
+                    rotationGizmo.enable(dimensionRotatable)
+                } else {
+                    rotationGizmo.disable()
+                    dimensionRotatable = null
+                }
+            })
+            // Redraw bbox theo events
+            events.on('dimension:add', (dim) => global.bbox.draw(dim))
+            events.on('dimension:change', (dim) => global.bbox.draw(dim))
+            events.on('dimension:save', (dim) => global.bbox.draw(dim))
+            events.on('dimension:cancel', () => {
+                const dim = global.settings.dimension
+                if (dim) global.bbox.draw(dim)
+                else global.bbox.hide()
+            })
+            events.on('dimension:delete', () => global.bbox.hide())
+            events.on('dimension:eulersynced', ({ x, y, z }) => {
+                const dim = global.settings.dimension
+                if (!dim) return
+                dim.rotation = { x, y, z }
+                global.bbox.draw(dim)
             })
 
             events.on('viewer:lock-zoom-in', (value) => {
@@ -4033,7 +4345,7 @@ const createApp = async (canvas, config) => {
     // Create the graphics device
     const device = await createGraphicsDevice(canvas, {
         deviceTypes: config.webgpu ? ['webgpu'] : [],
-        antialias: false,
+        antialias: true,
         depth: true,
         stencil: false,
         xrCompatible: !config.webgpu,
@@ -4301,100 +4613,172 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-    // const bboxSetup = (() => {
-    //     const app = viewer.global.app
-    //     const layers = app.scene.layers
-    //     const worldLayer = layers.getLayerByName('World')
 
-    //     const layerBBox = new Layer({ name: 'BBox' })
-    //     const worldIndex = layers.getOpaqueIndex(worldLayer)
-    //     layers.insert(layerBBox, worldIndex)
+    const bboxSetup = (() => {
+        const app = viewer.global.app
+        const layers = app.scene.layers
+        const worldLayer = layers.getLayerByName('World')
 
-    //     const cam = viewer.global.camera
-    //     cam.camera.layers = [...cam.camera.layers, layerBBox.id]
+        const layerBBox = new Layer({ name: 'BBox' })
+        const worldIndex = layers.getOpaqueIndex(worldLayer)
+        layers.insert(layerBBox, worldIndex)
 
-    //     const lineMesh = new Mesh(app.graphicsDevice)
+        const cam = viewer.global.camera
+        cam.camera.layers = [...cam.camera.layers, layerBBox.id]
 
-    //     const createLineMat = (opacity) => {
-    //         const mat = new StandardMaterial()
-    //         mat.emissive = new Color(0, 1, 0.6)
-    //         mat.diffuse = new Color(0, 0, 0)
-    //         mat.opacity = opacity
-    //         mat.blendType = BLEND_NORMAL
-    //         mat.depthTest = true
-    //         mat.depthWrite = true
-    //         mat.useLighting = false
-    //         mat.cull = CULLFACE_NONE
-    //         mat.update()
-    //         return mat
-    //     }
+        const lineMesh = new Mesh(app.graphicsDevice)
+        const createLineMat = () => {
+            const mat = new StandardMaterial()
+            mat.emissive = new Color(0, 1, 0.6)
+            mat.diffuse = new Color(0, 0, 0)
+            mat.blendType = BLEND_NORMAL
+            mat.depthTest = true
+            mat.depthWrite = true
+            mat.useLighting = false
+            mat.cull = CULLFACE_NONE
+            mat.update()
+            return mat
+        }
 
-    //     const matBBox = createLineMat(1.0)
-    //     const bboxEntity = new Entity('bbox')
-    //     app.root.addChild(bboxEntity)
+        const bboxEntity = new Entity('bbox')
+        app.root.addChild(bboxEntity)
+        const mi = new MeshInstance(lineMesh, createLineMat())
+        mi.cull = false
+        bboxEntity.addComponent('render', {
+            layers: [layerBBox.id],
+            meshInstances: [mi],
+        })
 
-    //     const mi = new MeshInstance(lineMesh, matBBox)
-    //     mi.cull = false
+        let visible = false
+        let gsplatEntity = null
 
-    //     bboxEntity.addComponent('render', {
-    //         layers: [layerBBox.id],
-    //         meshInstances: [mi],
-    //     })
+        const edges = [
+            [0, 1],
+            [1, 3],
+            [3, 2],
+            [2, 0],
+            [4, 5],
+            [5, 7],
+            [7, 6],
+            [6, 4],
+            [0, 4],
+            [1, 5],
+            [2, 6],
+            [3, 7],
+        ]
 
-    //     const updateMesh = (gsplatEntity) => {
-    //         const aabb = gsplatEntity.gsplat.customAabb
-    //         if (!aabb) return
+        const getGsplat = () => {
+            if (!gsplatEntity) gsplatEntity = app.root.findByName('gsplat')
+            return gsplatEntity?.gsplat ? gsplatEntity : null
+        }
 
-    //         const c = aabb.center
-    //         const he = aabb.halfExtents
-    //         const wd = gsplatEntity.getWorldTransform().data
+        const drawCorners = (corners) => {
+            const pos = []
+            for (const [i, j] of edges) {
+                pos.push(...corners[i], ...corners[j])
+            }
+            lineMesh.setPositions(pos)
+            lineMesh.update(PRIMITIVE_LINES, false)
+            app.renderNextFrame = true
+        }
 
-    //         const transformPoint = (p) => [
-    //             wd[0] * p[0] + wd[4] * p[1] + wd[8] * p[2] + wd[12],
-    //             wd[1] * p[0] + wd[5] * p[1] + wd[9] * p[2] + wd[13],
-    //             wd[2] * p[0] + wd[6] * p[1] + wd[10] * p[2] + wd[14],
-    //         ]
+        const cornersFromDimension = (entity, dim) => {
+            const { position, rotation, size } = dim
+            const he = { x: size.x / 2, y: size.y / 2, z: size.z / 2 }
 
-    //         const corners = [
-    //             [-he.x, -he.y, -he.z],
-    //             [he.x, -he.y, -he.z],
-    //             [-he.x, he.y, -he.z],
-    //             [he.x, he.y, -he.z],
-    //             [-he.x, -he.y, he.z],
-    //             [he.x, -he.y, he.z],
-    //             [-he.x, he.y, he.z],
-    //             [he.x, he.y, he.z],
-    //         ].map((p) => transformPoint([c.x + p[0], c.y + p[1], c.z + p[2]]))
+            const quat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+            const rd = new Mat4().setTRS(Vec3.ZERO, quat, Vec3.ONE).data
 
-    //         const edges = [
-    //             [0, 1],
-    //             [1, 3],
-    //             [3, 2],
-    //             [2, 0],
-    //             [4, 5],
-    //             [5, 7],
-    //             [7, 6],
-    //             [6, 4],
-    //             [0, 4],
-    //             [1, 5],
-    //             [2, 6],
-    //             [3, 7],
-    //         ]
+            const rotateOffset = (ox, oy, oz) => ({
+                x: rd[0] * ox + rd[4] * oy + rd[8] * oz,
+                y: rd[1] * ox + rd[5] * oy + rd[9] * oz,
+                z: rd[2] * ox + rd[6] * oy + rd[10] * oz,
+            })
 
-    //         const pos = []
-    //         for (const [i, j] of edges) {
-    //             pos.push(...corners[i], ...corners[j])
-    //         }
+            const wd = entity.getWorldTransform().data
+            return [
+                [-he.x, -he.y, -he.z],
+                [he.x, -he.y, -he.z],
+                [-he.x, he.y, -he.z],
+                [he.x, he.y, -he.z],
+                [-he.x, -he.y, he.z],
+                [he.x, -he.y, he.z],
+                [-he.x, he.y, he.z],
+                [he.x, he.y, he.z],
+            ].map(([ox, oy, oz]) => {
+                const r = rotateOffset(ox, oy, oz)
+                const lx = position.x + r.x
+                const ly = position.y + r.y
+                const lz = position.z + r.z
+                return [
+                    wd[0] * lx + wd[4] * ly + wd[8] * lz + wd[12],
+                    wd[1] * lx + wd[5] * ly + wd[9] * lz + wd[13],
+                    wd[2] * lx + wd[6] * ly + wd[10] * lz + wd[14],
+                ]
+            })
+        }
 
-    //         lineMesh.setPositions(pos)
-    //         lineMesh.update(PRIMITIVE_LINES, false)
-    //     }
+        const cornersFromAabb = (entity) => {
+            const aabb = entity.gsplat.customAabb
+            if (!aabb) return null
+            const c = aabb.center
+            const he = aabb.halfExtents
+            const wd = entity.getWorldTransform().data
+            return [
+                [-he.x, -he.y, -he.z],
+                [he.x, -he.y, -he.z],
+                [-he.x, he.y, -he.z],
+                [he.x, he.y, -he.z],
+                [-he.x, -he.y, he.z],
+                [he.x, -he.y, he.z],
+                [-he.x, he.y, he.z],
+                [he.x, he.y, he.z],
+            ].map(([ox, oy, oz]) => {
+                const lx = c.x + ox,
+                    ly = c.y + oy,
+                    lz = c.z + oz
+                return [
+                    wd[0] * lx + wd[4] * ly + wd[8] * lz + wd[12],
+                    wd[1] * lx + wd[5] * ly + wd[9] * lz + wd[13],
+                    wd[2] * lx + wd[6] * ly + wd[10] * lz + wd[14],
+                ]
+            })
+        }
+        const getCorners = (entity, dim) => (dim ? cornersFromDimension(entity, dim) : cornersFromAabb(entity))
 
-    //     app.on('update', () => {
-    //         const gsplatEntity = app.root.findByName('gsplat')
-    //         if (!gsplatEntity || !gsplatEntity.gsplat) return
-    //         updateMesh(gsplatEntity)
-    //         app.renderNextFrame = true
-    //     })
-    // })()
+        const drawDimensionBox = (dim) => {
+            const entity = getGsplat()
+            if (!entity) return
+            const corners = getCorners(entity, dim)
+            if (!corners) return
+            visible = true
+            bboxEntity.enabled = true
+            drawCorners(corners)
+        }
+
+        const hideDimensionBox = () => {
+            visible = false
+            bboxEntity.enabled = false
+            app.renderNextFrame = true
+        }
+
+        app.on('update', () => {
+            if (!visible) return
+            const entity = getGsplat()
+            if (!entity) return
+            const corners = getCorners(entity, viewer.global.settings.dimension)
+            if (corners) drawCorners(corners)
+        })
+
+        viewer.global.bbox = {
+            get center() {
+                return getGsplat()?.gsplat?.customAabb?.center ?? new Vec3()
+            },
+            get halfExtents() {
+                return getGsplat()?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
+            },
+            draw: drawDimensionBox,
+            hide: hideDimensionBox,
+        }
+    })()
 })
