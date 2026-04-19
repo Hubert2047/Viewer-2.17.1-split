@@ -109,110 +109,6 @@ function checkWebGL() {
     const gl = testCanvas.getContext('webgl2')
     return !!gl
 }
-function pickModelLocalPoint(x, y, camera) {
-    const from = camera.screenToWorld(x, y, camera.nearClip)
-    const to = camera.screenToWorld(x, y, camera.farClip)
-    const worldRay = new Ray(from, to.clone().sub(from).normalize())
-
-    let closestHitLocal = null
-    let closestDist = Infinity
-
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const localCenters = gsplatInstance.resource.centers
-    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
-    const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
-
-    const localRayOrigin = new Vec3()
-    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
-    const localRayDirection = new Vec3()
-    invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
-    localRayDirection.normalize()
-    const localRay = new Ray(localRayOrigin, localRayDirection)
-
-    const splatRadius = [0.03, 0.05, 0.1]
-
-    for (let k = 0; k < splatRadius.length; k++) {
-        for (let i = 0; i < localCenters.length; i += 3) {
-            const localPos = new Vec3(localCenters[i], localCenters[i + 1], localCenters[i + 2])
-            const distToSplat = localRay.direction.dot(localPos.clone().sub(localRay.origin))
-
-            if (distToSplat > 0) {
-                const pointOnRay = localRay.getPoint(distToSplat)
-                const dist = pointOnRay.distance(localPos)
-
-                if (dist < splatRadius[k]) {
-                    if (distToSplat < closestDist) {
-                        closestDist = distToSplat
-                        closestHitLocal = localPos.clone()
-                    }
-                }
-            }
-        }
-        if (closestHitLocal) break
-    }
-
-    if (closestHitLocal) {
-        const zTarget = closestHitLocal.z
-        const t = (zTarget - localRay.origin.z) / localRay.direction.z
-        return localRay.getPoint(t)
-    }
-
-    return findFallbackIntersectionPoint(localRay, localCenters, invWorldMatrix)
-}
-
-function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
-    const nearestPoint = findNearestSplatCenter(localRay, centers)
-    if (nearestPoint) return nearestPoint
-    const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
-    if (bboxIntersection) return bboxIntersection
-
-    return localRay.getPoint(5.0)
-}
-
-function findNearestSplatCenter(localRay, centers) {
-    let bestT = null
-    let bestDistSq = Infinity
-
-    for (let i = 0; i < centers.length; i += 3) {
-        const p = new Vec3(centers[i], centers[i + 1], centers[i + 2])
-        const v = p.clone().sub(localRay.origin)
-        const t = v.dot(localRay.direction)
-
-        if (t < 0) continue
-
-        const pointOnRay = localRay.getPoint(t)
-        const dx = pointOnRay.x - p.x
-        const dy = pointOnRay.y - p.y
-        const dz = pointOnRay.z - p.z
-        const distSq = dx * dx + dy * dy + dz * dz
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq
-            bestT = t
-        }
-    }
-    return bestT !== null ? localRay.getPoint(bestT) : null
-}
-
-function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
-    const meshInstance = modelEntity.gsplat.instance.meshInstance
-    const aabbWorld = meshInstance.aabb
-    const bboxCenterWorld = aabbWorld.center.clone()
-    const bboxCenterLocal = new Vec3()
-    invWorldMatrix.transformPoint(bboxCenterWorld, bboxCenterLocal)
-
-    const planeNormal = localRay.direction.clone()
-    return intersectRayPlane(localRay, bboxCenterLocal, planeNormal)
-}
-
-function intersectRayPlane(ray, planePoint, planeNormal) {
-    const denom = planeNormal.dot(ray.direction)
-    if (Math.abs(denom) < 1e-6) return null
-
-    const t = planeNormal.dot(planePoint.clone().sub(ray.origin)) / denom
-    if (t < 0) return null
-
-    return ray.getPoint(t)
-}
 async function exportHtml(name, data, fileAudioStore) {
     const newVersion = (data.settings.v ?? 0) + 1
 
@@ -452,6 +348,30 @@ const SVG_ICONS = {
         fill: 'currentColor',
         d: ['M4 20h2.5l1-3h9l1 3H20L13.5 4h-3L4 20zm4.6-5 2.4-6.4L13.4 15H8.6z'],
     },
+    showDimension: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'none',
+        attr: {
+            stroke: 'currentColor',
+            'stroke-width': '1.8',
+            'stroke-linejoin': 'round',
+            'stroke-linecap': 'round',
+        },
+        d: ['M12 3L20 7L12 11L4 7L12 3Z', 'M4 7V17L12 21V11', 'M20 7V17L12 21'],
+    },
+    hideDimension: {
+        size: '24',
+        vb: '0 0 24 24',
+        fill: 'none',
+        attr: {
+            stroke: 'currentColor',
+            'stroke-width': '1.2',
+            'stroke-dasharray': '2 2',
+            opacity: '0.6',
+        },
+        d: ['M12 3L20 7L12 11L4 7L12 3Z', 'M4 7V17L12 21V11', 'M20 7V17L12 21'],
+    },
 }
 
 function createSVG({ size, vb, fill, attr = {}, d }) {
@@ -480,17 +400,54 @@ function createButton(id, iconKey) {
     btn.appendChild(createSVG(SVG_ICONS[iconKey]))
     return btn
 }
-function createControlBotGroup() {
+function createControlBotGroup(settings, tooltip, events, dom) {
     const group = document.createElement('div')
     group.className = 'buttonGroup'
-    // buttons: [id, iconKey]
+    // buttons: [id, iconKey,tooltip, show, event, toggle]
+    const hasDimension = !!settings.dimensions
     const buttons = [
-        ['resetCamera', 'resetCamera'],
-        ['info', 'info'],
-        ['settings', 'settings'],
+        ['resetCamera', 'resetCamera', 'Reset Camera', true, 'inputEvent:reset'],
+        [
+            'showDimension',
+            'showDimension',
+            'Show Dimensions',
+            hasDimension,
+            true,
+            'inputEvent:show-dimensions',
+            'hideDimension',
+        ],
+        [
+            'hideDimension',
+            'hideDimension',
+            'HideDimensions',
+            hasDimension,
+            false,
+            'inputEvent:hide-dimensions',
+            'showDimension',
+        ],
+        ['info', 'info', 'Controls Guide', true, true, 'inputEvent:toggle-help'],
+        ['settings', 'settings', 'Settings', true, true, 'inputEvent:setting-panel'],
     ]
 
-    buttons.forEach(([id, icon]) => group.appendChild(createButton(id, icon)))
+    buttons.forEach(([id, icon, label, create, show, eventName, toggleId]) => {
+        if (!create) return
+        const btn = createButton(id, icon)
+        dom[id] = btn
+        group.appendChild(btn)
+        tooltip.register(btn, label, 'top')
+        btn.addEventListener('click', (e) => {
+            events.fire(eventName, e)
+            if (toggleId) {
+                const toggleBtn = group.querySelector(`#${toggleId}`)
+                if (toggleBtn) {
+                    btn.classList.add('hidden')
+                    toggleBtn.classList.remove('hidden')
+                }
+            }
+        })
+        if (show) btn.classList.remove('hidden')
+        else btn.classList.add('hidden')
+    })
     return group
 }
 function createHotspotActionGroup(tooltip, events, dom) {
@@ -500,8 +457,8 @@ function createHotspotActionGroup(tooltip, events, dom) {
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
     const buttons = [
-        ['stopHotspot', 'stopHotspot', 'Stop Auto Play', false, 'stop-auto'],
-        ['startHotspot', 'startHotspot', 'Auto Play', true, 'start-auto'],
+        ['stopHotspot', 'stopHotspot', 'Stop Auto Play', false, 'stop-auto', 'startHotspot'],
+        ['startHotspot', 'startHotspot', 'Auto Play', true, 'start-auto', 'stopHotspot'],
         ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-hotspot-btns'],
         ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-hotspot-btns'],
     ]
@@ -510,6 +467,13 @@ function createHotspotActionGroup(tooltip, events, dom) {
         dom[id] = el
         el.addEventListener('click', () => {
             events.fire(`hotspot:${eventname}`)
+            if (toggleId) {
+                const toggleBtn = group.querySelector(`#${toggleId}`)
+                if (toggleBtn) {
+                    btn.classList.add('hidden')
+                    toggleBtn.classList.remove('hidden')
+                }
+            }
         })
         if (defaultShow) el.classList.remove('hidden')
         else el.classList.add('hidden')
@@ -518,19 +482,26 @@ function createHotspotActionGroup(tooltip, events, dom) {
     })
     return group
 }
-function createControlsWrap() {
+function createControlsWrap(settings, tooltip, events, dom) {
     const wrap = document.createElement('div')
     wrap.id = 'controlsWrap'
+    dom[wrap.id] = wrap
     wrap.className = 'hidden'
-
     const container = document.createElement('div')
     container.id = 'buttonsContainer'
-
-    container.appendChild(createControlBotGroup())
+    dom[container.id] = container
+    const render = () => {
+        container.innerHTML = ''
+        container.appendChild(createControlBotGroup(settings, tooltip, events, dom))
+    }
+    render()
+    events.on('ui:re-render-control-wrap', render)
     wrap.appendChild(container)
     const hotspotcontainer = document.createElement('div')
     hotspotcontainer.id = 'hotspotContainer'
+    dom[hotspotcontainer.id] = hotspotcontainer
     wrap.appendChild(hotspotcontainer)
+
     return wrap
 }
 function createGroupWrapper(title) {
@@ -551,9 +522,9 @@ function createQualityGroup(app) {
     optionsEl.className = 'quality-options'
     const qualities = [
         { id: 'lowQuality', value: '0', label: 'Low' },
-        { id: '',           value: '1', label: 'Medium' },
-        { id: '',           value: '2', label: 'High' },
-        { id: '',           value: '3', label: 'Ultra', checked: true },
+        { id: '', value: '1', label: 'Medium' },
+        { id: '', value: '2', label: 'High' },
+        { id: '', value: '3', label: 'Ultra', checked: true },
     ]
     qualities.forEach(({ id, value, label, checked }) => {
         const labelEl = document.createElement('label')
@@ -613,13 +584,13 @@ function createSettingsPanel(app) {
     panel.appendChild(viewOptionContent)
     return panel
 }
-function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, step = '1', onChange } = {}) {
+function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, step = '1', onChange, onFocus } = {}) {
     const AXIS = ['x', 'y', 'z']
     const COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     const inputEls = {}
 
     const row = document.createElement('div')
-    row.classList.add('orientation-inputs')
+    row.classList.add('vec-inputs')
 
     AXIS.forEach((axis) => {
         const col = document.createElement('div')
@@ -635,6 +606,10 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
         input.value = defaultValues[axis].toFixed(1)
         input.step = step
         input.disabled = true
+
+        input.addEventListener('focus', () => {
+            onFocus?.()
+        })
 
         input.addEventListener('input', () => {
             onChange?.({
@@ -666,8 +641,9 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
         inputEls.y.value = y.toFixed(1)
         inputEls.z.value = z.toFixed(1)
     }
+
     const wrapper = document.createElement('div')
-    wrapper.classList.add('section-group-row')
+    wrapper.classList.add('section-group-row', 'vec-row')
 
     if (title) {
         const titleEl = document.createElement('span')
@@ -721,4 +697,177 @@ function checkPerformance(app, global) {
             }
         }
     })
+}
+function createColorPicker(label, initialColor, onColorChange, disabled = false) {
+    const group = document.createElement('div')
+    group.classList.add('section-group-row')
+
+    const labelEl = document.createElement('span')
+    labelEl.textContent = label
+
+    const input = document.createElement('input')
+    input.type = 'color'
+    input.classList.add('color-input', 'background-input')
+    input.value = initialColor
+    input.addEventListener('input', (e) => {
+        if (disabled) return
+        const newColor = e.target.value
+        input.value = newColor
+        if (onColorChange) onColorChange(newColor)
+    })
+
+    const applyDisabled = (val) => {
+        disabled = val
+        input.disabled = val
+        input.classList.toggle('color-picker-disabled', val)
+    }
+
+    applyDisabled(disabled)
+
+    group.appendChild(labelEl)
+    group.appendChild(input)
+
+    group.setDisabled = (val) => applyDisabled(val)
+    return { group, input, setDisabled: (val) => applyDisabled(val) }
+}
+function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = false) {
+    const block = document.createElement('div')
+    block.classList.add('color-alpha-block')
+
+    const swatch = this.makeColorSwatch(color, (v) => {
+        if (disabled) return
+        swatch.style.background = v
+        checkerColor.style.background = v
+        onChangeColor(v)
+    })
+
+    const bgRow = document.createElement('div')
+    bgRow.classList.add('color-alpha-bg-row')
+
+    const checkerWrap = document.createElement('div')
+    checkerWrap.classList.add('color-alpha-checker')
+
+    const checkerColor = document.createElement('div')
+    checkerColor.classList.add('color-alpha-checker-fill')
+    checkerColor.style.background = color
+    checkerColor.style.opacity = alpha
+
+    const colorInput = document.createElement('input')
+    colorInput.type = 'color'
+    colorInput.value = color
+    colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;'
+    colorInput.addEventListener('input', () => {
+        if (disabled) return
+        const v = colorInput.value
+        checkerColor.style.background = v
+        swatch.style.background = v
+        onChangeColor(v)
+    })
+
+    checkerWrap.appendChild(checkerColor)
+    checkerWrap.appendChild(colorInput)
+
+    const sliderWrap = document.createElement('div')
+    sliderWrap.classList.add('color-alpha-slider-wrap')
+
+    const slider = document.createElement('input')
+    const alphaVal = document.createElement('span')
+    alphaVal.classList.add('alpha-value')
+
+    const updateTrack = (v) => {
+        slider.style.background = `linear-gradient(
+            to right,
+            rgba(0,0,0,0.6) 0%,
+            rgba(0,0,0,0.6) ${v * 100}%,
+            rgba(0,0,0,0.08) ${v * 100}%,
+            rgba(0,0,0,0.08) 100%
+        )`
+        alphaVal.textContent = Math.round(v * 100) + '%'
+        checkerColor.style.opacity = v
+    }
+
+    slider.type = 'range'
+    slider.classList.add('alpha-slider')
+    slider.min = 0
+    slider.max = 1
+    slider.step = 0.05
+    slider.value = alpha
+    updateTrack(alpha)
+
+    slider.addEventListener('input', () => {
+        if (disabled) return
+        const v = parseFloat(slider.value)
+        updateTrack(v)
+        onChangeAlpha(v)
+    })
+
+    sliderWrap.appendChild(slider)
+    sliderWrap.appendChild(alphaVal)
+    bgRow.appendChild(checkerWrap)
+    bgRow.appendChild(sliderWrap)
+    block.appendChild(bgRow)
+
+    const applyDisabled = (val) => {
+        disabled = val
+        colorInput.disabled = val
+        slider.disabled = val
+        block.classList.toggle('color-alpha-disabled', val)
+        colorInput.style.cursor = val ? 'not-allowed' : 'pointer'
+    }
+
+    const setColor = (val) => {
+        colorInput.value = val
+        checkerColor.style.background = val
+        swatch.style.background = val
+    }
+
+    const setAlpha = (val) => {
+        slider.value = val
+        updateTrack(val)
+    }
+
+    applyDisabled(disabled)
+
+    block.setDisabled = (val) => applyDisabled(val)
+    block.setColor = (val) => setColor(val)
+    block.setAlpha = (val) => setAlpha(val)
+
+    return block
+}
+function makeColorSwatch(value, onChange) {
+    const label = document.createElement('label')
+    label.classList.add('color-swatch')
+    label.style.background = value
+    const input = document.createElement('input')
+    input.type = 'color'
+    input.value = value
+    input.style.cssText =
+        'position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);opacity:0;cursor:pointer;'
+    input.addEventListener('input', () => {
+        label.style.background = input.value
+        onChange(input.value)
+    })
+    label.appendChild(input)
+    return label
+}
+
+function transparentColor(color, alpha = 0.5) {
+    if (!color) return ''
+    const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+    if (m) return `rgba(${m[1]},${m[2]},${m[3]},${alpha})`
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
+    if (hex) {
+        const full =
+            hex[1].length === 3
+                ? hex[1]
+                      .split('')
+                      .map((c) => c + c)
+                      .join('')
+                : hex[1]
+        const r = parseInt(full.slice(0, 2), 16)
+        const g = parseInt(full.slice(2, 4), 16)
+        const b = parseInt(full.slice(4, 6), 16)
+        return `rgba(${r},${g},${b},${alpha})`
+    }
+    return color
 }

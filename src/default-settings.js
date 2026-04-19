@@ -16,4 +16,5 @@ const defaultSettings = {
     inertia: true,
     orientation: null,
     hotspots: [],
+    dimensions: null,
 }

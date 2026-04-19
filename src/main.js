@@ -553,7 +553,389 @@ function viewerSettingsSection(el, global) {
     renderGroup()
     el.appendChild(container)
 }
-function dimensionSection(el, global) {}
+function dimensionSection(el, global) {
+    const { events, settings } = global
+
+    let isEditing = false
+    let editDimension = settings.dimensions ?? null
+    let currentDimensions = settings.dimensions ?? null
+    let currentBoxLocalPos = { x: 0, y: 0, z: 0 }
+
+    const container = document.createElement('div')
+    container.classList.add('dimensions-wrap')
+
+    // ── No dimension row ──
+    const noDimRow = document.createElement('div')
+    noDimRow.classList.add('no-dimensions-row')
+    const noDimText = document.createElement('span')
+    noDimText.textContent = 'No dimensions configured'
+    noDimText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
+    const addBtn = document.createElement('button')
+    addBtn.classList.add('add-btn')
+    addBtn.textContent = '+ Add'
+
+    addBtn.onclick = () => {
+        const { rotation, position, size } = getDimensionsInfo(getVisiblePoints(modelEntity), true)
+        currentDimensions = {
+            boxColor: '#f95f4d',
+            background: { color: 'white', alpha: 0.8 },
+            foregroundColor: '#f95f4d',
+            position,
+            rotation,
+            size,
+            realSize: { x: 0, y: 0, z: 0 },
+            unit: 'cm',
+        }
+        editDimension = { ...currentDimensions }
+        settings.dimensions = currentDimensions
+        setDimConfigured(true)
+        setValues(currentDimensions)
+        events.fire('dimensions:add', currentDimensions)
+    }
+
+    noDimRow.appendChild(noDimText)
+    noDimRow.appendChild(addBtn)
+
+    // ── Has dimension ──
+    const hasDimWrap = document.createElement('div')
+    hasDimWrap.classList.add('dimensions-row')
+
+    // ── Group 0: Display ──
+    const displayGroup = document.createElement('div')
+    displayGroup.classList.add('section-group')
+    const displayGroupTitle = document.createElement('div')
+    displayGroupTitle.classList.add('section-group-title')
+    displayGroupTitle.textContent = 'Display'
+    displayGroup.appendChild(displayGroupTitle)
+
+    // Color picker
+    const {
+        setDisabled: setBoxColorDisabled,
+        group: boxColorGroup,
+        input: boxColorInput,
+    } = createColorPicker('Box Color', currentDimensions?.boxColor || '#ffffff', (color) => {
+        currentDimensions = { ...currentDimensions, boxColor: color }
+        events.fire('dimensions:change', currentDimensions)
+    })
+    const {
+        setDisabled: setTextColorDisabled,
+        group: textColor,
+        input: textColorInput,
+    } = createColorPicker('Text Color', currentDimensions?.foregroundColor || '#ffffff', (color) => {
+        currentDimensions = { ...currentDimensions, foregroundColor: color }
+        events.fire('dimensions:change', currentDimensions)
+    })
+    const backgroundRow = document.createElement('div')
+    backgroundRow.classList.add('section-group-row')
+    const labelEl = document.createElement('span')
+    labelEl.style.cssText = 'min-width:160px'
+    labelEl.textContent = 'Text Background'
+    const backgroundColor = makeColorAlpha(
+        currentDimensions?.background.color || '#000000',
+        currentDimensions?.background.alpha ?? 0.8,
+        (color) => {
+            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, color } }
+            events.fire('dimensions:change', currentDimensions)
+        },
+        (alpha) => {
+            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, alpha } }
+            events.fire('dimensions:change', currentDimensions)
+        },
+    )
+    backgroundRow.appendChild(labelEl)
+    backgroundRow.appendChild(backgroundColor)
+
+    displayGroup.appendChild(boxColorGroup)
+    displayGroup.appendChild(textColor)
+    displayGroup.appendChild(backgroundRow)
+
+    // ── Group 1: Box Transform ──
+    const boxGroup = document.createElement('div')
+    boxGroup.classList.add('section-group')
+    const boxGroupTitle = document.createElement('div')
+    boxGroupTitle.classList.add('section-group-title')
+    boxGroupTitle.textContent = 'Box transform'
+    boxGroup.appendChild(boxGroupTitle)
+    const {
+        row: positionRow,
+        setEditable: setPosEditable,
+        setValues: setPosValues,
+    } = createVec3Inputs({
+        title: 'Position',
+        step: 0.5,
+        onFocus: () => {
+            if (!currentDimensions) return
+            const { x, y, z } = currentDimensions.position
+            const rot = currentDimensions.rotation
+            const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
+            const right = q.transformVector(new Vec3(1, 0, 0))
+            const up = q.transformVector(new Vec3(0, 1, 0))
+            const forward = q.transformVector(new Vec3(0, 0, 1))
+            currentBoxLocalPos = {
+                x: x * right.x + y * right.y + z * right.z,
+                y: x * up.x + y * up.y + z * up.z,
+                z: x * forward.x + y * forward.y + z * forward.z,
+            }
+            setPosValues(currentBoxLocalPos)
+        },
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentBoxLocalPos = { x, y, z }
+            const rot = currentDimensions.rotation
+            const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
+            const right = q.transformVector(new Vec3(1, 0, 0))
+            const up = q.transformVector(new Vec3(0, 1, 0))
+            const forward = q.transformVector(new Vec3(0, 0, 1))
+            const newPos = {
+                x: x * right.x + y * up.x + z * forward.x,
+                y: x * right.y + y * up.y + z * forward.y,
+                z: x * right.z + y * up.z + z * forward.z,
+            }
+            currentDimensions = { ...currentDimensions, position: newPos }
+            events.fire('dimensions:change', currentDimensions)
+        },
+    })
+    events.on('dimensions:position-synced', ({ x, y, z }) => {
+        const rot = currentDimensions.rotation
+        const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
+        const right = q.transformVector(new Vec3(1, 0, 0))
+        const up = q.transformVector(new Vec3(0, 1, 0))
+        const forward = q.transformVector(new Vec3(0, 0, 1))
+        currentBoxLocalPos = {
+            x: x * right.x + y * right.y + z * right.z,
+            y: x * up.x + y * up.y + z * up.z,
+            z: x * forward.x + y * forward.y + z * forward.z,
+        }
+        setPosValues(currentBoxLocalPos)
+        currentDimensions = { ...currentDimensions, position: { x, y, z } }
+        events.fire('dimensions:change', currentDimensions)
+    })
+
+    const {
+        row: rotationRow,
+        setEditable: setRotEditable,
+        setValues: setRotValues,
+    } = createVec3Inputs({
+        title: 'Rotation',
+        step: 0.5,
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
+            events.fire('dimensions:change', currentDimensions)
+        },
+    })
+    events.on('dimensions:eulersynced', ({ x, y, z }) => {
+        setRotValues({ x, y, z })
+        currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
+        events.fire('dimensions:change', currentDimensions)
+    })
+
+    const {
+        row: sizeRow,
+        setEditable: setSizeEditable,
+        setValues: setSizeValues,
+    } = createVec3Inputs({
+        title: 'Size',
+        step: 0.5,
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimensions = { ...currentDimensions, size: { x, y, z } }
+            events.fire('dimensions:change', currentDimensions)
+        },
+    })
+
+    // Rotation gizmo toggle
+    const rotGizmoRow = document.createElement('div')
+    rotGizmoRow.classList.add('section-group-row')
+    rotGizmoRow.style.display = 'none'
+    const rotGizmoLabel = document.createElement('span')
+    rotGizmoLabel.textContent = 'Rotation Gizmo'
+    const rotGizmoTrack = document.createElement('div')
+    rotGizmoTrack.classList.add('toggle')
+    const rotGizmoKnob = document.createElement('div')
+    rotGizmoKnob.classList.add('toggle-knob')
+    rotGizmoTrack.appendChild(rotGizmoKnob)
+    const setRotGizmo = (on) => {
+        rotGizmoTrack.classList.toggle('active', on)
+        events.fire('dimensions:gizmo-rotation', on)
+    }
+    rotGizmoTrack.addEventListener('click', () => setRotGizmo(!rotGizmoTrack.classList.contains('active')))
+    rotGizmoRow.appendChild(rotGizmoLabel)
+    rotGizmoRow.appendChild(rotGizmoTrack)
+
+    boxGroup.appendChild(positionRow)
+    boxGroup.appendChild(rotationRow)
+    boxGroup.appendChild(sizeRow)
+    boxGroup.appendChild(rotGizmoRow)
+
+    // ── Group 2: Real Dimensions ──
+    const realGroup = document.createElement('div')
+    realGroup.classList.add('section-group')
+    const realGroupTitle = document.createElement('div')
+    realGroupTitle.classList.add('section-group-title')
+    realGroupTitle.textContent = 'Real dimensions'
+    realGroup.appendChild(realGroupTitle)
+
+    const realUnitRow = document.createElement('div')
+    realUnitRow.classList.add('section-group-row')
+    const realUnitLabel = document.createElement('span')
+    realUnitLabel.textContent = 'Unit'
+    const realUnitSelect = document.createElement('select')
+    realUnitSelect.classList.add('unit-select')
+    ;['mm', 'cm', 'm', 'inch'].forEach((u) => {
+        const opt = document.createElement('option')
+        opt.value = u
+        opt.textContent = u
+        if (u === (settings.realSizeUnit ?? 'cm')) opt.selected = true
+        realUnitSelect.appendChild(opt)
+    })
+    const setRealUnitDisabled = (val) => {
+        realUnitSelect.disabled = val
+        realUnitSelect.classList.toggle('unit-select-disabled', val)
+    }
+    realUnitSelect.onchange = (e) => {
+        currentDimensions = { ...currentDimensions, unit: e.target.value }
+        events.fire('dimensions:change', currentDimensions)
+    }
+    realUnitRow.appendChild(realUnitLabel)
+    realUnitRow.appendChild(realUnitSelect)
+
+    const {
+        row: realSizeRow,
+        setEditable: setRealEditable,
+        setValues: setRealValues,
+    } = createVec3Inputs({
+        title: 'Size',
+        step: 0.5,
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            currentDimensions = { ...currentDimensions, realSize: { x, y, z } }
+            events.fire('dimensions:change', currentDimensions)
+        },
+    })
+    if (settings.dimensions) setRealValues(settings.dimensions.realSize)
+    realGroup.appendChild(realSizeRow)
+    realGroup.appendChild(realUnitRow)
+
+    // ── Shared helpers ──
+    const setValues = (dim) => {
+        if (!dim) return
+        setPosValues(dim.position)
+        setRotValues(dim.rotation)
+        setSizeValues(dim.size)
+        setRealValues(dim.realSize)
+        boxColorInput.value = dim.boxColor
+        textColorInput.value = dim.foregroundColor
+        realUnitSelect.value = dim.unit
+        backgroundColor.setColor(dim.background.color)
+        backgroundColor.setAlpha(dim.background.alpha)
+    }
+
+    const setEditable = (on) => {
+        setPosEditable(on)
+        setRotEditable(on)
+        setSizeEditable(on)
+        setRealEditable(on)
+        setRealUnitDisabled(!on)
+        setBoxColorDisabled(!on)
+        setTextColorDisabled(!on)
+        backgroundColor.setDisabled(!on)
+    }
+
+    // ── Buttons ──
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
+    const onEdit = () => {
+        isEditing = true
+        setEditable(true)
+        rotGizmoRow.style.display = 'flex'
+        renderBtns()
+        events.fire('dimensions:edit', currentDimensions)
+    }
+
+    const onCancel = () => {
+        isEditing = false
+        setEditable(false)
+        rotGizmoRow.style.display = 'none'
+        setRotGizmo(false)
+        if (editDimension) setValues(editDimension)
+        currentDimensions = { ...editDimension }
+        renderBtns()
+        events.fire('dimensions:cancel')
+    }
+
+    const renderBtns = () => {
+        btnRow.innerHTML = ''
+        if (isEditing) {
+            const btnCancel = document.createElement('button')
+            btnCancel.classList.add('btn', 'cancel-btn')
+            btnCancel.textContent = 'Cancel'
+            btnCancel.onclick = onCancel
+
+            const btnApply = document.createElement('button')
+            btnApply.classList.add('btn', 'confirm-btn')
+            btnApply.textContent = 'Apply'
+            btnApply.onclick = () => {
+                editDimension = { ...currentDimensions }
+                settings.dimensions = { ...currentDimensions }
+                isEditing = false
+                setEditable(false)
+                rotGizmoRow.style.display = 'none'
+                setRotGizmo(false)
+                renderBtns()
+                events.fire('dimensions:save', currentDimensions)
+            }
+
+            btnRow.appendChild(btnCancel)
+            btnRow.appendChild(btnApply)
+        } else {
+            const btnEdit = document.createElement('button')
+            btnEdit.classList.add('btn')
+            btnEdit.textContent = 'Edit'
+            btnEdit.onclick = onEdit
+
+            const btnDelete = document.createElement('button')
+            btnDelete.classList.add('btn', 'delete-btn')
+            btnDelete.title = 'Delete'
+            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>`
+            btnDelete.onclick = () => {
+                settings.dimensions = null
+                editDimension = null
+                currentDimensions = null
+                setDimConfigured(false)
+                events.fire('dimensions:delete')
+            }
+
+            btnRow.appendChild(btnEdit)
+            btnRow.appendChild(btnDelete)
+        }
+    }
+
+    hasDimWrap.appendChild(displayGroup)
+    hasDimWrap.appendChild(boxGroup)
+    hasDimWrap.appendChild(realGroup)
+    hasDimWrap.appendChild(btnRow)
+
+    // ── Toggle configured state ──
+    const setDimConfigured = (has) => {
+        noDimRow.style.display = has ? 'none' : 'flex'
+        hasDimWrap.style.display = has ? 'flex' : 'none'
+    }
+
+    // ── Assemble ──
+    container.appendChild(noDimRow)
+    container.appendChild(hasDimWrap)
+    el.appendChild(container)
+
+    renderBtns()
+    setEditable(false)
+    setDimConfigured(!!settings.dimensions)
+    if (settings.dimensions) setValues(settings.dimensions)
+}
 function exportSection(el, global) {
     const filenameField = document.createElement('div')
     filenameField.classList.add('hotspot-field')
@@ -631,14 +1013,15 @@ function createSidebar(global, dom) {
             events,
         }),
     )
-    // sidebar.appendChild(
-    //     createSection({
-    //         id: 'dimension',
-    //         title: 'Dimensions',
-    //         classname: 'dimension-section',
-    //         body: (el) => dimensionSection(el, global, dom),
-    //     }),
-    // )
+    sidebar.appendChild(
+        createSection({
+            id: 'dimension',
+            title: 'Dimensions',
+            classname: 'dimension-section',
+            body: (el) => dimensionSection(el, global, dom),
+            events,
+        }),
+    )
     sidebar.appendChild(
         createSection({
             id: 'export',
@@ -656,26 +1039,18 @@ function createSidebar(global, dom) {
 }
 const initUI = (global) => {
     const { config, events, state, settings } = global
+    const tooltip = new Tooltip(document.getElementById('tooltip'))
     const ui = document.getElementById('ui')
-    ui.appendChild(createControlsWrap(events))
     ui.appendChild(createInfoPanel(settings, events))
     ui.appendChild(createSettingsPanel(global.app))
     const dom = [
         'ui',
-        'resetCamera',
-        'controlsWrap',
-        'info',
         'infoPanel',
         'desktopTab',
         'touchTab',
         'desktopInfoPanel',
         'touchInfoPanel',
-        'handle',
-        'time',
         'buttonsContainer',
-        'play',
-        'pause',
-        'settings',
         'loadingText',
         'loadingBar',
         'tooltip',
@@ -686,17 +1061,13 @@ const initUI = (global) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
-    const tooltip = new Tooltip(dom.tooltip)
     document.body.appendChild(dom.tooltip)
     new HotspotManager({ global, dom, tooltip })
     let sidebar
     if (config.editable) {
         sidebar = createSidebar(global, dom)
     }
-    // tooltips
-    tooltip.register(dom.resetCamera, 'Reset Camera', 'top')
-    tooltip.register(dom.settings, 'Settings', 'top')
-    tooltip.register(dom.info, 'Controls Guide', 'top')
+    dom.ui.appendChild(createControlsWrap(settings, tooltip, events, dom))
     if (settings.hotspots.length > 0) {
         dom.buttonsContainer.appendChild(createHotspotActionGroup(tooltip, events, dom))
     }
@@ -754,12 +1125,15 @@ const initUI = (global) => {
             dom.settingsPanel.classList.add('hidden')
         }
     }
-    dom.info.addEventListener('click', toggleHelp)
+    events.on('inputEvent:toggle-help', () => toggleHelp())
+    events.on('inputEvent:show-dimensions', () => {
+        global.bbox.draw(global.settings.dimensions)
+    })
+    events.on('inputEvent:hide-dimensions', () => {
+        global.bbox.hide()
+    })
     dom.infoPanel.addEventListener('pointerdown', () => {
         dom.infoPanel.classList.add('hidden')
-    })
-    dom.resetCamera.addEventListener('click', () => {
-        events.fire('inputEvent', 'reset')
     })
     events.on('inputEvent', (event) => {
         if (event === 'toggleHelp') {
@@ -810,7 +1184,7 @@ const initUI = (global) => {
         annotationVisible = false
         showUI()
     })
-    dom.settings.addEventListener('click', () => {
+    events.on('inputEvent:setting-panel', () => {
         const panel = dom.settingsPanel
         panel.classList.toggle('hidden')
         if (panel.classList.contains('hidden')) return
@@ -860,6 +1234,7 @@ const initUI = (global) => {
             viewUrl.pathname = '/view'
         }
     }
+    return dom
 }
 
 /**
@@ -1706,8 +2081,8 @@ class CameraManager {
     minDistance = 11
     // holds the camera state
     camera = new Camera()
-    constructor(global, bbox, entity, collider = null) {
-        const { events, settings, state, app } = global
+    constructor(global, bbox, collider = null) {
+        const { events, settings, state } = global
         const defaultFov = 50
         const resetCamera = createFrameCamera(bbox, defaultFov)
         const getAnimTrack = (initial, isObjectExperience) => {
@@ -1792,6 +2167,9 @@ class CameraManager {
                 state.animationTime = this.controllers.anim.animState.cursor.value
             }
         }
+        events.on('inputEvent:reset', () => {
+            this.controllers.ortery.reset()
+        })
         // handle input events
         events.on('inputEvent', (eventName, event) => {
             switch (eventName) {
@@ -1799,9 +2177,6 @@ class CameraManager {
                     state.cameraMode = 'orbit'
                     this.controllers.orbit.goto(frameCamera)
                     startTransition()
-                    break
-                case 'reset':
-                    this.controllers.ortery.reset()
                     break
                 case 'playPause':
                     if (state.hasAnimation) {
@@ -3491,8 +3866,9 @@ class Viewer {
     voxelOverlay = null
     walkCursor = null
     origChunks
-    constructor(global, gsplatLoad, skyboxLoad, voxelLoad) {
+    constructor(global, gsplatLoad, skyboxLoad, voxelLoad, dom) {
         this.global = global
+        this.dom = dom
         const { app, settings, config, events, state, camera } = global
         const { graphicsDevice } = app
         // enable anonymous CORS for image loading in safari
@@ -3580,15 +3956,7 @@ class Viewer {
             cameraEntity.setEulerAngles(camera.angles)
             cameraEntity.camera.fov = camera.fov
             cameraEntity.camera.horizontalFov = graphicsDevice.width > graphicsDevice.height
-            // fit clipping planes to bounding box
-            const boundRadius = sceneBound.halfExtents.length()
-            // calculate the forward distance between the camera to the bound center
             vec.sub2(sceneBound.center, camera.position)
-            const dist = vec.dot(cameraEntity.forward)
-            const far = Math.max(dist + boundRadius, 1e-2)
-            const near = Math.max(dist - boundRadius, far / (1024 * 16))
-            cameraEntity.camera.farClip = far
-            cameraEntity.camera.nearClip = near
         }
         // handle application update
         app.on('update', (deltaTime) => {
@@ -3640,7 +4008,7 @@ class Viewer {
                     app.renderNextFrame = true
                 })
             }
-            this.cameraManager = new CameraManager(global, sceneBound, camera, collider)
+            this.cameraManager = new CameraManager(global, sceneBound, collider)
             const rotationGizmo = new RotationGizmo(app, camera)
             const pivotDot = new PivotDot(app, camera, modelEntity)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
@@ -3648,6 +4016,7 @@ class Viewer {
                     events.fire('pivot:positionsynced', pos)
                 },
             })
+            let dimensionRotatable = null
 
             events.on('pivot:enable-edit', ({ position, enable }) => {
                 if (enable) {
@@ -3677,9 +4046,48 @@ class Viewer {
                 else pivotGizmo.disable()
             })
             events.on('gizmo:rotation-enable', (enable) => {
-                if (enable)
-                    rotationGizmo.enable(new EntityRotatable(modelEntity, events))
+                if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
                 else rotationGizmo.disable()
+            })
+            events.on('dimensions:gizmo-rotation', (enabled) => {
+                if (enabled) {
+                    dimensionRotatable = new DimensionRotatable(
+                        app,
+                        () => global.settings.dimensions,
+                        ({ x, y, z }) => {
+                            events.fire('dimensions:eulersynced', { x, y, z })
+                        },
+                    )
+                    rotationGizmo.enable(dimensionRotatable)
+                } else {
+                    rotationGizmo.disable()
+                    dimensionRotatable = null
+                }
+            })
+            // Redraw bbox theo events
+            events.on('dimensions:add', (dim) => {
+                global.bbox.draw(dim)
+                events.fire('ui:re-render-control-wrap')
+                this.dom.showDimension.classList.add('hidden')
+                this.dom.hideDimension.classList.remove('hidden')
+            })
+            events.on('dimensions:edit', (dim) => {
+                global.bbox.draw(dim)
+                this.dom.showDimension.classList.add('hidden')
+                this.dom.hideDimension.classList.remove('hidden')
+            })
+            events.on('dimensions:change', (dim) => {
+                global.bbox.draw(dim)
+            })
+            events.on('dimensions:save', (dim) => global.bbox.draw(dim))
+            events.on('dimensions:cancel', () => {
+                global.bbox.hide()
+                this.dom.showDimension.classList.remove('hidden')
+                this.dom.hideDimension.classList.add('hidden')
+            })
+            events.on('dimensions:delete', () => {
+                global.bbox.hide()
+                events.fire('ui:re-render-control-wrap')
             })
 
             events.on('viewer:lock-zoom-in', (value) => {
@@ -4244,7 +4652,7 @@ const main = async (canvas, settingsJson, config) => {
         initXr(global)
     }
     // Initialize user interface
-    initUI(global)
+    const dom = initUI(global)
     // Load model
     const gsplatLoad = loadGsplat(app, config, events, (progress) => {
         state.progress = progress
@@ -4279,7 +4687,7 @@ const main = async (canvas, settingsJson, config) => {
             },
         )
     }
-    return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad)
+    return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad, dom)
 }
 const { poster } = config
 // Show the poster image
@@ -4301,100 +4709,377 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-    // const bboxSetup = (() => {
-    //     const app = viewer.global.app
-    //     const layers = app.scene.layers
-    //     const worldLayer = layers.getLayerByName('World')
 
-    //     const layerBBox = new Layer({ name: 'BBox' })
-    //     const worldIndex = layers.getOpaqueIndex(worldLayer)
-    //     layers.insert(layerBBox, worldIndex)
+    const bboxSetup = (() => {
+        let currentDim = null
+        const { app, config } = viewer.global
+        const layers = app.scene.layers
+        const worldLayer = layers.getLayerByName('World')
 
-    //     const cam = viewer.global.camera
-    //     cam.camera.layers = [...cam.camera.layers, layerBBox.id]
+        const layerBBox = new Layer({ name: 'BBox' })
+        const worldIndex = layers.getOpaqueIndex(worldLayer)
+        layers.insert(layerBBox, worldIndex)
 
-    //     const lineMesh = new Mesh(app.graphicsDevice)
+        const cam = viewer.global.camera
+        cam.camera.layers = [...cam.camera.layers, layerBBox.id]
 
-    //     const createLineMat = (opacity) => {
-    //         const mat = new StandardMaterial()
-    //         mat.emissive = new Color(0, 1, 0.6)
-    //         mat.diffuse = new Color(0, 0, 0)
-    //         mat.opacity = opacity
-    //         mat.blendType = BLEND_NORMAL
-    //         mat.depthTest = true
-    //         mat.depthWrite = true
-    //         mat.useLighting = false
-    //         mat.cull = CULLFACE_NONE
-    //         mat.update()
-    //         return mat
-    //     }
+        const lineMesh = new Mesh(app.graphicsDevice)
 
-    //     const matBBox = createLineMat(1.0)
-    //     const bboxEntity = new Entity('bbox')
-    //     app.root.addChild(bboxEntity)
+        let lineMat = new StandardMaterial()
+        lineMat.diffuse = new Color(0, 0, 0)
+        lineMat.blendType = BLEND_NORMAL
+        lineMat.depthTest = true
+        lineMat.depthWrite = true
+        lineMat.useLighting = false
+        lineMat.cull = CULLFACE_NONE
+        lineMat.emissive = new Color(normalizeColor('#00ffcc'))
+        lineMat.update()
 
-    //     const mi = new MeshInstance(lineMesh, matBBox)
-    //     mi.cull = false
+        const bboxEntity = new Entity('bbox')
+        app.root.addChild(bboxEntity)
+        const mi = new MeshInstance(lineMesh, lineMat)
+        mi.cull = false
+        bboxEntity.addComponent('render', {
+            layers: [layerBBox.id],
+            meshInstances: [mi],
+        })
 
-    //     bboxEntity.addComponent('render', {
-    //         layers: [layerBBox.id],
-    //         meshInstances: [mi],
-    //     })
+        const canvas = app.graphicsDevice.canvas
 
-    //     const updateMesh = (gsplatEntity) => {
-    //         const aabb = gsplatEntity.gsplat.customAabb
-    //         if (!aabb) return
+        // Create SVG overlay for lines
+        const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        svgOverlay.style.cssText =
+            'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;overflow:visible;'
+        document.body.appendChild(svgOverlay)
 
-    //         const c = aabb.center
-    //         const he = aabb.halfExtents
-    //         const wd = gsplatEntity.getWorldTransform().data
+        // Create lines and labels
+        const elements = {}
+        for (const axis of ['x', 'y', 'z']) {
+            // Line from edge to label (will be updated to point to center of label)
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+            line.setAttribute('stroke-width', '1.5')
+            line.setAttribute('stroke-dasharray', '4,3')
+            line.style.display = 'none'
+            svgOverlay.appendChild(line)
 
-    //         const transformPoint = (p) => [
-    //             wd[0] * p[0] + wd[4] * p[1] + wd[8] * p[2] + wd[12],
-    //             wd[1] * p[0] + wd[5] * p[1] + wd[9] * p[2] + wd[13],
-    //             wd[2] * p[0] + wd[6] * p[1] + wd[10] * p[2] + wd[14],
-    //         ]
+            // Small dot at edge position
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+            dot.setAttribute('r', '4')
+            dot.style.display = 'none'
+            svgOverlay.appendChild(dot)
 
-    //         const corners = [
-    //             [-he.x, -he.y, -he.z],
-    //             [he.x, -he.y, -he.z],
-    //             [-he.x, he.y, -he.z],
-    //             [he.x, he.y, -he.z],
-    //             [-he.x, -he.y, he.z],
-    //             [he.x, -he.y, he.z],
-    //             [-he.x, he.y, he.z],
-    //             [he.x, he.y, he.z],
-    //         ].map((p) => transformPoint([c.x + p[0], c.y + p[1], c.z + p[2]]))
+            // Label
+            const label = document.createElement('div')
+            label.style.cssText = `
+                position:fixed;
+                font-size:14px;
+                font-family:monospace;
+                font-weight:bold;
+                padding:8px;
+                border-radius:4px;
+                white-space:nowrap;
+                pointer-events:none;
+                display:none;
+                z-index:999;
+                box-shadow:0 1px 3px rgba(0,0,0,0.3);
+        `
+            document.body.appendChild(label)
 
-    //         const edges = [
-    //             [0, 1],
-    //             [1, 3],
-    //             [3, 2],
-    //             [2, 0],
-    //             [4, 5],
-    //             [5, 7],
-    //             [7, 6],
-    //             [6, 4],
-    //             [0, 4],
-    //             [1, 5],
-    //             [2, 6],
-    //             [3, 7],
-    //         ]
+            elements[axis] = { line, dot, label }
+        }
 
-    //         const pos = []
-    //         for (const [i, j] of edges) {
-    //             pos.push(...corners[i], ...corners[j])
-    //         }
+        const worldToScreen = (wx, wy, wz) => {
+            const sp = viewer.global.camera.camera.worldToScreen(new Vec3(wx, wy, wz))
+            const rect = canvas.getBoundingClientRect()
+            return {
+                x: rect.left + sp.x,
+                y: rect.top + sp.y,
+            }
+        }
 
-    //         lineMesh.setPositions(pos)
-    //         lineMesh.update(PRIMITIVE_LINES, false)
-    //     }
+        // Get the 8 corners of the box in world space
+        const getWorldCorners = (dim) => {
+            const { position, rotation, size } = dim
+            const center = new Vec3(position.x, position.y, position.z)
+            const he = { x: size.x / 2, y: size.y / 2, z: size.z / 2 }
 
-    //     app.on('update', () => {
-    //         const gsplatEntity = app.root.findByName('gsplat')
-    //         if (!gsplatEntity || !gsplatEntity.gsplat) return
-    //         updateMesh(gsplatEntity)
-    //         app.renderNextFrame = true
-    //     })
-    // })()
+            const localCorners = [
+                new Vec3(-he.x, -he.y, -he.z),
+                new Vec3(he.x, -he.y, -he.z),
+                new Vec3(-he.x, he.y, -he.z),
+                new Vec3(he.x, he.y, -he.z),
+                new Vec3(-he.x, -he.y, he.z),
+                new Vec3(he.x, -he.y, he.z),
+                new Vec3(-he.x, he.y, he.z),
+                new Vec3(he.x, he.y, he.z),
+            ]
+
+            const quat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+            const worldMatrix = modelEntity.getWorldTransform()
+
+            return localCorners.map((local) => {
+                const rotated = quat.clone().transformVector(local)
+                const worldPos = new Vec3(center.x + rotated.x, center.y + rotated.y, center.z + rotated.z)
+                const final = new Vec3()
+                worldMatrix.transformPoint(worldPos, final)
+                return final
+            })
+        }
+
+        // Get the midpoint of the edge that is most aligned with the camera view direction
+        const getBestEdgeMidpoint = (corners, axis, cameraDir) => {
+            const axisEdges = {
+                x: [
+                    [0, 1],
+                    [2, 3],
+                    [4, 5],
+                    [6, 7],
+                ],
+                y: [
+                    [0, 2],
+                    [1, 3],
+                    [4, 6],
+                    [5, 7],
+                ],
+                z: [
+                    [0, 4],
+                    [1, 5],
+                    [2, 6],
+                    [3, 7],
+                ],
+            }
+
+            let bestMid = null
+            let bestScore = -Infinity
+
+            for (const [i, j] of axisEdges[axis]) {
+                const p1 = corners[i]
+                const p2 = corners[j]
+                const mid = new Vec3((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2)
+
+                const toCamera = new Vec3(
+                    viewer.global.camera.getPosition().x - mid.x,
+                    viewer.global.camera.getPosition().y - mid.y,
+                    viewer.global.camera.getPosition().z - mid.z,
+                ).normalize()
+
+                const edgeDir = new Vec3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z).normalize()
+                const perpendicularity = Math.abs(edgeDir.dot(toCamera))
+                const dist = viewer.global.camera.getPosition().distance(mid)
+                const distanceScore = 1 / (dist + 0.1)
+                const score = perpendicularity * 2 + distanceScore
+
+                if (score > bestScore) {
+                    bestScore = score
+                    bestMid = mid
+                }
+            }
+
+            return bestMid
+        }
+
+        // Update line to point to center of label
+        const updateLineToLabelCenter = (line, edgeScreen, labelElement) => {
+            // Get label's bounding rect to find its center
+            const labelRect = labelElement.getBoundingClientRect()
+            const labelCenterX = labelRect.left + labelRect.width / 2
+            const labelCenterY = labelRect.top + labelRect.height / 2
+
+            line.setAttribute('x1', edgeScreen.x)
+            line.setAttribute('y1', edgeScreen.y)
+            line.setAttribute('x2', labelCenterX)
+            line.setAttribute('y2', labelCenterY)
+        }
+
+        const updateLabels = (corners, dim) => {
+            if (!dim?.realSize) return
+            const cameraDir = new Vec3(0, 0, -1)
+            viewer.global.camera.getRotation().transformVector(cameraDir, cameraDir)
+            const screenCorners = corners.map((c) => worldToScreen(c.x, c.y, c.z))
+            const screenMinX = Math.min(...screenCorners.map((c) => c.x))
+            const screenMaxX = Math.max(...screenCorners.map((c) => c.x))
+            const screenMinY = Math.min(...screenCorners.map((c) => c.y))
+            const screenMaxY = Math.max(...screenCorners.map((c) => c.y))
+            const screenCenterX = (screenMinX + screenMaxX) / 2
+            const screenCenterY = (screenMinY + screenMaxY) / 2
+
+            for (const axis of ['x', 'y', 'z']) {
+                const midpoint = getBestEdgeMidpoint(corners, axis, cameraDir)
+                if (!midpoint) continue
+
+                const edgeScreen = worldToScreen(midpoint.x, midpoint.y, midpoint.z)
+
+                const dx = edgeScreen.x - screenCenterX
+                const dy = edgeScreen.y - screenCenterY
+                const len = Math.sqrt(dx * dx + dy * dy) || 1
+
+                const { line, dot, label } = elements[axis]
+
+                const value = dim.realSize[axis]
+                const unit = dim.unit || 'cm'
+                const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
+                const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
+                label.textContent = config.editable ? `${axis}: ${mainText}` : mainText
+                label.style.display = 'block'
+                label.style.left = '-9999px'
+                label.style.top = '-9999px'
+
+                const lw = label.offsetWidth
+                const lh = label.offsetHeight
+
+                const MARGIN = 16
+                let ox = dx / len
+                let oy = dy / len
+
+                let extraOffset = 8
+                if (ox > 0)
+                    extraOffset = Math.max(
+                        extraOffset,
+                        screenMaxX - edgeScreen.x + lw / 2 + MARGIN - (screenMaxX - edgeScreen.x),
+                    )
+                if (ox < 0)
+                    extraOffset = Math.max(
+                        extraOffset,
+                        edgeScreen.x - screenMinX + lw / 2 + MARGIN - (edgeScreen.x - screenMinX),
+                    )
+                if (oy > 0)
+                    extraOffset = Math.max(
+                        extraOffset,
+                        screenMaxY - edgeScreen.y + lh / 2 + MARGIN - (screenMaxY - edgeScreen.y),
+                    )
+                if (oy < 0)
+                    extraOffset = Math.max(
+                        extraOffset,
+                        edgeScreen.y - screenMinY + lh / 2 + MARGIN - (edgeScreen.y - screenMinY),
+                    )
+                const offset = Math.max(40, extraOffset)
+                const labelCX = edgeScreen.x + ox * offset
+                const labelCY = edgeScreen.y + oy * offset
+                const SCREEN_MARGIN = 8
+                const clampedX = Math.max(
+                    SCREEN_MARGIN + lw / 2,
+                    Math.min(window.innerWidth - SCREEN_MARGIN - lw / 2, labelCX),
+                )
+                const clampedY = Math.max(
+                    SCREEN_MARGIN + lh / 2,
+                    Math.min(window.innerHeight - SCREEN_MARGIN - lh / 2, labelCY),
+                )
+                label.style.left = clampedX - lw / 2 + 'px'
+                label.style.top = clampedY - lh / 2 + 'px'
+
+                dot.setAttribute('cx', edgeScreen.x)
+                dot.setAttribute('cy', edgeScreen.y)
+                dot.style.display = 'block'
+
+                updateLineToLabelCenter(line, edgeScreen, label)
+                line.style.display = 'block'
+            }
+        }
+
+        const hideLabels = () => {
+            for (const axis of ['x', 'y', 'z']) {
+                elements[axis].line.style.display = 'none'
+                elements[axis].dot.style.display = 'none'
+                elements[axis].label.style.display = 'none'
+            }
+        }
+
+        let visible = false
+        let currentCorners = null
+
+        const edges = [
+            [0, 1],
+            [1, 3],
+            [3, 2],
+            [2, 0],
+            [4, 5],
+            [5, 7],
+            [7, 6],
+            [6, 4],
+            [0, 4],
+            [1, 5],
+            [2, 6],
+            [3, 7],
+        ]
+
+        const updateColor = (dim) => {
+            lineMat.emissive = new Color(normalizeColor(dim.boxColor))
+            lineMat.update()
+            app.renderNextFrame = true
+            for (const axis of ['x', 'y', 'z']) {
+                elements[axis].line.setAttribute('stroke', dim.foregroundColor)
+                elements[axis].dot.setAttribute('stroke', dim.foregroundColor)
+                elements[axis].label.style.color = dim.foregroundColor
+                elements[axis].label.style.backgroundColor = transparentColor(
+                    dim.background.color,
+                    dim.background.alpha,
+                )
+            }
+        }
+
+        const drawCorners = (corners) => {
+            const pos = []
+            for (const [i, j] of edges) {
+                pos.push(corners[i].x, corners[i].y, corners[i].z)
+                pos.push(corners[j].x, corners[j].y, corners[j].z)
+            }
+            lineMesh.setPositions(pos)
+            lineMesh.update(PRIMITIVE_LINES, false)
+            app.renderNextFrame = true
+        }
+
+        const getCorners = (dim) => {
+            if (!dim) return null
+            return getWorldCorners(dim)
+        }
+
+        const drawDimensionBox = (dim) => {
+            if (!modelEntity) return
+            currentDim = dim
+            updateColor(dim)
+            const corners = getCorners(dim)
+            if (!corners) return
+            currentCorners = corners
+            visible = true
+            bboxEntity.enabled = true
+            drawCorners(corners)
+            updateLabels(corners, dim)
+        }
+
+        const hideDimensionBox = () => {
+            visible = false
+            bboxEntity.enabled = false
+            currentCorners = null
+            hideLabels()
+            app.renderNextFrame = true
+        }
+
+        window.addEventListener('resize', () => {
+            if (visible && currentCorners) {
+                updateLabels(currentCorners, currentDim)
+            }
+        })
+
+        app.on('update', () => {
+            if (!visible || currentDim === null) return
+            if (!modelEntity) return
+            const corners = getCorners(currentDim)
+            if (corners) {
+                currentCorners = corners
+                drawCorners(corners)
+                updateLabels(corners, currentDim)
+            }
+        })
+
+        viewer.global.bbox = {
+            get center() {
+                return modelEntity?.gsplat?.customAabb?.center ?? new Vec3()
+            },
+            get halfExtents() {
+                return modelEntity?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
+            },
+            draw: drawDimensionBox,
+            hide: hideDimensionBox,
+        }
+    })()
 })

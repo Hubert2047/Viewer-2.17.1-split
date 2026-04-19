@@ -343,14 +343,14 @@ class HotspotEditorUI {
         const colorGrid = this.makeGrid(2)
         const colorField = this.makeField('Color')
         colorField.appendChild(
-            this.makeColorSwatch(this.activeHotspotData.text.color, (v) => {
+            makeColorSwatch(this.activeHotspotData.text.color, (v) => {
                 this.activeHotspotData.text.color = v
                 this.applyDraft()
             }),
         )
         const bgField = this.makeField('Background')
         bgField.appendChild(
-            this.makeColorAlpha(
+            makeColorAlpha(
                 this.activeHotspotData.text.background,
                 this.activeHotspotData.text.backgroundAlpha,
                 (v) => {
@@ -444,7 +444,7 @@ class HotspotEditorUI {
         )
         const strokeColorField = this.makeField('Stroke color')
         strokeColorField.appendChild(
-            this.makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
+            makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
                 this.activeHotspotData.dot.strokeColor = v
                 this.applyDraft()
             }),
@@ -584,7 +584,7 @@ class HotspotEditorUI {
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Color')
         iconColorField.appendChild(
-            this.makeColorSwatch(this.activeHotspotData.audio?.iconColor || '#ffffff', (v) => {
+            makeColorSwatch(this.activeHotspotData.audio?.iconColor || '#ffffff', (v) => {
                 this.activeHotspotData.audio.iconColor = v
                 this.applyDraft()
             }),
@@ -592,7 +592,7 @@ class HotspotEditorUI {
 
         const iconBgField = this.makeField('Background', 'background-color')
         iconBgField.appendChild(
-            this.makeColorAlpha(
+            makeColorAlpha(
                 this.activeHotspotData.audio?.bgColor || '#000000',
                 this.activeHotspotData.audio?.bgAlpha ?? 0.35,
                 (v) => {
@@ -828,80 +828,6 @@ class HotspotEditorUI {
         return textarea
     }
 
-    makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha) {
-        const block = document.createElement('div')
-        block.classList.add('color-alpha-block')
-        const swatch = this.makeColorSwatch(color, (v) => {
-            swatch.style.background = v
-            checkerColor.style.background = v
-            onChangeColor(v)
-        })
-        const bgRow = document.createElement('div')
-        bgRow.classList.add('color-alpha-bg-row')
-
-        const checkerWrap = document.createElement('div')
-        checkerWrap.classList.add('color-alpha-checker')
-        const checkerColor = document.createElement('div')
-        checkerColor.classList.add('color-alpha-checker-fill')
-        checkerColor.style.background = color
-        checkerColor.style.opacity = alpha
-
-        const colorInput = document.createElement('input')
-        colorInput.type = 'color'
-        colorInput.value = color
-        colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;'
-        colorInput.addEventListener('input', () => {
-            const v = colorInput.value
-            checkerColor.style.background = v
-            swatch.style.background = v
-            onChangeColor(v)
-        })
-
-        checkerWrap.appendChild(checkerColor)
-        checkerWrap.appendChild(colorInput)
-
-        const sliderWrap = document.createElement('div')
-        sliderWrap.classList.add('color-alpha-slider-wrap')
-
-        const slider = document.createElement('input')
-        const alphaVal = document.createElement('span')
-        alphaVal.classList.add('alpha-value')
-
-        const updateTrack = (v) => {
-            slider.style.background = `linear-gradient(
-            to right,
-            rgba(0,0,0,0.6) 0%,
-            rgba(0,0,0,0.6) ${v * 100}%,
-            rgba(0,0,0,0.08) ${v * 100}%,
-            rgba(0,0,0,0.08) 100%
-        )`
-            alphaVal.textContent = Math.round(v * 100) + '%'
-            checkerColor.style.opacity = v
-        }
-
-        slider.type = 'range'
-        slider.classList.add('alpha-slider')
-        slider.min = 0
-        slider.max = 1
-        slider.step = 0.05
-        slider.value = alpha
-        updateTrack(alpha)
-
-        slider.addEventListener('input', () => {
-            const v = parseFloat(slider.value)
-            updateTrack(v)
-            onChangeAlpha(v)
-        })
-
-        sliderWrap.appendChild(slider)
-        sliderWrap.appendChild(alphaVal)
-
-        bgRow.appendChild(checkerWrap)
-        bgRow.appendChild(sliderWrap)
-        block.appendChild(bgRow)
-        return block
-    }
-
     makeGroup(title) {
         const g = document.createElement('div')
         g.classList.add('section-group')
@@ -959,23 +885,6 @@ class HotspotEditorUI {
         })
         select.addEventListener('change', () => onChange(select.value))
         return select
-    }
-
-    makeColorSwatch(value, onChange) {
-        const label = document.createElement('label')
-        label.classList.add('color-swatch')
-        label.style.background = value
-        const input = document.createElement('input')
-        input.type = 'color'
-        input.value = value
-        input.style.cssText =
-            'position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);opacity:0;cursor:pointer;'
-        input.addEventListener('input', () => {
-            label.style.background = input.value
-            onChange(input.value)
-        })
-        label.appendChild(input)
-        return label
     }
 
     makeFormatBtn(char, key, draft, onChange) {

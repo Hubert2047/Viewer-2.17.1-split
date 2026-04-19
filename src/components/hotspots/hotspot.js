@@ -80,7 +80,7 @@ class Hotspot {
         const btn = document.createElement('div')
         btn.classList.add('hotspot-audio-btn')
         btn.style.color = this.data.audio.iconColor
-        btn.style.backgroundColor = this.transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
+        btn.style.backgroundColor = transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
 
         const isCurrentlyPlaying = this._isPlaying
         btn.innerHTML = this._ringsvg() + (isCurrentlyPlaying ? this._iconPlaying() : this._iconMuted())
@@ -166,7 +166,7 @@ class Hotspot {
                 return
             }
             this._audioBtn.style.color = this.data.audio.iconColor
-            this._audioBtn.style.backgroundColor = this.transparentColor(
+            this._audioBtn.style.backgroundColor = transparentColor(
                 this.data.audio.bgColor,
                 this.data.audio.bgAlpha,
             )
@@ -273,7 +273,7 @@ class Hotspot {
         const height = Math.abs(contentScreenBR.y - contentScreenTL.y)
         this.textContentSpan.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
         this.textContentSpan.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
-        this.div.style.backgroundColor = this.transparentColor(
+        this.div.style.backgroundColor = transparentColor(
             this.data.text.background,
             this.data.text.backgroundAlpha,
         )
@@ -663,24 +663,4 @@ class Hotspot {
         }
     }
 
-    transparentColor(color, alpha = 0.5) {
-        if (!color) return ''
-        const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-        if (m) return `rgba(${m[1]},${m[2]},${m[3]},${alpha})`
-        const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
-        if (hex) {
-            const full =
-                hex[1].length === 3
-                    ? hex[1]
-                          .split('')
-                          .map((c) => c + c)
-                          .join('')
-                    : hex[1]
-            const r = parseInt(full.slice(0, 2), 16)
-            const g = parseInt(full.slice(2, 4), 16)
-            const b = parseInt(full.slice(4, 6), 16)
-            return `rgba(${r},${g},${b},${alpha})`
-        }
-        return color
-    }
 }

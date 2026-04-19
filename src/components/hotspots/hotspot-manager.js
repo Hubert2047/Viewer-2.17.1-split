@@ -59,18 +59,18 @@ class HotspotManager {
             this.controllers = controllers
         })
         this.events.on('hotspot:add', ({ position, entityInfo }) => {
-            const data = this.createDefault(position, entityInfo)
-            this.settings.hotspots.push(data)
-            this.hotspots.push(this.createHotspot(data))
-            this.events.fire('hotspot:editor-selected', data)
-            this.events.fire('hotspot:editing', false)
-            if (this.hotspots.length === 1) {
+            if (this.hotspots.length === 0) {
                 if (this.dom.hotspotActionGroup) this.dom.hotspotActionGroup.classList.remove('hidden')
                 else {
                     this.dom.buttonsContainer.appendChild(createHotspotActionGroup(this.tooltip, this.events, this.dom))
                 }
                 this.events.fire('hotspot:rebuild-info')
             }
+            const data = this.createDefault(position, entityInfo)
+            this.settings.hotspots.push(data)
+            this.hotspots.push(this.createHotspot(data))
+            this.events.fire('hotspot:editor-selected', data)
+            this.events.fire('hotspot:editing', false)
         })
         this.events.on('hotspot:editor-selected', (selectedData) => {
             this.stopAutoPlay()
@@ -125,7 +125,7 @@ class HotspotManager {
         this.events.on('hotspot:delete', (id) => {
             const idx = this.hotspots.findIndex((h) => h.id === id)
             if (idx < 0) return
-            if (this.hotspots[idx].data.audio.src && this.hotspots[idx].data.audio.src.startsWith('blod:')) {
+            if (this.hotspots[idx].data.audio?.src && this.hotspots[idx].data.audio?.src.startsWith('blod:')) {
                 URL.revokeObjectURL(this.hotspots[idx].data.audio.src)
             }
             this.hotspots[idx].destroy()

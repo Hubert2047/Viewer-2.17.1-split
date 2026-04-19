@@ -10,18 +10,15 @@ class RotationGizmo {
     _canvas = null
     _snapshot = null
     _target = null
-
     static SCREEN_RADIUS = 60
     static COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     static LABELS = { x: 'X', y: 'Y', z: 'Z' }
     static STEPS = 64
-
     static PLANE = {
         x: { u: new Vec3(0, 1, 0), v: new Vec3(0, 0, 1) },
         y: { u: new Vec3(1, 0, 0), v: new Vec3(0, 0, 1) },
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
-
     constructor(app, camEntity) {
         this._app = app
         this._camEntity = camEntity
@@ -35,10 +32,8 @@ class RotationGizmo {
         svg.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;z-index:500;pointer-events:none;`
         this._canvas.parentElement.appendChild(svg)
         this._svg = svg
-
         for (const axis of ['z', 'x', 'y']) {
             const color = RotationGizmo.COLORS[axis]
-
             const ringBg = document.createElementNS('http://www.w3.org/2000/svg', 'path')
             ringBg.setAttribute('fill', 'none')
             ringBg.setAttribute('stroke', color)
@@ -102,19 +97,18 @@ class RotationGizmo {
                 if (!this._dragging) return
                 this._endDrag()
             })
-
             this._rings[axis] = { ring, ringBg, hit, text }
         }
     }
     _getPlaneVectors(axis) {
-        const modelRot = this._target.getRotation()
+        const modelRot = this._target?.getRotation()
+        if (!modelRot) return RotationGizmo.PLANE[axis]
         const localX = new Vec3(1, 0, 0)
         const localY = new Vec3(0, 1, 0)
         const localZ = new Vec3(0, 0, 1)
         modelRot.transformVector(localX, localX)
         modelRot.transformVector(localY, localY)
         modelRot.transformVector(localZ, localZ)
-
         return {
             x: { u: localY, v: localZ },
             y: { u: localX, v: localZ },
@@ -122,12 +116,14 @@ class RotationGizmo {
         }[axis]
     }
     _w2s(v3) {
+        if (!v3 || isNaN(v3.x) || isNaN(v3.y) || isNaN(v3.z)) return { x: 0, y: 0 }
         const out = new Vec3()
         this._camEntity.camera.worldToScreen(v3, out)
         return { x: out.x, y: out.y }
     }
 
     _computeRingPoints(worldCenter, axis) {
+        if (!worldCenter) return []
         const center = this._w2s(worldCenter)
         const R = RotationGizmo.SCREEN_RADIUS
         const { u, v } = this._getPlaneVectors(axis)
@@ -240,18 +236,15 @@ class RotationGizmo {
         const rot = new Quat().setFromAxisAngle(worldAxis, sign * SENSITIVITY)
         this._target.applyRotation(rot)
         this._app.renderNextFrame = true
-
-        const euler = this._target.getEuler()
-        if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
         this._prevMouse = { x: cx, y: cy }
     }
 
     _getDragAxis(axis, dx, dy) {
         const worldAxis = this._dragAxisSnapshot[axis].clone()
-        const worldPos = this._target.getPosition()
-        const center = this._w2s(worldPos)
+        const gizmoPos = this._getGizmoWorldPos()
+        const center = this._w2s(gizmoPos)
 
-        const tip = new Vec3().copy(worldPos).add(worldAxis)
+        const tip = new Vec3().copy(gizmoPos).add(worldAxis)
         const tipScr = this._w2s(tip)
         const axScr = { x: tipScr.x - center.x, y: tipScr.y - center.y }
         const axLen = Math.sqrt(axScr.x ** 2 + axScr.y ** 2) || 1
@@ -288,7 +281,6 @@ class RotationGizmo {
         this._dragAxisSnapshot = null
         this._resetStyle()
         document.body.style.cursor = ''
-
         const euler = this._target?.getEuler()
         if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
     }
