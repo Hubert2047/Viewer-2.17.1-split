@@ -1,4 +1,27 @@
+const dimensionWorldToLocal = (worldPos, rotation) => {
+    const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+    const right = q.transformVector(new Vec3(1, 0, 0))
+    const up = q.transformVector(new Vec3(0, 1, 0))
+    const forward = q.transformVector(new Vec3(0, 0, 1))
+    return {
+        x: worldPos.x * right.x + worldPos.y * right.y + worldPos.z * right.z,
+        y: worldPos.x * up.x + worldPos.y * up.y + worldPos.z * up.z,
+        z: worldPos.x * forward.x + worldPos.y * forward.y + worldPos.z * forward.z,
+    }
+}
 
+const dimensionLocalToWorld = (localPos, rotation) => {
+    const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+    const right = q.transformVector(new Vec3(1, 0, 0))
+    const up = q.transformVector(new Vec3(0, 1, 0))
+    const forward = q.transformVector(new Vec3(0, 0, 1))
+    const { x, y, z } = localPos
+    return {
+        x: x * right.x + y * up.x + z * forward.x,
+        y: x * right.y + y * up.y + z * forward.y,
+        z: x * right.z + y * up.z + z * forward.z,
+    }
+}
 function getDimensionsInfo(localCenters, calRota = false) {
     const count = localCenters.length / 3
 

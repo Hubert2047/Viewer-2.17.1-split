@@ -665,47 +665,21 @@ function dimensionSection(el, global) {
         step: 0.5,
         onFocus: () => {
             if (!currentDimensions) return
-            const { x, y, z } = currentDimensions.position
-            const rot = currentDimensions.rotation
-            const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
-            const right = q.transformVector(new Vec3(1, 0, 0))
-            const up = q.transformVector(new Vec3(0, 1, 0))
-            const forward = q.transformVector(new Vec3(0, 0, 1))
-            currentBoxLocalPos = {
-                x: x * right.x + y * right.y + z * right.z,
-                y: x * up.x + y * up.y + z * up.z,
-                z: x * forward.x + y * forward.y + z * forward.z,
-            }
+            currentBoxLocalPos = worldToLocal(currentDimensions.position, currentDimensions.rotation)
             setPosValues(currentBoxLocalPos)
         },
         onChange: ({ x, y, z }) => {
             if (!isEditing) return
             currentBoxLocalPos = { x, y, z }
-            const rot = currentDimensions.rotation
-            const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
-            const right = q.transformVector(new Vec3(1, 0, 0))
-            const up = q.transformVector(new Vec3(0, 1, 0))
-            const forward = q.transformVector(new Vec3(0, 0, 1))
-            const newPos = {
-                x: x * right.x + y * up.x + z * forward.x,
-                y: x * right.y + y * up.y + z * forward.y,
-                z: x * right.z + y * up.z + z * forward.z,
+            currentDimensions = {
+                ...currentDimensions,
+                position: dimensionLocalToWorld({ x, y, z }, currentDimensions.rotation),
             }
-            currentDimensions = { ...currentDimensions, position: newPos }
             events.fire('dimensions:change', currentDimensions)
         },
     })
     events.on('dimensions:position-synced', ({ x, y, z }) => {
-        const rot = currentDimensions.rotation
-        const q = new Quat().setFromEulerAngles(rot.x, rot.y, rot.z)
-        const right = q.transformVector(new Vec3(1, 0, 0))
-        const up = q.transformVector(new Vec3(0, 1, 0))
-        const forward = q.transformVector(new Vec3(0, 0, 1))
-        currentBoxLocalPos = {
-            x: x * right.x + y * right.y + z * right.z,
-            y: x * up.x + y * up.y + z * up.z,
-            z: x * forward.x + y * forward.y + z * forward.z,
-        }
+        currentBoxLocalPos = dimensionWorldToLocal({ x, y, z }, currentDimensions.rotation)
         setPosValues(currentBoxLocalPos)
         currentDimensions = { ...currentDimensions, position: { x, y, z } }
         events.fire('dimensions:change', currentDimensions)
