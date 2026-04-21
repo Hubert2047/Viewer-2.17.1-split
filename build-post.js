@@ -50,6 +50,7 @@ const files = [
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
     'src/components/hotspots/hotspot-editor-ui.js',
+    'src/components/sidebar.js',
     'src/main.js',
 ]
 
@@ -64,7 +65,7 @@ function build() {
                 compact: true,
                 controlFlowFlattening: false,
                 deadCodeInjection: false,
-                stringArray: true,
+                stringArray: false,
                 stringArrayEncoding: ['base64'],
                 stringArrayThreshold: 0.75,
                 renameGlobals: false,

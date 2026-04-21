@@ -667,9 +667,6 @@ button {
 .hotspot-edit-panel {
   padding: 10px 12px 14px;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 .add-btn {
   display: flex;
@@ -1436,12 +1433,6 @@ button {
 #showHotspotButton > svg {
   opacity: 0.3;
 }
-/* viewer-setting */
-.viewer-settings-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 .background-input {
   position: relative;
   background-image:
@@ -1967,10 +1958,10 @@ button {
 .unit-select:focus {
     border-color: rgba(249, 87, 68, 0.4);
 }
-.dimensions-row {
+.section-wrap {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .color-alpha-disabled,.color-picker-disabled,.unit-select-disabled {
     opacity: 0.4;

@@ -262,7 +262,7 @@ class HotspotEditorUI {
 
     renderEditPanel(headerTitle) {
         const panel = document.createElement('div')
-        panel.classList.add('hotspot-edit-panel')
+        panel.classList.add('hotspot-edit-panel','section-wrap')
 
         const buttonGrid = document.createElement('div')
         const buttonGroup = this.makeGroup('Button')

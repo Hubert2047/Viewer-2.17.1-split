@@ -79,7 +79,6 @@ class OtherController {
             this.applyAabbPivot()
             this.reset()
         })
-        this.events.on('pivot:use', (data) => this.usePivotPoint(data))
         this.events.on('pivot:save', () => {
             this.initView()
         })
@@ -247,16 +246,7 @@ class OtherController {
             new Vec3(c.x + h.x, c.y + h.y, c.z + h.z),
         ]
     }
-    resetPivot() {
-        this.isResetPivot = true
-    }
-    usePivotPoint({ enabled, position }) {
-        if (enabled) {
-            this.syncPivotPoint(position)
-        } else {
-            this.applyAabbPivot()
-        }
-    }
+
     applyAabbPivot() {
         const worldOrigin = this.originPivot.clone()
         this.centerPivot = worldOrigin
