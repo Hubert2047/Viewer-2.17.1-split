@@ -637,7 +637,7 @@ function dimensionSection(el, global) {
         step: 0.5,
         onFocus: () => {
             if (!currentDimensions) return
-            currentBoxLocalPos = worldToLocal(currentDimensions.position, currentDimensions.rotation)
+            currentBoxLocalPos = dimensionWorldToLocal(currentDimensions.position, currentDimensions.rotation)
             setPosValues(currentBoxLocalPos)
         },
         onChange: ({ x, y, z }) => {
