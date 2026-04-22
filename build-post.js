@@ -55,9 +55,7 @@ const files = [
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
     'src/components/hotspots/hotspot-editor-ui.js',
-    'src/components/download-helper/microsoft-edge.js',
-    'src/components/download-helper/firefox.js',
-    'src/components/download-helper/chrome.js',
+    'src/components/download-helper.js',
     'src/components/sidebar.js',
     'src/main.js',
 ]

@@ -1,7 +1,7 @@
-function createTabs(tabs, width = 100) {
+function createTabs(tabs, width = 100, height = 100) {
     const container = document.createElement('div')
     container.className = 'tab-container'
-    container.style.cssText = `width: ${width}px`
+    container.style.cssText = `width: ${width}px; height : ${height}px`
 
     const header = document.createElement('div')
     header.className = 'tab-header'

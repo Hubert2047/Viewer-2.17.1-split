@@ -736,6 +736,7 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 4px 0 6px;
+  width: 100%;
 }
 .hotspot-count {
   font-size: 11px;
@@ -1937,7 +1938,7 @@ button {
   color: #666;
   text-align: center;
   padding: 4px 16px 16px;
-  overflow: scroll;
+  overflow: auto;
   max-width: 85vw;
   width: max-content;
 }
@@ -1970,7 +1971,7 @@ button {
 }
 
 .md-btn.cancel:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .md-btn.ok {
@@ -2005,6 +2006,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
 }
 .color-alpha-disabled,
 .color-picker-disabled,

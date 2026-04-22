@@ -914,38 +914,51 @@ function exportSection(el, global) {
     helperBtn.classList.add('export-link-btn')
     helperBtn.textContent = 'Export Location Change Helper'
     helperBtn.href = '#'
-
+    const edgeStepsData = {
+        title: 'To change your downloads folder location in Microsoft Edge:',
+        items: [
+            'Open Microsoft Edge, then select **Settings and more** ··· > **Settings**.',
+            'Select **Downloads**, and then, in the **Location** area, select **Change**.',
+            'In the dialog box, select a new location for your downloaded files.',
+            "Here you'll also find the option to have Microsoft Edge ask where to save each file before downloading.",
+        ],
+    }
+    const chromeStepsData = {
+        title: 'You can choose a location on your computer where downloads should be saved by default or pick a specific destination for each download.',
+        items: [
+            'On your computer, open Chrome.',
+            'At the top right, click More  ⋮  > **Settings** > **Downloads**.',
+            "Adjust your download settings:\n• To change the default download location, click **Change** and select where to save your files.\n• If you'd rather choose a specific location for each download, turn on **Ask where to save each file before downloading**.",
+        ],
+    }
+    const firefoxStepsData = {
+        title: 'To change your downloads folder location in Firefox:',
+        items: [
+            'Open Firefox on your computer.',
+            'Click the menu button ☰ at the top right, then select **Settings**.',
+            'In the **General** panel, scroll down until you see the **Downloads** section.',
+            'Choose your preferred download option:\n• Select **Save files to** and click **Browse…** to choose a specific folder on your computer.\n• Select **Always ask me where to save files** if you want Firefox to ask you each time before downloading.',
+        ],
+    }
     helperBtn.addEventListener('click', (e) => {
         e.preventDefault()
         const tabs = createTabs(
             [
                 {
                     label: 'Chrome',
-                    content: () => {
-                        const div = document.createElement('div')
-                        div.textContent = 'General tab General tab General tab General tab General tab General tab'
-                        return div
-                    },
+                    content: () => downloadHelper(chromeStepsData),
                 },
                 {
                     label: 'Firefox',
-                    content: () => {
-                        const div = document.createElement('div')
-                        div.textContent = 'Advanced tab'
-                        return div
-                    },
+                    content: () => downloadHelper(firefoxStepsData),
                 },
                 {
                     label: 'Microsoft Edge',
-                    content: () => {
-                        const div = document.createElement('div')
-                        div.textContent = 'Advanced tab'
-                        return div
-                    },
+                    content: () => downloadHelper(edgeStepsData),
                 },
-               
             ],
             800,
+            350
         )
 
         global.modal.open('Export Location Change Helper', tabs, 'top', {
