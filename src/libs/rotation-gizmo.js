@@ -19,7 +19,7 @@ class RotationGizmo {
         y: { u: new Vec3(1, 0, 0), v: new Vec3(0, 0, 1) },
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
-    constructor(app, camEntity) {
+    constructor(app, camEntity, events) {
         this._app = app
         this._camEntity = camEntity
         this._canvas = app.graphicsDevice.canvas

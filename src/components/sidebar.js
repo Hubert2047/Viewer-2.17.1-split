@@ -2,14 +2,22 @@ function initHotspotSection(body, global, dom) {
     const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
 }
-function createSection({ id, title, body: renderBody, classname = '', events }) {
+function createSection({ id, title, body: renderBody, classname = '', events, icon }) {
     const section = document.createElement('div')
     section.classList.add('section')
 
     const header = document.createElement('div')
     header.classList.add('section-header')
 
+    if (icon) {
+        const iconEl = document.createElement('span')
+        iconEl.classList.add('section-icon-prefix')
+        iconEl.innerHTML = icon
+        header.appendChild(iconEl)
+    }
+
     const titleEl = document.createElement('span')
+    titleEl.classList.add('section-title')
     titleEl.textContent = title
 
     const chevron = document.createElement('span')
@@ -45,7 +53,7 @@ function createSection({ id, title, body: renderBody, classname = '', events }) 
 
     const toggle = () => {
         const isOpen = body.style.display !== 'none'
-
+        events.fire('sidebar:clicked', { id, open: !isOpen })
         if (isOpen) {
             body.style.display = 'none'
             chevron.style.transform = ''
@@ -72,11 +80,10 @@ function createSection({ id, title, body: renderBody, classname = '', events }) 
 function renderOrientation(group, global, editGroup) {
     const { events, settings } = global
     editGroup.register('orientation', {
-        cancel: () => {
-            onCancel()
-        },
+        cancel: () => onCancel(),
     })
     events.on('hotspot:active', () => onCancel())
+    events.on('sidebar:clicked', () => onCancel())
     let isEditing = false
 
     const container = document.createElement('div')
@@ -211,9 +218,8 @@ function renderPivot(group, global, editGroup) {
             onCancel()
         },
     })
-    events.on('hotspot:active', () => {
-        onCancel()
-    })
+    events.on('hotspot:active', () => onCancel())
+    events.on('sidebar:clicked', () => onCancel())
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
     let isEditing = false
@@ -267,7 +273,7 @@ function renderPivot(group, global, editGroup) {
         events.fire('pivot:enable-edit', { position: { x, y, z }, enable: true })
     }
     const onCancel = () => {
-        if(!isEditing) return
+        if (!isEditing) return
         setInputsEditable(false)
         if (editPivotPos) {
             events.fire('pivot:positionsynced', editPivotPos)
@@ -384,7 +390,6 @@ function modelSection(el, global) {
 
     el.appendChild(container)
 }
-
 function viewerSettingsSection(el, global) {
     const settings = global.settings
     const container = document.createElement('div')
@@ -518,7 +523,8 @@ function viewerSettingsSection(el, global) {
 }
 function dimensionSection(el, global) {
     const { events, settings } = global
-
+    events.on('hotspot:active', () => onCancel())
+    events.on('sidebar:clicked', () => onCancel())
     let isEditing = false
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
@@ -792,6 +798,7 @@ function dimensionSection(el, global) {
     }
 
     const onCancel = () => {
+        if (!isEditing) return
         isEditing = false
         setEditable(false)
         rotGizmoRow.style.display = 'none'
