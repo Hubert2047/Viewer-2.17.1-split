@@ -46,7 +46,7 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
             el.classList.remove('active')
         })
 
-        body.style.display = 'block'
+        body.style.display = 'flex'
         chevron.style.transform = 'rotate(90deg)'
         header.classList.add('active')
     }
@@ -406,29 +406,32 @@ function viewerSettingsSection(el, global) {
         if (item.type === 'toggle') {
             const toggle = document.createElement('div')
             toggle.classList.add('toggle')
+
             const knob = document.createElement('div')
             knob.classList.add('toggle-knob')
             toggle.appendChild(knob)
+
             if (item.active) toggle.classList.add('active')
-            row.addEventListener('click', () => {
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation()
                 const newValue = !toggle.classList.contains('active')
                 toggle.classList.toggle('active', newValue)
                 global.events.fire(`viewer:${item.event}`, newValue)
             })
+
             row.appendChild(toggle)
         } else if (item.type === 'color') {
             const colorInput = document.createElement('input')
             colorInput.type = 'color'
             colorInput.classList.add('color-input', 'viewer-background-input')
             colorInput.value = item.value
+
             colorInput.addEventListener('input', () => {
                 document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
                 global.events.fire(`viewer:${item.event}`, colorInput.value)
             })
-            row.addEventListener('click', (e) => {
-                if (e.target === colorInput) return
-                colorInput.click()
-            })
+
             row.appendChild(colorInput)
         } else if (item.type === 'button') {
             const btn = document.createElement('button')
@@ -907,6 +910,49 @@ function exportSection(el, global) {
     filenameField.appendChild(inputWrap)
     el.appendChild(filenameField)
 
+    const helperBtn = document.createElement('a')
+    helperBtn.classList.add('export-link-btn')
+    helperBtn.textContent = 'Export Location Change Helper'
+    helperBtn.href = '#'
+
+    helperBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        const tabs = createTabs(
+            [
+                {
+                    label: 'Chrome',
+                    content: () => {
+                        const div = document.createElement('div')
+                        div.textContent = 'General tab General tab General tab General tab General tab General tab'
+                        return div
+                    },
+                },
+                {
+                    label: 'Firefox',
+                    content: () => {
+                        const div = document.createElement('div')
+                        div.textContent = 'Advanced tab'
+                        return div
+                    },
+                },
+                {
+                    label: 'Microsoft Edge',
+                    content: () => {
+                        const div = document.createElement('div')
+                        div.textContent = 'Advanced tab'
+                        return div
+                    },
+                },
+               
+            ],
+            800,
+        )
+
+        global.modal.open('Export Location Change Helper', tabs, 'top', {
+            showCancel: false,
+        })
+    })
+    el.appendChild(helperBtn)
     const btn = document.createElement('button')
     btn.classList.add('export-btn')
     btn.textContent = 'Export HTML'

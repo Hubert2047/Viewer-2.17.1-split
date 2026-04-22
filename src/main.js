@@ -3601,7 +3601,7 @@ const main = async (canvas, settingsJson, config) => {
         gamingControls: localStorage.getItem('gamingControls') === 'true',
     })
     const confirmDialog = new ConfirmDialog()
-    const modal = new ModalConfirm()
+    const modal = new ModalDialog()
     const global = {
         app,
         settings: importSettings(settingsJson),
@@ -3700,7 +3700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else {
                 viewer.global.config.hpr = undefined
-                viewer.cameraFrame.rendering.samples = samples
+               if(viewer.cameraFrame) viewer.cameraFrame.rendering.samples = samples
                 viewer.configureCamera(settings)
             }
             app.renderNextFrame = true
@@ -4047,7 +4047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         })
       
-        app.on('postrender', () => {
+        app.on('update', () => {
             if (!visible || currentDim === null) return
             if (!modelEntity) return
             const corners = getCorners(currentDim)

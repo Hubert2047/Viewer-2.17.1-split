@@ -43,6 +43,7 @@ const files = [
     'src/utils/index.js',
     'src/utils/math.js',
     'src/components/ui/color-swatch.js',
+    'src/components/ui/tab.js',
     'src/components/ui/color-alpha.js',
     'src/components/ui/color-picker.js',
     'src/components/ui/vec3-inputs.js',
@@ -54,6 +55,9 @@ const files = [
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
     'src/components/hotspots/hotspot-editor-ui.js',
+    'src/components/download-helper/microsoft-edge.js',
+    'src/components/download-helper/firefox.js',
+    'src/components/download-helper/chrome.js',
     'src/components/sidebar.js',
     'src/main.js',
 ]

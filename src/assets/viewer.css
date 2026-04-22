@@ -1294,6 +1294,9 @@ button {
 }
 /* Export section */
 .export-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 10px 16px;
 }
 .export-input-wrap {
@@ -1321,7 +1324,6 @@ button {
 }
 .export-btn {
   width: 100%;
-  margin-top: 12px;
   padding: 8px;
   font-size: 13px;
   border-radius: 5px;
@@ -1330,6 +1332,10 @@ button {
   background-color: var(--primary);
   cursor: pointer;
   transition: background 0.15s;
+}
+.export-link-btn {
+  font-size: 13px;
+  color: var(--primary);
 }
 .export-btn:hover {
   background-color: #d83a29;
@@ -1890,7 +1896,7 @@ button {
   pointer-events: auto;
 }
 .md-modal {
-  width: 285px;
+  min-width: max-content;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -1915,42 +1921,64 @@ button {
   opacity: 1;
 }
 .md-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
-  padding: 16px 16px 4px;
+  padding: 16px 16px 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  min-width: max-content;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
 }
 .md-message {
   font-size: 14px;
   color: #666;
   text-align: center;
-  padding: 0 16px 16px;
+  padding: 4px 16px 16px;
+  overflow: scroll;
+  max-width: 85vw;
+  width: max-content;
 }
 .md-actions {
   display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px;
   border-top: 1px solid #eee;
 }
 .md-btn {
-  flex: 1;
-  padding: 14px 0;
-  font-size: 16px;
-  height: 44px;
-  background: none;
+  height: 34px;
+  padding: 0 12px;
+  min-width: 112px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 500;
   border: none;
   cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  -ms-border-radius: 5px;
+  -o-border-radius: 5px;
 }
-.md-btn + .md-btn {
-  border-left: 1px solid #eee;
-}
+
 .md-btn.cancel {
-  color: #555;
+  background: transparent;
+  color: #666;
 }
+
+.md-btn.cancel:hover {
+  background: rgba(0,0,0,0.05);
+}
+
 .md-btn.ok {
-  color: #007aff;
-  font-weight: 500;
+  background: var(--primary, #f95f4d);
+  color: white;
 }
-.md-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+
+.md-btn.ok:hover {
+  filter: brightness(0.92);
 }
 .unit-select {
   background: #e8f0fe;
@@ -2002,4 +2030,44 @@ button {
     padding: 6px;
     font-size: 12px;
   }
+}
+.tab-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tab-header {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 22px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  min-width: max-content;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.tab-btn.active {
+  background: #eee;
+  color: var(--primary);
+}
+
+.tab-content {
+  padding: 12px;
 }

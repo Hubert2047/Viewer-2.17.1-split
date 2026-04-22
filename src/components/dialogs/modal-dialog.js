@@ -1,4 +1,4 @@
-class ModalConfirm {
+class ModalDialog {
     constructor() {
         this._resolve = null
         this._build()
@@ -18,8 +18,8 @@ class ModalConfirm {
         this.msgEl = document.createElement('div')
         this.msgEl.className = 'md-message'
 
-        const actions = document.createElement('div')
-        actions.className = 'md-actions'
+        this.actions = document.createElement('div')
+        this.actions.className = 'md-actions'
 
         this.cancelBtn = document.createElement('button')
         this.cancelBtn.className = 'md-btn cancel'
@@ -29,12 +29,12 @@ class ModalConfirm {
         this.okBtn.className = 'md-btn ok'
         this.okBtn.textContent = 'OK'
 
-        actions.appendChild(this.cancelBtn)
-        actions.appendChild(this.okBtn)
+        this.actions.appendChild(this.cancelBtn)
+        this.actions.appendChild(this.okBtn)
 
         modal.appendChild(this.titleEl)
         modal.appendChild(this.msgEl)
-        modal.appendChild(actions)
+        modal.appendChild(this.actions)
 
         this.overlay.appendChild(modal)
         document.body.appendChild(this.overlay)
@@ -53,15 +53,52 @@ class ModalConfirm {
         this._resolve = null
     }
 
-   open(title, message, position = 'center') {
-    this.titleEl.innerHTML = title
-    this.msgEl.innerHTML = message
+    open(title, message, position = 'center', options = {}) {
+        const { showCancel = true, cancelText = 'Cancel', okText = 'OK' } = options
 
-    this.overlay.classList.remove('top', 'center', 'bottom')
-    this.modal.classList.add(position)
+        this.titleEl.innerHTML = title
+        this.msgEl.innerHTML = ''
 
-    this.overlay.classList.add('show')
+        if (typeof message === 'string') {
+            this.msgEl.innerHTML = message
+        } else if (message instanceof HTMLElement) {
+            this.msgEl.appendChild(message)
+        } else if (typeof message === 'function') {
+            const result = message()
+            if (result instanceof HTMLElement) {
+                this.msgEl.appendChild(result)
+            } else {
+                this.msgEl.innerHTML = result
+            }
+        }
 
-    return new Promise(res => this._resolve = res)
-}
+        // reset actions
+        this.actions.innerHTML = ''
+
+        // OK button
+        this.okBtn = document.createElement('button')
+        this.okBtn.className = 'md-btn ok'
+        this.okBtn.textContent = okText
+        this.okBtn.onclick = () => this._close(true)
+
+        this.actions.appendChild(this.okBtn)
+
+        // Cancel optional
+        if (showCancel) {
+            this.cancelBtn = document.createElement('button')
+            this.cancelBtn.className = 'md-btn cancel'
+            this.cancelBtn.textContent = cancelText
+            this.cancelBtn.onclick = () => this._close(false)
+            this.actions.appendChild(this.cancelBtn)
+        }
+
+        this.modal.appendChild(this.actions)
+
+        this.overlay.classList.remove('top', 'center', 'bottom')
+        this.modal.classList.add(position)
+
+        this.overlay.classList.add('show')
+
+        return new Promise((res) => (this._resolve = res))
+    }
 }

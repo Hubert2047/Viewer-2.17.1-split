@@ -549,6 +549,9 @@ function checkPerformance(app, global) {
                     'Your device seems to be running slowly.<br>' +
                         'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
                     'top',
+                    {
+                        showCancel: false,
+                    },
                 )
             }
         }
