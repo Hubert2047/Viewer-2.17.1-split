@@ -19,7 +19,7 @@ class RotationGizmo {
         y: { u: new Vec3(1, 0, 0), v: new Vec3(0, 0, 1) },
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
-    constructor(app, camEntity, events) {
+    constructor(app, camEntity) {
         this._app = app
         this._camEntity = camEntity
         this._canvas = app.graphicsDevice.canvas
@@ -312,14 +312,15 @@ class RotationGizmo {
         this._enabled = true
         this._svg.style.display = ''
         this._updateFn = () => this._update()
-        this._app.on('update', this._updateFn)
+        this._app.on('postrender', this._updateFn)
+        this._updateFn()
     }
 
     disable() {
         this._enabled = false
         this._dragging = false
         this._svg.style.display = 'none'
-        if (this._updateFn) this._app.off('update', this._updateFn)
+        if (this._updateFn) this._app.off('postrender', this._updateFn)
         document.body.style.cursor = ''
     }
 }

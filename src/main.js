@@ -3075,7 +3075,7 @@ class Viewer {
 
             events.on('viewer:inertia', (value) => {
                 global.settings.inertia = value
-                this.cameraManager.controllers[state.cameraMode].resetInertia()
+                this.cameraManager.controllers.ortery.resetInertia()
             })
             events.on('viewer:auto-hide-ui', (value) => {
                 global.settings.autoHideUI = value
@@ -4046,7 +4046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateLabels(currentCorners, currentDim)
             }
         })
-
+      
         app.on('postrender', () => {
             if (!visible || currentDim === null) return
             if (!modelEntity) return
