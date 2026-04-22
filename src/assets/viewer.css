@@ -538,11 +538,11 @@ button {
 .section-header.active {
   color: var(--primary);
 }
-.section-title{
+.section-title {
   height: 20px;
-  flex:1;
+  flex: 1;
 }
-.section-icon-prefix{
+.section-icon-prefix {
   height: 20px;
 }
 .section-header:hover {
@@ -551,7 +551,6 @@ button {
 .section-icon {
   display: flex;
   justify-content: flex-end;
-  
 }
 .section-icon::before {
   content: "›";
@@ -1984,4 +1983,23 @@ button {
   opacity: 0.4;
   pointer-events: none;
   cursor: not-allowed;
+}
+.dimension-label {
+  position: fixed;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: bold;
+  padding: 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  display: none;
+  z-index: 999;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 768px) {
+  .dimension-label {
+    padding: 6px;
+    font-size: 12px;
+  }
 }

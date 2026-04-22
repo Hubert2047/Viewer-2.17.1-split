@@ -3686,6 +3686,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bboxSetup = (() => {
         let currentDim = null
         const { app, config } = viewer.global
+        const setCameraFrameSamples = (samples) => {
+            const settings = viewer.global.settings
+            if (samples > 1) {
+                const origHpr = viewer.global.config.hpr
+                viewer.global.config.hpr = true
+                viewer.configureCamera(settings)
+                viewer.global.config.hpr = origHpr
+
+                if (viewer.cameraFrame) {
+                    viewer.cameraFrame.rendering.samples = samples
+                    viewer.cameraFrame.update()
+                }
+            } else {
+                viewer.global.config.hpr = undefined
+                viewer.cameraFrame.rendering.samples = samples
+                viewer.configureCamera(settings)
+            }
+            app.renderNextFrame = true
+        }
+
         const layers = app.scene.layers
         const worldLayer = layers.getLayerByName('World')
 
@@ -3706,6 +3726,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         lineMat.useLighting = false
         lineMat.cull = CULLFACE_NONE
         lineMat.emissive = new Color(normalizeColor('#00ffcc'))
+        lineMat.depthBias = -0.1
+        lineMat.slopeDepthBias = -0.1
+        lineMat.alphaToCoverage = true
         lineMat.update()
 
         const bboxEntity = new Entity('bbox')
@@ -3743,19 +3766,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Label
             const label = document.createElement('div')
-            label.style.cssText = `
-                position:fixed;
-                font-size:14px;
-                font-family:monospace;
-                font-weight:bold;
-                padding:8px;
-                border-radius:4px;
-                white-space:nowrap;
-                pointer-events:none;
-                display:none;
-                z-index:999;
-                box-shadow:0 1px 3px rgba(0,0,0,0.3);
-        `
+            label.classList.add('dimension-label')
             document.body.appendChild(label)
 
             elements[axis] = { line, dot, label }
@@ -4018,6 +4029,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bboxEntity.enabled = true
             drawCorners(corners)
             updateLabels(corners, dim)
+            setCameraFrameSamples(isMobile ? 2 : 4)
         }
 
         const hideDimensionBox = () => {
@@ -4026,6 +4038,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentCorners = null
             hideLabels()
             app.renderNextFrame = true
+            setCameraFrameSamples(1)
         }
 
         window.addEventListener('resize', () => {
@@ -4034,7 +4047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         })
 
-        app.on('update', () => {
+        app.on('postrender', () => {
             if (!visible || currentDim === null) return
             if (!modelEntity) return
             const corners = getCorners(currentDim)
