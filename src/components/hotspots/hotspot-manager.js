@@ -184,7 +184,7 @@ class HotspotManager {
         })
         this.events.on('hotspot:toggle-play', () => {
             if (this.isAutoPlay) this.stopAutoPlay()
-            else this.startAutoPlay()
+            else this.startAutoPlay()   
         })
         this.events.on('hotspot:hotspot-btns', () => {
             this.showActiveHotspotBtns(!this.isShowActiveHotspotBtns)

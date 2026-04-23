@@ -82,7 +82,9 @@ class OtherController {
         this.events.on('pivot:save', () => {
             this.initView()
         })
-
+        this.events.on('orientation:groundplane', (points) => {
+            this.applyGroundPlaneOrientation(points)
+        })
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
@@ -380,14 +382,22 @@ class OtherController {
         const distance = this.getDeafultDistance()
         this.maxDistance = Math.max(distance, 200)
 
+        this.pitchRad = camera.angles.x * Math.PI / 180
+        if (this.model === 'cylindrical') {
+            this.maxPitch = this.pitchRad
+            this.minPitch = this.pitchRad
+        } else {
+            this.minPitch += this.pitchRad
+            this.maxPitch += this.pitchRad
+        }
         let forward
         if (camera.angles && typeof camera.angles.x === 'number' && typeof camera.angles.y === 'number') {
-            const pitchRad = (camera.angles.x * Math.PI) / 180
+            
             const yawRad = (camera.angles.y * Math.PI) / 180
             forward = new Vec33(
-                -Math.sin(yawRad) * Math.cos(pitchRad),
-                Math.sin(pitchRad),
-                -Math.cos(yawRad) * Math.cos(pitchRad),
+                -Math.sin(yawRad) * Math.cos(this.pitchRad),
+                Math.sin(this.pitchRad),
+                -Math.cos(yawRad) * Math.cos(this.pitchRad),
             ).normalize()
         } else {
             forward = new Vec33(0, 0, -1)
@@ -463,6 +473,43 @@ class OtherController {
         }
         if (this.initviewPose) this.initView()
     }
+    applyGroundPlaneOrientation(points) {
+        const localNormal = fitPlaneNormal(points)
+        if (localNormal.y > 0) localNormal.mulScalar(-1)
+        const originRot = this.originEntityRotation ? this.originEntityRotation.clone() : new Quat()
+        const normalInWorld = new Vec3()
+        originRot.transformVector(localNormal, normalInWorld)
+        normalInWorld.normalize()
+        const pickCentroid = new Vec3(
+            (points[0].x + points[1].x + points[2].x) / 3,
+            (points[0].y + points[1].y + points[2].y) / 3,
+            (points[0].z + points[1].z + points[2].z) / 3,
+        )
+        const pickCentroidWorld = new Vec3()
+        originRot.transformVector(pickCentroid, pickCentroidWorld)
+        const modelCentroid = this.bbox.center.clone()
+        const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
+        if (normalInWorld.dot(toModelCenter) > 0) {
+            normalInWorld.mulScalar(-1)
+        }
+        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
+
+        const newBaseRotation = new Quat()
+        newBaseRotation.mul2(correctionQuat, originRot)
+
+        this.baseRotation = newBaseRotation
+        this.currentYaw = 0
+        this.currentPitch = 0
+        if (!this.centerPivot) {
+            this.centerPivot = this.bbox.center.clone()
+        }
+        this.hemisphericalRot(0, 0)
+        this.syncHierarchyAndRender()
+        this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
+        this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
+        this.updateModelRotation()
+        this.model = this.originModel
+    }
     lerp(a, b, t) {
         return a + (b - a) * t
     }
@@ -508,7 +555,7 @@ class OtherController {
         modelEntity._dirtyWorld = true
         this.app.renderNextFrame = true
     }
-    resetInertia(){
+    resetInertia() {
         this.inertiaVelX = 0
         this.inertiaVelY = 0
     }
@@ -547,18 +594,6 @@ class OtherController {
         }
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
-        if (this.cameraElevation === undefined) {
-            if (!settings.orientation) {
-                this.cameraElevation = this.getCameraElevation()
-                if (this.model === 'cylindrical') {
-                    this.maxPitch = this.cameraElevation
-                    this.minPitch = this.cameraElevation
-                } else {
-                    this.minPitch -= this.cameraElevation
-                    this.maxPitch -= this.cameraElevation
-                }
-            } else this.cameraElevation = 0
-        }
         let didRotate = false
         if (!this.initPivot) {
             if (this.settings.pivot.enabled && this.settings.pivot.position) {
@@ -642,15 +677,12 @@ class OtherController {
     }
     buildCombinedQuat(yaw, pitch) {
         if (!this.baseRotation) this.baseRotation = new Quat3()
-        const up = new Vec3(0, 1, 0)
-        this.baseRotation.transformVector(up, up)
-        up.normalize()
-        if (up.dot(Vec3.UP) < 0) up.mulScalar(-1)
+        const worldUp = new Vec33(0, 1, 0)
+        const quatYaw = new Quat3().setFromAxisAngle(worldUp, yaw)
 
         const rightAxis = this.rightCam ? this.rightCam.clone() : Vec33.RIGHT.clone()
-
-        const quatYaw = new Quat3().setFromAxisAngle(up, yaw)
         const quatPitch = new Quat3().setFromAxisAngle(rightAxis, pitch)
+
         return quatPitch.mul(quatYaw).normalize()
     }
 

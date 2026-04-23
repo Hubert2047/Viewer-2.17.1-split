@@ -9,6 +9,7 @@ const isMobile =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0
 const LARGE_AUDIO_THRESHOLD_MB  = 2
+const OPACITY_THRESHOLD = 0.1
 const SVG_ICONS = {
     resetCamera: {
         size: '28',

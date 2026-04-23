@@ -82,6 +82,7 @@ function renderOrientation(group, global, editGroup) {
     editGroup.register('orientation', {
         cancel: () => onCancel(),
     })
+    const groundPicker = new GroundPlanePicker(global.app, global.camera)
     events.on('hotspot:active', () => onCancel())
     events.on('sidebar:clicked', () => onCancel())
     let isEditing = false
@@ -155,10 +156,104 @@ function renderOrientation(group, global, editGroup) {
         renderBtns()
         events.fire('orientation:cancel')
     }
+    // --- Ground Plane Picker ---
+    let pickingActive = false
+    let pickedPoints = []
+    const MAX_POINTS = 3
 
+    const pickRow = document.createElement('div')
+    pickRow.classList.add('section-group-row')
+    pickRow.style.display = 'none'
+
+    const pickLabel = document.createElement('span')
+    pickLabel.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
+
+    const pickBtn = document.createElement('button')
+    pickBtn.classList.add('btn')
+    pickBtn.textContent = 'Pick Ground Plane'
+    pickBtn.onclick = () => {
+        pickedPoints = []
+        pickingActive = true
+        groundPicker.enable()
+        groundPicker.reset()
+        updatePickLabel()
+        pickOverlay.style.display = 'flex'
+    }
+
+    const pickOverlay = document.createElement('div')
+    pickOverlay.style.cssText = `
+    display:none; position:fixed; top:0; left:0; right:0;
+    background:rgba(0,0,0,0.45); color:#fff;
+    padding:10px 16px; font-size:13px; z-index:9999;
+    align-items:center; justify-content:space-between;
+`
+    const pickOverlayText = document.createElement('span')
+    const pickOverlayCancel = document.createElement('button')
+    pickOverlayCancel.classList.add('btn', 'cancel-btn')
+    pickOverlayCancel.textContent = 'Cancel'
+    pickOverlayCancel.onclick = () => {
+        pickingActive = false
+        pickedPoints = []
+        pickOverlay.style.display = 'none'
+        groundPicker.disable()
+    }
+    pickOverlay.appendChild(pickOverlayText)
+    pickOverlay.appendChild(pickOverlayCancel)
+    document.body.appendChild(pickOverlay)
+
+    const updatePickLabel = () => {
+        const current = pickedPoints.length
+        if (current < MAX_POINTS) {
+            const remaining = MAX_POINTS - current
+            pickOverlayText.textContent = `Click ${remaining} point${remaining > 1 ? 's' : ''} on the ground surface — click existing point to remove`
+            pickOverlayConfirm.style.display = 'none'
+        } else {
+            pickOverlayText.textContent = `3 points selected — click a point to remove, or click elsewhere to replace nearest`
+            pickOverlayConfirm.style.display = ''
+        }
+    }
+    const canvas = global.app.graphicsDevice.canvas
+    canvas.addEventListener('pointerdown', (e) => {
+        if (!pickingActive || !isEditing) return
+        if (e.button !== 0) return
+        if (pickedPoints.length >= 3) return
+
+        const localPoint = pickModelLocalPoint(e.offsetX, e.offsetY, global.camera.camera)
+        if (!localPoint) return
+        groundPicker.handleClick(localPoint, e.offsetX, e.offsetY)
+
+        pickedPoints = groundPicker.getLocalPoints().map((p) => ({ x: p.x, y: p.y, z: p.z }))
+        updatePickLabel()
+    })
+
+    const updatePickRowVisibility = (editing) => {
+        pickRow.style.display = editing ? 'flex' : 'none'
+        if (!editing) {
+            pickingActive = false
+            pickedPoints = []
+            pickOverlay.style.display = 'none'
+            groundPicker.disable()
+        }
+    }
+
+    pickRow.appendChild(pickLabel)
+    pickRow.appendChild(pickBtn)
+    container.appendChild(pickRow)
+    const pickOverlayConfirm = document.createElement('button')
+    pickOverlayConfirm.classList.add('btn', 'confirm-btn')
+    pickOverlayConfirm.textContent = 'Confirm Plane'
+    pickOverlayConfirm.style.display = 'none'
+    pickOverlayConfirm.onclick = () => {
+        if (pickedPoints.length < MAX_POINTS) return
+        pickOverlay.style.display = 'none'
+        events.fire('orientation:groundplane', pickedPoints)
+        groundPicker.disable()
+    }
+    pickOverlay.appendChild(pickOverlayConfirm)
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
+            updatePickRowVisibility(true)
             const btnCancel = document.createElement('button')
             btnCancel.classList.add('btn', 'cancel-btn')
             btnCancel.textContent = 'Cancel'
@@ -181,6 +276,7 @@ function renderOrientation(group, global, editGroup) {
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnSave)
         } else {
+            updatePickRowVisibility(false)
             const btnEdit = document.createElement('button')
             btnEdit.classList.add('btn')
             btnEdit.textContent = 'Edit'
@@ -926,7 +1022,7 @@ function exportSection(el, global) {
         items: [
             'On your computer, open Chrome.',
             'At the top right, click More  ⋮  > **Settings** > **Downloads**.',
-            "Enable **Ask where to save each file before downloading**.",
+            'Enable **Ask where to save each file before downloading**.',
         ],
     }
     const firefoxStepsData = {
@@ -956,7 +1052,7 @@ function exportSection(el, global) {
                 },
             ],
             800,
-            350
+            350,
         )
 
         global.modal.open('Export Location Change Helper', tabs, 'top', {

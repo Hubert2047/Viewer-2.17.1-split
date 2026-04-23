@@ -42,6 +42,7 @@ const files = [
     'src/libs/position-gizmo.js',
     'src/utils/index.js',
     'src/utils/math.js',
+    'src/components/ground-plane-picker.js',
     'src/components/ui/color-swatch.js',
     'src/components/ui/tab.js',
     'src/components/ui/color-alpha.js',

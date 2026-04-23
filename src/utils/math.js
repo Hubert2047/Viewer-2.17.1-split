@@ -120,7 +120,6 @@ function getVisiblePoints(modelEntity) {
     const s = new Vec3()
     const c = new Vec4()
     const iter = gsplatData.createIter(p, r, s, c)
-    const OPACITY_THRESHOLD = 0.1
     const visibleCenters = []
     for (let i = 0; i < count; i++) {
         iter.read(i)
@@ -141,7 +140,6 @@ function getPivotCenter(modelEntity) {
     const c = new Vec4()
     const iter = gsplatData.createIter(p, r, s, c)
 
-    const OPACITY_THRESHOLD = 0.1
     let wx = 0,
         wy = 0,
         wz = 0,
@@ -169,91 +167,95 @@ function pickModelLocalPoint(x, y, camera) {
     const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
 
     const localRayOrigin = new Vec3()
-    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
     const localRayDirection = new Vec3()
+    invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
     invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
     localRayDirection.normalize()
     const localRay = new Ray(localRayOrigin, localRayDirection)
 
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const gsplatData = gsplatInstance.resource.gsplatData
+    const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData
     const count = gsplatData.numSplats
+
     const p = new Vec3(),
         r = new Quat(),
         s = new Vec3(),
         c = new Vec4()
     const iter = gsplatData.createIter(p, r, s, c)
-    const OPACITY_THRESHOLD = 0.1
 
-    const splatRadii = [0.03, 0.05, 0.1]
-    const candidates = new Array(splatRadii.length).fill(null).map(() => ({ dist: Infinity, pos: null }))
+    const dp = new Vec3(),
+        dr = new Quat(),
+        ds = new Vec3(),
+        dc = new Vec4()
+    const detectIter = gsplatData.createIter(dp, dr, ds, dc)
+    let negCount = 0,
+        totalSeen = 0
+    for (let i = 0; i < Math.min(count, 200); i++) {
+        detectIter.read(i)
+        if (dc.w < 0.1) continue
+        if (ds.x < 0 || ds.y < 0 || ds.z < 0) negCount++
+        totalSeen++
+    }
+    const useExpScale = totalSeen > 0 && negCount / totalSeen > 0.5
+
+    const OPACITY_THRESHOLD = 0.1
+    const candidates = []
+
+    const oc = new Vec3()
 
     for (let i = 0; i < count; i++) {
         iter.read(i)
         if (c.w <= OPACITY_THRESHOLD) continue
 
-        const localPos = new Vec3(p.x, p.y, p.z)
-        const distToSplat = localRay.direction.dot(localPos.clone().sub(localRay.origin))
-        if (distToSplat <= 0) continue
+        oc.set(p.x - localRay.origin.x, p.y - localRay.origin.y, p.z - localRay.origin.z)
+        const t = oc.dot(localRay.direction)
+        if (t < 0) continue 
 
-        const pointOnRay = localRay.getPoint(distToSplat)
-        const dist = pointOnRay.distance(localPos)
+        const closestX = localRay.origin.x + t * localRay.direction.x - p.x
+        const closestY = localRay.origin.y + t * localRay.direction.y - p.y
+        const closestZ = localRay.origin.z + t * localRay.direction.z - p.z
+        const distSq = closestX * closestX + closestY * closestY + closestZ * closestZ
 
-        for (let k = 0; k < splatRadii.length; k++) {
-            if (dist < splatRadii[k] && distToSplat < candidates[k].dist) {
-                candidates[k].dist = distToSplat
-                candidates[k].pos = localPos.clone()
-            }
+        const sx = useExpScale ? Math.exp(s.x) : Math.abs(s.x)
+        const sy = useExpScale ? Math.exp(s.y) : Math.abs(s.y)
+        const sz = useExpScale ? Math.exp(s.z) : Math.abs(s.z)
+        const maxScale = Math.max(sx, sy, sz)
+
+        if (distSq > maxScale * maxScale * 4) continue
+
+        candidates.push({ t, opacity: c.w, pos: p.clone() })
+    }
+
+    if (candidates.length === 0) {
+        return findFallbackIntersectionPoint(localRay, getVisiblePoints(modelEntity), invWorldMatrix)
+    }
+
+    candidates.sort((a, b) => a.t - b.t)
+
+    let accumulated = 0
+    for (const cand of candidates) {
+        accumulated += cand.opacity * (1 - accumulated)
+        if (accumulated > 0.5) {
+            return new Vec3(
+                localRay.origin.x + cand.t * localRay.direction.x,
+                localRay.origin.y + cand.t * localRay.direction.y,
+                localRay.origin.z + cand.t * localRay.direction.z,
+            )
         }
     }
-
-    const hit = candidates.find((c) => c.pos !== null)
-    if (hit?.pos) {
-        const zTarget = hit.pos.z
-        const t = (zTarget - localRay.origin.z) / localRay.direction.z
-        return localRay.getPoint(t)
-    }
-
-    const visiblePoints = []
-    const iter2 = gsplatData.createIter(p, r, s, c)
-    for (let i = 0; i < count; i++) {
-        iter2.read(i)
-        if (c.w > OPACITY_THRESHOLD) visiblePoints.push(p.x, p.y, p.z)
-    }
-    return findFallbackIntersectionPoint(localRay, new Float32Array(visiblePoints), invWorldMatrix)
+    return new Vec3(
+        localRay.origin.x + candidates[0].t * localRay.direction.x,
+        localRay.origin.y + candidates[0].t * localRay.direction.y,
+        localRay.origin.z + candidates[0].t * localRay.direction.z,
+    )
 }
-
 function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
-    const nearestPoint = findNearestSplatCenter(localRay, centers)
-    if (nearestPoint) return nearestPoint
+    const aabbHit = intersectRayAABB(localRay, invWorldMatrix)
+    if (aabbHit) return aabbHit
+
     const bboxIntersection = intersectBoundingBoxCenterPlane(localRay, invWorldMatrix)
     if (bboxIntersection) return bboxIntersection
 
     return localRay.getPoint(5.0)
-}
-
-function findNearestSplatCenter(localRay, centers) {
-    let bestT = null
-    let bestDistSq = Infinity
-
-    for (let i = 0; i < centers.length; i += 3) {
-        const p = new Vec3(centers[i], centers[i + 1], centers[i + 2])
-        const v = p.clone().sub(localRay.origin)
-        const t = v.dot(localRay.direction)
-
-        if (t < 0) continue
-
-        const pointOnRay = localRay.getPoint(t)
-        const dx = pointOnRay.x - p.x
-        const dy = pointOnRay.y - p.y
-        const dz = pointOnRay.z - p.z
-        const distSq = dx * dx + dy * dy + dz * dz
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq
-            bestT = t
-        }
-    }
-    return bestT !== null ? localRay.getPoint(bestT) : null
 }
 
 function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
@@ -266,7 +268,6 @@ function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
     const planeNormal = localRay.direction.clone()
     return intersectRayPlane(localRay, bboxCenterLocal, planeNormal)
 }
-
 function intersectRayPlane(ray, planePoint, planeNormal) {
     const denom = planeNormal.dot(ray.direction)
     if (Math.abs(denom) < 1e-6) return null
@@ -275,4 +276,192 @@ function intersectRayPlane(ray, planePoint, planeNormal) {
     if (t < 0) return null
 
     return ray.getPoint(t)
+}
+function intersectRayAABB(localRay, invWorldMatrix) {
+    const meshInstance = modelEntity.gsplat.instance.meshInstance
+    const aabbWorld = meshInstance.aabb
+
+    const minWorld = new Vec3(
+        aabbWorld.center.x - aabbWorld.halfExtents.x,
+        aabbWorld.center.y - aabbWorld.halfExtents.y,
+        aabbWorld.center.z - aabbWorld.halfExtents.z,
+    )
+    const maxWorld = new Vec3(
+        aabbWorld.center.x + aabbWorld.halfExtents.x,
+        aabbWorld.center.y + aabbWorld.halfExtents.y,
+        aabbWorld.center.z + aabbWorld.halfExtents.z,
+    )
+    const minLocal = new Vec3()
+    const maxLocal = new Vec3()
+    invWorldMatrix.transformPoint(minWorld, minLocal)
+    invWorldMatrix.transformPoint(maxWorld, maxLocal)
+
+    const bMin = new Vec3(
+        Math.min(minLocal.x, maxLocal.x),
+        Math.min(minLocal.y, maxLocal.y),
+        Math.min(minLocal.z, maxLocal.z),
+    )
+    const bMax = new Vec3(
+        Math.max(minLocal.x, maxLocal.x),
+        Math.max(minLocal.y, maxLocal.y),
+        Math.max(minLocal.z, maxLocal.z),
+    )
+
+    const o = localRay.origin
+    const d = localRay.direction
+    const EPSILON = 1e-8
+
+    let tMin = -Infinity
+    let tMax = Infinity
+
+    for (const axis of ['x', 'y', 'z']) {
+        if (Math.abs(d[axis]) < EPSILON) {
+            if (o[axis] < bMin[axis] || o[axis] > bMax[axis]) return null
+        } else {
+            const t1 = (bMin[axis] - o[axis]) / d[axis]
+            const t2 = (bMax[axis] - o[axis]) / d[axis]
+            tMin = Math.max(tMin, Math.min(t1, t2))
+            tMax = Math.min(tMax, Math.max(t1, t2))
+        }
+    }
+    if (tMax < 0 || tMin > tMax) return null
+    const t = tMin >= 0 ? tMin : tMax
+    if (t < 0) return null
+
+    return localRay.getPoint(t)
+}
+function jacobiEigen3(A) {
+    const a = A.map((row) => [...row])
+    let v = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ]
+    const MAX_ITER = 50
+    for (let iter = 0; iter < MAX_ITER; iter++) {
+        let maxVal = 0,
+            p = 0,
+            q = 1
+        for (let i = 0; i < 3; i++) {
+            for (let j = i + 1; j < 3; j++) {
+                if (Math.abs(a[i][j]) > maxVal) {
+                    maxVal = Math.abs(a[i][j])
+                    p = i
+                    q = j
+                }
+            }
+        }
+        if (maxVal < 1e-10) break
+        const theta = (a[q][q] - a[p][p]) / (2 * a[p][q])
+        const t = Math.sign(theta) / (Math.abs(theta) + Math.sqrt(1 + theta * theta))
+        const c = 1 / Math.sqrt(1 + t * t)
+        const s = t * c
+        const app = a[p][p],
+            aqq = a[q][q],
+            apq = a[p][q]
+        a[p][p] = app - t * apq
+        a[q][q] = aqq + t * apq
+        a[p][q] = 0
+        a[q][p] = 0
+
+        for (let r = 0; r < 3; r++) {
+            if (r !== p && r !== q) {
+                const arp = a[r][p],
+                    arq = a[r][q]
+                a[r][p] = c * arp - s * arq
+                a[p][r] = a[r][p]
+                a[r][q] = s * arp + c * arq
+                a[q][r] = a[r][q]
+            }
+        }
+
+        for (let r = 0; r < 3; r++) {
+            const vrp = v[r][p],
+                vrq = v[r][q]
+            v[r][p] = c * vrp - s * vrq
+            v[r][q] = s * vrp + c * vrq
+        }
+    }
+    const values = [a[0][0], a[1][1], a[2][2]]
+    const indices = [0, 1, 2].sort((i, j) => values[i] - values[j])
+
+    return {
+        values: indices.map((i) => values[i]),
+        vectors: indices.map((i) => [v[0][i], v[1][i], v[2][i]]),
+    }
+}
+function fitPlaneNormal(points) {
+    const n = points.length
+    if (n < 3) return null
+
+    // centroid
+    let cx = 0,
+        cy = 0,
+        cz = 0
+    for (const p of points) {
+        cx += p.x
+        cy += p.y
+        cz += p.z
+    }
+    cx /= n
+    cy /= n
+    cz /= n
+
+    let xx = 0,
+        xy = 0,
+        xz = 0
+    let yy = 0,
+        yz = 0,
+        zz = 0
+
+    for (const p of points) {
+        const dx = p.x - cx
+        const dy = p.y - cy
+        const dz = p.z - cz
+        xx += dx * dx
+        xy += dx * dy
+        xz += dx * dz
+        yy += dy * dy
+        yz += dy * dz
+        zz += dz * dz
+    }
+
+    const cov = [
+        [xx, xy, xz],
+        [xy, yy, yz],
+        [xz, yz, zz],
+    ]
+
+    const { vectors } = jacobiEigen3(cov)
+
+    const normal = vectors[0]
+
+    const len = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2)
+    if (len < 1e-6) return null
+
+    return new Vec3(normal[0] / len, normal[1] / len, normal[2] / len)
+}
+
+function quatFromTo(from, to) {
+    const q = new Quat()
+    const dot = from.dot(to)
+    if (dot >= 1.0 - 1e-6) {
+        q.setIdentity()
+        return q
+    }
+
+    if (dot <= -1.0 + 1e-6) {
+        let perp = new Vec3().cross(from, new Vec3(1, 0, 0))
+        if (perp.length() < 0.01) {
+            perp = new Vec3().cross(from, new Vec3(0, 0, 1))
+        }
+        perp.normalize()
+        q.setFromAxisAngle(perp, 180)
+        return q
+    }
+    const axis = new Vec3().cross(from, to)
+    axis.normalize()
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI)
+    q.setFromAxisAngle(axis, angle)
+    return q
 }
