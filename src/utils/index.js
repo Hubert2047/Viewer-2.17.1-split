@@ -346,7 +346,7 @@ function createControlBotGroup(settings, tooltip, events, dom) {
         [
             'hideDimension',
             'hideDimension',
-            'HideDimensions',
+            'Hide Dimensions',
             hasDimension,
             false,
             'inputEvent:hide-dimensions',

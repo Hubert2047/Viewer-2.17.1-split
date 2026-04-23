@@ -918,9 +918,7 @@ function exportSection(el, global) {
         title: 'To change your downloads folder location in Microsoft Edge:',
         items: [
             'Open Microsoft Edge, then select **Settings and more** ··· > **Settings**.',
-            'Select **Downloads**, and then, in the **Location** area, select **Change**.',
-            'In the dialog box, select a new location for your downloaded files.',
-            "Here you'll also find the option to have Microsoft Edge ask where to save each file before downloading.",
+            'Select **Downloads**, then enable **Ask where to save each file before downloading**.',
         ],
     }
     const chromeStepsData = {
@@ -928,7 +926,7 @@ function exportSection(el, global) {
         items: [
             'On your computer, open Chrome.',
             'At the top right, click More  ⋮  > **Settings** > **Downloads**.',
-            "Adjust your download settings:\n• To change the default download location, click **Change** and select where to save your files.\n• If you'd rather choose a specific location for each download, turn on **Ask where to save each file before downloading**.",
+            "Enable **Ask where to save each file before downloading**.",
         ],
     }
     const firefoxStepsData = {
@@ -937,7 +935,7 @@ function exportSection(el, global) {
             'Open Firefox on your computer.',
             'Click the menu button ☰ at the top right, then select **Settings**.',
             'In the **General** panel, scroll down until you see the **Downloads** section.',
-            'Choose your preferred download option:\n• Select **Save files to** and click **Browse…** to choose a specific folder on your computer.\n• Select **Always ask me where to save files** if you want Firefox to ask you each time before downloading.',
+            'Enable **Always ask you where to save files**.',
         ],
     }
     helperBtn.addEventListener('click', (e) => {

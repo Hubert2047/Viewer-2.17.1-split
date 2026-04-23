@@ -4029,7 +4029,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bboxEntity.enabled = true
             drawCorners(corners)
             updateLabels(corners, dim)
-            setCameraFrameSamples(isMobile ? 2 : 4)
+            setCameraFrameSamples(isMobile ? 1 : 1)
         }
 
         const hideDimensionBox = () => {
