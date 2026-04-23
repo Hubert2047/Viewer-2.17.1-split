@@ -333,7 +333,7 @@ function createControlBotGroup(settings, tooltip, events, dom) {
     // buttons: [id, iconKey,tooltip, show, event, toggle]
     const hasDimension = !!settings.dimensions
     const buttons = [
-        ['resetCamera', 'resetCamera', 'Reset Camera', true, 'inputEvent:reset'],
+        ['resetCamera', 'resetCamera', 'Reset Camera', true, true,   'inputEvent:reset'],
         [
             'showDimension',
             'showDimension',

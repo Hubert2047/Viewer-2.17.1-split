@@ -1650,7 +1650,7 @@ class InputController {
                         events.fire('hotspot:hotspot-btns')
                         break
                     case 'r':
-                        events.fire('inputEvent', 'reset', event)
+                        events.fire('inputEvent:reset', event)
                         break
                 }
             }
