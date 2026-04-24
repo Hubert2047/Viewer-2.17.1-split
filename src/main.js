@@ -2982,6 +2982,7 @@ class Viewer {
                 })
             }
             this.cameraManager = new CameraManager(global, sceneBound, collider)
+            global.cameraManager = this.cameraManager
             const rotationGizmo = new RotationGizmo(app, camera, events)
             const pivotDot = new PivotDot(app, camera, modelEntity)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
@@ -3018,10 +3019,10 @@ class Viewer {
                 if (enable) pivotGizmo.enable()
                 else pivotGizmo.disable()
             })
-            events.on('gizmo:rotation-enable', (enable) => {
-                if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
-                else rotationGizmo.disable()
-            })
+            // events.on('gizmo:rotation-enable', (enable) => {
+            //     if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
+            //     else rotationGizmo.disable()
+            // })
             events.on('dimensions:gizmo-rotation', (enabled) => {
                 if (enabled) {
                     dimensionRotatable = new DimensionRotatable(

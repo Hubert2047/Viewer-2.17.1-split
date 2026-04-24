@@ -82,12 +82,14 @@ class OtherController {
         this.events.on('pivot:save', () => {
             this.initView()
         })
+
         this.events.on('orientation:groundplane', (points) => {
             this.applyGroundPlaneOrientation(points)
         })
+        this.events.on('orientation:manual', () => this.applyManualOrientation())
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
-        this.events.on('orientation:save', () => this.saveModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
+        
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
@@ -114,8 +116,6 @@ class OtherController {
                 ),
                 rotation: modelEntity.localRotation.clone(),
                 distance: this.distance,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
             }
             const targetPose = {
                 focus: new Vec3(f.x, f.y, f.z),
@@ -289,8 +289,6 @@ class OtherController {
                 rotation: modelEntity.localRotation.clone(),
                 position: modelEntity.localPosition.clone(),
                 distance: startDistance,
-                yaw: startYaw,
-                pitch: startPitch,
             },
             targetPose: {
                 focus: targetFocus,
@@ -309,7 +307,7 @@ class OtherController {
                 }
                 this.syncHierarchyAndRender()
             },
-            lerpDuration: HOTSPOT_FADE_TIME,
+            lerpDuration: NORMAL_FADE_TIME,
         })
     }
     calcBasePositionFromPivot(centerPivot) {
@@ -362,6 +360,7 @@ class OtherController {
         if (this.settings.inertia && this.isFlick) this.applyInertia()
         this.getPose(camera)
     }
+   
     getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
         const fovDeg = 50
@@ -382,17 +381,17 @@ class OtherController {
         const distance = this.getDeafultDistance()
         this.maxDistance = Math.max(distance, 200)
 
-        this.pitchRad = camera.angles.x * Math.PI / 180
+        this.pitchRad = (camera.angles.x * Math.PI) / 180
+        const offsetPitch = this.settings.orientation ? this.settings.orientation.pitchOffset : this.pitchRad
         if (this.model === 'cylindrical') {
-            this.maxPitch = this.pitchRad
-            this.minPitch = this.pitchRad
+            this.minPitch = offsetPitch
+            this.maxPitch = offsetPitch
         } else {
-            this.minPitch += this.pitchRad
-            this.maxPitch += this.pitchRad
+            this.minPitch += offsetPitch
+            this.maxPitch += offsetPitch
         }
         let forward
         if (camera.angles && typeof camera.angles.x === 'number' && typeof camera.angles.y === 'number') {
-            
             const yawRad = (camera.angles.y * Math.PI) / 180
             forward = new Vec33(
                 -Math.sin(yawRad) * Math.cos(this.pitchRad),
@@ -455,31 +454,44 @@ class OtherController {
     }
     cancelOrientation() {
         this.updateModelRotation()
+        this.model = this.originModel
+        this.reset()
     }
-    saveModelOrientation() {
-        this.baseRotation = modelEntity.localRotation.clone()
-        this.basePosition = modelEntity.localPosition.clone()
-        this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
+    applyManualOrientation() {
+        const currentPosition = modelEntity.localPosition.clone()
+        const currentRotation = modelEntity.localRotation.clone()
+        const pivot = this.centerPivot.clone()
+
         this.currentYaw = 0
         this.currentPitch = 0
+
+        this.baseRotation = currentRotation.clone()
+        this.basePosition = currentPosition.clone()
+        this.centerPivot = pivot
+
+        // this.originEntityRotation = currentRotation.clone()
+        // this.originEntityPos = currentPosition.clone()
+
+        this.settings.orientation = {
+            rotation: this.baseRotation,
+            position: this.basePosition,
+            pitchOffset: this.pitchRad,
+        }
+
         this.updateModelRotation()
         this.model = this.originModel
-        if (this.model === 'cylindrical') {
-            this.minPitch = 0
-            this.maxPitch = 0
-        } else if (this.model === 'hemispherical') {
-            this.minPitch = 0
-            this.maxPitch = Math.PI / 2
-        }
-        if (this.initviewPose) this.initView()
+        this.minPitch = 0
+        this.maxPitch = Math.PI / 2
     }
     applyGroundPlaneOrientation(points) {
         const localNormal = fitPlaneNormal(points)
         if (localNormal.y > 0) localNormal.mulScalar(-1)
+
         const originRot = this.originEntityRotation ? this.originEntityRotation.clone() : new Quat()
         const normalInWorld = new Vec3()
         originRot.transformVector(localNormal, normalInWorld)
         normalInWorld.normalize()
+
         const pickCentroid = new Vec3(
             (points[0].x + points[1].x + points[2].x) / 3,
             (points[0].y + points[1].y + points[2].y) / 3,
@@ -487,28 +499,62 @@ class OtherController {
         )
         const pickCentroidWorld = new Vec3()
         originRot.transformVector(pickCentroid, pickCentroidWorld)
+
         const modelCentroid = this.bbox.center.clone()
         const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
         if (normalInWorld.dot(toModelCenter) > 0) {
             normalInWorld.mulScalar(-1)
         }
-        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
 
+        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
         const newBaseRotation = new Quat()
         newBaseRotation.mul2(correctionQuat, originRot)
 
-        this.baseRotation = newBaseRotation
         this.currentYaw = 0
         this.currentPitch = 0
-        if (!this.centerPivot) {
-            this.centerPivot = this.bbox.center.clone()
+
+        const currentPosition = modelEntity.localPosition.clone()
+
+        const pivot = this.centerPivot.clone()
+
+        const offsetToPivot = pivot.clone().sub(currentPosition)
+
+        const currentRotation = modelEntity.localRotation.clone()
+        const invCurrentRot = currentRotation.clone().invert()
+        const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
+
+        const rotatedOffsetToPivot = this.rotateOffsetByQuat(offsetToPivot, deltaQuat)
+        const newPosition = pivot.clone().sub(rotatedOffsetToPivot)
+
+        const newFocus = pivot.clone()
+
+        this.baseRotation = newBaseRotation
+        this.basePosition = newPosition.clone()
+        this.centerPivot = pivot
+        const startPose = {
+            focus: this.focus.clone(),
+            position: currentPosition,
+            rotation: currentRotation,
+            distance: this.distance,
         }
-        this.hemisphericalRot(0, 0)
-        this.syncHierarchyAndRender()
-        this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
-        this.settings.orientation = { rotation: this.baseRotation, position: this.basePosition }
-        this.updateModelRotation()
+        const targetPose = {
+            focus: newFocus,
+            position: newPosition,
+            rotation: newBaseRotation,
+            distance: this.distance,
+            yaw: 0,
+            pitch: 0,
+        }
+
+        this.settings.orientation = { rotation: newBaseRotation, position: newPosition, pitchOffset: this.pitchRad }
         this.model = this.originModel
+        this.minPitch = this.pitchRad
+        this.maxPitch = Math.PI / 2 + this.pitchRad
+        const r = this.baseRotation
+        const q = new Quat(r.x, r.y, r.z, r.w)
+        const euler = q.getEulerAngles()
+        this.events.fire('orientation:aligned-to-ground', { x: euler.x, y: euler.y, z: euler.z })
+        this.setupTransition({ targetPose, startPose, lerpDuration: NORMAL_FADE_TIME })
     }
     lerp(a, b, t) {
         return a + (b - a) * t

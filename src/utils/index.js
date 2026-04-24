@@ -171,7 +171,6 @@ function getHtmlTemplate(version) {
 <head>
     <title>3D Model Viewer</title>
     <meta charset="UTF-8">
-    <meta property="og:title" content="3D Model Viewer" />
     <meta property="og:description" content=" " />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
      <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">

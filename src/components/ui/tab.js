@@ -1,18 +1,15 @@
-function createTabs(tabs, width = 100, height = 100) {
+function createTabs({ tabs, width = 100, height = 100, onTabChange }) {
     const container = document.createElement('div')
     container.className = 'tab-container'
     container.style.cssText = `width: ${width}px; height : ${height}px`
 
     const header = document.createElement('div')
     header.className = 'tab-header'
-
+    container.setActiveTab = (index) => render(index)
     const content = document.createElement('div')
     content.className = 'tab-content'
 
-    let activeIndex = 0
-
     const render = (index) => {
-        activeIndex = index
 
         // clear active UI
         header.querySelectorAll('.tab-btn').forEach((btn, i) => {
@@ -30,6 +27,7 @@ function createTabs(tabs, width = 100, height = 100) {
         } else {
             content.innerHTML = result
         }
+        onTabChange?.(index, tab)
     }
 
     tabs.forEach((tab, index) => {

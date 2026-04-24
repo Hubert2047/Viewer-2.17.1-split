@@ -158,14 +158,12 @@ function getPivotCenter(modelEntity) {
 
     return new Vec3(wx / totalWeight, wy / totalWeight, wz / totalWeight)
 }
-function pickModelLocalPoint(x, y, camera) {
+function pickModelLocalPoint(x, y, camera, preciseMode = false) {
     const from = camera.screenToWorld(x, y, camera.nearClip)
     const to = camera.screenToWorld(x, y, camera.farClip)
     const worldRay = new Ray(from, to.clone().sub(from).normalize())
-
     const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
     const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
-
     const localRayOrigin = new Vec3()
     const localRayDirection = new Vec3()
     invWorldMatrix.transformPoint(worldRay.origin, localRayOrigin)
@@ -199,7 +197,6 @@ function pickModelLocalPoint(x, y, camera) {
 
     const OPACITY_THRESHOLD = 0.1
     const candidates = []
-
     const oc = new Vec3()
 
     for (let i = 0; i < count; i++) {
@@ -208,7 +205,7 @@ function pickModelLocalPoint(x, y, camera) {
 
         oc.set(p.x - localRay.origin.x, p.y - localRay.origin.y, p.z - localRay.origin.z)
         const t = oc.dot(localRay.direction)
-        if (t < 0) continue 
+        if (t < 0) continue
 
         const closestX = localRay.origin.x + t * localRay.direction.x - p.x
         const closestY = localRay.origin.y + t * localRay.direction.y - p.y
@@ -222,33 +219,112 @@ function pickModelLocalPoint(x, y, camera) {
 
         if (distSq > maxScale * maxScale * 4) continue
 
-        candidates.push({ t, opacity: c.w, pos: p.clone() })
+        candidates.push({ t, opacity: c.w, pos: p.clone(), scale: new Vec3(sx, sy, sz), rot: r.clone() })
     }
 
     if (candidates.length === 0) {
-        return findFallbackIntersectionPoint(localRay, getVisiblePoints(modelEntity), invWorldMatrix)
+        if (preciseMode) return null
+        return findFallbackIntersectionPoint(localRay, invWorldMatrix)
     }
 
     candidates.sort((a, b) => a.t - b.t)
 
-    let accumulated = 0
-    for (const cand of candidates) {
-        accumulated += cand.opacity * (1 - accumulated)
-        if (accumulated > 0.5) {
-            return new Vec3(
-                localRay.origin.x + cand.t * localRay.direction.x,
-                localRay.origin.y + cand.t * localRay.direction.y,
-                localRay.origin.z + cand.t * localRay.direction.z,
-            )
+    if (!preciseMode) {
+        let accumulated = 0
+        for (const cand of candidates) {
+            accumulated += cand.opacity * (1 - accumulated)
+            if (accumulated > 0.5) {
+                return new Vec3(
+                    localRay.origin.x + cand.t * localRay.direction.x,
+                    localRay.origin.y + cand.t * localRay.direction.y,
+                    localRay.origin.z + cand.t * localRay.direction.z,
+                )
+            }
+        }
+        return new Vec3(
+            localRay.origin.x + candidates[0].t * localRay.direction.x,
+            localRay.origin.y + candidates[0].t * localRay.direction.y,
+            localRay.origin.z + candidates[0].t * localRay.direction.z,
+        )
+    }
+
+    const medianScale = computeMedianSplatScale(gsplatData, useExpScale)
+    const SPLAT_RADIUS_MULTIPLIER = Math.max(1.5, Math.min(5.0, 0.15 / medianScale))
+    let bestT = null
+    let bestScore = Infinity
+    const ocLocal = new Vec3()
+    const dLocal = new Vec3()
+
+    for (const cand of candidates.slice(0, 50)) {
+        const { x: sx, y: sy, z: sz } = cand.scale
+        if (sx < 1e-6 || sy < 1e-6 || sz < 1e-6) continue
+
+        const invRot = new Quat(-cand.rot.x, -cand.rot.y, -cand.rot.z, cand.rot.w)
+
+        ocLocal.set(localRay.origin.x - cand.pos.x, localRay.origin.y - cand.pos.y, localRay.origin.z - cand.pos.z)
+        invRot.transformVector(ocLocal, ocLocal)
+        invRot.transformVector(localRay.direction, dLocal)
+
+        const rsx = sx * SPLAT_RADIUS_MULTIPLIER
+        const rsy = sy * SPLAT_RADIUS_MULTIPLIER
+        const rsz = sz * SPLAT_RADIUS_MULTIPLIER
+
+        const oex = ocLocal.x / rsx,
+            oey = ocLocal.y / rsy,
+            oez = ocLocal.z / rsz
+        const dex = dLocal.x / rsx,
+            dey = dLocal.y / rsy,
+            dez = dLocal.z / rsz
+
+        const a = dex * dex + dey * dey + dez * dez
+        const b = 2 * (oex * dex + oey * dey + oez * dez)
+        const cv = oex * oex + oey * oey + oez * oez - 1.0
+        const disc = b * b - 4 * a * cv
+        if (disc < 0) continue
+
+        const t1 = (-b - Math.sqrt(disc)) / (2 * a)
+        const t2 = (-b + Math.sqrt(disc)) / (2 * a)
+        const tHit = t1 >= 0 ? t1 : t2 >= 0 ? t2 : null
+        if (tHit === null) continue
+
+        const score = tHit - cand.opacity * 0.01
+        if (score < bestScore) {
+            bestScore = score
+            bestT = tHit
         }
     }
-    return new Vec3(
-        localRay.origin.x + candidates[0].t * localRay.direction.x,
-        localRay.origin.y + candidates[0].t * localRay.direction.y,
-        localRay.origin.z + candidates[0].t * localRay.direction.z,
-    )
+    if (bestT !== null) {
+        return new Vec3(
+            localRay.origin.x + bestT * localRay.direction.x,
+            localRay.origin.y + bestT * localRay.direction.y,
+            localRay.origin.z + bestT * localRay.direction.z,
+        )
+    }
+
+    return null
 }
-function findFallbackIntersectionPoint(localRay, centers, invWorldMatrix) {
+function computeMedianSplatScale(gsplatData, useExpScale) {
+    const count = gsplatData.numSplats
+    const p = new Vec3(),
+        r = new Quat(),
+        s = new Vec3(),
+        c = new Vec4()
+    const iter = gsplatData.createIter(p, r, s, c)
+    const maxScales = []
+    for (let i = 0; i < count; i++) {
+        iter.read(i)
+        if (c.w < 0.1) continue
+        const sx = useExpScale ? Math.exp(s.x) : Math.abs(s.x)
+        const sy = useExpScale ? Math.exp(s.y) : Math.abs(s.y)
+        const sz = useExpScale ? Math.exp(s.z) : Math.abs(s.z)
+        maxScales.push(Math.max(sx, sy, sz))
+    }
+    if (maxScales.length === 0) return 0.05
+    maxScales.sort((a, b) => a - b)
+    return maxScales[Math.floor(maxScales.length / 2)]
+}
+
+function findFallbackIntersectionPoint(localRay, invWorldMatrix) {
     const aabbHit = intersectRayAABB(localRay, invWorldMatrix)
     if (aabbHit) return aabbHit
 
@@ -391,6 +467,7 @@ function jacobiEigen3(A) {
     }
 }
 function fitPlaneNormal(points) {
+    //PCA
     const n = points.length
     if (n < 3) return null
 

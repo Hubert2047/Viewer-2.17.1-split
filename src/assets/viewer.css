@@ -1608,12 +1608,12 @@ button {
     0 0 0 0.5px rgba(74, 222, 128, 0.2);
 }
 #toast.warning {
-  background: #451a03;
-  color: #fde68a;
+  background: #3b2a0a;
+  color: #fcd34d;
+  border: 1px solid rgba(252, 211, 77, 0.25);
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 10px 24px -4px rgba(0, 0, 0, 0.25),
-    0 0 0 0.5px rgba(251, 191, 36, 0.2);
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(252, 211, 77, 0.08);
 }
 #toast.error {
   background: #450a0a;
@@ -2075,4 +2075,15 @@ button {
 
 .tab-content {
   padding: 12px;
+}
+.pick-ground-btn{
+  height: 30px;
+}
+.highlight {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.highlight.cancel {
+  color: #f87171;
 }

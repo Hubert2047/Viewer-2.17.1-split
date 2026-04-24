@@ -79,9 +79,7 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
 }
 function renderOrientation(group, global, editGroup) {
     const { events, settings } = global
-    editGroup.register('orientation', {
-        cancel: () => onCancel(),
-    })
+    editGroup.register('orientation', { cancel: () => onCancel() })
     const groundPicker = new GroundPlanePicker(global.app, global.camera)
     events.on('hotspot:active', () => onCancel())
     events.on('sidebar:clicked', () => onCancel())
@@ -90,6 +88,7 @@ function renderOrientation(group, global, editGroup) {
     const container = document.createElement('div')
     container.classList.add('orientation-btn-wrap')
 
+    // ── Rotation inputs (editable, inside Manual tab) ──
     const {
         row: rotationRow,
         setEditable: setInputsEditable,
@@ -101,6 +100,19 @@ function renderOrientation(group, global, editGroup) {
             events.fire('orientation:eulerchange', { x, y, z })
         },
     })
+
+    // ── Rotation inputs (readonly, always visible outside tabs) ──
+    const { row: readonlyRotationRow, setValues: setReadonlyValues } = createVec3Inputs({
+        title: 'Rotation',
+        editable: false,
+        onChange: () => {},
+    })
+
+    const syncValues = (val) => {
+        setInputValues(val)
+        setReadonlyValues(val)
+    }
+
     events.on('ortery:rotate', () => {
         const euler = modelEntity.getLocalEulerAngles(new Vec3())
         events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
@@ -108,200 +120,293 @@ function renderOrientation(group, global, editGroup) {
     events.on('modelEntity:loaded', () => {
         if (settings.orientation) {
             const { rotation: r } = settings.orientation
-            const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
-            setInputValues(euler)
+            syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
         } else {
-            const euler = modelEntity.getLocalEulerAngles(new Vec3())
-            setInputValues(euler)
+            syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
         }
     })
+    events.on('orientation:eulersynced', ({ x, y, z }) => {
+        if (!isEditing) return
+        syncValues({ x, y, z })
+    })
+    events.on('orientation:aligned-to-ground', ({ x, y, z }) => {
+        syncValues({ x, y, z })
+    })
+    const horizontalLineEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    horizontalLineEl.style.cssText = `
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 10; display: none;
+`
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('x1', '0')
+    line.setAttribute('y1', '70%') 
+    line.setAttribute('x2', '100%')
+    line.setAttribute('y2', '70%')
+    line.setAttribute('stroke', '#facc15')
+    line.setAttribute('stroke-width', '1')
+    line.setAttribute('stroke-dasharray', '6 4')
+    line.setAttribute('opacity', '0.7')
+    horizontalLineEl.appendChild(line)
+    document.body.appendChild(horizontalLineEl)
 
-    const gizmoRow = document.createElement('div')
-    gizmoRow.classList.add('section-group-row')
-    gizmoRow.style.display = 'none'
-    const gizmoLabel = document.createElement('span')
-    gizmoLabel.textContent = 'Rotation Gizmo'
-
+    // ── Gizmo toggle ──
+    const horizontalRow = document.createElement('div')
+    horizontalRow.classList.add('section-group-row')
+    const horizontalLabel = document.createElement('span')
+    horizontalLabel.textContent = 'Horizontal Line'
     const track = document.createElement('div')
     track.classList.add('toggle')
     const knob = document.createElement('div')
     knob.classList.add('toggle-knob')
     track.appendChild(knob)
 
-    const setGizmo = (on) => {
+    track.addEventListener('click', () => {
+        const on = !track.classList.contains('active')
         track.classList.toggle('active', on)
-        events.fire('gizmo:rotation-enable', on)
-    }
-    track.addEventListener('click', () => setGizmo(!track.classList.contains('active')))
+        horizontalLineEl.style.display = on ? 'block' : 'none'
+    })
+    const updateHorizontalLine =(on)=>{
 
-    gizmoRow.appendChild(gizmoLabel)
-    gizmoRow.appendChild(track)
-
-    const btnRow = document.createElement('div')
-    btnRow.classList.add('btn-row')
-    const onCancel = () => {
-        if (!isEditing) return
-        isEditing = false
-        setInputsEditable(false)
-        gizmoRow.style.display = 'none'
-        setGizmo(false)
-        if (settings.orientation) {
-            const { rotation: r } = settings.orientation
-            const euler = new Quat(r.x, r.y, r.z, r.w).getEulerAngles()
-            setInputValues(euler)
-        } else {
-            const euler = modelEntity.getLocalEulerAngles(new Vec3())
-            setInputValues(euler)
-        }
-        renderBtns()
-        events.fire('orientation:cancel')
     }
-    // --- Ground Plane Picker ---
+    horizontalRow.appendChild(horizontalLabel)
+    horizontalRow.appendChild(track)
+
+    // ── Ground Plane Picker ──
     let pickingActive = false
     let pickedPoints = []
     const MAX_POINTS = 3
+    const getGroundPoints = () => pickedPoints
+    const ICON_CROSSHAIR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+    </svg>`
+    const ICON_X = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>`
+    // const ICON_CHECK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    // <polyline points="20 6 9 17 4 12"/>
+    // </svg>`
 
     const pickRow = document.createElement('div')
     pickRow.classList.add('section-group-row')
-    pickRow.style.display = 'none'
 
     const pickLabel = document.createElement('span')
-    pickLabel.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
+    pickLabel.textContent = 'Set Ground Plane'
+
+    const pickActionRow = document.createElement('div')
+    pickActionRow.style.cssText = 'display:flex; gap:6px;'
 
     const pickBtn = document.createElement('button')
-    pickBtn.classList.add('btn')
-    pickBtn.textContent = 'Pick Ground Plane'
+    pickBtn.classList.add('btn', 'pick-ground-btn')
+    pickBtn.innerHTML = ICON_CROSSHAIR
+    pickBtn.title = 'Pick Ground Plane'
+
+    const btnCancelGround = document.createElement('button')
+    btnCancelGround.classList.add('btn', 'cancel-btn')
+    btnCancelGround.innerHTML = ICON_X
+    btnCancelGround.title = 'Cancel'
+    btnCancelGround.style.display = 'none'
+
+    // const btnConfirmGround = document.createElement('button')
+    // btnConfirmGround.classList.add('btn', 'confirm-btn')
+    // btnConfirmGround.innerHTML = ICON_CHECK
+    // btnConfirmGround.title ="Apply Rotate"
+    // btnConfirmGround.style.display = 'none'
+
+    pickActionRow.appendChild(pickBtn)
+    pickActionRow.appendChild(btnCancelGround)
+    // pickActionRow.appendChild(btnConfirmGround)
+    pickRow.appendChild(pickLabel)
+    pickRow.appendChild(pickActionRow)
+
+    // Sync button visibility to current pick state
+    const updatePickState = () => {
+        if (!pickingActive) {
+            pickBtn.style.display = 'flex'
+            btnCancelGround.style.display = 'none'
+            // btnConfirmGround.style.display = 'none'
+        } else if (pickedPoints.length < MAX_POINTS) {
+            pickBtn.style.display = 'none'
+            btnCancelGround.style.display = 'flex'
+            // btnConfirmGround.style.display = 'none'
+        } else {
+            pickBtn.style.display = 'none'
+            btnCancelGround.style.display = 'flex'
+            // btnConfirmGround.style.display = 'flex'
+        }
+    }
+
+    const stopPicking = () => {
+        pickingActive = false
+        pickedPoints = []
+        groundPicker.disable()
+        groundPicker.reset()
+        updatePickState()
+        updateHintText()
+    }
+
     pickBtn.onclick = () => {
         pickedPoints = []
         pickingActive = true
         groundPicker.enable()
         groundPicker.reset()
-        updatePickLabel()
-        pickOverlay.style.display = 'flex'
+        updatePickState()
     }
 
-    const pickOverlay = document.createElement('div')
-    pickOverlay.style.cssText = `
-    display:none; position:fixed; top:0; left:0; right:0;
-    background:rgba(0,0,0,0.45); color:#fff;
-    padding:10px 16px; font-size:13px; z-index:9999;
-    align-items:center; justify-content:space-between;
-`
-    const pickOverlayText = document.createElement('span')
-    const pickOverlayCancel = document.createElement('button')
-    pickOverlayCancel.classList.add('btn', 'cancel-btn')
-    pickOverlayCancel.textContent = 'Cancel'
-    pickOverlayCancel.onclick = () => {
-        pickingActive = false
-        pickedPoints = []
-        pickOverlay.style.display = 'none'
-        groundPicker.disable()
-    }
-    pickOverlay.appendChild(pickOverlayText)
-    pickOverlay.appendChild(pickOverlayCancel)
-    document.body.appendChild(pickOverlay)
+    btnCancelGround.onclick = () => stopPicking()
 
-    const updatePickLabel = () => {
-        const current = pickedPoints.length
-        if (current < MAX_POINTS) {
-            const remaining = MAX_POINTS - current
-            pickOverlayText.textContent = `Click ${remaining} point${remaining > 1 ? 's' : ''} on the ground surface — click existing point to remove`
-            pickOverlayConfirm.style.display = 'none'
-        } else {
-            pickOverlayText.textContent = `3 points selected — click a point to remove, or click elsewhere to replace nearest`
-            pickOverlayConfirm.style.display = ''
-        }
-    }
+    // btnConfirmGround.onclick = () => {
+    //     events.fire('orientation:groundplane', pickedPoints)
+    //     stopPicking()
+    // }
+
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerdown', (e) => {
         if (!pickingActive || !isEditing) return
         if (e.button !== 0) return
-        if (pickedPoints.length >= 3) return
-
-        const localPoint = pickModelLocalPoint(e.offsetX, e.offsetY, global.camera.camera)
-        if (!localPoint) return
+        if (pickedPoints.length >= MAX_POINTS) return
+        const localPoint = pickModelLocalPoint(e.offsetX, e.offsetY, global.camera.camera, true)
+        if (!localPoint) {
+            showToast('Please try again!', { duration: 1000, type: 'warning' })
+            return
+        }
         groundPicker.handleClick(localPoint, e.offsetX, e.offsetY)
-
         pickedPoints = groundPicker.getLocalPoints().map((p) => ({ x: p.x, y: p.y, z: p.z }))
-        updatePickLabel()
+        updateHintText()
+        updatePickState()
     })
 
-    const updatePickRowVisibility = (editing) => {
-        pickRow.style.display = editing ? 'flex' : 'none'
-        if (!editing) {
-            pickingActive = false
-            pickedPoints = []
-            pickOverlay.style.display = 'none'
-            groundPicker.disable()
-        }
+    // ── Tab contents ──
+    const manualContent = () => {
+        const wrap = document.createElement('div')
+        wrap.style.cssText = 'display:flex; flex-direction:column; gap:10px;'
+        wrap.appendChild(rotationRow)
+        wrap.appendChild(horizontalRow)
+        return wrap
     }
 
-    pickRow.appendChild(pickLabel)
-    pickRow.appendChild(pickBtn)
-    container.appendChild(pickRow)
-    const pickOverlayConfirm = document.createElement('button')
-    pickOverlayConfirm.classList.add('btn', 'confirm-btn')
-    pickOverlayConfirm.textContent = 'Confirm Plane'
-    pickOverlayConfirm.style.display = 'none'
-    pickOverlayConfirm.onclick = () => {
-        if (pickedPoints.length < MAX_POINTS) return
-        pickOverlay.style.display = 'none'
-        events.fire('orientation:groundplane', pickedPoints)
-        groundPicker.disable()
+    const hint = document.createElement('div')
+    const groundContent = () => {
+        const wrap = document.createElement('div')
+        wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
+        hint.innerHTML = `Click <span class="highlight">3</span> points on the <span class="highlight">ground surface</span> to auto-align the model.`
+        hint.style.cssText = 'font-size:12px; color:var(--text-main);margin-top:4px'
+        wrap.appendChild(hint)
+        wrap.appendChild(pickRow)
+        return wrap
     }
-    pickOverlay.appendChild(pickOverlayConfirm)
+    const updateHintText = () => {
+        const remaining = MAX_POINTS - pickedPoints.length
+
+        hint.innerHTML =
+            remaining > 0
+                ? `Click <span class="highlight">${remaining}</span> point${remaining > 1 ? 's' : ''} on the <span class="highlight">ground surface</span> to auto-align the model.`
+                : `Click <span class="highlight">Apply</span> to auto-align the model, or click <span class="highlight cancel">✕</span> to cancel.`
+    }
+    let currentTab = 0
+    const tabs = createTabs({
+        tabs: [
+            { label: 'Manual', content: manualContent },
+            { label: 'Ground Plane', content: groundContent },
+        ],
+        width: 300,
+        height: 146,
+        onTabChange: (index) => {
+            currentTab = index
+            if (index === 1) {
+                horizontalLineEl.style.display = 'none'
+            } else {
+                stopPicking()
+            }
+        },
+    })
+    tabs.style.display = 'none'
+
+    // ── Bottom buttons (Edit / Cancel+Apply) ──
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
+    const onCancel = () => {
+        if (!isEditing) return
+        tabs.setActiveTab(0)
+        currentTab = 0
+        isEditing = false
+        setInputsEditable(false)
+        stopPicking()
+        horizontalLineEl.style.display = 'none'
+        track.classList.remove('active')
+        if (settings.orientation) {
+            const { rotation: r } = settings.orientation
+            syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
+        } else {
+            syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
+        }
+        renderBtns()
+        events.fire('orientation:cancel')
+    }
+
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
-            updatePickRowVisibility(true)
+            readonlyRotationRow.style.display = 'none'
+            tabs.style.display = 'flex'
+
             const btnCancel = document.createElement('button')
             btnCancel.classList.add('btn', 'cancel-btn')
             btnCancel.textContent = 'Cancel'
-            btnCancel.onclick = () => {
-                onCancel()
-            }
+            btnCancel.onclick = () => onCancel()
 
             const btnSave = document.createElement('button')
             btnSave.classList.add('btn', 'confirm-btn')
             btnSave.textContent = 'Apply'
             btnSave.onclick = () => {
+                if (currentTab === 0) {
+                    events.fire('orientation:manual')
+                } else {
+                    const pickedPoints = getGroundPoints()
+                    if (pickedPoints.length < MAX_POINTS) {
+                        showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
+                        return
+                    }
+                    stopPicking()
+                    events.fire('orientation:groundplane', pickedPoints)
+                }
                 isEditing = false
-                setInputsEditable(false)
-                gizmoRow.style.display = 'none'
-                setGizmo(false)
-                events.fire('orientation:save')
                 renderBtns()
             }
 
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnSave)
         } else {
-            updatePickRowVisibility(false)
+            readonlyRotationRow.style.display = 'flex'
+            tabs.style.display = 'none'
+
             const btnEdit = document.createElement('button')
             btnEdit.classList.add('btn')
             btnEdit.textContent = 'Edit'
             btnEdit.onclick = () => {
                 editGroup.startEdit('orientation')
+                tabs.setActiveTab(0)
+                currentTab = 0
                 isEditing = true
                 setInputsEditable(true)
-                gizmoRow.style.display = 'flex'
+                tabs.style.display = 'flex'
                 events.fire('orientation:edit')
                 renderBtns()
+
                 const euler = modelEntity.getLocalEulerAngles(new Vec3())
-                setInputValues(euler)
+
+                syncValues(euler)
                 events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
             }
             btnRow.appendChild(btnEdit)
         }
     }
 
-    events.on('orientation:eulersynced', ({ x, y, z }) => {
-        if (!isEditing) return
-        setInputValues({ x, y, z })
-    })
-
-    container.appendChild(rotationRow)
-    container.appendChild(gizmoRow)
+    container.appendChild(readonlyRotationRow)
+    container.appendChild(tabs)
     container.appendChild(btnRow)
     group.appendChild(container)
 
@@ -1036,8 +1141,8 @@ function exportSection(el, global) {
     }
     helperBtn.addEventListener('click', (e) => {
         e.preventDefault()
-        const tabs = createTabs(
-            [
+        const tabs = createTabs({
+            tabs: [
                 {
                     label: 'Chrome',
                     content: () => downloadHelper(chromeStepsData),
@@ -1051,9 +1156,9 @@ function exportSection(el, global) {
                     content: () => downloadHelper(edgeStepsData),
                 },
             ],
-            800,
-            350,
-        )
+            width: 800,
+            height: 350,
+        })
 
         global.modal.open('Export Location Change Helper', tabs, 'top', {
             showCancel: false,

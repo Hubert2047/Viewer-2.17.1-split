@@ -1,4 +1,11 @@
-function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, step = '1', onChange, onFocus } = {}) {
+function createVec3Inputs({
+    title = '',
+    defaultValues = { x: 0, y: 0, z: 0 },
+    editable = true,
+    step = '1',
+    onChange,
+    onFocus,
+} = {}) {
     const AXIS = ['x', 'y', 'z']
     const COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     const inputEls = {}
@@ -49,6 +56,7 @@ function createVec3Inputs({ title = '', defaultValues = { x: 0, y: 0, z: 0 }, st
             el.style.cursor = on ? 'text' : 'not-allowed'
         })
     }
+    setEditable(editable)
 
     const setValues = ({ x, y, z }) => {
         inputEls.x.value = x.toFixed(1)
