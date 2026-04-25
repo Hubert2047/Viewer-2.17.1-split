@@ -1081,32 +1081,9 @@ function dimensionSection(el, global) {
     if (settings.dimensions) setValues(settings.dimensions)
 }
 function exportSection(el, global) {
-    const filenameField = document.createElement('div')
-    filenameField.classList.add('hotspot-field')
-
-    const label = document.createElement('div')
-    label.classList.add('hotspot-label')
-    label.textContent = 'File Name'
-
-    const inputWrap = document.createElement('div')
-    inputWrap.classList.add('export-input-wrap')
-
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.value = 'index'
-    input.id = 'export-filename'
-    input.classList.add('input-field')
-
-    const ext = document.createElement('span')
-    ext.classList.add('export-ext')
-    ext.textContent = '.html'
-
-    inputWrap.appendChild(input)
-    inputWrap.appendChild(ext)
-    filenameField.appendChild(label)
-    filenameField.appendChild(inputWrap)
-    el.appendChild(filenameField)
-
+    const hint = document.createElement('p')
+    hint.textContent = 'Please put the exported HTML file in the current folder.'
+    hint.classList.add('export-hint')
     const helperBtn = document.createElement('a')
     helperBtn.classList.add('export-link-btn')
     helperBtn.textContent = 'Export Location Change Helper'
@@ -1161,20 +1138,21 @@ function exportSection(el, global) {
         })
     })
     el.appendChild(helperBtn)
+    el.appendChild(hint)
     const btn = document.createElement('button')
     btn.classList.add('export-btn')
     btn.textContent = 'Export HTML'
     btn.addEventListener('click', () => {
-        const filename = (input.value.trim() || 'index') + '.html'
+        const filename = 'index.html'
         exportHtml(filename, { settings: global.settings }, global.settings.fileAudioStore)
     })
     el.appendChild(btn)
 }
 function createSidebar(global, dom) {
-    const { events, settings } = global
+    const { events } = global
     const SIDEBAR_WIDTH = '360px'
 
-    if (!settings.setupStep) settings.setupStep = 1
+    if (!global.settings.setupStep) global.settings.setupStep = 1
 
     const sidebar = document.createElement('div')
     sidebar.id = 'app-sidebar'
@@ -1199,8 +1177,8 @@ function createSidebar(global, dom) {
     backBtn.classList.add('btn', 'back-btn')
     backBtn.textContent = 'Back'
     backBtn.addEventListener('click', () => {
-        if (settings.setupStep > 1) {
-            settings.setupStep--
+        if (global.settings.setupStep > 1) {
+            global.settings.setupStep--
             renderStep()
         }
     })
@@ -1209,8 +1187,8 @@ function createSidebar(global, dom) {
     const nextBtn = document.createElement('button')
     nextBtn.classList.add('btn', 'next-btn')
     nextBtn.addEventListener('click', () => {
-        if (settings.setupStep < 3) {
-            settings.setupStep++
+        if (global.settings.setupStep < 3) {
+            global.settings.setupStep++
             renderStep()
         }
     })
@@ -1218,20 +1196,29 @@ function createSidebar(global, dom) {
 
     const resetBtn = document.createElement('button')
     resetBtn.classList.add('reset-setup-btn')
-    resetBtn.textContent = '↺ Reset'
+    resetBtn.textContent = '↺ Reset Model Setup'
+    resetBtn.title = 'Reset Model Setup'
     resetBtn.addEventListener('click', async () => {
-       const ok = await global.confirmDialog.ask(
-           'Reset Model Setup',
-           'All your settings will be permanently cleared and you will start over from the beginning.',
-           'delete',
-           'top',
-           'Reset',
-       )
+        const ok = await global.confirmDialog.ask(
+            'Reset Model Setup',
+            'All your settings will be permanently cleared and you will start over from the beginning.',
+            'delete',
+            'top',
+            'Reset',
+        )
         if (ok) {
-              settings.setupStep = 1
-        renderStep()
+            global.settings = {
+                ...global.settings,
+                setupStep: 1,
+                initview: { pose: null },
+                orientation: null,
+                hotspots: [],
+                dimensions: null,
+                pivot: { position: null, enabled: true },
+            }
+            events.fire('setup-reset')
+            renderStep()
         }
-      
     })
     header.appendChild(resetBtn)
 
@@ -1259,12 +1246,12 @@ function createSidebar(global, dom) {
 
     const updateProgress = () => {
         segs.forEach((seg, i) => {
-            seg.classList.toggle('done', i < settings.setupStep)
+            seg.classList.toggle('done', i < global.settings.setupStep)
         })
     }
 
     const renderStep = () => {
-        const step = settings.setupStep
+        const step = global.settings.setupStep
         contentArea.innerHTML = ''
         contentArea.classList.remove('step-content-enter')
         void contentArea.offsetWidth

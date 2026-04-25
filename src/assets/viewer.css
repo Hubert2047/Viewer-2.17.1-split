@@ -2195,3 +2195,9 @@ button {
     transform: translateY(0);
   }
 }
+.export-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 2px 0;
+}

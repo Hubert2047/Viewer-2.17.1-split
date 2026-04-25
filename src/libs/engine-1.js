@@ -11,7 +11,7 @@ function extend(target, ex) {
     }
     return target
 }
-
+console.log('ortery')
 const guid = {
     create() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
