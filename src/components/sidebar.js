@@ -140,7 +140,7 @@ function renderOrientation(group, global, editGroup) {
 `
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
     line.setAttribute('x1', '0')
-    line.setAttribute('y1', '70%') 
+    line.setAttribute('y1', '70%')
     line.setAttribute('x2', '100%')
     line.setAttribute('y2', '70%')
     line.setAttribute('stroke', '#facc15')
@@ -163,11 +163,11 @@ function renderOrientation(group, global, editGroup) {
 
     track.addEventListener('click', () => {
         const on = !track.classList.contains('active')
+        updateHorizontalLine(on)
+    })
+    const updateHorizontalLine = (on) => {
         track.classList.toggle('active', on)
         horizontalLineEl.style.display = on ? 'block' : 'none'
-    })
-    const updateHorizontalLine =(on)=>{
-
     }
     horizontalRow.appendChild(horizontalLabel)
     horizontalRow.appendChild(track)
@@ -316,7 +316,7 @@ function renderOrientation(group, global, editGroup) {
         onTabChange: (index) => {
             currentTab = index
             if (index === 1) {
-                horizontalLineEl.style.display = 'none'
+                updateHorizontalLine(false)
             } else {
                 stopPicking()
             }
@@ -335,8 +335,7 @@ function renderOrientation(group, global, editGroup) {
         isEditing = false
         setInputsEditable(false)
         stopPicking()
-        horizontalLineEl.style.display = 'none'
-        track.classList.remove('active')
+        updateHorizontalLine(false)
         if (settings.orientation) {
             const { rotation: r } = settings.orientation
             syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
@@ -364,6 +363,7 @@ function renderOrientation(group, global, editGroup) {
             btnSave.onclick = () => {
                 if (currentTab === 0) {
                     events.fire('orientation:manual')
+                    updateHorizontalLine(false)
                 } else {
                     const pickedPoints = getGroundPoints()
                     if (pickedPoints.length < MAX_POINTS) {
@@ -557,37 +557,33 @@ function renderPivot(group, global, editGroup) {
     setPivotConfigured(!!settings.pivot.position)
 }
 function modelSection(el, global) {
+    const { settings } = global
+    const step = settings.setupStep ?? 1
     const editGroup = createEditGroup(global.events)
-    const groups = [
-        {
-            show: global.settings.model !== 'spherical',
-            label: 'transform',
-            render: renderOrientation,
-        },
-        {
-            show: true,
-            label: 'Pivot Point',
-            render: renderPivot,
-        },
-    ]
-
     const container = document.createElement('div')
     container.classList.add('section-wrap')
 
-    groups
-        .filter((g) => g.show)
-        .forEach(({ label, render }) => {
-            const group = document.createElement('div')
-            group.classList.add('section-group')
+    if (step === 1 && settings.model !== 'spherical') {
+        const orientationGroup = document.createElement('div')
+        orientationGroup.classList.add('section-group')
+        const orientationTitle = document.createElement('div')
+        orientationTitle.classList.add('section-group-title')
+        orientationTitle.textContent = 'transform'
+        orientationGroup.appendChild(orientationTitle)
+        renderOrientation(orientationGroup, global, editGroup)
+        container.appendChild(orientationGroup)
+    }
 
-            const groupTitle = document.createElement('div')
-            groupTitle.classList.add('section-group-title')
-            groupTitle.textContent = label
-            group.appendChild(groupTitle)
-
-            render(group, global, editGroup)
-            container.appendChild(group)
-        })
+    if (step === 2) {
+        const pivotGroup = document.createElement('div')
+        pivotGroup.classList.add('section-group')
+        const pivotTitle = document.createElement('div')
+        pivotTitle.classList.add('section-group-title')
+        pivotTitle.textContent = 'Pivot Point'
+        pivotGroup.appendChild(pivotTitle)
+        renderPivot(pivotGroup, global, editGroup)
+        container.appendChild(pivotGroup)
+    }
 
     el.appendChild(container)
 }
@@ -1175,67 +1171,208 @@ function exportSection(el, global) {
     el.appendChild(btn)
 }
 function createSidebar(global, dom) {
-    const { events } = global
+    const { events, settings } = global
     const SIDEBAR_WIDTH = '360px'
+
+    if (!settings.setupStep) settings.setupStep = 1
+
     const sidebar = document.createElement('div')
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
     sidebar.style.cssText = `width: ${SIDEBAR_WIDTH}`
     sidebar.style.visibility = 'hidden'
+
+    // Header
     const header = document.createElement('div')
     header.classList.add('sidebar-header')
-    header.textContent = 'Settings'
+
+    const headerTitle = document.createElement('span')
+    headerTitle.textContent = 'Settings'
+    headerTitle.style.flex = '1'
+    header.appendChild(headerTitle)
+
+    const stepBadge = document.createElement('span')
+    stepBadge.classList.add('step-badge')
+    header.appendChild(stepBadge)
+
+    const backBtn = document.createElement('button')
+    backBtn.classList.add('btn', 'back-btn')
+    backBtn.textContent = 'Back'
+    backBtn.addEventListener('click', () => {
+        if (settings.setupStep > 1) {
+            settings.setupStep--
+            renderStep()
+        }
+    })
+    header.appendChild(backBtn)
+
+    const nextBtn = document.createElement('button')
+    nextBtn.classList.add('btn', 'next-btn')
+    nextBtn.addEventListener('click', () => {
+        if (settings.setupStep < 3) {
+            settings.setupStep++
+            renderStep()
+        }
+    })
+    header.appendChild(nextBtn)
+
+    const resetBtn = document.createElement('button')
+    resetBtn.classList.add('reset-setup-btn')
+    resetBtn.textContent = '↺ Reset'
+    resetBtn.addEventListener('click', async () => {
+       const ok = await global.confirmDialog.ask(
+           'Reset Model Setup',
+           'All your settings will be permanently cleared and you will start over from the beginning.',
+           'delete',
+           'top',
+           'Reset',
+       )
+        if (ok) {
+              settings.setupStep = 1
+        renderStep()
+        }
+      
+    })
+    header.appendChild(resetBtn)
+
     sidebar.appendChild(header)
 
-    sidebar.appendChild(
-        createSection({
-            id: 'model',
-            title: 'Model',
-            classname: 'model-section',
-            body: (el) => modelSection(el, global),
-            events,
-        }),
-    )
+    // Progress bar
+    const progressWrap = document.createElement('div')
+    progressWrap.classList.add('step-progress')
+    const segs = []
+    for (let i = 1; i <= 3; i++) {
+        const seg = document.createElement('div')
+        seg.classList.add('step-progress-seg')
+        progressWrap.appendChild(seg)
+        segs.push(seg)
+    }
+    sidebar.appendChild(progressWrap)
 
-    sidebar.appendChild(
-        createSection({
-            id: 'settings',
-            title: 'Viewer',
-            classname: 'viewer-setting-section',
-            body: (el) => viewerSettingsSection(el, global),
-            events,
-        }),
-    )
-    sidebar.appendChild(
-        createSection({
-            id: 'hotspot',
-            title: 'Hotspots',
-            classname: 'hotspot-section',
-            body: (el) => initHotspotSection(el, global, dom),
-            events,
-        }),
-    )
-    sidebar.appendChild(
-        createSection({
-            id: 'dimension',
-            title: 'Dimensions',
-            classname: 'dimension-section',
-            body: (el) => dimensionSection(el, global, dom),
-            events,
-        }),
-    )
-    sidebar.appendChild(
-        createSection({
-            id: 'export',
-            title: 'Export',
-            classname: 'export-section',
-            body: (el) => exportSection(el, global),
-            events,
-        }),
-    )
+    const contentArea = document.createElement('div')
+    sidebar.appendChild(contentArea)
+
     document.body.appendChild(sidebar)
     const canvas = global.app.graphicsDevice.canvas
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
     document.getElementById('ui').style.width = `calc(100% - ${SIDEBAR_WIDTH})`
+
+    const updateProgress = () => {
+        segs.forEach((seg, i) => {
+            seg.classList.toggle('done', i < settings.setupStep)
+        })
+    }
+
+    const renderStep = () => {
+        const step = settings.setupStep
+        contentArea.innerHTML = ''
+        contentArea.classList.remove('step-content-enter')
+        void contentArea.offsetWidth
+        contentArea.classList.add('step-content-enter')
+        updateProgress()
+
+        if (step === 1) {
+            stepBadge.textContent = 'Step 1 / 3'
+            stepBadge.style.display = ''
+            backBtn.style.display = 'none'
+            nextBtn.textContent = 'Next'
+            nextBtn.style.display = 'inline-flex'
+            progressWrap.style.display = 'flex'
+            resetBtn.style.display = 'none'
+
+            contentArea.appendChild(
+                createSection({
+                    id: 'model',
+                    title: 'Model',
+                    classname: 'model-section',
+                    body: (el) => modelSection(el, global),
+                    events,
+                }),
+            )
+            contentArea.appendChild(
+                createSection({
+                    id: 'export',
+                    title: 'Export',
+                    classname: 'export-section',
+                    body: (el) => exportSection(el, global),
+                    events,
+                }),
+            )
+            setTimeout(() => events.fire('hotspot:active', 'model'), 0)
+        } else if (step === 2) {
+            stepBadge.textContent = 'Step 2 / 3'
+            stepBadge.style.display = ''
+            backBtn.style.display = 'inline-flex'
+            nextBtn.textContent = 'Next'
+            nextBtn.style.display = 'inline-flex'
+            progressWrap.style.display = 'flex'
+            resetBtn.style.display = 'none'
+
+            contentArea.appendChild(
+                createSection({
+                    id: 'model',
+                    title: 'Model',
+                    classname: 'model-section',
+                    body: (el) => modelSection(el, global),
+                    events,
+                }),
+            )
+            contentArea.appendChild(
+                createSection({
+                    id: 'export',
+                    title: 'Export',
+                    classname: 'export-section',
+                    body: (el) => exportSection(el, global),
+                    events,
+                }),
+            )
+            setTimeout(() => events.fire('hotspot:active', 'model'), 0)
+        } else {
+            stepBadge.style.display = 'none'
+            backBtn.style.display = 'none'
+            nextBtn.style.display = 'none'
+            progressWrap.style.display = 'none'
+            resetBtn.style.display = 'inline-flex'
+
+            contentArea.appendChild(
+                createSection({
+                    id: 'settings',
+                    title: 'Viewer',
+                    classname: 'viewer-setting-section',
+                    body: (el) => viewerSettingsSection(el, global),
+                    events,
+                }),
+            )
+            contentArea.appendChild(
+                createSection({
+                    id: 'hotspot',
+                    title: 'Hotspots',
+                    classname: 'hotspot-section',
+                    body: (el) => initHotspotSection(el, global, dom),
+                    events,
+                }),
+            )
+            contentArea.appendChild(
+                createSection({
+                    id: 'dimension',
+                    title: 'Dimensions',
+                    classname: 'dimension-section',
+                    body: (el) => dimensionSection(el, global, dom),
+                    events,
+                }),
+            )
+            contentArea.appendChild(
+                createSection({
+                    id: 'export',
+                    title: 'Export',
+                    classname: 'export-section',
+                    body: (el) => exportSection(el, global),
+                    events,
+                }),
+            )
+        }
+    }
+
+    renderStep()
     return sidebar
 }

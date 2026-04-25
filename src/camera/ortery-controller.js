@@ -1,7 +1,7 @@
 const v$2 = new Vec33()
 class OtherController {
     focus = new Vec33()
-    rotation = new Quat3()
+    cameraRotation = new Quat3()
     smoothDamp = new SmoothDamp3(new Array(8).fill(0))
     distance = 1
     rotateSpeed = 0.04
@@ -46,10 +46,15 @@ class OtherController {
             const { rotation: r, position: p } = settings.orientation
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
             this.basePosition = new Vec33(p.x, p.y, p.z)
+            this.originEntityRotation = new Quat(r.x, r.y, r.z, r.w)
+            this.originEntityPos = new Vec3(p.x, p.y, p.z)
         } else {
             this.baseRotation = modelEntity.localRotation.clone()
             this.basePosition = modelEntity.localPosition.clone()
+            this.originEntityRotation = modelEntity.localRotation.clone()
+            this.originEntityPos = modelEntity.localPosition.clone()
         }
+       
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -89,7 +94,7 @@ class OtherController {
         this.events.on('orientation:manual', () => this.applyManualOrientation())
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        
+
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
@@ -128,21 +133,6 @@ class OtherController {
             this.setupTransition({ targetPose, startPose, lerpDuration, onTransitionFinished })
         })
     }
-    getBBoxCorners(bbox) {
-        const c = bbox.center
-        const h = bbox.halfExtents
-        return [
-            new Vec3(c.x - h.x, c.y - h.y, c.z - h.z),
-            new Vec3(c.x + h.x, c.y - h.y, c.z - h.z),
-            new Vec3(c.x - h.x, c.y + h.y, c.z - h.z),
-            new Vec3(c.x + h.x, c.y + h.y, c.z - h.z),
-            new Vec3(c.x - h.x, c.y - h.y, c.z + h.z),
-            new Vec3(c.x + h.x, c.y - h.y, c.z + h.z),
-            new Vec3(c.x - h.x, c.y + h.y, c.z + h.z),
-            new Vec3(c.x + h.x, c.y + h.y, c.z + h.z),
-        ]
-    }
-
     applyAabbPivot() {
         const worldOrigin = this.originPivot.clone()
         this.centerPivot = worldOrigin
@@ -204,8 +194,9 @@ class OtherController {
         if (!this.originDistance) this.originDistance = pose.distance
         if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
 
-        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
-        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
+        this.cameraRotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
+        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.cameraRotation).normalize()
+        this.upCam = Vec33.UP.clone().transformQuat(this.cameraRotation).normalize()
 
         const isFirstInit = !this.hasInitializedFocus
         if (isFirstInit) this.hasInitializedFocus = true
@@ -221,17 +212,9 @@ class OtherController {
                 : this.clampDistance(this.getActualDistance(this.initviewPose.distanceScale))
             targetYaw = this.initviewPose.yaw || 0
             targetPitch = this.initviewPose.pitch || 0
-            targetPosition = new Vec3(
-                this.initviewPose.position.x,
-                this.initviewPose.position.y,
-                this.initviewPose.position.z,
-            )
-            targetRotation = new Quat(
-                this.initviewPose.rotation.x,
-                this.initviewPose.rotation.y,
-                this.initviewPose.rotation.z,
-                this.initviewPose.rotation.w,
-            )
+            const { position: p, rotation: r } = this.initviewPose
+            targetPosition = new Vec3(p.x, p.y, p.z)
+            targetRotation = new Quat(r.x, r.y, r.z, r.w)
         } else {
             targetFocus = pose.focus.clone()
             targetDistance = this.clampDistance(pose.distance)
@@ -257,14 +240,7 @@ class OtherController {
         this.distance = targetDistance
         this.currentYaw = targetYaw
         this.currentPitch = targetPitch
-        this.rotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
 
-        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
-        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
-        if (modelEntity && !this.originEntityRotation) {
-            this.originEntityRotation = modelEntity.localRotation.clone()
-            this.originEntityPos = modelEntity.localPosition.clone()
-        }
         if (isFirstInit) {
             modelEntity.localPosition.copy(targetPosition)
             modelEntity.localRotation.copy(targetRotation)
@@ -324,15 +300,16 @@ class OtherController {
         const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
         return centerPivot.clone().add(baseOffset)
     }
-    initView() {
+    initView(isShowToast = true) {
         const pose = this.getEntityInfo()
         this.initviewPose = pose
         this.settings.initview = { pose }
         this.initviewPose.basePosition = this.basePosition.clone()
-        showToast('✓ Initial view updated', {
-            duration: 1000,
-            type: 'success',
-        })
+        if (isShowToast)
+            showToast('✓ Initial view updated', {
+                duration: 1000,
+                type: 'success',
+            })
     }
 
     removeInitview() {
@@ -360,7 +337,7 @@ class OtherController {
         if (this.settings.inertia && this.isFlick) this.applyInertia()
         this.getPose(camera)
     }
-   
+
     getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
         const fovDeg = 50
@@ -458,30 +435,25 @@ class OtherController {
         this.reset()
     }
     applyManualOrientation() {
-        const currentPosition = modelEntity.localPosition.clone()
-        const currentRotation = modelEntity.localRotation.clone()
-        const pivot = this.centerPivot.clone()
+        this.baseRotation = modelEntity.localRotation.clone()
+        const invQuat = new Quat3(0, 0, 0, 1)
+        const currentOffset = modelEntity.localPosition.clone().sub(this.centerPivot)
+        this.basePosition = this.centerPivot.clone().add(currentOffset)
 
         this.currentYaw = 0
         this.currentPitch = 0
-
-        this.baseRotation = currentRotation.clone()
-        this.basePosition = currentPosition.clone()
-        this.centerPivot = pivot
-
-        // this.originEntityRotation = currentRotation.clone()
-        // this.originEntityPos = currentPosition.clone()
-
         this.settings.orientation = {
             rotation: this.baseRotation,
             position: this.basePosition,
-            pitchOffset: this.pitchRad,
+            pitchOffset: 0,
         }
-
         this.updateModelRotation()
         this.model = this.originModel
         this.minPitch = 0
         this.maxPitch = Math.PI / 2
+        this.originEntityRotation = modelEntity.localRotation.clone()
+        this.originEntityPos = modelEntity.localPosition.clone()
+        this.initView(false)
     }
     applyGroundPlaneOrientation(points) {
         const localNormal = fitPlaneNormal(points)
@@ -545,7 +517,6 @@ class OtherController {
             yaw: 0,
             pitch: 0,
         }
-
         this.settings.orientation = { rotation: newBaseRotation, position: newPosition, pitchOffset: this.pitchRad }
         this.model = this.originModel
         this.minPitch = this.pitchRad
@@ -553,8 +524,18 @@ class OtherController {
         const r = this.baseRotation
         const q = new Quat(r.x, r.y, r.z, r.w)
         const euler = q.getEulerAngles()
+        this.updateModelRotation()
         this.events.fire('orientation:aligned-to-ground', { x: euler.x, y: euler.y, z: euler.z })
-        this.setupTransition({ targetPose, startPose, lerpDuration: NORMAL_FADE_TIME })
+        this.setupTransition({
+            targetPose,
+            startPose,
+            lerpDuration: NORMAL_FADE_TIME,
+            onTransitionFinished: () => {
+                this.originEntityRotation = modelEntity.localRotation.clone()
+                this.originEntityPos = modelEntity.localPosition.clone()
+                this.initView(false)
+            },
+        })
     }
     lerp(a, b, t) {
         return a + (b - a) * t
@@ -629,8 +610,6 @@ class OtherController {
         if (this.isEditHotspot) return
         if (this._gizmo?.isDragging) return
         const [x, y, z] = move
-        this.rightCam = Vec33.RIGHT.clone().transformQuat(this.rotation).normalize()
-        this.upCam = Vec33.UP.clone().transformQuat(this.rotation).normalize()
         this.distance = this.clampDistance(this.distance + this.distance * move[2])
         if (x !== 0 || y !== 0 || z !== 0) {
             v$2.copy(this.rightCam).mulScalar(move[0])
@@ -676,16 +655,6 @@ class OtherController {
             this.events.fire('ortery:interaction')
             this.updateModelRotation()
         }
-    }
-    getCameraElevation() {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
-        const camPos = this.focus.clone().sub(forward.mulScalar(this.distance))
-        const dir = new Vec3(
-            camPos.x - this.centerPivot.x,
-            camPos.y - this.centerPivot.y,
-            camPos.z - this.centerPivot.z,
-        )
-        return Math.atan2(dir.y, Math.sqrt(dir.x * dir.x + dir.z * dir.z))
     }
     setPitchYaw(deltaX, deltaY) {
         const maxDelta = 30
@@ -751,7 +720,7 @@ class OtherController {
         )
     }
     smooth(dt) {
-        const { focus, rotation, smoothDamp } = this
+        const { focus, rotation: cameraRotation, smoothDamp } = this
         const { value, target } = smoothDamp
         focus.toArray(target, 0)
         const dot = value[3] * rotation.x + value[4] * rotation.y + value[5] * rotation.z + value[6] * rotation.w
@@ -769,7 +738,7 @@ class OtherController {
         value[6] = q.w
     }
     getPose(pose) {
-        const forward = Vec33.FORWARD.clone().transformQuat(this.rotation).normalize()
+        const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
         pose.distance = this.distance

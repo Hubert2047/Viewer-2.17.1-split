@@ -19,11 +19,11 @@ class ConfirmDialog {
         btnRow.classList.add('confirm-btn-row')
         this.cancelBtn = document.createElement('button')
         this.cancelBtn.textContent = 'Cancel'
-        this.cancelBtn.classList.add('confirm-cancel-btn','cancel-btn','btn')
+        this.cancelBtn.classList.add('confirm-cancel-btn', 'cancel-btn', 'btn')
 
         this.confirmBtn = document.createElement('button')
         this.confirmBtn.textContent = 'Delete'
-        this.confirmBtn.classList.add('confirm-accept-btn', 'confirm-btn','btn')
+        this.confirmBtn.classList.add('confirm-accept-btn', 'confirm-btn', 'btn')
         this.confirmBtn.style.background = '#c0392b'
 
         btnRow.appendChild(this.cancelBtn)
@@ -47,20 +47,28 @@ class ConfirmDialog {
         this._resolve = null
     }
 
-    ask(title, message, variant = 'default' | 'delete' | 'edit') {
+    ask(title, message, variant = 'default', position = 'center', confirmText = null) {
         this.titleEl.textContent = title
         this.msgEl.textContent = message
         this.overlay.style.display = 'flex'
+
+        this.overlay.style.alignItems = position === 'top' ? 'flex-start' : 'center'
+        this.overlay.style.paddingTop = position === 'top' ? '80px' : '0'
+
         switch (variant) {
             case 'delete':
                 this.confirmBtn.style.background = '#c0392b'
+                this.confirmBtn.textContent = confirmText ?? 'Delete'
                 break
             case 'edit':
                 this.confirmBtn.style.background = '#3498db'
+                this.confirmBtn.textContent = confirmText ?? 'Confirm'
                 break
             default:
                 this.confirmBtn.style.background = '#27ae60'
+                this.confirmBtn.textContent = confirmText ?? 'OK'
         }
+
         return new Promise((res) => (this._resolve = res))
     }
 }

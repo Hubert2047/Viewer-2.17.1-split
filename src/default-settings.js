@@ -1,7 +1,7 @@
 const defaultSettings = {
     version: 2,
     v: 1,
-    contentUrl: '',
+    contentUrl: 'ortery.ply',
     base64: '',
     autoHideUI: false,
     background: { color: 'white' },
