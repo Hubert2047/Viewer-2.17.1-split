@@ -132,6 +132,9 @@ function renderOrientation(group, global, editGroup) {
     events.on('orientation:aligned-to-ground', ({ x, y, z }) => {
         syncValues({ x, y, z })
     })
+     events.on('orientation:aligned-from-manual', ({ x, y, z }) => {
+         syncValues({ x, y, z })
+     })
     const horizontalLineEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     horizontalLineEl.style.cssText = `
     position: fixed; top: 0; left: 0;
@@ -558,12 +561,13 @@ function renderPivot(group, global, editGroup) {
 }
 function modelSection(el, global) {
     const { settings } = global
-    const step = settings.setupStep ?? 1
+    const step = settings.setupStep
+    const isHemi = settings.model === 'hemispherical'
     const editGroup = createEditGroup(global.events)
     const container = document.createElement('div')
     container.classList.add('section-wrap')
 
-    if (step === 1 && settings.model !== 'spherical') {
+    if (isHemi && step === 1 && settings.model !== 'spherical') {
         const orientationGroup = document.createElement('div')
         orientationGroup.classList.add('section-group')
         const orientationTitle = document.createElement('div')
@@ -574,7 +578,8 @@ function modelSection(el, global) {
         container.appendChild(orientationGroup)
     }
 
-    if (step === 2) {
+    const isPivotStep = (isHemi && step === 2) || (!isHemi && step === 1)
+    if (isPivotStep) {
         const pivotGroup = document.createElement('div')
         pivotGroup.classList.add('section-group')
         const pivotTitle = document.createElement('div')
@@ -1151,6 +1156,9 @@ function exportSection(el, global) {
 function createSidebar(global, dom) {
     const { events } = global
     const SIDEBAR_WIDTH = '360px'
+    const isHemi = global.settings.model === 'hemispherical'
+    const totalSteps = isHemi ? 3 : 2
+    const minStep = 1
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
 
@@ -1160,7 +1168,6 @@ function createSidebar(global, dom) {
     sidebar.style.cssText = `width: ${SIDEBAR_WIDTH}`
     sidebar.style.visibility = 'hidden'
 
-    // Header
     const header = document.createElement('div')
     header.classList.add('sidebar-header')
 
@@ -1177,7 +1184,7 @@ function createSidebar(global, dom) {
     backBtn.classList.add('btn', 'back-btn')
     backBtn.textContent = 'Back'
     backBtn.addEventListener('click', () => {
-        if (global.settings.setupStep > 1) {
+        if (global.settings.setupStep > minStep) {
             global.settings.setupStep--
             renderStep()
         }
@@ -1187,7 +1194,7 @@ function createSidebar(global, dom) {
     const nextBtn = document.createElement('button')
     nextBtn.classList.add('btn', 'next-btn')
     nextBtn.addEventListener('click', () => {
-        if (global.settings.setupStep < 3) {
+        if (global.settings.setupStep < totalSteps) {
             global.settings.setupStep++
             renderStep()
         }
@@ -1207,15 +1214,12 @@ function createSidebar(global, dom) {
             'Reset',
         )
         if (ok) {
-            global.settings = {
-                ...global.settings,
-                setupStep: 1,
-                initview: { pose: null },
-                orientation: null,
-                hotspots: [],
-                dimensions: null,
-                pivot: { position: null, enabled: true },
-            }
+            global.settings.setupStep = 1
+            global.settings.initview = { pose: null }
+            global.settings.orientation = null
+            global.settings.hotspots = []
+            global.settings.dimensions = null
+            global.settings.pivot = { position: null, enabled: true }
             events.fire('setup-reset')
             renderStep()
         }
@@ -1224,11 +1228,10 @@ function createSidebar(global, dom) {
 
     sidebar.appendChild(header)
 
-    // Progress bar
     const progressWrap = document.createElement('div')
     progressWrap.classList.add('step-progress')
     const segs = []
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= totalSteps; i++) {
         const seg = document.createElement('div')
         seg.classList.add('step-progress-seg')
         progressWrap.appendChild(seg)
@@ -1250,6 +1253,69 @@ function createSidebar(global, dom) {
         })
     }
 
+    const isFinalStep = () => global.settings.setupStep === totalSteps
+
+    const renderModelStep = () => {
+        contentArea.appendChild(
+            createSection({
+                id: 'model',
+                title: 'Model',
+                classname: 'model-section',
+                body: (el) => modelSection(el, global),
+                events,
+            }),
+        )
+        contentArea.appendChild(
+            createSection({
+                id: 'export',
+                title: 'Export',
+                classname: 'export-section',
+                body: (el) => exportSection(el, global),
+                events,
+            }),
+        )
+        setTimeout(() => events.fire('hotspot:active', 'model'), 0)
+    }
+
+    const renderFullStep = () => {
+        contentArea.appendChild(
+            createSection({
+                id: 'settings',
+                title: 'Viewer',
+                classname: 'viewer-setting-section',
+                body: (el) => viewerSettingsSection(el, global),
+                events,
+            }),
+        )
+        contentArea.appendChild(
+            createSection({
+                id: 'hotspot',
+                title: 'Hotspots',
+                classname: 'hotspot-section',
+                body: (el) => initHotspotSection(el, global, dom),
+                events,
+            }),
+        )
+        contentArea.appendChild(
+            createSection({
+                id: 'dimension',
+                title: 'Dimensions',
+                classname: 'dimension-section',
+                body: (el) => dimensionSection(el, global, dom),
+                events,
+            }),
+        )
+        contentArea.appendChild(
+            createSection({
+                id: 'export',
+                title: 'Export',
+                classname: 'export-section',
+                body: (el) => exportSection(el, global),
+                events,
+            }),
+        )
+    }
+
     const renderStep = () => {
         const step = global.settings.setupStep
         contentArea.innerHTML = ''
@@ -1258,105 +1324,22 @@ function createSidebar(global, dom) {
         contentArea.classList.add('step-content-enter')
         updateProgress()
 
-        if (step === 1) {
-            stepBadge.textContent = 'Step 1 / 3'
-            stepBadge.style.display = ''
-            backBtn.style.display = 'none'
-            nextBtn.textContent = 'Next'
-            nextBtn.style.display = 'inline-flex'
-            progressWrap.style.display = 'flex'
-            resetBtn.style.display = 'none'
-
-            contentArea.appendChild(
-                createSection({
-                    id: 'model',
-                    title: 'Model',
-                    classname: 'model-section',
-                    body: (el) => modelSection(el, global),
-                    events,
-                }),
-            )
-            contentArea.appendChild(
-                createSection({
-                    id: 'export',
-                    title: 'Export',
-                    classname: 'export-section',
-                    body: (el) => exportSection(el, global),
-                    events,
-                }),
-            )
-            setTimeout(() => events.fire('hotspot:active', 'model'), 0)
-        } else if (step === 2) {
-            stepBadge.textContent = 'Step 2 / 3'
-            stepBadge.style.display = ''
-            backBtn.style.display = 'inline-flex'
-            nextBtn.textContent = 'Next'
-            nextBtn.style.display = 'inline-flex'
-            progressWrap.style.display = 'flex'
-            resetBtn.style.display = 'none'
-
-            contentArea.appendChild(
-                createSection({
-                    id: 'model',
-                    title: 'Model',
-                    classname: 'model-section',
-                    body: (el) => modelSection(el, global),
-                    events,
-                }),
-            )
-            contentArea.appendChild(
-                createSection({
-                    id: 'export',
-                    title: 'Export',
-                    classname: 'export-section',
-                    body: (el) => exportSection(el, global),
-                    events,
-                }),
-            )
-            setTimeout(() => events.fire('hotspot:active', 'model'), 0)
-        } else {
+        if (isFinalStep()) {
             stepBadge.style.display = 'none'
             backBtn.style.display = 'none'
             nextBtn.style.display = 'none'
             progressWrap.style.display = 'none'
             resetBtn.style.display = 'inline-flex'
-
-            contentArea.appendChild(
-                createSection({
-                    id: 'settings',
-                    title: 'Viewer',
-                    classname: 'viewer-setting-section',
-                    body: (el) => viewerSettingsSection(el, global),
-                    events,
-                }),
-            )
-            contentArea.appendChild(
-                createSection({
-                    id: 'hotspot',
-                    title: 'Hotspots',
-                    classname: 'hotspot-section',
-                    body: (el) => initHotspotSection(el, global, dom),
-                    events,
-                }),
-            )
-            contentArea.appendChild(
-                createSection({
-                    id: 'dimension',
-                    title: 'Dimensions',
-                    classname: 'dimension-section',
-                    body: (el) => dimensionSection(el, global, dom),
-                    events,
-                }),
-            )
-            contentArea.appendChild(
-                createSection({
-                    id: 'export',
-                    title: 'Export',
-                    classname: 'export-section',
-                    body: (el) => exportSection(el, global),
-                    events,
-                }),
-            )
+            renderFullStep()
+        } else {
+            stepBadge.textContent = `Step ${step} / ${totalSteps}`
+            stepBadge.style.display = ''
+            backBtn.style.display = step > minStep ? 'inline-flex' : 'none'
+            nextBtn.textContent = 'Next'
+            nextBtn.style.display = 'inline-flex'
+            progressWrap.style.display = 'flex'
+            resetBtn.style.display = 'none'
+            renderModelStep()
         }
     }
 

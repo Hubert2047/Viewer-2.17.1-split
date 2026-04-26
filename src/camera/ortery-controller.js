@@ -54,7 +54,7 @@ class OtherController {
             this.originEntityRotation = modelEntity.localRotation.clone()
             this.originEntityPos = modelEntity.localPosition.clone()
         }
-       
+
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -673,7 +673,7 @@ class OtherController {
     sphericalRot(deltaX, deltaY) {
         const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
         const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
-        const rotateQuat = yawQuat.mul(pitchQuat).normalize()
+        const rotateQuat = pitchQuat.mul(yawQuat).normalize()
         v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
         v$2.transformQuat(rotateQuat)
         modelEntity.localPosition.copy(this.centerPivot).add(v$2)
@@ -720,15 +720,15 @@ class OtherController {
         )
     }
     smooth(dt) {
-        const { focus, rotation: cameraRotation, smoothDamp } = this
+        const { focus, cameraRotation: r, smoothDamp } = this
         const { value, target } = smoothDamp
         focus.toArray(target, 0)
-        const dot = value[3] * rotation.x + value[4] * rotation.y + value[5] * rotation.z + value[6] * rotation.w
+        const dot = value[3] * r.x + value[4] * r.y + value[5] * r.z + value[6] * r.w
         const sign = dot < 0 ? -1 : 1
-        target[3] = rotation.x * sign
-        target[4] = rotation.y * sign
-        target[5] = rotation.z * sign
-        target[6] = rotation.w * sign
+        target[3] = r.x * sign
+        target[4] = r.y * sign
+        target[5] = r.z * sign
+        target[6] = r.w * sign
         target[7] = this.distance
         smoothDamp.update(dt)
         const q = new Quat3(value[3], value[4], value[5], value[6]).normalize()
