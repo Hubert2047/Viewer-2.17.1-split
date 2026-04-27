@@ -839,7 +839,7 @@ function dimensionSection(el, global) {
     addBtn.textContent = '+ Add'
 
     addBtn.onclick = () => {
-        const { rotation, position, size } = getDimensionsInfo(getVisiblePoints(modelEntity), true)
+        const { rotation, position, size } = getDimensionsInfo(getVisiblePoints(modelEntity),true)
         currentDimensions = {
             boxColor: '#f95f4d',
             background: { color: 'white', alpha: 0.8 },
@@ -857,6 +857,35 @@ function dimensionSection(el, global) {
         events.fire('dimensions:add', currentDimensions)
     }
 
+    const autoFitBtn = document.createElement('button')
+    autoFitBtn.classList.add('add-btn')
+    autoFitBtn.textContent = '+ Auto fit'
+
+    autoFitBtn.onclick = () => {
+        const points = getVisiblePoints(modelEntity)
+        const currentRot = editDimension.rotation
+        const subsampledPoints = subsamplePoints(points, 20000)
+
+        const result = snapToFitOBB(points, currentRot, {
+            maxIterations: 300,
+            learningRate: 1.0,
+        })
+
+        editDimension = { ...editDimension, ...result }
+        setValues(editDimension)
+        events.fire('dimensions:save', editDimension)
+    }
+
+    function subsamplePoints(points, maxCount) {
+        const count = points.length / 3
+        if (count <= maxCount) return points
+        const step = Math.ceil(count / maxCount)
+        const result = []
+        for (let i = 0; i < count; i += step) {
+            result.push(points[i * 3], points[i * 3 + 1], points[i * 3 + 2])
+        }
+        return new Float32Array(result)
+    }
     noDimRow.appendChild(noDimText)
     noDimRow.appendChild(addBtn)
 
@@ -1083,7 +1112,7 @@ function dimensionSection(el, global) {
     // ── Buttons ──
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row')
-
+    
     const onEdit = () => {
         isEditing = true
         setEditable(true)
@@ -1128,6 +1157,7 @@ function dimensionSection(el, global) {
 
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnApply)
+            btnRow.appendChild(autoFitBtn)
         } else {
             const btnEdit = document.createElement('button')
             btnEdit.classList.add('btn')
