@@ -1,20 +1,19 @@
-const defaultSettings = {
+const defaultSettings = Object.freeze({
     version: 2,
     v: 1,
-    contentUrl: 'ortery.ply',
+    contentUrl: 'ortery_default.ply',
     base64: '',
     autoHideUI: false,
-    background: { color: 'white' },
+    background: Object.freeze({ color: 'white' }),
     startMode: 'default',
     model: 'spherical',
-    lockZoomIn: {
-        value: 11, //distanceScale
-        locked: false,
-    },
-    pivot: { position: null, enabled: true },
-    initview: { enabled: false, pose: null },
+    lockZoomIn: Object.freeze({ value: 11, locked: false }),
+    pivot: Object.freeze({ position: null }),
+    initview: Object.freeze({ enabled: false, pose: null }),
     inertia: true,
-    orientation: null,
-    hotspots: [],
+    orientation:  Object.freeze({ pose: null }),
+    hotspots: Object.freeze([]),
     dimensions: null,
-}
+    tonemapping: 'none',
+    setupStep: 1,
+})

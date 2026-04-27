@@ -21,7 +21,7 @@ class HotspotManager {
         this.controllers = null
         global.app.on('postrender', () => this.update())
         this.initHotspot()
-        
+            
     }
     initHotspot() {
         this.settings.hotspots.forEach((h) => {

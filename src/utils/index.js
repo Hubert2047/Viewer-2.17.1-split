@@ -109,10 +109,31 @@ function checkWebGL() {
     const gl = testCanvas.getContext('webgl2')
     return !!gl
 }
+function isEqual(a, b) {
+    if (a === b) return true
+    if (a === null || b === null) return a === b
+    if (typeof a !== typeof b) return false
+    if (Array.isArray(a)) return a.length === b.length && a.every((v, i) => isEqual(v, b[i]))
+    if (typeof a === 'object') {
+        const keysA = Object.keys(a)
+        const keysB = Object.keys(b)
+        return keysA.length === keysB.length && keysA.every((k) => isEqual(a[k], b[k]))
+    }
+    return false
+}
+function stripDefaults(settings, defaults = defaultSettings) {
+  const result = { ...settings }
+  for (const key of Object.keys(defaults)) {
+    if (!(key in result)) continue
+    const eq = isEqual(result[key], defaults[key])
+    if (eq) delete result[key]
+  }
+  return result
+}
 async function exportHtml(name, data, fileAudioStore) {
     const newVersion = (data.settings.v ?? 0) + 1
 
-    const updatedSettings = {
+    let updatedSettings = {
         ...data.settings,
         v: newVersion,
     }
@@ -145,12 +166,14 @@ async function exportHtml(name, data, fileAudioStore) {
         }),
     )
     delete updatedSettings.fileAudioStore
+    updatedSettings = {
+        ...updatedSettings,
+        hotspots,
+    }
+    const cleaned = stripDefaults(updatedSettings)
     const payload = {
         ...data,
-        settings: {
-            ...updatedSettings,
-            hotspots,
-        },
+        settings: cleaned,
     }
     const injectedScript = `<script>
         window.sse = ${JSON.stringify(payload)}
@@ -332,7 +355,7 @@ function createControlBotGroup(settings, tooltip, events, dom) {
     // buttons: [id, iconKey,tooltip, show, event, toggle]
     const hasDimension = !!settings.dimensions
     const buttons = [
-        ['resetCamera', 'resetCamera', 'Reset Camera', true, true,   'inputEvent:reset'],
+        ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
         [
             'showDimension',
             'showDimension',

@@ -1,4 +1,10 @@
-const dimensionWorldToLocal = (worldPos, rotation) => {
+function degToRad(d) {
+    return (d * Math.PI) / 180
+}
+function radToDeg(r) {
+    return (r * 180) / Math.PI
+}
+function dimensionWorldToLocal(worldPos, rotation) {
     const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
     const right = q.transformVector(new Vec3(1, 0, 0))
     const up = q.transformVector(new Vec3(0, 1, 0))
@@ -9,7 +15,7 @@ const dimensionWorldToLocal = (worldPos, rotation) => {
         z: worldPos.x * forward.x + worldPos.y * forward.y + worldPos.z * forward.z,
     }
 }
-const dimensionLocalToWorld = (localPos, rotation) => {
+function dimensionLocalToWorld(localPos, rotation) {
     const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
     const right = q.transformVector(new Vec3(1, 0, 0))
     const up = q.transformVector(new Vec3(0, 1, 0))
@@ -523,7 +529,7 @@ function quatFromTo(from, to) {
     const q = new Quat()
     const dot = from.dot(to)
     if (dot >= 1.0 - 1e-6) {
-        q.setIdentity()
+        q.set(0, 0, 0, 1)
         return q
     }
 
@@ -541,4 +547,14 @@ function quatFromTo(from, to) {
     const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI)
     q.setFromAxisAngle(axis, angle)
     return q
+}
+function mergeSettings(settings, defaultSettings) {
+    if (settings.pivot?.position) {
+        const setupStep = settings.model === 'hemispherical' ? 3 : 2
+        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings, setupStep }
+    }
+    if (settings.orientation?.pose) {
+        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings, setupStep: 2 }
+    }
+    return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings }
 }

@@ -79,107 +79,44 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
 }
 function renderOrientation(group, global, editGroup) {
     const { events, settings } = global
-    editGroup.register('orientation', { cancel: () => onCancel() })
+    editGroup.register('orientation', { cancel: () => onCancelOrientation() })
     const groundPicker = new GroundPlanePicker(global.app, global.camera)
-    events.on('hotspot:active', () => onCancel())
-    events.on('sidebar:clicked', () => onCancel())
+    events.on('hotspot:active', () => onCancelOrientation())
+    events.on('sidebar:clicked', () => onCancelOrientation())
     let isEditing = false
 
     const container = document.createElement('div')
     container.classList.add('orientation-btn-wrap')
 
-    // ── Rotation inputs (editable, inside Manual tab) ──
-    const {
-        row: rotationRow,
-        setEditable: setInputsEditable,
-        setValues: setInputValues,
-    } = createVec3Inputs({
-        title: 'Rotation',
-        onChange: ({ x, y, z }) => {
-            if (!isEditing) return
-            events.fire('orientation:eulerchange', { x, y, z })
-        },
-    })
+    // ─────────────────────────────────────────
+    // SECTION 1: ORIENTATION
+    // ─────────────────────────────────────────
 
-    // ── Rotation inputs (readonly, always visible outside tabs) ──
     const { row: readonlyRotationRow, setValues: setReadonlyValues } = createVec3Inputs({
         title: 'Rotation',
         editable: false,
         onChange: () => {},
     })
 
-    const syncValues = (val) => {
-        setInputValues(val)
-        setReadonlyValues(val)
-    }
+    const syncValues = (val) => setReadonlyValues(val)
 
-    events.on('ortery:rotate', () => {
-        const euler = modelEntity.getLocalEulerAngles(new Vec3())
-        events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
-    })
     events.on('modelEntity:loaded', () => {
-        if (settings.orientation) {
-            const { rotation: r } = settings.orientation
+        if (settings.orientation.pose) {
+            const { rotation: r } = settings.orientation.pose
             syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
         } else {
             syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
         }
     })
-    events.on('orientation:eulersynced', ({ x, y, z }) => {
-        if (!isEditing) return
-        syncValues({ x, y, z })
-    })
-    events.on('orientation:aligned-to-ground', ({ x, y, z }) => {
-        syncValues({ x, y, z })
-    })
-     events.on('orientation:aligned-from-manual', ({ x, y, z }) => {
-         syncValues({ x, y, z })
-     })
-    const horizontalLineEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    horizontalLineEl.style.cssText = `
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none; z-index: 10; display: none;
-`
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-    line.setAttribute('x1', '0')
-    line.setAttribute('y1', '70%')
-    line.setAttribute('x2', '100%')
-    line.setAttribute('y2', '70%')
-    line.setAttribute('stroke', '#facc15')
-    line.setAttribute('stroke-width', '1')
-    line.setAttribute('stroke-dasharray', '6 4')
-    line.setAttribute('opacity', '0.7')
-    horizontalLineEl.appendChild(line)
-    document.body.appendChild(horizontalLineEl)
-
-    // ── Gizmo toggle ──
-    const horizontalRow = document.createElement('div')
-    horizontalRow.classList.add('section-group-row')
-    const horizontalLabel = document.createElement('span')
-    horizontalLabel.textContent = 'Horizontal Line'
-    const track = document.createElement('div')
-    track.classList.add('toggle')
-    const knob = document.createElement('div')
-    knob.classList.add('toggle-knob')
-    track.appendChild(knob)
-
-    track.addEventListener('click', () => {
-        const on = !track.classList.contains('active')
-        updateHorizontalLine(on)
-    })
-    const updateHorizontalLine = (on) => {
-        track.classList.toggle('active', on)
-        horizontalLineEl.style.display = on ? 'block' : 'none'
-    }
-    horizontalRow.appendChild(horizontalLabel)
-    horizontalRow.appendChild(track)
+    events.on('orientation:aligned-to-ground', ({ x, y, z }) => syncValues({ x, y, z }))
+    events.on('orientation:aligned-from-manual', ({ x, y, z }) => syncValues({ x, y, z }))
 
     // ── Ground Plane Picker ──
     let pickingActive = false
     let pickedPoints = []
     const MAX_POINTS = 3
     const getGroundPoints = () => pickedPoints
+
     const ICON_CROSSHAIR = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
         <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
@@ -188,57 +125,88 @@ function renderOrientation(group, global, editGroup) {
     const ICON_X = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`
-    // const ICON_CHECK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    // <polyline points="20 6 9 17 4 12"/>
-    // </svg>`
+
+    const groundWrap = document.createElement('div')
+    groundWrap.style.cssText = 'display:none; flex-direction:column; gap:8px;'
+
+    const hint = document.createElement('div')
+    hint.style.cssText = 'font-size:12px; color:var(--text-main); margin-top:4px; height:28px'
+    hint.innerHTML = `Click <span class="highlight">3</span> points on the <span class="highlight">ground surface</span> to auto-align the model.`
 
     const pickRow = document.createElement('div')
     pickRow.classList.add('section-group-row')
-
     const pickLabel = document.createElement('span')
     pickLabel.textContent = 'Set Ground Plane'
-
     const pickActionRow = document.createElement('div')
     pickActionRow.style.cssText = 'display:flex; gap:6px;'
-
     const pickBtn = document.createElement('button')
     pickBtn.classList.add('btn', 'pick-ground-btn')
     pickBtn.innerHTML = ICON_CROSSHAIR
     pickBtn.title = 'Pick Ground Plane'
-
     const btnCancelGround = document.createElement('button')
     btnCancelGround.classList.add('btn', 'cancel-btn')
+    btnCancelGround.style.cssText = 'height:30px; display:none'
     btnCancelGround.innerHTML = ICON_X
     btnCancelGround.title = 'Cancel'
-    btnCancelGround.style.display = 'none'
-
-    // const btnConfirmGround = document.createElement('button')
-    // btnConfirmGround.classList.add('btn', 'confirm-btn')
-    // btnConfirmGround.innerHTML = ICON_CHECK
-    // btnConfirmGround.title ="Apply Rotate"
-    // btnConfirmGround.style.display = 'none'
-
     pickActionRow.appendChild(pickBtn)
     pickActionRow.appendChild(btnCancelGround)
-    // pickActionRow.appendChild(btnConfirmGround)
     pickRow.appendChild(pickLabel)
     pickRow.appendChild(pickActionRow)
 
-    // Sync button visibility to current pick state
+    const pointInputsWrap = document.createElement('div')
+    pointInputsWrap.style.cssText = 'display:none; flex-direction:column; gap:4px; margin-top:4px;'
+    const pointInputRows = [1, 2, 3].map((n) => {
+        const { row, setValues } = createVec3Inputs({
+            title: `Point ${n}`,
+            editable: true,
+            onChange: ({ x, y, z }) => {
+                const idx = n - 1
+                if (pickedPoints[idx]) {
+                    pickedPoints[idx] = { x, y, z }
+                    groundPicker._points[idx] = new Vec3(x, y, z)
+                    groundPicker._redraw() //
+                }
+            },
+        })
+        return { row, setValues }
+    })
+    pointInputRows.forEach(({ row }) => pointInputsWrap.appendChild(row))
+
+    const syncPointInputs = () => {
+        pointInputRows.forEach(({ row, setValues }, i) => {
+            if (pickingActive && i < pickedPoints.length) {
+                setValues({ x: pickedPoints[i].x, y: pickedPoints[i].y, z: pickedPoints[i].z })
+                row.style.display = 'flex'
+            } else {
+                row.style.display = 'none'
+            }
+        })
+        pointInputsWrap.style.display = pickingActive && pickedPoints.length > 0 ? 'flex' : 'none'
+    }
+
     const updatePickState = () => {
         if (!pickingActive) {
             pickBtn.style.display = 'flex'
+            document.body.style.cursor = 'default'
             btnCancelGround.style.display = 'none'
-            // btnConfirmGround.style.display = 'none'
         } else if (pickedPoints.length < MAX_POINTS) {
+            document.body.style.cursor = 'crosshair'
             pickBtn.style.display = 'none'
             btnCancelGround.style.display = 'flex'
-            // btnConfirmGround.style.display = 'none'
         } else {
+            document.body.style.cursor = 'default'
             pickBtn.style.display = 'none'
             btnCancelGround.style.display = 'flex'
-            // btnConfirmGround.style.display = 'flex'
         }
+        syncPointInputs()
+    }
+
+    const updateHintText = () => {
+        const remaining = MAX_POINTS - pickedPoints.length
+        hint.innerHTML =
+            remaining > 0
+                ? `Click <span class="highlight">${remaining}</span> point${remaining > 1 ? 's' : ''} on the <span class="highlight">ground surface</span> to auto-align the model.`
+                : `Click <span class="highlight">Apply</span> to auto-align the model, or click <span class="highlight cancel">✕</span> to cancel.`
     }
 
     const stopPicking = () => {
@@ -257,13 +225,7 @@ function renderOrientation(group, global, editGroup) {
         groundPicker.reset()
         updatePickState()
     }
-
     btnCancelGround.onclick = () => stopPicking()
-
-    // btnConfirmGround.onclick = () => {
-    //     events.fire('orientation:groundplane', pickedPoints)
-    //     stopPicking()
-    // }
 
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerdown', (e) => {
@@ -281,139 +243,262 @@ function renderOrientation(group, global, editGroup) {
         updatePickState()
     })
 
-    // ── Tab contents ──
-    const manualContent = () => {
-        const wrap = document.createElement('div')
-        wrap.style.cssText = 'display:flex; flex-direction:column; gap:10px;'
-        wrap.appendChild(rotationRow)
-        wrap.appendChild(horizontalRow)
-        return wrap
-    }
+    groundWrap.appendChild(hint)
+    groundWrap.appendChild(pickRow)
+    groundWrap.appendChild(pointInputsWrap)
 
-    const hint = document.createElement('div')
-    const groundContent = () => {
-        const wrap = document.createElement('div')
-        wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
-        hint.innerHTML = `Click <span class="highlight">3</span> points on the <span class="highlight">ground surface</span> to auto-align the model.`
-        hint.style.cssText = 'font-size:12px; color:var(--text-main);margin-top:4px'
-        wrap.appendChild(hint)
-        wrap.appendChild(pickRow)
-        return wrap
-    }
-    const updateHintText = () => {
-        const remaining = MAX_POINTS - pickedPoints.length
+    // ── Orientation btn row ──
+    const orientBtnRow = document.createElement('div')
+    orientBtnRow.classList.add('btn-row')
 
-        hint.innerHTML =
-            remaining > 0
-                ? `Click <span class="highlight">${remaining}</span> point${remaining > 1 ? 's' : ''} on the <span class="highlight">ground surface</span> to auto-align the model.`
-                : `Click <span class="highlight">Apply</span> to auto-align the model, or click <span class="highlight cancel">✕</span> to cancel.`
-    }
-    let currentTab = 0
-    const tabs = createTabs({
-        tabs: [
-            { label: 'Manual', content: manualContent },
-            { label: 'Ground Plane', content: groundContent },
-        ],
-        width: 300,
-        height: 146,
-        onTabChange: (index) => {
-            currentTab = index
-            if (index === 1) {
-                updateHorizontalLine(false)
-            } else {
-                stopPicking()
-            }
-        },
-    })
-    tabs.style.display = 'none'
-
-    // ── Bottom buttons (Edit / Cancel+Apply) ──
-    const btnRow = document.createElement('div')
-    btnRow.classList.add('btn-row')
-
-    const onCancel = () => {
+    const onCancelOrientation = () => {
         if (!isEditing) return
-        tabs.setActiveTab(0)
-        currentTab = 0
         isEditing = false
-        setInputsEditable(false)
         stopPicking()
-        updateHorizontalLine(false)
-        if (settings.orientation) {
-            const { rotation: r } = settings.orientation
+        groundWrap.style.display = 'none'
+        if (settings.orientation.pose) {
+            const { rotation: r } = settings.orientation.pose
             syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
         } else {
             syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
         }
-        renderBtns()
+        renderOrientBtns()
         events.fire('orientation:cancel')
     }
 
-    const renderBtns = () => {
-        btnRow.innerHTML = ''
+    const renderOrientBtns = () => {
+        orientBtnRow.innerHTML = ''
         if (isEditing) {
             readonlyRotationRow.style.display = 'none'
-            tabs.style.display = 'flex'
+            groundWrap.style.display = 'flex'
 
             const btnCancel = document.createElement('button')
             btnCancel.classList.add('btn', 'cancel-btn')
             btnCancel.textContent = 'Cancel'
-            btnCancel.onclick = () => onCancel()
+            btnCancel.onclick = () => onCancelOrientation()
 
             const btnSave = document.createElement('button')
             btnSave.classList.add('btn', 'confirm-btn')
             btnSave.textContent = 'Apply'
             btnSave.onclick = () => {
-                if (currentTab === 0) {
-                    events.fire('orientation:manual')
-                    updateHorizontalLine(false)
-                } else {
-                    const pickedPoints = getGroundPoints()
-                    if (pickedPoints.length < MAX_POINTS) {
-                        showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
-                        return
-                    }
-                    stopPicking()
-                    events.fire('orientation:groundplane', pickedPoints)
+                const pts = getGroundPoints()
+                if (pts.length < MAX_POINTS) {
+                    showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
+                    return
                 }
+                stopPicking()
+                events.fire('orientation:groundplane', pts)
                 isEditing = false
-                renderBtns()
+                groundWrap.style.display = 'none'
+                renderOrientBtns()
             }
 
-            btnRow.appendChild(btnCancel)
-            btnRow.appendChild(btnSave)
+            orientBtnRow.appendChild(btnCancel)
+            orientBtnRow.appendChild(btnSave)
         } else {
             readonlyRotationRow.style.display = 'flex'
-            tabs.style.display = 'none'
+            groundWrap.style.display = 'none'
 
             const btnEdit = document.createElement('button')
             btnEdit.classList.add('btn')
             btnEdit.textContent = 'Edit'
             btnEdit.onclick = () => {
                 editGroup.startEdit('orientation')
-                tabs.setActiveTab(0)
-                currentTab = 0
                 isEditing = true
-                setInputsEditable(true)
-                tabs.style.display = 'flex'
+                groundWrap.style.display = 'flex'
                 events.fire('orientation:edit')
-                renderBtns()
-
-                const euler = modelEntity.getLocalEulerAngles(new Vec3())
-
-                syncValues(euler)
-                events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+                renderOrientBtns()
             }
-            btnRow.appendChild(btnEdit)
+            orientBtnRow.appendChild(btnEdit)
         }
     }
 
+    // ─────────────────────────────────────────
+    // SECTION 2: CAMERA LIMITS
+    // ─────────────────────────────────────────
+
+    const PITCH_MIN_DEG = -90
+    const PITCH_MAX_DEG = 90
+    let isEditingPitch = false
+    let pitchDraftDeg = 0
+
+    const clampPitch = (v) => Math.max(PITCH_MIN_DEG, Math.min(PITCH_MAX_DEG, v))
+
+    const cameraLimitsGroup = document.createElement('div')
+    cameraLimitsGroup.classList.add('section-group')
+
+    const cameraLimitsTitle = document.createElement('div')
+    cameraLimitsTitle.classList.add('section-group-title')
+    cameraLimitsTitle.textContent = 'Camera'
+    cameraLimitsGroup.appendChild(cameraLimitsTitle)
+
+    // ── Readonly pitch row ──
+    const pitchReadonlyRow = document.createElement('div')
+    pitchReadonlyRow.classList.add('section-group-row')
+    const pitchReadonlyLabel = document.createElement('span')
+    pitchReadonlyLabel.textContent = 'Pitch offset'
+    const pitchReadonlyRight = document.createElement('div')
+    pitchReadonlyRight.style.cssText = 'display:flex; align-items:center; gap:4px;'
+    const pitchReadonlyVal = document.createElement('div')
+    pitchReadonlyVal.style.cssText = [
+        'width:56px',
+        'height:28px',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'background:rgba(0,0,0,0.04)',
+        'border:0.5px solid rgba(0,0,0,0.1)',
+        'border-radius:5px',
+        'font-size:12px',
+        'color:rgba(0,0,0,0.3)',
+    ].join(';')
+    pitchReadonlyRight.appendChild(pitchReadonlyVal)
+    pitchReadonlyRow.appendChild(pitchReadonlyLabel)
+    pitchReadonlyRow.appendChild(pitchReadonlyRight)
+
+    // ── Edit pitch content ──
+    const pitchEditWrap = document.createElement('div')
+    pitchEditWrap.style.cssText = 'display:none; flex-direction:column; gap:8px;'
+
+    // input + unit
+    const pitchInputRow = document.createElement('div')
+    pitchInputRow.classList.add('section-group-row')
+    const pitchInputLabel = document.createElement('span')
+    pitchInputLabel.textContent = 'Pitch offset'
+    const pitchInputRight = document.createElement('div')
+    pitchInputRight.style.cssText = 'display:flex; align-items:center; gap:4px;'
+
+    const pitchInput = document.createElement('input')
+    pitchInput.type = 'number'
+    pitchInput.min = PITCH_MIN_DEG
+    pitchInput.max = PITCH_MAX_DEG
+    pitchInput.step = '1'
+    pitchInput.style.cssText = [
+        'width:56px',
+        'height:28px',
+        'padding:0 6px',
+        'border-radius:5px',
+        'border:0.5px solid rgba(0,0,0,0.13)',
+        'color:var(--text-main)',
+        'font-size:12px',
+        'text-align:center',
+        'outline:none',
+        'font-family:inherit',
+    ].join(';')
+
+    pitchInputRight.appendChild(pitchInput)
+    pitchInputRow.appendChild(pitchInputLabel)
+    pitchInputRow.appendChild(pitchInputRight)
+
+    // slider
+    const pitchSliderRow = document.createElement('div')
+    pitchSliderRow.style.cssText = 'display:flex; align-items:center; gap:6px;'
+    const pitchSliderMin = document.createElement('span')
+    pitchSliderMin.style.cssText = 'font-size:10px; color:var(--text-muted); min-width:24px;'
+    pitchSliderMin.textContent = '-90°'
+    const pitchSlider = document.createElement('input')
+    pitchSlider.type = 'range'
+    pitchSlider.min = PITCH_MIN_DEG
+    pitchSlider.max = PITCH_MAX_DEG
+    pitchSlider.step = '1'
+    pitchSlider.classList.add('pitch-slider')
+    pitchSlider.style.cssText = 'flex:1;'
+    const pitchSliderMax = document.createElement('span')
+    pitchSliderMax.style.cssText = 'font-size:10px; color:var(--text-muted); min-width:24px; text-align:right;'
+    pitchSliderMax.textContent = '90°'
+    pitchSliderRow.appendChild(pitchSliderMin)
+    pitchSliderRow.appendChild(pitchSlider)
+    pitchSliderRow.appendChild(pitchSliderMax)
+
+    const setPitchDraft = (deg) => {
+        pitchDraftDeg = clampPitch(deg)
+        const rounded = Math.round(pitchDraftDeg)
+        pitchInput.value = rounded
+        pitchSlider.value = rounded
+        events.fire('orientation:pitchoffset', { value: degToRad(pitchDraftDeg) })
+    }
+
+    pitchInput.addEventListener('input', () => setPitchDraft(parseFloat(pitchInput.value) || 0))
+    pitchSlider.addEventListener('input', () => setPitchDraft(parseFloat(pitchSlider.value)))
+
+    pitchEditWrap.appendChild(pitchInputRow)
+    pitchEditWrap.appendChild(pitchSliderRow)
+
+    // ── Pitch btn row ──
+    const pitchBtnRow = document.createElement('div')
+    pitchBtnRow.classList.add('btn-row')
+
+    const syncPitchReadonly = () => {
+        const saved = radToDeg(settings.orientation.pitchOffset ?? 0)
+        pitchReadonlyVal.textContent = Math.round(saved) + ''
+    }
+
+    const onCancelPitch = () => {
+        if (!isEditingPitch) return
+        isEditingPitch = false
+        events.fire('orientation:cancel-pitchoffset')
+        syncPitchReadonly()
+        renderPitchBtns()
+    }
+
+    const renderPitchBtns = () => {
+        pitchBtnRow.innerHTML = ''
+        if (isEditingPitch) {
+            pitchReadonlyRow.style.display = 'none'
+            pitchEditWrap.style.display = 'flex'
+
+            const btnCancel = document.createElement('button')
+            btnCancel.classList.add('btn', 'cancel-btn')
+            btnCancel.textContent = 'Cancel'
+            btnCancel.onclick = () => onCancelPitch()
+
+            const btnApply = document.createElement('button')
+            btnApply.classList.add('btn', 'confirm-btn')
+            btnApply.textContent = 'Apply'
+            btnApply.onclick = () => {
+                const radVal = degToRad(pitchDraftDeg)
+                events.fire('orientation:save-pitchoffset', { value: radVal })
+                isEditingPitch = false
+                syncPitchReadonly()
+                renderPitchBtns()
+            }
+
+            pitchBtnRow.appendChild(btnCancel)
+            pitchBtnRow.appendChild(btnApply)
+        } else {
+            pitchReadonlyRow.style.display = 'flex'
+            pitchEditWrap.style.display = 'none'
+
+            const btnEdit = document.createElement('button')
+            btnEdit.classList.add('btn')
+            btnEdit.textContent = 'Edit'
+            btnEdit.onclick = () => {
+                isEditingPitch = true
+                setPitchDraft(radToDeg(settings.orientation.pitchOffset ?? 0))
+                renderPitchBtns()
+            }
+            pitchBtnRow.appendChild(btnEdit)
+        }
+    }
+
+    cameraLimitsGroup.appendChild(pitchReadonlyRow)
+    cameraLimitsGroup.appendChild(pitchEditWrap)
+    cameraLimitsGroup.appendChild(pitchBtnRow)
+
+    // ─────────────────────────────────────────
+    // ASSEMBLE
+    // ─────────────────────────────────────────
+
     container.appendChild(readonlyRotationRow)
-    container.appendChild(tabs)
-    container.appendChild(btnRow)
+    container.appendChild(groundWrap)
+    container.appendChild(orientBtnRow)
     group.appendChild(container)
 
-    renderBtns()
+    syncPitchReadonly()
+    renderOrientBtns()
+    renderPitchBtns()
+
+    return { cameraLimitsGroup }
 }
 function renderPivot(group, global, editGroup) {
     const { events, settings } = global
@@ -574,8 +659,11 @@ function modelSection(el, global) {
         orientationTitle.classList.add('section-group-title')
         orientationTitle.textContent = 'transform'
         orientationGroup.appendChild(orientationTitle)
-        renderOrientation(orientationGroup, global, editGroup)
+
+        const { cameraLimitsGroup } = renderOrientation(orientationGroup, global, editGroup)
+
         container.appendChild(orientationGroup)
+        container.appendChild(cameraLimitsGroup)
     }
 
     const isPivotStep = (isHemi && step === 2) || (!isHemi && step === 1)
@@ -592,6 +680,7 @@ function modelSection(el, global) {
 
     el.appendChild(container)
 }
+
 function viewerSettingsSection(el, global) {
     const settings = global.settings
     const container = document.createElement('div')
@@ -1185,6 +1274,9 @@ function createSidebar(global, dom) {
     backBtn.textContent = 'Back'
     backBtn.addEventListener('click', () => {
         if (global.settings.setupStep > minStep) {
+            if (isHemi && global.settings.setupStep === 2) {
+                global.settings.pivot = { position: null, enabled: true }
+            }
             global.settings.setupStep--
             renderStep()
         }
@@ -1215,11 +1307,11 @@ function createSidebar(global, dom) {
         )
         if (ok) {
             global.settings.setupStep = 1
-            global.settings.initview = { pose: null }
-            global.settings.orientation = null
+            global.settings.initview = defaultSettings.initview
+            global.settings.orientation = defaultSettings.orientation
             global.settings.hotspots = []
-            global.settings.dimensions = null
-            global.settings.pivot = { position: null, enabled: true }
+            global.settings.dimensions = defaultSettings.dimensions
+            global.settings.pivot = defaultSettings.pivot
             events.fire('setup-reset')
             renderStep()
         }

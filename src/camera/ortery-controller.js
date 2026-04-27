@@ -42,8 +42,8 @@ class OtherController {
         }
         this.originModel = this.model
         this.initviewPose = settings.initview.pose
-        if (settings.orientation) {
-            const { rotation: r, position: p } = settings.orientation
+        if (settings.orientation.pose) {
+            const { rotation: r, position: p } = settings.orientation.pose
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
             this.basePosition = new Vec33(p.x, p.y, p.z)
             this.originEntityRotation = new Quat(r.x, r.y, r.z, r.w)
@@ -91,9 +91,11 @@ class OtherController {
         this.events.on('orientation:groundplane', (points) => {
             this.applyGroundPlaneOrientation(points)
         })
-        this.events.on('orientation:manual', () => this.applyManualOrientation())
         this.events.on('orientation:edit', () => this.startEditModelOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
+        this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
+        this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
+        this.events.on('orientation:cancel-pitchoffset', () => this.cancelCameraPitchOffset())
 
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
@@ -140,7 +142,7 @@ class OtherController {
     }
 
     syncPivotPoint(position) {
-        if (!this.settings.pivot.enabled || !position) return
+        if (!position) return
         const newCenterPivot = this.getWorldCenterPivot(position)
         this.centerPivot = newCenterPivot
         this.basePosition = this.calcBasePositionFromPivot(newCenterPivot)
@@ -300,10 +302,14 @@ class OtherController {
         const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
         return centerPivot.clone().add(baseOffset)
     }
-    initView(isShowToast = true) {
+    initView(isShowToast = true, defaultDistance = false) {
         const pose = this.getEntityInfo()
         this.initviewPose = pose
-        this.settings.initview = { pose }
+        if (defaultDistance) {
+            this.settings.initview = { pose: { ...pose, distanceScale: 1 } }
+        } else {
+            this.settings.initview = { pose }
+        }
         this.initviewPose.basePosition = this.basePosition.clone()
         if (isShowToast)
             showToast('✓ Initial view updated', {
@@ -311,7 +317,6 @@ class OtherController {
                 type: 'success',
             })
     }
-
     removeInitview() {
         this.initviewPose = null
         this.settings.initview = { pose: null }
@@ -337,7 +342,6 @@ class OtherController {
         if (this.settings.inertia && this.isFlick) this.applyInertia()
         this.getPose(camera)
     }
-
     getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
         const fovDeg = 50
@@ -359,13 +363,13 @@ class OtherController {
         this.maxDistance = Math.max(distance, 200)
 
         this.pitchRad = (camera.angles.x * Math.PI) / 180
-        const offsetPitch = this.settings.orientation ? this.settings.orientation.pitchOffset : this.pitchRad
+        const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
         if (this.model === 'cylindrical') {
             this.minPitch = offsetPitch
             this.maxPitch = offsetPitch
         } else {
-            this.minPitch += offsetPitch
-            this.maxPitch += offsetPitch
+            this.minPitch = offsetPitch
+            this.maxPitch = Math.PI / 2 + offsetPitch
         }
         let forward
         if (camera.angles && typeof camera.angles.x === 'number' && typeof camera.angles.y === 'number') {
@@ -410,12 +414,11 @@ class OtherController {
         if (this.model === 'spherical') {
             this.sphericalRot(dx, dy)
         } else {
-            this.setPitchYaw(dx, dy)
+            this.setHemiPitchYaw(dx, dy)
             this.hemisphericalRot(this.currentYaw, this.currentPitch)
         }
         this.syncHierarchyAndRender()
     }
-
     setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration }) {
         this.targetPose = targetPose
         this.startPose = startPose
@@ -434,26 +437,24 @@ class OtherController {
         this.model = this.originModel
         this.reset()
     }
-    applyManualOrientation() {
-        this.baseRotation = modelEntity.localRotation.clone()
-        const invQuat = new Quat3(0, 0, 0, 1)
-        const currentOffset = modelEntity.localPosition.clone().sub(this.centerPivot)
-        this.basePosition = this.centerPivot.clone().add(currentOffset)
+    setCameraPitchOffset(value) {
+        this.minPitch = this.pitchRad - value
+        this.maxPitch = this.pitchRad - value + Math.PI / 2
+        this.currentPitch = this.minPitch
+        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        this.syncHierarchyAndRender()
+    }
 
-        this.currentYaw = 0
-        this.currentPitch = 0
-        this.settings.orientation = {
-            rotation: this.baseRotation,
-            position: this.basePosition,
-            pitchOffset: 0,
-        }
-        this.updateModelRotation()
-        this.model = this.originModel
-        this.minPitch = 0
-        this.maxPitch = Math.PI / 2
-        this.originEntityRotation = modelEntity.localRotation.clone()
-        this.originEntityPos = modelEntity.localPosition.clone()
-        this.initView(false)
+    saveCameraPitchOffset(value) {
+        this.settings.orientation.pitchOffset = value
+    }
+    cancelCameraPitchOffset() {
+        const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
+        this.minPitch = offsetPitch
+        this.maxPitch = Math.PI / 2 + offsetPitch
+        this.currentPitch = this.minPitch
+        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        this.syncHierarchyAndRender()
     }
     applyGroundPlaneOrientation(points) {
         const localNormal = fitPlaneNormal(points)
@@ -517,10 +518,8 @@ class OtherController {
             yaw: 0,
             pitch: 0,
         }
-        this.settings.orientation = { rotation: newBaseRotation, position: newPosition, pitchOffset: this.pitchRad }
+        this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
         this.model = this.originModel
-        this.minPitch = this.pitchRad
-        this.maxPitch = Math.PI / 2 + this.pitchRad
         const r = this.baseRotation
         const q = new Quat(r.x, r.y, r.z, r.w)
         const euler = q.getEulerAngles()
@@ -533,7 +532,7 @@ class OtherController {
             onTransitionFinished: () => {
                 this.originEntityRotation = modelEntity.localRotation.clone()
                 this.originEntityPos = modelEntity.localPosition.clone()
-                this.initView(false)
+                this.initView(false, true)
             },
         })
     }
@@ -641,7 +640,7 @@ class OtherController {
                 }
                 if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
                 else {
-                    this.setPitchYaw(deltaX, deltaY)
+                    this.setHemiPitchYaw(deltaX, deltaY)
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
                 this.syncHierarchyAndRender()
@@ -656,20 +655,32 @@ class OtherController {
             this.updateModelRotation()
         }
     }
-    setPitchYaw(deltaX, deltaY) {
-        const maxDelta = 30
-        const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-        const scale = magnitude > maxDelta ? maxDelta / magnitude : 1
-        const safeDeltaX = deltaX * scale
-        const safeDeltaY = deltaY * scale
-        this.currentYaw =
-            ((((this.currentYaw + safeDeltaX * this.rotateSpeed + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) %
-                (2 * Math.PI)) -
-            Math.PI
-        this.currentPitch += safeDeltaY * this.rotateSpeed
-        this.currentPitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.currentPitch))
+    clampYaw(yaw) {
+        return ((((yaw + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI
     }
 
+    clampPitch(pitch) {
+        return Math.max(this.minPitch, Math.min(this.maxPitch, pitch))
+    }
+
+    hemiClampDelta(deltaX, deltaY, maxDelta = 30) {
+        const magnitude = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+        const scale = magnitude > maxDelta ? maxDelta / magnitude : 1
+        return { x: deltaX * scale, y: deltaY * scale }
+    }
+
+    setHemiPitchYaw(deltaX, deltaY) {
+        const { x: safeDeltaX, y: safeDeltaY } = this.hemiClampDelta(deltaX, deltaY)
+        this.currentYaw = this.clampYaw(this.currentYaw + safeDeltaX * this.rotateSpeed)
+        this.currentPitch = this.clampPitch(this.currentPitch + safeDeltaY * this.rotateSpeed)
+    }
+
+    clampHemiRawPitch(yaw, pitch) {
+        return {
+            yaw: this.clampYaw(yaw),
+            pitch: this.clampPitch(pitch),
+        }
+    }
     sphericalRot(deltaX, deltaY) {
         const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
         const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)

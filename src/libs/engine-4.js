@@ -24963,17 +24963,17 @@ const migrateV2 = (v1) => {
 // migrate a JSON object to the latest settings schema (assumes valid input)
 const importSettings = (settings) => {
     let result
-    const version = settings.version
+    const version = settings.version ?? 2
     if (version === undefined) {
         // v1 -> v2
-        result = migrateV2(migrateV1(settings))
+        result = migrateV2(migrateV1({ settings }))
     } else if (version === 2) {
         // already v2
         result = settings
     } else {
         throw new Error(`Unsupported experience settings version: ${version}`)
     }
-    return {...defaultSettings,...result}
+    return mergeSettings(result, defaultSettings)
 }
 
 class Tooltip {
@@ -24987,49 +24987,49 @@ class Tooltip {
         let timer = 0
         this.register = (target, textString, direction = 'bottom') => {
             const activate = () => {
-        dom.textContent = textString
-        style.display = 'inline'
-        style.whiteSpace = 'nowrap'
-        style.width = 'max-content'
+                dom.textContent = textString
+                style.display = 'inline'
+                style.whiteSpace = 'nowrap'
+                style.width = 'max-content'
 
-        const rect = target.getBoundingClientRect()
-        const tooltipW = dom.offsetWidth
-        const tooltipH = dom.offsetHeight
-        const GAP = 8
-        const midx = Math.floor((rect.left + rect.right) * 0.5)
-        const midy = Math.floor((rect.top + rect.bottom) * 0.5)
+                const rect = target.getBoundingClientRect()
+                const tooltipW = dom.offsetWidth
+                const tooltipH = dom.offsetHeight
+                const GAP = 8
+                const midx = Math.floor((rect.left + rect.right) * 0.5)
+                const midy = Math.floor((rect.top + rect.bottom) * 0.5)
 
-        let left, top
+                let left, top
 
-        switch (direction) {
-            case 'left':
-                left = rect.left - tooltipW - 10
-                top  = midy - tooltipH / 2
-                break
-            case 'right':
-                left = rect.right + 10
-                top  = midy - tooltipH / 2
-                break
-            case 'top':
-                left = midx - tooltipW / 2
-                top  = rect.top - tooltipH - 10
-                break
-            case 'bottom':
-                left = midx - tooltipW / 2
-                top  = rect.bottom + 10
-                break
-        }
+                switch (direction) {
+                    case 'left':
+                        left = rect.left - tooltipW - 10
+                        top = midy - tooltipH / 2
+                        break
+                    case 'right':
+                        left = rect.right + 10
+                        top = midy - tooltipH / 2
+                        break
+                    case 'top':
+                        left = midx - tooltipW / 2
+                        top = rect.top - tooltipH - 10
+                        break
+                    case 'bottom':
+                        left = midx - tooltipW / 2
+                        top = rect.bottom + 10
+                        break
+                }
 
-        // Clamp trong viewport
-        if (left + tooltipW > window.innerWidth - GAP)  left = window.innerWidth - tooltipW - GAP
-        if (left < GAP)                                  left = GAP
-        if (top + tooltipH > window.innerHeight - GAP)  top  = window.innerHeight - tooltipH - GAP
-        if (top < GAP)                                   top  = GAP
+                // Clamp trong viewport
+                if (left + tooltipW > window.innerWidth - GAP) left = window.innerWidth - tooltipW - GAP
+                if (left < GAP) left = GAP
+                if (top + tooltipH > window.innerHeight - GAP) top = window.innerHeight - tooltipH - GAP
+                if (top < GAP) top = GAP
 
-        style.transform = 'none'
-        style.left = left + 'px'
-        style.top  = top  + 'px'
-    }
+                style.transform = 'none'
+                style.left = left + 'px'
+                style.top = top + 'px'
+            }
             const startTimer = (fn) => {
                 timer = window.setTimeout(() => {
                     fn()
