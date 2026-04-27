@@ -9,7 +9,7 @@ const defaultSettings = Object.freeze({
     model: 'spherical',
     lockZoomIn: Object.freeze({ value: 11, locked: false }),
     pivot: Object.freeze({ position: null }),
-    initview: Object.freeze({ enabled: false, pose: null }),
+    initview: Object.freeze({ pose: null }),
     inertia: true,
     orientation:  Object.freeze({ pose: null }),
     hotspots: Object.freeze([]),

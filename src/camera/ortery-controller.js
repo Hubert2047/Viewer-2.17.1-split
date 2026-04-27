@@ -27,12 +27,12 @@ class OtherController {
     isFlick = false
     inertiaFlickThreshold = 0.005
     constructor({ global, bbox, minDistance }) {
-        const { app, events, settings } = global
+        const { app, events } = global
         this.app = app
         this.bbox = bbox
         this.minDistance = minDistance
         this.events = events
-        this.settings = settings
+        this.settings = global.settings
         if (['spherical', 'hemispherical', 'cylindrical'].includes(settings.model)) {
             this.model = settings.model
         } else if (!params.spherical) {
@@ -40,10 +40,11 @@ class OtherController {
         } else {
             this.model = 'spherical'
         }
+        this.initialModelRotation = modelEntity.localRotation.clone()
+        this.initialModelPosition = modelEntity.localPosition.clone()
         this.originModel = this.model
-        this.initviewPose = settings.initview.pose
-        if (settings.orientation.pose) {
-            const { rotation: r, position: p } = settings.orientation.pose
+        if (this.settings.orientation.pose) {
+            const { rotation: r, position: p } = this.settings.orientation.pose
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
             this.basePosition = new Vec33(p.x, p.y, p.z)
             this.originEntityRotation = new Quat(r.x, r.y, r.z, r.w)
@@ -75,6 +76,7 @@ class OtherController {
                     break
             }
         })
+        this.events.on('setup-reset', () => this.handleSetupReset())
 
         this.events.on('viewer:save-initview', () => this.initView())
         this.events.on('viewer:remove-saved-view', () => this.removeInitview())
@@ -83,9 +85,6 @@ class OtherController {
         this.events.on('pivot:delete', () => {
             this.applyAabbPivot()
             this.reset()
-        })
-        this.events.on('pivot:save', () => {
-            this.initView()
         })
 
         this.events.on('orientation:groundplane', (points) => {
@@ -96,7 +95,6 @@ class OtherController {
         this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
         this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
         this.events.on('orientation:cancel-pitchoffset', () => this.cancelCameraPitchOffset())
-
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
@@ -136,9 +134,8 @@ class OtherController {
         })
     }
     applyAabbPivot() {
-        const worldOrigin = this.originPivot.clone()
-        this.centerPivot = worldOrigin
-        this.basePosition = this.calcBasePositionFromPivot(worldOrigin)
+        this.centerPivot = this.originPivot.clone()
+        this.basePosition = this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone()
     }
 
     syncPivotPoint(position) {
@@ -207,14 +204,15 @@ class OtherController {
         let targetFocus, targetDistance, targetYaw, targetPitch
         let targetPosition, targetRotation
 
-        if (this.initviewPose) {
-            targetFocus = new Vec3(this.initviewPose.focus.x, this.initviewPose.focus.y, this.initviewPose.focus.z)
+        const initviewPose = this.settings.initview.pose
+        if (initviewPose) {
+            const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = initviewPose
+            targetFocus = new Vec3(f.x, f.y, f.z)
             targetDistance = isMobile
-                ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(this.initviewPose.distanceScale)))
-                : this.clampDistance(this.getActualDistance(this.initviewPose.distanceScale))
-            targetYaw = this.initviewPose.yaw || 0
-            targetPitch = this.initviewPose.pitch || 0
-            const { position: p, rotation: r } = this.initviewPose
+                ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d)))
+                : this.clampDistance(this.getActualDistance(d))
+            targetYaw = yaw || 0
+            targetPitch = pitch || 0
             targetPosition = new Vec3(p.x, p.y, p.z)
             targetRotation = new Quat(r.x, r.y, r.z, r.w)
         } else {
@@ -279,7 +277,7 @@ class OtherController {
             onTransitionFinished: () => {
                 this.isResetting = false
                 this.updateModelRotation()
-                if (this.settings.pivot.enabled && this.settings.pivot.position) {
+                if (this.settings.pivot.position) {
                     this.centerPivot = this.getWorldCenterPivot(this.settings.pivot.position)
                     this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
                 }
@@ -304,13 +302,11 @@ class OtherController {
     }
     initView(isShowToast = true, defaultDistance = false) {
         const pose = this.getEntityInfo()
-        this.initviewPose = pose
         if (defaultDistance) {
             this.settings.initview = { pose: { ...pose, distanceScale: 1 } }
         } else {
             this.settings.initview = { pose }
         }
-        this.initviewPose.basePosition = this.basePosition.clone()
         if (isShowToast)
             showToast('✓ Initial view updated', {
                 duration: 1000,
@@ -318,7 +314,6 @@ class OtherController {
             })
     }
     removeInitview() {
-        this.initviewPose = null
         this.settings.initview = { pose: null }
 
         if (this.originEntityRotation) {
@@ -600,6 +595,16 @@ class OtherController {
     }
     getActualDistance(distanceScale) {
         return this.originDistance * distanceScale
+    }
+    handleSetupReset() {
+        this.originEntityRotation = this.initialModelRotation
+        this.originEntityPos = this.initialModelPosition
+        this.basePosition = this.initialModelPosition
+        this.baseRotation = this.initialModelRotation
+        this.centerPivot = this.originPivot
+        this.currentPitch = 0 
+        this.currentYaw = 0
+        this.reset()
     }
     clampDistance(distance) {
         if (!this.settings.lockZoomIn.locked) return Math.min(this.maxDistance, Math.max(this.minDistance, distance))

@@ -617,17 +617,17 @@ class Hotspot {
     </svg>`
     }
     _ringsvg() {
-        return `
-        <svg style="position:absolute;top:-4px;left:-4px;width:36px;height:36px;transform:rotate(-90deg);pointer-events:none;" viewBox="0 0 36 36">
-            <circle fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4.5" cx="18" cy="18" r="16"/>
-            <circle fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="3" cx="18" cy="18" r="16"/>
-            <circle class="audio-progress-ring" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round"
-                cx="18" cy="18" r="16"
-                stroke-dasharray="${this.circumference}"
-                stroke-dashoffset="${this.circumference}"/>
-        </svg>
-    `
-    }
+    return `
+    <svg class="audio-ring-svg" style="transform:rotate(-90deg);pointer-events:none;" viewBox="0 0 36 36">
+        <circle fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4.5" cx="18" cy="18" r="16"/>
+        <circle fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="3" cx="18" cy="18" r="16"/>
+        <circle class="audio-progress-ring" fill="none" stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round"
+            cx="18" cy="18" r="16"
+            stroke-dasharray="${this.circumference}"
+            stroke-dashoffset="${this.circumference}"/>
+    </svg>
+`
+}
     getLocalContentPosByDiv() {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const invWorldMatrix = new Mat4().copy(worldMatrix).invert()

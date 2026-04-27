@@ -21,7 +21,6 @@ class HotspotManager {
         this.controllers = null
         global.app.on('postrender', () => this.update())
         this.initHotspot()
-            
     }
     initHotspot() {
         this.settings.hotspots.forEach((h) => {
@@ -43,7 +42,26 @@ class HotspotManager {
             },
         })
     }
+    rebuild() {
+        this.hotspots.forEach((h) => h.destroy())
+        this.hotspots = []
+        this.activeHotspot = null
+        this.activeData = null
+        this.stopAutoPlay()
 
+        this.settings.hotspots.forEach((h) => {
+            this.hotspots.push(this.createHotspot(h))
+        })
+
+        if (this.hotspots.length > 0) {
+            this.dom.hotspotActionGroup?.classList.remove('hidden')
+        } else {
+            this.dom.hotspotActionGroup?.classList.add('hidden')
+        }
+
+        this.updateUIPanel()
+        this.events.fire('hotspot:rebuild-info')
+    }
     createHotspot(data) {
         return new Hotspot({
             camera: this.camera,
@@ -59,7 +77,9 @@ class HotspotManager {
         this.events.on('controllers:created', (controllers) => {
             this.controllers = controllers
         })
-        this.events.on('hotspot:add', ({ position, entityInfo }) => {
+        this.events.on('setup-reset', () => this.rebuild())
+        this.events.on('hotspot:add', ({ position }) => {
+            if (!this.controllers) return
             if (this.hotspots.length === 0) {
                 if (this.dom.hotspotActionGroup) this.dom.hotspotActionGroup.classList.remove('hidden')
                 else {
@@ -67,6 +87,7 @@ class HotspotManager {
                 }
                 this.events.fire('hotspot:rebuild-info')
             }
+            const entityInfo = this.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
             this.settings.hotspots.push(data)
             this.hotspots.push(this.createHotspot(data))
@@ -85,7 +106,7 @@ class HotspotManager {
                 const activeHotspot = this.hotspots.find((h) => h.id === selectedData.id)
                 if (this.isAutoPlay) this.stopAutoPlay()
                 if (activeHotspot) {
-                    this.setActive(activeHotspot, HOTSPOT_FADE_TIME)
+                    this.setActive(activeHotspot, NORMAL_FADE_TIME)
                 }
             }
             if (this.editable) this.updateUIPanel()
@@ -110,6 +131,10 @@ class HotspotManager {
             this.activeData = data
             this.events.fire('hotspot:update-ui-data', data)
         })
+        this.events.on('hotspot:start-auto', () => this.startAutoPlay())
+        this.events.on('hotspot:stop-auto', () => this.stopAutoPlay())
+        this.events.on('hotspot:show-hotspot-btns', () => this.showActiveHotspotBtns(true))
+        this.events.on('hotspot:hide-hotspot-btns', () => this.showActiveHotspotBtns(false))
         this.events.on('hotspot:editor-cancelled', () => {
             this.activeData = null
             if (this.activeHotspot) {
@@ -185,7 +210,7 @@ class HotspotManager {
         })
         this.events.on('hotspot:toggle-play', () => {
             if (this.isAutoPlay) this.stopAutoPlay()
-            else this.startAutoPlay()   
+            else this.startAutoPlay()
         })
         this.events.on('hotspot:hotspot-btns', () => {
             this.showActiveHotspotBtns(!this.isShowActiveHotspotBtns)

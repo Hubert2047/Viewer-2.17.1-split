@@ -34,13 +34,12 @@ const initUI = (global) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
-    document.body.appendChild(dom.tooltip)
+    dom.ui.appendChild(createControlsWrap(settings, tooltip, events, dom))
     new HotspotManager({ global, dom, tooltip })
     let sidebar
     if (config.editable) {
         sidebar = createSidebar(global, dom)
     }
-    dom.ui.appendChild(createControlsWrap(settings, tooltip, events, dom))
     if (settings.hotspots.length > 0) {
         dom.buttonsContainer.appendChild(createHotspotActionGroup(tooltip, events, dom))
     }
@@ -3059,10 +3058,12 @@ class Viewer {
                 this.dom.showDimension.classList.remove('hidden')
                 this.dom.hideDimension.classList.add('hidden')
             })
-            events.on('dimensions:delete', () => {
+            function hideDimensions() {
                 global.bbox.hide()
                 events.fire('ui:re-render-control-wrap')
-            })
+            }
+            events.on('dimensions:delete', () => hideDimensions())
+            events.on('setup-reset', () => hideDimensions())
 
             events.on('viewer:lock-zoom-in', (value) => {
                 const lockZoomIn = {
@@ -3701,7 +3702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else {
                 viewer.global.config.hpr = undefined
-               if(viewer.cameraFrame) viewer.cameraFrame.rendering.samples = samples
+                if (viewer.cameraFrame) viewer.cameraFrame.rendering.samples = samples
                 viewer.configureCamera(settings)
             }
             app.renderNextFrame = true
@@ -4047,7 +4048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 updateLabels(currentCorners, currentDim)
             }
         })
-      
+
         app.on('update', () => {
             if (!visible || currentDim === null) return
             if (!modelEntity) return

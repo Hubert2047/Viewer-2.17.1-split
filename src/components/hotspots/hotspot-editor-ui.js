@@ -16,9 +16,6 @@ class HotspotEditorUI {
         this.createEmbedTooltip()
     }
     listenEvents() {
-        this.events.on('controllers:created', (controllers) => {
-            this.controllers = controllers
-        })
         this.events.on('hotspot:add-cancelled', () => {
             document.body.style.cursor = 'default'
             this.events.fire('hotspot:editing', false)
@@ -115,8 +112,7 @@ class HotspotEditorUI {
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
             const position = pickModelLocalPoint(mouseX, mouseY, this.camera)
-            const entityInfo = this.controllers[this.state.cameraMode].getEntityInfo()
-            this.events.fire('hotspot:add', { position, entityInfo })
+            this.events.fire('hotspot:add', { position})
             document.body.style.cursor = 'default'
             this.isCreatingHotspot = false
             this.setAddBtnCancel(false)

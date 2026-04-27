@@ -509,6 +509,7 @@ function renderPivot(group, global, editGroup) {
     })
     events.on('hotspot:active', () => onCancel())
     events.on('sidebar:clicked', () => onCancel())
+    events.on('inputEvent:reset', () => onCancel())
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
     let isEditing = false
@@ -1306,13 +1307,13 @@ function createSidebar(global, dom) {
             'Reset',
         )
         if (ok) {
-            global.settings.setupStep = 1
-            global.settings.initview = defaultSettings.initview
-            global.settings.orientation = defaultSettings.orientation
-            global.settings.hotspots = []
-            global.settings.dimensions = defaultSettings.dimensions
-            global.settings.pivot = defaultSettings.pivot
-            events.fire('setup-reset')
+            Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                setupStep: 1,
+                contentUrl: global.settings.contentUrl,
+                base64: global.settings.base64,
+                model: global.settings.model,
+            })
+            events.fire('setup-reset', global.settings)
             renderStep()
         }
     })

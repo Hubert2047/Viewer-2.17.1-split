@@ -122,13 +122,13 @@ function isEqual(a, b) {
     return false
 }
 function stripDefaults(settings, defaults = defaultSettings) {
-  const result = { ...settings }
-  for (const key of Object.keys(defaults)) {
-    if (!(key in result)) continue
-    const eq = isEqual(result[key], defaults[key])
-    if (eq) delete result[key]
-  }
-  return result
+    const result = { ...settings }
+    for (const key of Object.keys(defaults)) {
+        if (!(key in result)) continue
+        const eq = isEqual(result[key], defaults[key])
+        if (eq) delete result[key]
+    }
+    return result
 }
 async function exportHtml(name, data, fileAudioStore) {
     const newVersion = (data.settings.v ?? 0) + 1
@@ -411,7 +411,19 @@ function createHotspotActionGroup(tooltip, events, dom) {
         ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-hotspot-btns'],
         ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-hotspot-btns'],
     ]
-    buttons.forEach(([id, icon, label, defaultShow, eventname]) => {
+    events.on('setup-reset', (settings) => {
+        dom.stopHotspot?.classList.add('hidden')
+        dom.startHotspot?.classList.remove('hidden')
+        dom.hideHotspotButton?.classList.toggle('hidden', isMobile)
+        dom.showHotspotButton?.classList.toggle('hidden', !isMobile)
+
+        if (settings.hotspots.length > 0) {
+            dom.hotspotActionGroup?.classList.remove('hidden')
+        } else {
+            dom.hotspotActionGroup?.classList.add('hidden')
+        }
+    })
+    buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
         const el = createButton(id, icon)
         dom[id] = el
         el.addEventListener('click', () => {
@@ -419,7 +431,7 @@ function createHotspotActionGroup(tooltip, events, dom) {
             if (toggleId) {
                 const toggleBtn = group.querySelector(`#${toggleId}`)
                 if (toggleBtn) {
-                    btn.classList.add('hidden')
+                    el.classList.add('hidden')
                     toggleBtn.classList.remove('hidden')
                 }
             }
@@ -448,7 +460,7 @@ function createControlsWrap(settings, tooltip, events, dom) {
     wrap.appendChild(container)
     const hotspotcontainer = document.createElement('div')
     hotspotcontainer.id = 'hotspotContainer'
-    dom[hotspotcontainer.id] = hotspotcontainer
+    dom.hotspotContainer = hotspotcontainer
     wrap.appendChild(hotspotcontainer)
 
     return wrap
