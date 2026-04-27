@@ -549,6 +549,9 @@ function quatFromTo(from, to) {
     return q
 }
 function mergeSettings(settings, defaultSettings) {
+    if (settings.setupStep === 3 || (settings.model === 'shperical' && setupStep) === 2) {
+        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings }
+    }
     if (settings.pivot?.position) {
         const setupStep = settings.model === 'hemispherical' ? 3 : 2
         return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings, setupStep }
