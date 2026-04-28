@@ -838,24 +838,23 @@ function dimensionSection(el, global) {
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'
 
-    addBtn.onclick = () => {
+    addBtn.onclick = async () => {
+        global.loading.show()
         const points = getVisiblePoints(modelEntity)
-        const { rotation, position, size } = getDimensionsInfo(points, true)
-        const result = snapToFitOBB(points, rotation, {
-            maxIterations: 2000,
+        const { rotation } = getDimensionsInfo(points, true)
+        const result = await snapToFitOBBAsync(points, rotation, {
+            maxIterations: 10000,
             learningRate: 0.01,
+            chunkSize: 50,
         })
-
         currentDimensions = {
             boxColor: '#f95f4d',
             background: { color: 'white', alpha: 0.8 },
             foregroundColor: '#f95f4d',
-            position,
-            rotation,
-            size,
             realSize: { x: 0, y: 0, z: 0 },
             unit: 'cm',
         }
+        global.loading.hide()
         editDimension = { ...currentDimensions, ...result }
         currentDimensions = { ...currentDimensions, ...result }
         settings.dimensions = editDimension
@@ -864,10 +863,10 @@ function dimensionSection(el, global) {
         events.fire('dimensions:add', currentDimensions)
     }
 
-    events.on('gizmo-rotation:drag-end', () => {
+    events.on('gizmo-rotation:drag-end', async () => {
         if (!currentDimensions || !isEditing) return
         const points = getVisiblePoints(modelEntity)
-        const result = snapToFitOBB(points, currentDimensions.rotation, {
+        const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
             maxIterations: 0,
         })
         currentDimensions = { ...currentDimensions, size: result.size, position: result.position }

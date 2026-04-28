@@ -42,6 +42,7 @@ const files = [
     'src/libs/dimension-rotatable.js',
     'src/libs/position-gizmo.js',
     'src/utils/index.js',
+    'src/components/loading.js',
     'src/components/ground-plane-picker.js',
     'src/components/ui/color-swatch.js',
     'src/components/ui/tab.js',

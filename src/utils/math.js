@@ -582,89 +582,99 @@ function mergeSettings(settings, defaultSettings) {
     }
     return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings }
 }
-function snapToFitOBB(points, initialRotation, options = {}) {
+function snapToFitOBBAsync(points, initialRotation, options = {}) {
     const {
         maxIterations = 200,
         learningRate = 0.5,
         minLearningRate = 0.001,
         decay = 0.95,
         convergenceThreshold = 0.0001,
+        chunkSize = 50,
     } = options
 
-    const count = points.length / 3
+    return new Promise((resolve) => {
+        const count = points.length / 3
+        function getOBBInfo(rx, ry, rz) {
+            const q = new Quat().setFromEulerAngles(rx, ry, rz)
+            const axisX = q.transformVector(new Vec3(1, 0, 0))
+            const axisY = q.transformVector(new Vec3(0, 1, 0))
+            const axisZ = q.transformVector(new Vec3(0, 0, 1))
 
-    function getOBBInfo(rx, ry, rz) {
-        const q = new Quat().setFromEulerAngles(rx, ry, rz)
-        const axisX = q.transformVector(new Vec3(1, 0, 0))
-        const axisY = q.transformVector(new Vec3(0, 1, 0))
-        const axisZ = q.transformVector(new Vec3(0, 0, 1))
+            let minX = Infinity,
+                maxX = -Infinity
+            let minY = Infinity,
+                maxY = -Infinity
+            let minZ = Infinity,
+                maxZ = -Infinity
 
-        let minX = Infinity,
-            maxX = -Infinity
-        let minY = Infinity,
-            maxY = -Infinity
-        let minZ = Infinity,
-            maxZ = -Infinity
+            for (let i = 0; i < count; i++) {
+                const px = points[i * 3],
+                    py = points[i * 3 + 1],
+                    pz = points[i * 3 + 2]
+                const lx = px * axisX.x + py * axisX.y + pz * axisX.z
+                const ly = px * axisY.x + py * axisY.y + pz * axisY.z
+                const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
+                if (lx < minX) minX = lx
+                if (lx > maxX) maxX = lx
+                if (ly < minY) minY = ly
+                if (ly > maxY) maxY = ly
+                if (lz < minZ) minZ = lz
+                if (lz > maxZ) maxZ = lz
+            }
 
-        for (let i = 0; i < count; i++) {
-            const px = points[i * 3],
-                py = points[i * 3 + 1],
-                pz = points[i * 3 + 2]
-            const lx = px * axisX.x + py * axisX.y + pz * axisX.z
-            const ly = px * axisY.x + py * axisY.y + pz * axisY.z
-            const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
-            if (lx < minX) minX = lx
-            if (lx > maxX) maxX = lx
-            if (ly < minY) minY = ly
-            if (ly > maxY) maxY = ly
-            if (lz < minZ) minZ = lz
-            if (lz > maxZ) maxZ = lz
+            const sx = maxX - minX,
+                sy = maxY - minY,
+                sz = maxZ - minZ
+            const volume = sx * sy * sz
+
+            // Center world space
+            const midX = (minX + maxX) / 2
+            const midY = (minY + maxY) / 2
+            const midZ = (minZ + maxZ) / 2
+            const cx = midX * axisX.x + midY * axisY.x + midZ * axisZ.x
+            const cy = midX * axisX.y + midY * axisY.y + midZ * axisZ.y
+            const cz = midX * axisX.z + midY * axisY.z + midZ * axisZ.z
+
+            return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
         }
 
-        const sx = maxX - minX,
-            sy = maxY - minY,
-            sz = maxZ - minZ
-        const volume = sx * sy * sz
+        let rx = initialRotation.x
+        let ry = initialRotation.y
+        let rz = initialRotation.z
+        let lr = learningRate
+        let prevVolume = Infinity
+        let iter = 0
 
-        // Center world space
-        const midX = (minX + maxX) / 2
-        const midY = (minY + maxY) / 2
-        const midZ = (minZ + maxZ) / 2
-        const cx = midX * axisX.x + midY * axisY.x + midZ * axisZ.x
-        const cy = midX * axisX.y + midY * axisY.y + midZ * axisZ.y
-        const cz = midX * axisX.z + midY * axisY.z + midZ * axisZ.z
+        function runChunk() {
+            for (let i = 0; i < chunkSize && iter < maxIterations; i++, iter++) {
+                const eps = 0.1
+                const v0 = getOBBInfo(rx, ry, rz).volume
+                const gx = (getOBBInfo(rx + eps, ry, rz).volume - v0) / eps
+                const gy = (getOBBInfo(rx, ry + eps, rz).volume - v0) / eps
+                const gz = (getOBBInfo(rx, ry, rz + eps).volume - v0) / eps
+                rx -= lr * gx
+                ry -= lr * gy
+                rz -= lr * gz
+                lr *= decay
+                if (Math.abs(prevVolume - v0) < convergenceThreshold) {
+                    iter = maxIterations
+                    break
+                }
+                prevVolume = v0
+                if (lr < minLearningRate) {
+                    iter = maxIterations
+                    break
+                }
+            }
 
-        return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
-    }
+            if (iter >= maxIterations) {
+                const { size, position } = getOBBInfo(rx, ry, rz)
+                resolve({ rotation: { x: rx, y: ry, z: rz }, position, size })
+            } else {
+                setTimeout(runChunk, 0)
+            }
+        }
 
-    let rx = initialRotation.x
-    let ry = initialRotation.y
-    let rz = initialRotation.z
-    let lr = learningRate
-    let prevVolume = Infinity
-
-    for (let iter = 0; iter < maxIterations; iter++) {
-        const eps = 0.1
-        const v0 = getOBBInfo(rx, ry, rz).volume
-        const gx = (getOBBInfo(rx + eps, ry, rz).volume - v0) / eps
-        const gz = (getOBBInfo(rx, ry, rz + eps).volume - v0) / eps
-        const gy = (getOBBInfo(rx, ry + eps, rz).volume - v0) / eps
-
-        rx -= lr * gx
-        ry -= lr * gy
-        rz -= lr * gz
-
-        lr *= decay
-
-        if (Math.abs(prevVolume - v0) < convergenceThreshold) break
-        prevVolume = v0
-        if (lr < minLearningRate) break
-    }
-
-    const { size, position } = getOBBInfo(rx, ry, rz)
-    return {
-        rotation: { x: rx, y: ry, z: rz },
-        position,
-        size,
-    }
+        setTimeout(runChunk, 0)
+    })
 }

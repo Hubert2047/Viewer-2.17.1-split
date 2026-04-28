@@ -2278,3 +2278,51 @@ button {
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.12);
 }
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+.loading-overlay.visible { display: flex; }
+
+.loading-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+}
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid rgba(249, 95, 77, 0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.loading-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.loading-title { font-size: 15px; font-weight: 600; color: var(--text-main); text-align: center; }
+.loading-message { font-size: 13px; color: var(--text-muted); text-align: center; }

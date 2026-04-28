@@ -12,6 +12,8 @@ const initPoster = (events) => {
 
 const initUI = (global) => {
     const { config, events, state, settings } = global
+    const loading = new LoadingOverlay()
+    global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
     const ui = document.getElementById('ui')
     ui.appendChild(createInfoPanel(settings, events))
