@@ -33,8 +33,8 @@ class OtherController {
         this.minDistance = minDistance
         this.events = events
         this.settings = global.settings
-        if (['spherical', 'hemispherical', 'cylindrical'].includes(settings.model)) {
-            this.model = settings.model
+        if (['spherical', 'hemispherical', 'cylindrical'].includes(this.settings.model)) {
+            this.model = this.settings.model
         } else if (!params.spherical) {
             this.model = 'hemispherical'
         } else {

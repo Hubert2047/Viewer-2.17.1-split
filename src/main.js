@@ -3022,21 +3022,6 @@ class Viewer {
             //     if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
             //     else rotationGizmo.disable()
             // })
-            events.on('dimensions:gizmo-rotation', (enabled) => {
-                if (enabled) {
-                    dimensionRotatable = new DimensionRotatable(
-                        app,
-                        () => global.settings.dimensions,
-                        ({ x, y, z }) => {
-                            events.fire('dimensions:eulersynced', { x, y, z })
-                        },
-                    )
-                    rotationGizmo.enable(dimensionRotatable)
-                } else {
-                    rotationGizmo.disable()
-                    dimensionRotatable = null
-                }
-            })
             // Redraw bbox theo events
             events.on('dimensions:add', (dim) => {
                 global.bbox.draw(dim)
@@ -3046,17 +3031,29 @@ class Viewer {
             })
             events.on('dimensions:edit', (dim) => {
                 global.bbox.draw(dim)
+                if (!dimensionRotatable)
+                    dimensionRotatable = new DimensionRotatable(app, dim, ({ x, y, z }) => {
+                        events.fire('dimensions:eulersynced', { x, y, z })
+                    })
+                rotationGizmo.enable(dimensionRotatable)
                 this.dom.showDimension.classList.add('hidden')
                 this.dom.hideDimension.classList.remove('hidden')
             })
             events.on('dimensions:change', (dim) => {
+                if (dimensionRotatable) {
+                    dimensionRotatable.syncFromExternal(dim)
+                }
                 global.bbox.draw(dim)
             })
-            events.on('dimensions:save', (dim) => global.bbox.draw(dim))
+            events.on('dimensions:save', (dim) => {
+                global.bbox.draw(dim)
+                rotationGizmo.disable()
+            })
             events.on('dimensions:cancel', () => {
                 global.bbox.hide()
                 this.dom.showDimension.classList.remove('hidden')
                 this.dom.hideDimension.classList.add('hidden')
+                rotationGizmo.disable()
             })
             function hideDimensions() {
                 global.bbox.hide()

@@ -19,7 +19,8 @@ class RotationGizmo {
         y: { u: new Vec3(1, 0, 0), v: new Vec3(0, 0, 1) },
         z: { u: new Vec3(1, 0, 0), v: new Vec3(0, 1, 0) },
     }
-    constructor(app, camEntity) {
+    constructor(app, camEntity, events) {
+        this.events = events
         this._app = app
         this._camEntity = camEntity
         this._canvas = app.graphicsDevice.canvas
@@ -283,6 +284,7 @@ class RotationGizmo {
         document.body.style.cursor = ''
         const euler = this._target?.getEuler()
         if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
+        this.events.fire('gizmo-rotation:drag-end')
     }
 
     _highlightOnly(activeAxis) {

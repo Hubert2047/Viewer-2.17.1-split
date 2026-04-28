@@ -30,7 +30,6 @@ function dimensionLocalToWorld(localPos, rotation) {
 function getDimensionsInfo(localCenters, calRota = false) {
     const count = localCenters.length / 3
 
-    // Centroid
     let cx = 0,
         cy = 0,
         cz = 0
@@ -43,100 +42,38 @@ function getDimensionsInfo(localCenters, calRota = false) {
     cy /= count
     cz /= count
 
-    if (!calRota) {
-        // AABB đơn giản, không rotate
-        let minX = Infinity,
-            maxX = -Infinity
-        let minY = Infinity,
-            maxY = -Infinity
-        let minZ = Infinity,
-            maxZ = -Infinity
-        for (let i = 0; i < count; i++) {
-            const x = localCenters[i * 3] - cx
-            const y = localCenters[i * 3 + 1] - cy
-            const z = localCenters[i * 3 + 2] - cz
-            if (x < minX) minX = x
-            if (x > maxX) maxX = x
-            if (y < minY) minY = y
-            if (y > maxY) maxY = y
-            if (z < minZ) minZ = z
-            if (z > maxZ) maxZ = z
-        }
-        return {
-            rotation: { x: 0, y: 0, z: 0 },
-            position: { x: cx + (minX + maxX) / 2, y: cy + (minY + maxY) / 2, z: cz + (minZ + maxZ) / 2 },
-            size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
-        }
-    }
-
-    // Full 3D covariance matrix
-    let xx = 0,
-        xy = 0,
-        xz = 0,
-        yy = 0,
-        yz = 0,
-        zz = 0
+    let cxx = 0,
+        cxz = 0,
+        czz = 0
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx
-        const dy = localCenters[i * 3 + 1] - cy
         const dz = localCenters[i * 3 + 2] - cz
-        xx += dx * dx
-        xy += dx * dy
-        xz += dx * dz
-        yy += dy * dy
-        yz += dy * dz
-        zz += dz * dz
+        cxx += dx * dx
+        cxz += dx * dz
+        czz += dz * dz
     }
-    xx /= count
-    xy /= count
-    xz /= count
-    yy /= count
-    yz /= count
-    zz /= count
+    cxx /= count
+    cxz /= count
+    czz /= count
 
-    // Jacobi eigen decomposition (đã có sẵn)
-    const cov = [
-        [xx, xy, xz],
-        [xy, yy, yz],
-        [xz, yz, zz],
-    ]
-    const { values, vectors } = jacobiEigen3(cov)
+    let angle = calRota ? 0.5 * Math.atan2(2 * cxz, cxx - czz) : 0
 
-    // vectors[2] = principal axis (largest eigenvalue = last after sort ascending)
-    // Xây rotation matrix từ eigenvectors
-    // vectors sorted ascending → [2] là largest, [0] là smallest (normal)
-    const v0 = new Vec3(vectors[2][0], vectors[2][1], vectors[2][2]).normalize() // X axis (longest)
-    const v1 = new Vec3(vectors[1][0], vectors[1][1], vectors[1][2]).normalize() // Z axis
-    let v2 = new Vec3().cross(v0, v1).normalize() // Y axis
+    let cosA = Math.cos(angle)
+    let sinA = Math.sin(angle)
 
-    // Ensure right-handed
-    v1.cross(v2, v0).normalize()
-
-    // Build rotation matrix → Euler angles
-    // Column vectors: right=v0, up=v2, forward=v1
-    const m = new Mat4()
-    m.set([v0.x, v0.y, v0.z, 0, v2.x, v2.y, v2.z, 0, v1.x, v1.y, v1.z, 0, 0, 0, 0, 1])
-    const quat = new Quat()
-    quat.setFromMat4(m)
-    const euler = quat.getEulerAngles()
-
-    // Tính AABB trong PCA space
     let minX = Infinity,
         maxX = -Infinity
     let minY = Infinity,
         maxY = -Infinity
     let minZ = Infinity,
         maxZ = -Infinity
-
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx
         const dy = localCenters[i * 3 + 1] - cy
         const dz = localCenters[i * 3 + 2] - cz
-
-        const lx = dx * v0.x + dy * v0.y + dz * v0.z
-        const ly = dx * v2.x + dy * v2.y + dz * v2.z
-        const lz = dx * v1.x + dy * v1.y + dz * v1.z
-
+        const lx = cosA * dx + sinA * dz
+        const ly = dy
+        const lz = -sinA * dx + cosA * dz
         if (lx < minX) minX = lx
         if (lx > maxX) maxX = lx
         if (ly < minY) minY = ly
@@ -144,23 +81,62 @@ function getDimensionsInfo(localCenters, calRota = false) {
         if (lz < minZ) minZ = lz
         if (lz > maxZ) maxZ = lz
     }
+    if (maxZ - minZ > maxX - minX) {
+        angle += Math.PI / 2
+        cosA = Math.cos(angle)
+        sinA = Math.sin(angle)
+        minX = Infinity
+        maxX = -Infinity
+        minY = Infinity
+        maxY = -Infinity
+        minZ = Infinity
+        maxZ = -Infinity
+        for (let i = 0; i < count; i++) {
+            const dx = localCenters[i * 3] - cx
+            const dy = localCenters[i * 3 + 1] - cy
+            const dz = localCenters[i * 3 + 2] - cz
+            const lx = cosA * dx + sinA * dz
+            const ly = dy
+            const lz = -sinA * dx + cosA * dz
+            if (lx < minX) minX = lx
+            if (lx > maxX) maxX = lx
+            if (ly < minY) minY = ly
+            if (ly > maxY) maxY = ly
+            if (lz < minZ) minZ = lz
+            if (lz > maxZ) maxZ = lz
+        }
+    }
+
+    while (angle > Math.PI) angle -= Math.PI * 2
+    while (angle < -Math.PI) angle += Math.PI * 2
 
     const midX = (minX + maxX) / 2
     const midY = (minY + maxY) / 2
     const midZ = (minZ + maxZ) / 2
 
-    // Transform midpoint back to world space
-    const wx = cx + midX * v0.x + midY * v2.x + midZ * v1.x
-    const wy = cy + midX * v0.y + midY * v2.y + midZ * v1.y
-    const wz = cz + midX * v0.z + midY * v2.z + midZ * v1.z
-
-    return {
-        rotation: { x: euler.x, y: euler.y, z: euler.z },
-        position: { x: wx, y: wy, z: wz },
-        size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ },
+    const position = {
+        x: cx + cosA * midX - sinA * midZ,
+        y: cy + midY,
+        z: cz + sinA * midX + cosA * midZ,
     }
+
+    const size = {
+        x: maxX - minX,
+        y: maxY - minY,
+        z: maxZ - minZ,
+    }
+
+    const rotation = {
+        x: 0,
+        y: calRota ? -(angle * (180 / Math.PI)) : 0,
+        z: 0,
+    }
+
+    return { rotation, position, size }
 }
+let visiblePoints
 function getVisiblePoints(modelEntity) {
+    if (visiblePoints) return visiblePoints
     const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
     const resource = gsplatInstance.resource
     const gsplatData = resource.gsplatData
@@ -177,7 +153,8 @@ function getVisiblePoints(modelEntity) {
             visibleCenters.push(p.x, p.y, p.z)
         }
     }
-    return new Float32Array(visibleCenters)
+    visiblePoints = new Float32Array(visibleCenters)
+    return visiblePoints
 }
 function getPivotCenter(modelEntity) {
     const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
@@ -608,7 +585,7 @@ function mergeSettings(settings, defaultSettings) {
 function snapToFitOBB(points, initialRotation, options = {}) {
     const {
         maxIterations = 200,
-        learningRate = 0.5,     
+        learningRate = 0.5,
         minLearningRate = 0.001,
         decay = 0.95,
         convergenceThreshold = 0.0001,
@@ -622,24 +599,34 @@ function snapToFitOBB(points, initialRotation, options = {}) {
         const axisY = q.transformVector(new Vec3(0, 1, 0))
         const axisZ = q.transformVector(new Vec3(0, 0, 1))
 
-        let minX = Infinity, maxX = -Infinity
-        let minY = Infinity, maxY = -Infinity
-        let minZ = Infinity, maxZ = -Infinity
+        let minX = Infinity,
+            maxX = -Infinity
+        let minY = Infinity,
+            maxY = -Infinity
+        let minZ = Infinity,
+            maxZ = -Infinity
 
         for (let i = 0; i < count; i++) {
-            const px = points[i * 3], py = points[i * 3 + 1], pz = points[i * 3 + 2]
+            const px = points[i * 3],
+                py = points[i * 3 + 1],
+                pz = points[i * 3 + 2]
             const lx = px * axisX.x + py * axisX.y + pz * axisX.z
             const ly = px * axisY.x + py * axisY.y + pz * axisY.z
             const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
-            if (lx < minX) minX = lx;  if (lx > maxX) maxX = lx
-            if (ly < minY) minY = ly;  if (ly > maxY) maxY = ly
-            if (lz < minZ) minZ = lz;  if (lz > maxZ) maxZ = lz
+            if (lx < minX) minX = lx
+            if (lx > maxX) maxX = lx
+            if (ly < minY) minY = ly
+            if (ly > maxY) maxY = ly
+            if (lz < minZ) minZ = lz
+            if (lz > maxZ) maxZ = lz
         }
 
-        const sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ
+        const sx = maxX - minX,
+            sy = maxY - minY,
+            sz = maxZ - minZ
         const volume = sx * sy * sz
 
-        // Center trong world space
+        // Center world space
         const midX = (minX + maxX) / 2
         const midY = (minY + maxY) / 2
         const midZ = (minZ + maxZ) / 2
@@ -657,12 +644,11 @@ function snapToFitOBB(points, initialRotation, options = {}) {
     let prevVolume = Infinity
 
     for (let iter = 0; iter < maxIterations; iter++) {
-        const eps = 0.1  
+        const eps = 0.1
         const v0 = getOBBInfo(rx, ry, rz).volume
-
         const gx = (getOBBInfo(rx + eps, ry, rz).volume - v0) / eps
-        const gy = (getOBBInfo(rx, ry + eps, rz).volume - v0) / eps
         const gz = (getOBBInfo(rx, ry, rz + eps).volume - v0) / eps
+        const gy = (getOBBInfo(rx, ry + eps, rz).volume - v0) / eps
 
         rx -= lr * gx
         ry -= lr * gy

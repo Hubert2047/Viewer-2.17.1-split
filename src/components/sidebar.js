@@ -839,7 +839,13 @@ function dimensionSection(el, global) {
     addBtn.textContent = '+ Add'
 
     addBtn.onclick = () => {
-        const { rotation, position, size } = getDimensionsInfo(getVisiblePoints(modelEntity),true)
+        const points = getVisiblePoints(modelEntity)
+        const { rotation, position, size } = getDimensionsInfo(points, true)
+        const result = snapToFitOBB(points, rotation, {
+            maxIterations: 2000,
+            learningRate: 0.01,
+        })
+
         currentDimensions = {
             boxColor: '#f95f4d',
             background: { color: 'white', alpha: 0.8 },
@@ -850,31 +856,24 @@ function dimensionSection(el, global) {
             realSize: { x: 0, y: 0, z: 0 },
             unit: 'cm',
         }
-        editDimension = { ...currentDimensions }
-        settings.dimensions = currentDimensions
+        editDimension = { ...currentDimensions, ...result }
+        currentDimensions = { ...currentDimensions, ...result }
+        settings.dimensions = editDimension
         setDimConfigured(true)
         setValues(currentDimensions)
         events.fire('dimensions:add', currentDimensions)
     }
 
-    const autoFitBtn = document.createElement('button')
-    autoFitBtn.classList.add('add-btn')
-    autoFitBtn.textContent = '+ Auto fit'
-
-    autoFitBtn.onclick = () => {
+    events.on('gizmo-rotation:drag-end', () => {
+        if (!currentDimensions || !isEditing) return
         const points = getVisiblePoints(modelEntity)
-        const currentRot = editDimension.rotation
-        const subsampledPoints = subsamplePoints(points, 20000)
-
-        const result = snapToFitOBB(points, currentRot, {
-            maxIterations: 300,
-            learningRate: 1.0,
+        const result = snapToFitOBB(points, currentDimensions.rotation, {
+            maxIterations: 0,
         })
-
-        editDimension = { ...editDimension, ...result }
-        setValues(editDimension)
-        events.fire('dimensions:save', editDimension)
-    }
+        currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+        setValues(currentDimensions)
+        events.fire('dimensions:change', currentDimensions)
+    })
 
     function subsamplePoints(points, maxCount) {
         const count = points.length / 3
@@ -1010,30 +1009,9 @@ function dimensionSection(el, global) {
             events.fire('dimensions:change', currentDimensions)
         },
     })
-
-    // Rotation gizmo toggle
-    const rotGizmoRow = document.createElement('div')
-    rotGizmoRow.classList.add('section-group-row')
-    rotGizmoRow.style.display = 'none'
-    const rotGizmoLabel = document.createElement('span')
-    rotGizmoLabel.textContent = 'Rotation Gizmo'
-    const rotGizmoTrack = document.createElement('div')
-    rotGizmoTrack.classList.add('toggle')
-    const rotGizmoKnob = document.createElement('div')
-    rotGizmoKnob.classList.add('toggle-knob')
-    rotGizmoTrack.appendChild(rotGizmoKnob)
-    const setRotGizmo = (on) => {
-        rotGizmoTrack.classList.toggle('active', on)
-        events.fire('dimensions:gizmo-rotation', on)
-    }
-    rotGizmoTrack.addEventListener('click', () => setRotGizmo(!rotGizmoTrack.classList.contains('active')))
-    rotGizmoRow.appendChild(rotGizmoLabel)
-    rotGizmoRow.appendChild(rotGizmoTrack)
-
     boxGroup.appendChild(positionRow)
     boxGroup.appendChild(rotationRow)
     boxGroup.appendChild(sizeRow)
-    boxGroup.appendChild(rotGizmoRow)
 
     // ── Group 2: Real Dimensions ──
     const realGroup = document.createElement('div')
@@ -1112,11 +1090,10 @@ function dimensionSection(el, global) {
     // ── Buttons ──
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row')
-    
+
     const onEdit = () => {
         isEditing = true
         setEditable(true)
-        rotGizmoRow.style.display = 'flex'
         renderBtns()
         events.fire('dimensions:edit', currentDimensions)
     }
@@ -1125,8 +1102,6 @@ function dimensionSection(el, global) {
         if (!isEditing) return
         isEditing = false
         setEditable(false)
-        rotGizmoRow.style.display = 'none'
-        setRotGizmo(false)
         if (editDimension) setValues(editDimension)
         currentDimensions = { ...editDimension }
         renderBtns()
@@ -1149,15 +1124,12 @@ function dimensionSection(el, global) {
                 settings.dimensions = { ...currentDimensions }
                 isEditing = false
                 setEditable(false)
-                rotGizmoRow.style.display = 'none'
-                setRotGizmo(false)
                 renderBtns()
                 events.fire('dimensions:save', currentDimensions)
             }
 
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnApply)
-            btnRow.appendChild(autoFitBtn)
         } else {
             const btnEdit = document.createElement('button')
             btnEdit.classList.add('btn')
