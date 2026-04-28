@@ -166,9 +166,23 @@ async function exportHtml(name, data, fileAudioStore) {
         }),
     )
     delete updatedSettings.fileAudioStore
+    const STEP_REQUIREMENTS = {
+        spherical: [{ step: 2, condition: () => updatedSettings.pivot?.position }],
+        hemispherical: [
+            { step: 3, condition: () => updatedSettings.pivot?.position },
+            { step: 2, condition: () => updatedSettings.orientation?.pose },
+        ],
+    }
+
+    const requirements = STEP_REQUIREMENTS[updatedSettings.model] ?? []
+    const setupStep = requirements.reduce((currentStep, { step, condition }) => {
+        return condition() && currentStep < step ? step : currentStep
+    }, updatedSettings.setupStep)
     updatedSettings = {
         ...updatedSettings,
         hotspots,
+        setupStep,
+        base64: updatedSettings.base64,
     }
     const cleaned = stripDefaults(updatedSettings)
     const payload = {

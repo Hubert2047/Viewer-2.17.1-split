@@ -350,7 +350,6 @@ function computeMedianSplatScale(gsplatData, useExpScale) {
     maxScales.sort((a, b) => a - b)
     return maxScales[Math.floor(maxScales.length / 2)]
 }
-
 function findFallbackIntersectionPoint(localRay, invWorldMatrix) {
     const aabbHit = intersectRayAABB(localRay, invWorldMatrix)
     if (aabbHit) return aabbHit
@@ -360,7 +359,6 @@ function findFallbackIntersectionPoint(localRay, invWorldMatrix) {
 
     return localRay.getPoint(5.0)
 }
-
 function intersectBoundingBoxCenterPlane(localRay, invWorldMatrix) {
     const meshInstance = modelEntity.gsplat.instance.meshInstance
     const aabbWorld = meshInstance.aabb
@@ -545,7 +543,6 @@ function fitPlaneNormal(points) {
 
     return new Vec3(normal[0] / len, normal[1] / len, normal[2] / len)
 }
-
 function quatFromTo(from, to) {
     const q = new Quat()
     const dot = from.dot(to)
@@ -570,17 +567,19 @@ function quatFromTo(from, to) {
     return q
 }
 function mergeSettings(settings, defaultSettings) {
-    if (settings.setupStep === 3 || (settings.model === 'shperical' && setupStep) === 2) {
-        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings }
+    const merged = {
+        ...JSON.parse(JSON.stringify(defaultSettings)),
+        ...settings,
     }
-    if (settings.pivot?.position) {
-        const setupStep = settings.model === 'hemispherical' ? 3 : 2
-        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings, setupStep }
+    const maxStepByModel = {
+        spherical: 2,
+        hemispherical: 3,
     }
-    if (settings.orientation?.pose) {
-        return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings, setupStep: 2 }
+    const maxStep = maxStepByModel[merged.model]
+    if (maxStep != null) {
+        merged.setupStep = Math.min(merged.setupStep ?? 0, maxStep)
     }
-    return { ...JSON.parse(JSON.stringify(defaultSettings)), ...settings }
+    return merged
 }
 function snapToFitOBBAsync(points, initialRotation, options = {}) {
     const {
