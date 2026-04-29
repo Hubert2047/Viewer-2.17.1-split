@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=4" />
+        <link rel="stylesheet" href="viewer.css?v=5" />
         <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
@@ -51,13 +51,64 @@
     <script>
         window.sse = {
             settings: {
-                v: 4,
+                v: 5,
                 contentUrl: 'models/tai2.ply',
-                // contentUrl: 'canon.ply',
+                hotspots: [
+                    {
+                        id: '45c4c3bc-c165-41bc-825b-e4963e539f58',
+                        autoPlay: { time: 3000 },
+                        button: { title: 'hotspot1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'hotspot1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: -0.6431937551588527, y: -16.272260290547067, z: -12.12836195399137 },
+                            botRight: { x: -4.5407432236647285, y: -14.748796382415243, z: -15.123729440034737 },
+                            fontSize: 16,
+                        },
+                        focus: {
+                            position: { x: -0.49431957174762076, y: -13.077762340418893, z: -11.361331545061242 },
+                        },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: 'white',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -0.08129534076875633, y: -13.561188341321511, z: -11.070629990943871 },
+                            botRight: { x: -0.9185939314621356, y: -12.594859053266713, z: -11.643576703363632 },
+                        },
+                        entityInfo: {
+                            rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
+                            position: { x: 0, y: 0, z: 0 },
+                            distanceScale: 1,
+                            focus: { x: 0.3079025076635937, y: 7.218787562095102, z: -11.218947176784832 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: 'test.mp3',
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            embed: false,
+                            autoPlay: true,
+                        },
+                    },
+                ],
                 setupStep: 2,
             },
         }
     </script>
-    <script src="./viewer.js?v=4"></script>
+    <script src="./viewer.js?v=5"></script>
 </html>
-    

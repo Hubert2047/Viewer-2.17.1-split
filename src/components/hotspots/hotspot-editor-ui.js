@@ -526,7 +526,7 @@ class HotspotEditorUI {
                     volume: 1,
                     loop: false,
                     embed: false,
-                    persist: false,
+                    // persist: false,
                     autoPlay: false,
                 }
             }
@@ -617,13 +617,13 @@ class HotspotEditorUI {
                 return this.activeHotspotData.audio.show
             }),
         )
-        const persistField = this.makeField('Persist')
-        persistField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio?.persist, () => {
-                this.activeHotspotData.audio.persist = !this.activeHotspotData.audio.persist
-                return this.activeHotspotData.audio.persist
-            }),
-        )
+        // const persistField = this.makeField('Persist')
+        // persistField.appendChild(
+        //     this.makeToggle(this.activeHotspotData.audio?.persist, () => {
+        //         this.activeHotspotData.audio.persist = !this.activeHotspotData.audio.persist
+        //         return this.activeHotspotData.audio.persist
+        //     }),
+        // )
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
             this.makeToggle(this.activeHotspotData.audio?.autoPlay, () => {
@@ -699,7 +699,7 @@ class HotspotEditorUI {
         audioToggleGrid.appendChild(showField)
         audioToggleGrid.appendChild(autoPlayField)
         audioToggleGrid.appendChild(loopField)
-        audioToggleGrid.appendChild(persistField)
+        // audioToggleGrid.appendChild(persistField)
         audioToggleGrid.appendChild(embedField)
 
         const volumeField = this.makeField('Volume', 'volume')
@@ -776,8 +776,8 @@ class HotspotEditorUI {
         applyBtn.textContent = 'Apply'
         applyBtn.addEventListener('click', () => this.onApply())
 
-        applyRow.appendChild(applyBtn)
         applyRow.appendChild(cancelBtn)
+        applyRow.appendChild(applyBtn)
         panel.appendChild(applyRow)
         return panel
     }

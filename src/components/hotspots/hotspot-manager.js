@@ -135,19 +135,7 @@ class HotspotManager {
         this.events.on('hotspot:stop-auto', () => this.stopAutoPlay())
         this.events.on('hotspot:show-hotspot-btns', () => this.showActiveHotspotBtns(true))
         this.events.on('hotspot:hide-hotspot-btns', () => this.showActiveHotspotBtns(false))
-        this.events.on('hotspot:editor-cancelled', () => {
-            this.activeData = null
-            if (this.activeHotspot) {
-                const data = this.settings.hotspots.find((i) => i.id === this.activeHotspot.data.id)
-                this.activeHotspot.data = JSON.parse(JSON.stringify(data))
-                this.activeHotspot.update(true, this.activeHotspot.data.button.title)
-                this.activeHotspot.hide()
-            }
-            this.activeHotspot = null
-            this.updateUIPanel()
-            this.events.fire('hotspot:editing', false)
-            if (this.isAutoPlay) this.stopAutoPlay()
-        })
+        this.events.on('hotspot:editor-cancelled', () => this.editorCancelled())
         this.events.on('hotspot:delete', (id) => {
             const idx = this.hotspots.findIndex((h) => h.id === id)
             if (idx < 0) return
@@ -301,8 +289,26 @@ class HotspotManager {
             this.isSameFloat(controller.getActualDistance(d), controller.distance)
         )
     }
+    editorCancelled() {
+        this.activeData = null
+        if (this.activeHotspot) {
+            const data = this.settings.hotspots.find((i) => i.id === this.activeHotspot.data.id)
+            this.activeHotspot.data = JSON.parse(JSON.stringify(data))
+            this.activeHotspot.update(true, this.activeHotspot.data.button.title)
+            this.activeHotspot.hide()
+        }
+        this.activeHotspot = null
+        this.updateUIPanel()
+        this.events.fire('hotspot:editing', false)
+        if (this.isAutoPlay) this.stopAutoPlay()
+    }
     setActive(hotspot, lerpDuration = 1.5) {
         if (!hotspot || !modelEntity) return
+        if (this.editable && this.activeHotspot && hotspot.id !== this.activeHotspot?.id) {
+            const data = this.settings.hotspots.find((i) => i.id === this.activeHotspot.data.id)
+            this.activeHotspot.data = JSON.parse(JSON.stringify(data))
+            this.activeHotspot.update(true, this.activeHotspot.data.button.title)
+        }
         this.events.fire('hotspot:active', 'hotspot')
         this.activeHotspot?.hide()
         const isSamePose = this.isSamePose(hotspot)

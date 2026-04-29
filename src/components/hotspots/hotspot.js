@@ -72,57 +72,74 @@ class Hotspot {
         if (this._audioBtn) this._audioBtn.remove()
         if (!this.data.audio?.fileName) return
         if (!this.data.audio?.show) return
+
         this._isPlaying = false
         let src = this.data.audio.src ? this.data.audio.src : `./audios/${this.data.audio.fileName}`
+
         this._audio = new Audio(src)
         this._audio.volume = this.data.audio.volume ?? 1
         this._audio.loop = this.data.audio.loop ?? false
-        const btn = document.createElement('div')
-        btn.classList.add('hotspot-audio-btn')
-        btn.style.color = this.data.audio.iconColor
-        btn.style.backgroundColor = transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
 
-        const isCurrentlyPlaying = this._isPlaying
-        btn.innerHTML = this._ringsvg() + (isCurrentlyPlaying ? this._iconPlaying() : this._iconMuted())
-        this._progressRing = btn.querySelector('.audio-progress-ring')
+        this._audio.addEventListener(
+            'canplaythrough',
+            () => {
+                const btn = document.createElement('div')
+                btn.classList.add('hotspot-audio-btn')
+                btn.style.color = this.data.audio.iconColor
+                btn.style.backgroundColor = transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
 
-        this._audio.addEventListener('timeupdate', this.updateProgress)
-
-        btn.addEventListener('pointerdown', (e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            if (this._isPlaying) {
-                this._audio.pause()
-                this._isPlaying = false
-                if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
-                btn.classList.remove('playing')
                 btn.innerHTML = this._ringsvg() + this._iconMuted()
                 this._progressRing = btn.querySelector('.audio-progress-ring')
-                this._audio.removeEventListener('timeupdate', this.updateProgress)
                 this._audio.addEventListener('timeupdate', this.updateProgress)
-            } else {
-                this._audio.play()
-                this._isPlaying = true
-                btn.classList.add('playing')
-                btn.innerHTML = this._ringsvg() + this._iconPlaying()
-                this._progressRing = btn.querySelector('.audio-progress-ring')
-                this._audio.removeEventListener('timeupdate', this.updateProgress)
-                this._audio.addEventListener('timeupdate', this.updateProgress)
-            }
-        })
 
-        this._audio.addEventListener('ended', () => {
-            if (!this.data.audio.loop) {
-                this._isPlaying = false
-                if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
-                btn.classList.remove('playing')
-                btn.innerHTML = this._ringsvg() + this._iconMuted()
-                this._progressRing = btn.querySelector('.audio-progress-ring')
-            }
-        })
+                btn.addEventListener('pointerdown', (e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
 
-        this._audioBtn = btn
-        this.div.appendChild(btn)
+                    if (this._isPlaying) {
+                        this._audio.pause()
+                        this._isPlaying = false
+                        if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
+                        btn.classList.remove('playing')
+                        btn.innerHTML = this._ringsvg() + this._iconMuted()
+                        this._progressRing = btn.querySelector('.audio-progress-ring')
+                        this._audio.removeEventListener('timeupdate', this.updateProgress)
+                        this._audio.addEventListener('timeupdate', this.updateProgress)
+                    } else {
+                        this._audio.play().catch()
+                        this._isPlaying = true
+                        btn.classList.add('playing')
+                        btn.innerHTML = this._ringsvg() + this._iconPlaying()
+                        this._progressRing = btn.querySelector('.audio-progress-ring')
+                        this._audio.removeEventListener('timeupdate', this.updateProgress)
+                        this._audio.addEventListener('timeupdate', this.updateProgress)
+                    }
+                })
+
+                this._audio.addEventListener('ended', () => {
+                    if (!this.data.audio.loop) {
+                        this._isPlaying = false
+                        if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
+                        btn.classList.remove('playing')
+                        btn.innerHTML = this._ringsvg() + this._iconMuted()
+                        this._progressRing = btn.querySelector('.audio-progress-ring')
+                    }
+                })
+
+                this._audioBtn = btn
+                this.div.appendChild(btn)
+            },
+            { once: true },
+        )
+
+        this._audio.addEventListener(
+            'error',
+            () => {
+                this._audio = null
+                console.log(`Audio file not found or cannot be loaded: ${src}`)
+            },
+            { once: true },
+        )
     }
 
     refreshAudio() {
@@ -166,10 +183,7 @@ class Hotspot {
                 return
             }
             this._audioBtn.style.color = this.data.audio.iconColor
-            this._audioBtn.style.backgroundColor = transparentColor(
-                this.data.audio.bgColor,
-                this.data.audio.bgAlpha,
-            )
+            this._audioBtn.style.backgroundColor = transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
         } else if (this.data.audio.show) {
             this.createAudioBtn()
         }
@@ -273,10 +287,7 @@ class Hotspot {
         const height = Math.abs(contentScreenBR.y - contentScreenTL.y)
         this.textContentSpan.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
         this.textContentSpan.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
-        this.div.style.backgroundColor = transparentColor(
-            this.data.text.background,
-            this.data.text.backgroundAlpha,
-        )
+        this.div.style.backgroundColor = transparentColor(this.data.text.background, this.data.text.backgroundAlpha)
         this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
         if (this.data.text.originHeight) {
             let fontSize = this.data.text.fontSize || 16
@@ -551,7 +562,7 @@ class Hotspot {
         this.dot.style.display = 'block'
         if (this.button) this.button.setActiveColor()
         if (this.data.audio?.autoPlay && this._audio && !this._isPlaying) {
-            this._audio.play()
+            this._audio.play().catch()
             this._isPlaying = true
             if (this._audioBtn) {
                 this._audioBtn.classList.add('playing')
@@ -591,7 +602,7 @@ class Hotspot {
         this.lineSvg.style.display = 'none'
         this.dot.style.display = 'none'
         if (this.button) this.button.setUnactiveColor()
-        if (!this.data.audio?.persist && this._audio && this._isPlaying) {
+        if (this._audio && this._isPlaying) {
             this.pauseAudio()
         }
     }
@@ -617,7 +628,7 @@ class Hotspot {
     </svg>`
     }
     _ringsvg() {
-    return `
+        return `
     <svg class="audio-ring-svg" style="transform:rotate(-90deg);pointer-events:none;" viewBox="0 0 36 36">
         <circle fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4.5" cx="18" cy="18" r="16"/>
         <circle fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="3" cx="18" cy="18" r="16"/>
@@ -627,7 +638,7 @@ class Hotspot {
             stroke-dashoffset="${this.circumference}"/>
     </svg>
 `
-}
+    }
     getLocalContentPosByDiv() {
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const invWorldMatrix = new Mat4().copy(worldMatrix).invert()
@@ -662,5 +673,4 @@ class Hotspot {
             originHeight,
         }
     }
-
 }

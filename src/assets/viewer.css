@@ -994,6 +994,11 @@ button {
   background-color: #7c8ea4;
 }
 /* Audio file input */
+.audio-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .audio-file-label {
   display: flex;
   align-items: center;
@@ -2288,7 +2293,9 @@ button {
   z-index: 9999;
   backdrop-filter: blur(2px);
 }
-.loading-overlay.visible { display: flex; }
+.loading-overlay.visible {
+  display: flex;
+}
 
 .loading-box {
   background: #fff;
@@ -2308,7 +2315,11 @@ button {
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .loading-progress-bar {
   width: 100%;
@@ -2324,5 +2335,14 @@ button {
   width: 0%;
   transition: width 0.3s ease;
 }
-.loading-title { font-size: 15px; font-weight: 600; color: var(--text-main); text-align: center; }
-.loading-message { font-size: 13px; color: var(--text-muted); text-align: center; }
+.loading-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+}
+.loading-message {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
