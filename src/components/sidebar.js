@@ -84,12 +84,13 @@ function renderOrientation(group, global, editGroup) {
     events.on('hotspot:active', () => onCancelOrientation())
     events.on('sidebar:clicked', () => onCancelOrientation())
     let isEditing = false
+    let currentMethod = 'manual' // 'manual' | 'ground'
 
     const container = document.createElement('div')
     container.classList.add('orientation-btn-wrap')
 
     // ─────────────────────────────────────────
-    // SECTION 1: ORIENTATION
+    // READONLY ROTATION ROW
     // ─────────────────────────────────────────
 
     const { row: readonlyRotationRow, setValues: setReadonlyValues } = createVec3Inputs({
@@ -97,8 +98,6 @@ function renderOrientation(group, global, editGroup) {
         editable: false,
         onChange: () => {},
     })
-
-    const syncValues = (val) => setReadonlyValues(val)
 
     events.on('modelEntity:loaded', () => {
         if (settings.orientation.pose) {
@@ -108,10 +107,136 @@ function renderOrientation(group, global, editGroup) {
             syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
         }
     })
-    events.on('orientation:aligned-to-ground', ({ x, y, z }) => syncValues({ x, y, z }))
-    events.on('orientation:aligned-from-manual', ({ x, y, z }) => syncValues({ x, y, z }))
+    events.on('orientation:aligned-model', ({ x, y, z }) => syncValues({ x, y, z }))
 
-    // ── Ground Plane Picker ──
+    // ─────────────────────────────────────────
+    // HORIZON LINE OVERLAY
+    // ─────────────────────────────────────────
+
+    const horizonOverlay = document.createElement('div')
+    horizonOverlay.style.cssText =
+        'position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999; display:none;'
+    const horizonSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    horizonSVG.setAttribute('width', '100%')
+    horizonSVG.setAttribute('height', '100%')
+    const horizonLine = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    horizonLine.setAttribute('x1', '0')
+    horizonLine.setAttribute('x2', '100%')
+    horizonLine.setAttribute('stroke', 'var(--primary)')
+    horizonLine.setAttribute('stroke-width', '1.5')
+    horizonLine.setAttribute('stroke-dasharray', '8 6')
+    horizonSVG.appendChild(horizonLine)
+    horizonOverlay.appendChild(horizonSVG)
+    document.body.appendChild(horizonOverlay)
+
+    const updateHorizonPosition = () => {
+        const y = window.innerHeight * 0.72
+        horizonLine.setAttribute('y1', y)
+        horizonLine.setAttribute('y2', y)
+    }
+
+    let horizonActive = false
+    const setHorizonVisible = (visible) => {
+        horizonActive = visible
+        horizonOverlay.style.display = visible ? 'block' : 'none'
+        if (visible) updateHorizonPosition()
+        events.fire('orientation:horizon-line', { visible })
+    }
+
+    window.addEventListener('resize', () => {
+        if (horizonActive) updateHorizonPosition()
+    })
+
+    // ─────────────────────────────────────────
+    // METHOD WRAP
+    // ─────────────────────────────────────────
+
+    const methodWrap = document.createElement('div')
+    methodWrap.style.cssText = 'display:none; flex-direction:column; gap:12px;'
+
+    // ── Method selector row ──
+    const methodRow = document.createElement('div')
+    methodRow.classList.add('section-group-row')
+
+    const methodLabel = document.createElement('span')
+    methodLabel.textContent = 'Method'
+
+    const methodBtns = document.createElement('div')
+    methodBtns.classList.add('hotspot-style-row')
+    methodBtns.style.cssText = 'width:170px; flex-shrink:0;'
+
+    const btnManual = document.createElement('div')
+    btnManual.classList.add('hotspot-style-btn')
+    btnManual.textContent = 'Manual'
+
+    const btnGround = document.createElement('div')
+    btnGround.classList.add('hotspot-style-btn')
+    btnGround.textContent = 'Ground plane'
+
+    methodBtns.appendChild(btnManual)
+    methodBtns.appendChild(btnGround)
+    methodRow.appendChild(methodLabel)
+    methodRow.appendChild(methodBtns)
+
+    // ─────────────────────────────────────────
+    // MANUAL PANEL
+    // ─────────────────────────────────────────
+
+    const manualPanel = document.createElement('div')
+    manualPanel.style.cssText = 'display:none; flex-direction:column; gap:10px;'
+
+    const {
+        row: editableRotationRow,
+        setValues: setManualValues,
+        getValues: getManualValues,
+    } = createVec3Inputs({
+        title: 'Rotation',
+        editable: true,
+        onChange: ({ x, y, z }) => {
+            if (!isEditing) return
+            events.fire('orientation:eulerchange', { x, y, z })
+        },
+    })
+    const syncValues = (val) => {
+        setManualValues(val)
+        setReadonlyValues(val)
+    }
+    events.on('ortery:rotate', () => {
+        const euler = modelEntity.getLocalEulerAngles(new Vec3())
+        events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
+    })
+    events.on('orientation:eulersynced', ({ x, y, z }) => {
+        if (!isEditing) return
+        syncValues({ x, y, z })
+    })
+    events.on('orientation:aligned-to-ground', ({ x, y, z }) => {
+        syncValues({ x, y, z })
+    })
+    const horizonRow = document.createElement('div')
+    horizonRow.classList.add('section-group-row')
+
+    const horizonLabel = document.createElement('span')
+    horizonLabel.textContent = 'Horizontal line'
+
+    const horizonToggle = document.createElement('div')
+    horizonToggle.classList.add('toggle')
+    const horizonKnob = document.createElement('div')
+    horizonKnob.classList.add('toggle-knob')
+    horizonToggle.appendChild(horizonKnob)
+    horizonToggle.addEventListener('click', () => {
+        horizonToggle.classList.toggle('active', !horizonActive)
+        setHorizonVisible(!horizonActive)
+    })
+
+    horizonRow.appendChild(horizonLabel)
+    horizonRow.appendChild(horizonToggle)
+    manualPanel.appendChild(editableRotationRow)
+    manualPanel.appendChild(horizonRow)
+
+    // ─────────────────────────────────────────
+    // GROUND PLANE PANEL
+    // ─────────────────────────────────────────
+
     let pickingActive = false
     let pickedPoints = []
     const MAX_POINTS = 3
@@ -126,28 +251,31 @@ function renderOrientation(group, global, editGroup) {
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`
 
-    const groundWrap = document.createElement('div')
-    groundWrap.style.cssText = 'display:none; flex-direction:column; gap:8px;'
+    const groundPanel = document.createElement('div')
+    groundPanel.style.cssText = 'display:none; flex-direction:column; gap:8px;  min-height:82px'
 
     const hint = document.createElement('div')
-    hint.style.cssText = 'font-size:12px; color:var(--text-main); margin-top:4px; height:28px'
+    hint.style.cssText = 'font-size:12px; color:var(--text-main); height:28px'
     hint.innerHTML = `Click <span class="highlight">3</span> points on the <span class="highlight">ground surface</span> to auto-align the model.`
 
     const pickRow = document.createElement('div')
     pickRow.classList.add('section-group-row')
     const pickLabel = document.createElement('span')
-    pickLabel.textContent = 'Set Ground Plane'
+    pickLabel.textContent = 'Set ground plane'
     const pickActionRow = document.createElement('div')
     pickActionRow.style.cssText = 'display:flex; gap:6px;'
+
     const pickBtn = document.createElement('button')
     pickBtn.classList.add('btn', 'pick-ground-btn')
     pickBtn.innerHTML = ICON_CROSSHAIR
-    pickBtn.title = 'Pick Ground Plane'
+    pickBtn.title = 'Pick ground plane'
+
     const btnCancelGround = document.createElement('button')
     btnCancelGround.classList.add('btn', 'cancel-btn')
     btnCancelGround.style.cssText = 'height:30px; display:none'
     btnCancelGround.innerHTML = ICON_X
     btnCancelGround.title = 'Cancel'
+
     pickActionRow.appendChild(pickBtn)
     pickActionRow.appendChild(btnCancelGround)
     pickRow.appendChild(pickLabel)
@@ -164,7 +292,7 @@ function renderOrientation(group, global, editGroup) {
                 if (pickedPoints[idx]) {
                     pickedPoints[idx] = { x, y, z }
                     groundPicker._points[idx] = new Vec3(x, y, z)
-                    groundPicker._redraw() //
+                    groundPicker._redraw()
                 }
             },
         })
@@ -229,7 +357,7 @@ function renderOrientation(group, global, editGroup) {
 
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerdown', (e) => {
-        if (!pickingActive || !isEditing) return
+        if (!pickingActive || !isEditing || currentMethod !== 'ground') return
         if (e.button !== 0) return
         if (pickedPoints.length >= MAX_POINTS) return
         const localPoint = pickModelLocalPoint(e.offsetX, e.offsetY, global.camera.camera, true)
@@ -243,11 +371,47 @@ function renderOrientation(group, global, editGroup) {
         updatePickState()
     })
 
-    groundWrap.appendChild(hint)
-    groundWrap.appendChild(pickRow)
-    groundWrap.appendChild(pointInputsWrap)
+    groundPanel.appendChild(hint)
+    groundPanel.appendChild(pickRow)
+    groundPanel.appendChild(pointInputsWrap)
 
-    // ── Orientation btn row ──
+    // ─────────────────────────────────────────
+    // METHOD SWITCH LOGIC
+    // ─────────────────────────────────────────
+
+    const switchMethod = (method) => {
+        currentMethod = method
+        btnManual.classList.toggle('active', method === 'manual')
+        btnGround.classList.toggle('active', method === 'ground')
+        manualPanel.style.display = method === 'manual' ? 'flex' : 'none'
+        groundPanel.style.display = method === 'ground' ? 'flex' : 'none'
+        if (method === 'manual') {
+            stopPicking()
+            if (settings.orientation.pose) {
+                const { rotation: r } = settings.orientation.pose
+                setManualValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
+            } else {
+                setManualValues(modelEntity.getLocalEulerAngles(new Vec3()))
+            }
+        }
+        if (method === 'ground' && horizonActive) {
+            horizonToggle.classList.remove('active')
+            setHorizonVisible(false)
+        }
+        events.fire('orientation:switch-method',currentMethod)
+    }
+
+    btnManual.onclick = () => switchMethod('manual')
+    btnGround.onclick = () => switchMethod('ground')
+
+    methodWrap.appendChild(methodRow)
+    methodWrap.appendChild(manualPanel)
+    methodWrap.appendChild(groundPanel)
+
+    // ─────────────────────────────────────────
+    // ORIENTATION BUTTON ROW
+    // ─────────────────────────────────────────
+
     const orientBtnRow = document.createElement('div')
     orientBtnRow.classList.add('btn-row')
 
@@ -255,7 +419,11 @@ function renderOrientation(group, global, editGroup) {
         if (!isEditing) return
         isEditing = false
         stopPicking()
-        groundWrap.style.display = 'none'
+        if (horizonActive) {
+            horizonToggle.classList.remove('active')
+            setHorizonVisible(false)
+        }
+        methodWrap.style.display = 'none'
         if (settings.orientation.pose) {
             const { rotation: r } = settings.orientation.pose
             syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
@@ -270,7 +438,7 @@ function renderOrientation(group, global, editGroup) {
         orientBtnRow.innerHTML = ''
         if (isEditing) {
             readonlyRotationRow.style.display = 'none'
-            groundWrap.style.display = 'flex'
+            methodWrap.style.display = 'flex'
 
             const btnCancel = document.createElement('button')
             btnCancel.classList.add('btn', 'cancel-btn')
@@ -281,15 +449,23 @@ function renderOrientation(group, global, editGroup) {
             btnSave.classList.add('btn', 'confirm-btn')
             btnSave.textContent = 'Apply'
             btnSave.onclick = () => {
-                const pts = getGroundPoints()
-                if (pts.length < MAX_POINTS) {
-                    showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
-                    return
+                if (currentMethod === 'ground') {
+                    const pts = getGroundPoints()
+                    if (pts.length < MAX_POINTS) {
+                        showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
+                        return
+                    }
+                    stopPicking()
+                    events.fire('orientation:groundplane', pts)
+                } else {
+                    events.fire('orientation:manual-apply')
+                    if (horizonActive) {
+                        horizonToggle.classList.remove('active')
+                        setHorizonVisible(false)
+                    }
                 }
-                stopPicking()
-                events.fire('orientation:groundplane', pts)
                 isEditing = false
-                groundWrap.style.display = 'none'
+                methodWrap.style.display = 'none'
                 renderOrientBtns()
             }
 
@@ -297,16 +473,16 @@ function renderOrientation(group, global, editGroup) {
             orientBtnRow.appendChild(btnSave)
         } else {
             readonlyRotationRow.style.display = 'flex'
-            groundWrap.style.display = 'none'
+            methodWrap.style.display = 'none'
 
             const btnEdit = document.createElement('button')
-            btnEdit.classList.add('btn')
+            btnEdit.classList.add('btn', 'orientation-btn')
             btnEdit.textContent = 'Edit'
             btnEdit.onclick = () => {
                 editGroup.startEdit('orientation')
                 isEditing = true
-                groundWrap.style.display = 'flex'
-                events.fire('orientation:edit')
+                switchMethod(currentMethod)
+                events.fire('orientation:edit', currentMethod)
                 renderOrientBtns()
             }
             orientBtnRow.appendChild(btnEdit)
@@ -332,7 +508,6 @@ function renderOrientation(group, global, editGroup) {
     cameraLimitsTitle.textContent = 'Camera'
     cameraLimitsGroup.appendChild(cameraLimitsTitle)
 
-    // ── Readonly pitch row ──
     const pitchReadonlyRow = document.createElement('div')
     pitchReadonlyRow.classList.add('section-group-row')
     const pitchReadonlyLabel = document.createElement('span')
@@ -356,11 +531,9 @@ function renderOrientation(group, global, editGroup) {
     pitchReadonlyRow.appendChild(pitchReadonlyLabel)
     pitchReadonlyRow.appendChild(pitchReadonlyRight)
 
-    // ── Edit pitch content ──
     const pitchEditWrap = document.createElement('div')
     pitchEditWrap.style.cssText = 'display:none; flex-direction:column; gap:8px;'
 
-    // input + unit
     const pitchInputRow = document.createElement('div')
     pitchInputRow.classList.add('section-group-row')
     const pitchInputLabel = document.createElement('span')
@@ -390,7 +563,6 @@ function renderOrientation(group, global, editGroup) {
     pitchInputRow.appendChild(pitchInputLabel)
     pitchInputRow.appendChild(pitchInputRight)
 
-    // slider
     const pitchSliderRow = document.createElement('div')
     pitchSliderRow.style.cssText = 'display:flex; align-items:center; gap:6px;'
     const pitchSliderMin = document.createElement('span')
@@ -424,7 +596,6 @@ function renderOrientation(group, global, editGroup) {
     pitchEditWrap.appendChild(pitchInputRow)
     pitchEditWrap.appendChild(pitchSliderRow)
 
-    // ── Pitch btn row ──
     const pitchBtnRow = document.createElement('div')
     pitchBtnRow.classList.add('btn-row')
 
@@ -490,7 +661,7 @@ function renderOrientation(group, global, editGroup) {
     // ─────────────────────────────────────────
 
     container.appendChild(readonlyRotationRow)
-    container.appendChild(groundWrap)
+    container.appendChild(methodWrap)
     container.appendChild(orientBtnRow)
     group.appendChild(container)
 

@@ -90,7 +90,10 @@ class OtherController {
         this.events.on('orientation:groundplane', (points) => {
             this.applyGroundPlaneOrientation(points)
         })
-        this.events.on('orientation:edit', () => this.startEditModelOrientation())
+        this.events.on('orientation:manual-apply', () => {
+            this.applyManualOrientation()
+        })
+        this.events.on('orientation:switch-method', (currentMethod) => this.startEditModelOrientation(currentMethod))
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
         this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
@@ -392,6 +395,7 @@ class OtherController {
     onExit() {}
     applyInertia() {
         if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
+        if (this.isEditingOrientation) return
         const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
         if (speed < this.inertiaMinSpeed) {
             this.inertiaVelX = 0
@@ -423,12 +427,17 @@ class OtherController {
         this.inertiaVelX = 0
         this.inertiaVelY = 0
     }
-    startEditModelOrientation() {
-        this.model = 'spherical'
+    startEditModelOrientation(currentMethod) {
+        if (currentMethod === 'ground') {
+            this.model = 'spherical'
+        } else {
+            this.isEditingOrientation = true
+        }
         this.updateModelRotation()
     }
     cancelOrientation() {
         this.updateModelRotation()
+        this.isEditingOrientation = false
         this.model = this.originModel
         this.reset()
     }
@@ -449,6 +458,29 @@ class OtherController {
         this.maxPitch = Math.PI / 2 + offsetPitch
         this.currentPitch = this.minPitch
         this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        this.syncHierarchyAndRender()
+    }
+    applyManualOrientation() {
+        const currentPosition = modelEntity.localPosition.clone()
+        const currentRotation = modelEntity.localRotation.clone()
+        const pivot = this.centerPivot.clone()
+        this.currentYaw = 0
+        this.currentPitch = 0
+        this.baseRotation = currentRotation.clone()
+        this.basePosition = currentPosition.clone()
+        this.centerPivot = pivot
+
+        this.settings.orientation = {
+            rotation: this.baseRotation,
+            position: this.basePosition,
+            pitchOffset: this.pitchRad,
+        }
+        this.minPitch = 0 
+        this.maxPitch = Math.PI/2
+        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+        this.updateModelRotation()
+        this.model = this.originModel
+        this.isEditingOrientation = false
         this.syncHierarchyAndRender()
     }
     applyGroundPlaneOrientation(points) {
@@ -515,11 +547,12 @@ class OtherController {
         }
         this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
         this.model = this.originModel
+        this.isEditingOrientation = false
         const r = this.baseRotation
         const q = new Quat(r.x, r.y, r.z, r.w)
         const euler = q.getEulerAngles()
         this.updateModelRotation()
-        this.events.fire('orientation:aligned-to-ground', { x: euler.x, y: euler.y, z: euler.z })
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
         this.setupTransition({
             targetPose,
             startPose,
@@ -564,6 +597,7 @@ class OtherController {
             this.currentPitch = this.targetPose.pitch
             this.targetPose = null
             this.startPose = null
+            this.events.fire('ortery:rotate')
         }
         this.syncHierarchyAndRender()
     }
@@ -602,7 +636,7 @@ class OtherController {
         this.basePosition = this.initialModelPosition
         this.baseRotation = this.initialModelRotation
         this.centerPivot = this.originPivot
-        this.currentPitch = 0 
+        this.currentPitch = 0
         this.currentYaw = 0
         this.reset()
     }
@@ -643,8 +677,11 @@ class OtherController {
                     this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
                     this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
                 }
-                if (this.model === 'spherical') this.sphericalRot(deltaX, deltaY)
-                else {
+                if (this.model === 'spherical') {
+                    this.sphericalRot(deltaX, deltaY)
+                } else if (this.isEditingOrientation) {
+                    this.sphericalAxisRot(deltaX, deltaY)
+                } else {
                     this.setHemiPitchYaw(deltaX, deltaY)
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                 }
@@ -676,6 +713,7 @@ class OtherController {
 
     setHemiPitchYaw(deltaX, deltaY) {
         const { x: safeDeltaX, y: safeDeltaY } = this.hemiClampDelta(deltaX, deltaY)
+
         this.currentYaw = this.clampYaw(this.currentYaw + safeDeltaX * this.rotateSpeed)
         this.currentPitch = this.clampPitch(this.currentPitch + safeDeltaY * this.rotateSpeed)
     }
@@ -706,14 +744,28 @@ class OtherController {
         const result = combinedRotateQuat.mul(this.baseRotation).normalize()
         modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
     }
-    buildCombinedQuat(yaw, pitch) {
-        if (!this.baseRotation) this.baseRotation = new Quat3()
+    sphericalAxisRot(deltaX, deltaY) {
         const worldUp = new Vec33(0, 1, 0)
-        const quatYaw = new Quat3().setFromAxisAngle(worldUp, yaw)
+        const quatYaw = new Quat3().setFromAxisAngle(worldUp, deltaX * this.rotateSpeed)
 
         const rightAxis = this.rightCam ? this.rightCam.clone() : Vec33.RIGHT.clone()
-        const quatPitch = new Quat3().setFromAxisAngle(rightAxis, pitch)
+        const quatPitch = new Quat3().setFromAxisAngle(rightAxis, deltaY * this.rotateSpeed)
 
+        const rotateQuat = quatPitch.mul(quatYaw).normalize()
+
+        v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
+        v$2.transformQuat(rotateQuat)
+        modelEntity.localPosition.copy(this.centerPivot).add(v$2)
+
+        const result = rotateQuat.mul(this.modelRotation).normalize()
+        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
+        this.modelRotation.copy(modelEntity.localRotation)
+    }
+    buildCombinedQuat(yaw, pitch) {
+        const worldUp = new Vec33(0, 1, 0)
+        const quatYaw = new Quat3().setFromAxisAngle(worldUp, yaw)
+        const rightAxis = this.rightCam ? this.rightCam.clone() : Vec33.RIGHT.clone()
+        const quatPitch = new Quat3().setFromAxisAngle(rightAxis, pitch)
         return quatPitch.mul(quatYaw).normalize()
     }
 
