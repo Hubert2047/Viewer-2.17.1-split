@@ -824,6 +824,7 @@ function dimensionSection(el, global) {
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
     let currentBoxLocalPos = { x: 0, y: 0, z: 0 }
+    let prevRotation = { x: 0, y: 0, z: 0 }
 
     const container = document.createElement('div')
     container.classList.add('dimensions-wrap')
@@ -858,6 +859,7 @@ function dimensionSection(el, global) {
         editDimension = { ...currentDimensions, ...result }
         currentDimensions = { ...currentDimensions, ...result }
         settings.dimensions = editDimension
+        prevRotation = { ...currentDimensions.rotation }
         setDimConfigured(true)
         setValues(currentDimensions)
         events.fire('dimensions:add', currentDimensions)
@@ -865,24 +867,18 @@ function dimensionSection(el, global) {
 
     events.on('gizmo-rotation:drag-end', async () => {
         if (!currentDimensions || !isEditing) return
-        const points = getVisiblePoints(modelEntity)
-        const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
-            maxIterations: 0,
-        })
+        const result = await getUpdateBoxSize(currentDimensions.rotation)
         currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
         setValues(currentDimensions)
         events.fire('dimensions:change', currentDimensions)
     })
 
-    function subsamplePoints(points, maxCount) {
-        const count = points.length / 3
-        if (count <= maxCount) return points
-        const step = Math.ceil(count / maxCount)
-        const result = []
-        for (let i = 0; i < count; i += step) {
-            result.push(points[i * 3], points[i * 3 + 1], points[i * 3 + 2])
-        }
-        return new Float32Array(result)
+    async function getUpdateBoxSize(rotation) {
+        const points = getVisiblePoints(modelEntity)
+        const result = await snapToFitOBBAsync(points, rotation, {
+            maxIterations: 0,
+        })
+        return result
     }
     noDimRow.appendChild(noDimText)
     noDimRow.appendChild(addBtn)
@@ -983,14 +979,52 @@ function dimensionSection(el, global) {
     } = createVec3Inputs({
         title: 'Rotation',
         step: 0.5,
-        onChange: ({ x, y, z }) => {
+        onFocus: () => {
+            if (currentDimensions?.rotation) {
+                prevRotation = { ...currentDimensions.rotation }
+            }
+        },
+        onChange: async ({ x, y, z }) => {
             if (!isEditing) return
-            currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
+
+            const dx = x - prevRotation.x
+            const dy = y - prevRotation.y
+            const dz = z - prevRotation.z
+            prevRotation = { x, y, z }
+
+            const currRot = currentDimensions.rotation
+            const qCurr = new Quat().setFromEulerAngles(currRot.x, currRot.y, currRot.z)
+            const wx = new Vec3(1, 0, 0)
+            qCurr.transformVector(wx, wx)
+            const wy = new Vec3(0, 1, 0)
+            qCurr.transformVector(wy, wy)
+            const wz = new Vec3(0, 0, 1)
+            qCurr.transformVector(wz, wz)
+
+            const qx = new Quat().setFromAxisAngle(wx, dx)
+            const qy = new Quat().setFromAxisAngle(wy, dy)
+            const qz = new Quat().setFromAxisAngle(wz, dz)
+            const qDelta = qy.mul(qx).mul(qz)
+
+            const qNew = qDelta.mul(qCurr)
+
+            const newEuler = qNew.getEulerAngles()
+            currentDimensions = {
+                ...currentDimensions,
+                rotation: { x: newEuler.x, y: newEuler.y, z: newEuler.z },
+            }
+
+            prevRotation = { ...newEuler }
+            setRotValues(newEuler)
+
+            const result = await getUpdateBoxSize(currentDimensions.rotation)
+            currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
             events.fire('dimensions:change', currentDimensions)
         },
     })
     events.on('dimensions:eulersynced', ({ x, y, z }) => {
         setRotValues({ x, y, z })
+        prevRotation = { x, y, z }
         currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
         events.fire('dimensions:change', currentDimensions)
     })
@@ -1064,7 +1098,9 @@ function dimensionSection(el, global) {
     // ── Shared helpers ──
     const setValues = (dim) => {
         if (!dim) return
-        setPosValues(dim.position)
+        prevRotation = { ...dim.rotation }
+        currentBoxLocalPos = dimensionWorldToLocal(dim.position, dim.rotation)
+        setPosValues(currentBoxLocalPos)
         setRotValues(dim.rotation)
         setSizeValues(dim.size)
         setRealValues(dim.realSize)
