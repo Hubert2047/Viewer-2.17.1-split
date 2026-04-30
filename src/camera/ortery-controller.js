@@ -59,7 +59,359 @@ class OtherController {
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
+    startAutoRotate(direction) {
+        if (this._autoRotating) return
+        this._autoRotating = true
+
+        const totalAngle = Math.PI * 2 // 1 vòng = 360°
+        const speed = 3 // rad/s, tăng/giảm tùy ý
+        let rotated = 0
+
+        const tick = (dt) => {
+            if (!this._autoRotating) return
+
+            const delta = Math.min(speed * dt, totalAngle - rotated)
+            rotated += delta
+
+            // delta theo đơn vị pixel-like vì rotateSpeed sẽ nhân vào
+            // sphericalAxisRot nhân rotateSpeed = 0.04, nên cần chia ra
+            const step = (delta / this.rotateSpeed) * direction
+
+            if (this.isEditingOrientation) {
+                this.sphericalAxisRot(step, 0)
+            } else {
+                this.setHemiPitchYaw(step, 0)
+                this.hemisphericalRot(this.currentYaw, this.currentPitch)
+            }
+            this.syncHierarchyAndRender()
+
+            if (rotated >= totalAngle) {
+                this._autoRotating = false
+                this._autoRotateTick = null
+                return
+            }
+
+            this._autoRotateTick = tick
+        }
+
+        this._autoRotateTick = tick
+    }
     listenEvents() {
+        window.addEventListener('keydown', (event) => {
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+            const yawStep = 3 // độ mạnh mỗi bước, tăng/giảm tùy ý
+            const pitchStep = 1 // độ mạnh mỗi bước, tăng/giảm tùy ý
+            switch (event.key) {
+                case 'ArrowLeft':
+                    if (this._autoRotating) {
+                        this._autoRotating = false // bấm lại thì dừng
+                    } else {
+                        this.startAutoRotate(-1)
+                    }
+                    break
+                case 'ArrowRight':
+                    if (this.isEditingOrientation) {
+                        this.sphericalAxisRot(yawStep, 0)
+                    } else {
+                        this.setHemiPitchYaw(yawStep, 0)
+                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                    }
+                    this.syncHierarchyAndRender()
+                    break
+                case 'ArrowUp':
+                    if (this.isEditingOrientation) {
+                        this.sphericalAxisRot(0, -pitchStep)
+                    } else {
+                        this.setHemiPitchYaw(0, -pitchStep)
+                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                    }
+                    this.syncHierarchyAndRender()
+                    break
+                case 'ArrowDown':
+                    if (this.isEditingOrientation) {
+                        this.sphericalAxisRot(0, pitchStep)
+                    } else {
+                        this.setHemiPitchYaw(0, pitchStep)
+                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                    }
+                    this.syncHierarchyAndRender()
+                    break
+            }
+        })
+        this.events.on('orientation:auto-fit-y', () => {
+            if (!modelEntity) return
+
+            // ===== 1. Lấy points WORLD =====
+            const pointsWorld = getVisiblePointsWorld(modelEntity)
+
+            // ===== 2. PCA → normal =====
+            let normal = computePCAGroundNormal(pointsWorld)
+            normal.normalize()
+
+            const worldDown = new Vec3(0, -1, 0)
+
+            // ===== 3. Fix hướng normal (tránh lật ngược) =====
+            const center = this.bbox.center.clone()
+
+            // lấy 1 điểm bất kỳ trong cloud
+            const p0 = new Vec3(pointsWorld[0], pointsWorld[1], pointsWorld[2])
+            const toCenter = center.clone().sub(p0).normalize()
+
+            // nếu normal hướng vào trong → đảo lại
+            if (normal.dot(toCenter) > 0) {
+                normal.mulScalar(-1)
+            }
+
+            // đảm bảo hướng xuống dưới
+            if (normal.dot(worldDown) < 0) {
+                normal.mulScalar(-1)
+            }
+
+            // nếu đã gần đúng thì bỏ qua
+            if (Math.abs(normal.dot(worldDown) - 1) < 0.999) {
+                // vẫn cho chạy nhẹ nếu cần
+            }
+
+            // ===== 4. Tính rotation correction (WORLD) =====
+            const correction = quatFromTo(normal, worldDown)
+
+            // ===== 5. Lấy WORLD transform hiện tại =====
+         const currentWorldRot = modelEntity.getRotation().clone()
+const currentWorldPos = modelEntity.getPosition().clone()
+
+            // ===== 6. Apply rotation =====
+            const newWorldRot = correction.clone().mul(currentWorldRot).normalize()
+
+            // ===== 7. Rotate quanh pivot (WORLD) =====
+            const pivot = this.centerPivot.clone()
+
+            const offsetWorld = currentWorldPos.clone().sub(pivot)
+
+            const rotatedOffset = this.rotateOffsetByQuat(offsetWorld, correction)
+
+            const newWorldPos = pivot.clone().add(rotatedOffset)
+
+            // ===== 8. Apply về entity =====
+            modelEntity.setPosition(newWorldPos)
+            modelEntity.setRotation(newWorldRot)
+
+            // ===== 9. Sync lại state =====
+            this.baseRotation = modelEntity.localRotation.clone()
+            this.basePosition = modelEntity.localPosition.clone()
+
+            this.currentYaw = 0
+            this.currentPitch = 0
+
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+
+            // ===== 10. Save lại =====
+            this.settings.orientation.pose = {
+                rotation: this.baseRotation,
+                position: this.basePosition,
+            }
+
+            // emit euler nếu cần
+            const euler = newWorldRot.getEulerAngles()
+            this.events.fire('orientation:eulersynced', {
+                x: euler.x,
+                y: euler.y,
+                z: euler.z,
+            })
+        })
+        function getVisiblePointsWorld(modelEntity) {
+            // Lấy points từ model trong world space
+            const positions = getVisiblePoints(modelEntity) // Hàm này trả về local positions
+            const worldMatrix = modelEntity.getWorldTransform()
+            const pointsWorld = []
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const localPoint = new Vec3(positions[i], positions[i + 1], positions[i + 2])
+                const worldPoint = new Vec3()
+                worldMatrix.transformPoint(localPoint, worldPoint)
+                pointsWorld.push(worldPoint.x, worldPoint.y, worldPoint.z)
+            }
+            return pointsWorld
+        }
+
+        // PCA tìm normal của mặt phẳng "đáy" — eigenvector nhỏ nhất = normal của mặt phẳng chính
+        function computePCAGroundNormal(positions) {
+            const n = positions.length / 3
+            if (n < 3) return new Vec3(0, -1, 0)
+
+            // Subsample nếu quá nhiều điểm (max 5000)
+            const step = Math.max(1, Math.floor(n / 5000))
+
+            // 1. Tính centroid
+            let cx = 0,
+                cy = 0,
+                cz = 0,
+                count = 0
+            for (let i = 0; i < n; i += step) {
+                cx += positions[i * 3]
+                cy += positions[i * 3 + 1]
+                cz += positions[i * 3 + 2]
+                count++
+            }
+            cx /= count
+            cy /= count
+            cz /= count
+
+            // 2. Tính covariance matrix 3x3
+            let c00 = 0,
+                c01 = 0,
+                c02 = 0,
+                c11 = 0,
+                c12 = 0,
+                c22 = 0
+            for (let i = 0; i < n; i += step) {
+                const x = positions[i * 3] - cx
+                const y = positions[i * 3 + 1] - cy
+                const z = positions[i * 3 + 2] - cz
+                c00 += x * x
+                c01 += x * y
+                c02 += x * z
+                c11 += y * y
+                c12 += y * z
+                c22 += z * z
+            }
+            c00 /= count
+            c01 /= count
+            c02 /= count
+            c11 /= count
+            c12 /= count
+            c22 /= count
+
+            // 3. Power iteration để tìm 3 eigenvectors
+            // Eigenvector nhỏ nhất = normal của mặt phẳng point cloud
+            const cov = [
+                [c00, c01, c02],
+                [c01, c11, c12],
+                [c02, c12, c22],
+            ]
+
+            const [e1, e2, e3] = eigenVectors3x3(cov)
+            // e3 = eigenvector ứng với eigenvalue nhỏ nhất = normal mặt phẳng
+            return new Vec3(e3[0], e3[1], e3[2])
+        }
+
+        function eigenVectors3x3(m) {
+            // Jacobi iteration cho symmetric 3x3
+            let a = [
+                [m[0][0], m[0][1], m[0][2]],
+                [m[1][0], m[1][1], m[1][2]],
+                [m[2][0], m[2][1], m[2][2]],
+            ]
+            let v = [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ] // eigenvectors
+
+            for (let iter = 0; iter < 50; iter++) {
+                // Tìm off-diagonal lớn nhất
+                let maxVal = 0,
+                    p = 0,
+                    q = 1
+                for (let i = 0; i < 3; i++) {
+                    for (let j = i + 1; j < 3; j++) {
+                        if (Math.abs(a[i][j]) > maxVal) {
+                            maxVal = Math.abs(a[i][j])
+                            p = i
+                            q = j
+                        }
+                    }
+                }
+                if (maxVal < 1e-10) break
+
+                // Jacobi rotation
+                const theta = (a[q][q] - a[p][p]) / (2 * a[p][q])
+                const t = Math.sign(theta) / (Math.abs(theta) + Math.sqrt(1 + theta * theta))
+                const c = 1 / Math.sqrt(1 + t * t)
+                const s = t * c
+
+                // Update a
+                const app = a[p][p],
+                    aqq = a[q][q],
+                    apq = a[p][q]
+                a[p][p] = c * c * app - 2 * s * c * apq + s * s * aqq
+                a[q][q] = s * s * app + 2 * s * c * apq + c * c * aqq
+                a[p][q] = 0
+                a[q][p] = 0
+                for (let r = 0; r < 3; r++) {
+                    if (r !== p && r !== q) {
+                        const arp = a[r][p],
+                            arq = a[r][q]
+                        a[r][p] = c * arp - s * arq
+                        a[p][r] = a[r][p]
+                        a[r][q] = s * arp + c * arq
+                        a[q][r] = a[r][q]
+                    }
+                    // Update eigenvectors
+                    const vrp = v[r][p],
+                        vrq = v[r][q]
+                    v[r][p] = c * vrp - s * vrq
+                    v[r][q] = s * vrp + c * vrq
+                }
+            }
+
+            // Eigenvalues = diagonal của a, sort theo thứ tự tăng dần
+            const pairs = [0, 1, 2].map((i) => ({ val: a[i][i], vec: [v[0][i], v[1][i], v[2][i]] }))
+            pairs.sort((a, b) => a.val - b.val)
+            return pairs.map((p) => p.vec) // [smallest, medium, largest]
+        }
+
+        // Pitch rotate: thay đổi pitch thêm stepDeg rồi tự xoay 1 vòng 360° theo yaw
+        this.events.on('orientation:pitch-rotate', ({ stepDeg }) => {
+            if (!modelEntity) return
+            if (this._pitchRotating) return
+
+            const stepRad = (stepDeg * Math.PI) / 180
+
+            // apply pitch trước (dùng sphericalAxisRot như khi editing, step=0 nếu chỉ spin)
+            if (stepRad !== 0) {
+                const pitchStep = stepRad / this.rotateSpeed
+                this.sphericalAxisRot(0, pitchStep)
+                this.syncHierarchyAndRender()
+            }
+
+            // xoay 1 vòng 360° — copy đúng pattern startAutoRotate
+            this._pitchRotating = true
+            const totalAngle = Math.PI * 2
+            const speed = 5 // rad/s, giống startAutoRotate
+            let rotated = 0
+
+            const tick = (dt) => {
+                if (!this._pitchRotating) return
+
+                const delta = Math.min(speed * dt, totalAngle - rotated)
+                rotated += delta
+
+                // convert rad → pixel-like unit giống startAutoRotate
+                const step = (delta / this.rotateSpeed) * 1 // direction = 1
+
+                if (this.isEditingOrientation) {
+                    this.sphericalAxisRot(step, 0)
+                } else {
+                    this.setHemiPitchYaw(step, 0)
+                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                }
+                this.syncHierarchyAndRender()
+
+                if (rotated >= totalAngle) {
+                    this._pitchRotating = false
+                    this._pitchRotateTick = null
+                    this.events.fire('ortery:rotate')
+                    return
+                }
+                this._pitchRotateTick = tick
+            }
+
+            this._pitchRotateTick = tick
+        })
+
         this.events.on('hotspot:editing', (isEdit) => {
             this.isEditHotspot = isEdit
         })
@@ -93,7 +445,9 @@ class OtherController {
         this.events.on('orientation:manual-apply', () => {
             this.applyManualOrientation()
         })
-        this.events.on('orientation:switch-method', (currentMethod) => this.startEditModelOrientation(currentMethod))
+        this.events.on('orientation:switch-method', (currentMethod) => {
+            this.startEditModelOrientation(currentMethod)
+        })
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
         this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
@@ -339,6 +693,12 @@ class OtherController {
         this.updateModelEntity(dt)
         if (this.settings.inertia && this.isFlick) this.applyInertia()
         this.getPose(camera)
+        if (this._autoRotateTick) {
+            this._autoRotateTick(dt)
+        }
+        if (this._pitchRotateTick) {
+            this._pitchRotateTick(dt)
+        }
     }
     getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
@@ -470,13 +830,12 @@ class OtherController {
         this.basePosition = currentPosition.clone()
         this.centerPivot = pivot
 
-        this.settings.orientation = {
+        this.settings.orientation.pose = {
             rotation: this.baseRotation,
             position: this.basePosition,
-            pitchOffset: this.pitchRad,
         }
-        this.minPitch = 0 
-        this.maxPitch = Math.PI/2
+        // this.minPitch = 0
+        // this.maxPitch = Math.PI / 2
         this.hemisphericalRot(this.currentYaw, this.currentPitch)
         this.updateModelRotation()
         this.model = this.originModel
@@ -810,5 +1169,17 @@ class OtherController {
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
         pose.distance = this.distance
+    }
+    setupGroundAxis() {
+        if (this._groundAxisActive) return
+        this._groundAxisActive = true
+
+        // lưu x,z của bbox center lúc bắt đầu edit làm mốc cố định
+        const worldMatrix = modelEntity.getWorldTransform()
+        const bboxCenterWorld = new Vec3()
+        worldMatrix.transformPoint(this.bbox.center, bboxCenterWorld)
+        this._groundAxisOrigin = { x: bboxCenterWorld.x, z: bboxCenterWorld.z }
+
+        this.app.renderNextFrame = true
     }
 }

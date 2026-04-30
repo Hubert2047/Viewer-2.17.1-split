@@ -197,10 +197,12 @@ function renderOrientation(group, global, editGroup) {
             events.fire('orientation:eulerchange', { x, y, z })
         },
     })
+
     const syncValues = (val) => {
         setManualValues(val)
         setReadonlyValues(val)
     }
+
     events.on('ortery:rotate', () => {
         const euler = modelEntity.getLocalEulerAngles(new Vec3())
         events.fire('orientation:eulersynced', { x: euler.x, y: euler.y, z: euler.z })
@@ -212,6 +214,8 @@ function renderOrientation(group, global, editGroup) {
     events.on('orientation:aligned-to-ground', ({ x, y, z }) => {
         syncValues({ x, y, z })
     })
+
+    // ── Horizon line row ──
     const horizonRow = document.createElement('div')
     horizonRow.classList.add('section-group-row')
 
@@ -230,8 +234,104 @@ function renderOrientation(group, global, editGroup) {
 
     horizonRow.appendChild(horizonLabel)
     horizonRow.appendChild(horizonToggle)
+
+    // ── Auto Fit Y row ──
+    const autoFitRow = document.createElement('div')
+    autoFitRow.classList.add('section-group-row')
+
+    const autoFitLabel = document.createElement('span')
+    autoFitLabel.textContent = 'Auto fit Y'
+
+    const btnAutoFitY = document.createElement('button')
+    btnAutoFitY.classList.add('btn', 'orientation-btn')
+    btnAutoFitY.style.cssText = 'height:28px; font-size:12px; padding:0 10px;'
+    btnAutoFitY.textContent = 'Auto Fit'
+    btnAutoFitY.title = 'Tự căn model theo trục Y-up của hemispherical'
+    btnAutoFitY.onclick = () => {
+        if (!isEditing) return
+        events.fire('orientation:auto-fit-y')
+    }
+
+    autoFitRow.appendChild(autoFitLabel)
+    autoFitRow.appendChild(btnAutoFitY)
+
+    // ── Step Pitch row ──
+    const stepPitchRow = document.createElement('div')
+    stepPitchRow.classList.add('section-group-row')
+
+    const stepPitchLabel = document.createElement('span')
+    stepPitchLabel.textContent = 'Step pitch'
+
+    const stepPitchRight = document.createElement('div')
+    stepPitchRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
+
+    const stepPitchInput = document.createElement('input')
+    stepPitchInput.type = 'number'
+    stepPitchInput.min = '1'
+    stepPitchInput.max = '90'
+    stepPitchInput.step = '1'
+    stepPitchInput.value = '10'
+    stepPitchInput.style.cssText = [
+        'width:56px',
+        'height:28px',
+        'padding:0 6px',
+        'border-radius:5px',
+        'border:0.5px solid rgba(0,0,0,0.13)',
+        'color:var(--text-main)',
+        'font-size:12px',
+        'text-align:center',
+        'outline:none',
+        'font-family:inherit',
+    ].join(';')
+
+    const ICON_ARROW_UP = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`
+    const ICON_ARROW_DOWN = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`
+    const ICON_SPIN = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`
+
+    const btnPitchUp = document.createElement('button')
+    btnPitchUp.classList.add('btn', 'orientation-btn')
+    btnPitchUp.style.cssText = 'height:28px; width:28px; padding:0; display:flex; align-items:center; justify-content:center;'
+    btnPitchUp.innerHTML = ICON_ARROW_UP
+    btnPitchUp.title = 'Tăng pitch 1 step rồi xoay 1 vòng'
+    btnPitchUp.onclick = () => {
+        if (!isEditing) return
+        const step = parseFloat(stepPitchInput.value) || 10
+        events.fire('orientation:pitch-rotate', { stepDeg: step })
+    }
+
+    const btnPitchDown = document.createElement('button')
+    btnPitchDown.classList.add('btn', 'orientation-btn')
+    btnPitchDown.style.cssText = 'height:28px; width:28px; padding:0; display:flex; align-items:center; justify-content:center;'
+    btnPitchDown.innerHTML = ICON_ARROW_DOWN
+    btnPitchDown.title = 'Giảm pitch 1 step rồi xoay 1 vòng'
+    btnPitchDown.onclick = () => {
+        if (!isEditing) return
+        const step = parseFloat(stepPitchInput.value) || 10
+        events.fire('orientation:pitch-rotate', { stepDeg: -step })
+    }
+
+    const btnSpin = document.createElement('button')
+    btnSpin.classList.add('btn', 'orientation-btn')
+    btnSpin.style.cssText = 'height:28px; width:28px; padding:0; display:flex; align-items:center; justify-content:center;'
+    btnSpin.innerHTML = ICON_SPIN
+    btnSpin.title = 'Xoay 1 vòng, giữ nguyên pitch'
+    btnSpin.onclick = () => {
+        if (!isEditing) return
+        events.fire('orientation:pitch-rotate', { stepDeg: 0 })
+    }
+
+    stepPitchRight.appendChild(stepPitchInput)
+    stepPitchRight.appendChild(btnPitchUp)
+    stepPitchRight.appendChild(btnPitchDown)
+    stepPitchRight.appendChild(btnSpin)
+    stepPitchRow.appendChild(stepPitchLabel)
+    stepPitchRow.appendChild(stepPitchRight)
+
+    // ── Assemble manualPanel ──
     manualPanel.appendChild(editableRotationRow)
     manualPanel.appendChild(horizonRow)
+    manualPanel.appendChild(autoFitRow)
+    manualPanel.appendChild(stepPitchRow)
 
     // ─────────────────────────────────────────
     // GROUND PLANE PANEL
@@ -252,7 +352,7 @@ function renderOrientation(group, global, editGroup) {
     </svg>`
 
     const groundPanel = document.createElement('div')
-    groundPanel.style.cssText = 'display:none; flex-direction:column; gap:8px;  min-height:82px'
+    groundPanel.style.cssText = 'display:none; flex-direction:column; gap:8px; min-height:82px'
 
     const hint = document.createElement('div')
     hint.style.cssText = 'font-size:12px; color:var(--text-main); height:28px'
