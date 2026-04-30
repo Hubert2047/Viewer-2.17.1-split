@@ -398,7 +398,7 @@ function renderOrientation(group, global, editGroup) {
             horizonToggle.classList.remove('active')
             setHorizonVisible(false)
         }
-        events.fire('orientation:switch-method',currentMethod)
+        events.fire('orientation:switch-method', currentMethod)
     }
 
     btnManual.onclick = () => switchMethod('manual')
@@ -852,7 +852,6 @@ function modelSection(el, global) {
 
     el.appendChild(container)
 }
-
 function viewerSettingsSection(el, global) {
     const settings = global.settings
     const container = document.createElement('div')
@@ -1013,8 +1012,7 @@ function dimensionSection(el, global) {
     addBtn.onclick = async () => {
         global.loading.show()
         const points = getVisiblePoints(modelEntity)
-        const { rotation } = getDimensionsInfo(points, true)
-        const result = await snapToFitOBBAsync(points, rotation, {
+        const result = await snapToFitOBBAsync(points, getDimensionsRotation(points), {
             maxIterations: 10000,
             learningRate: 0.01,
             chunkSize: 50,
@@ -1213,10 +1211,58 @@ function dimensionSection(el, global) {
             events.fire('dimensions:change', currentDimensions)
         },
     })
+    // ── Auto Fit row ──
+    const autoFitRow = document.createElement('div')
+    autoFitRow.classList.add('section-group-row')
+
+    const autoFitLabel = document.createElement('span')
+    autoFitLabel.textContent = 'Auto fit'
+
+    const autoFitBtn = document.createElement('button')
+    autoFitBtn.classList.add('btn')
+    autoFitBtn.style.cssText = 'height:32px;'
+    autoFitBtn.title = 'Auto Fit'
+    autoFitBtn.innerHTML = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="5" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1" stroke-dasharray="2 1.5"/>
+    <line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="4,10 2,12 4,14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="22" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="20,10 22,12 20,14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="10,4 12,2 14,4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="12" y1="22" x2="12" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="10,20 12,22 14,20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>
+`
+
+    autoFitBtn.onclick = async () => {
+        if (!currentDimensions || !isEditing) return
+        global.loading.show()
+        const points = getVisiblePoints(modelEntity)
+        const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
+            maxIterations: 300,
+            learningRate: 1,
+            chunkSize: 50,
+        })
+        currentDimensions = {
+            ...currentDimensions,
+            ...result,
+            ...result,
+            ...result,
+        }
+        setValues(currentDimensions)
+        events.fire('dimensions:change', currentDimensions)
+        global.loading.hide()
+    }
+
+    autoFitRow.appendChild(autoFitLabel)
+    autoFitRow.appendChild(autoFitBtn)
+
     boxGroup.appendChild(positionRow)
     boxGroup.appendChild(rotationRow)
     boxGroup.appendChild(sizeRow)
-
+    boxGroup.appendChild(autoFitRow)
     // ── Group 2: Real Dimensions ──
     const realGroup = document.createElement('div')
     realGroup.classList.add('section-group')
@@ -1291,6 +1337,7 @@ function dimensionSection(el, global) {
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
         backgroundColor.setDisabled(!on)
+        autoFitBtn.disabled = !on
     }
 
     // ── Buttons ──

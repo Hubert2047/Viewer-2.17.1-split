@@ -27,24 +27,20 @@ function dimensionLocalToWorld(localPos, rotation) {
         z: x * right.z + y * up.z + z * forward.z,
     }
 }
-function getDimensionsInfo(localCenters, calRota = false) {
+function getDimensionsRotation(localCenters) {
     const count = localCenters.length / 3
 
-    let cx = 0,
-        cy = 0,
-        cz = 0
+    // --- centroid ---
+    let cx = 0, cz = 0
     for (let i = 0; i < count; i++) {
         cx += localCenters[i * 3]
-        cy += localCenters[i * 3 + 1]
         cz += localCenters[i * 3 + 2]
     }
     cx /= count
-    cy /= count
     cz /= count
 
-    let cxx = 0,
-        cxz = 0,
-        czz = 0
+    // --- covariance XZ ---
+    let cxx = 0, cxz = 0, czz = 0
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx
         const dz = localCenters[i * 3 + 2] - cz
@@ -56,84 +52,43 @@ function getDimensionsInfo(localCenters, calRota = false) {
     cxz /= count
     czz /= count
 
-    let angle = calRota ? 0.5 * Math.atan2(2 * cxz, cxx - czz) : 0
+    // --- PCA angle ---
+    let angle = 0.5 * Math.atan2(2 * cxz, cxx - czz)
 
-    let cosA = Math.cos(angle)
-    let sinA = Math.sin(angle)
+    const cosA = Math.cos(angle)
+    const sinA = Math.sin(angle)
 
-    let minX = Infinity,
-        maxX = -Infinity
-    let minY = Infinity,
-        maxY = -Infinity
-    let minZ = Infinity,
-        maxZ = -Infinity
+    let minX = Infinity, maxX = -Infinity
+    let minZ = Infinity, maxZ = -Infinity
+
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx
-        const dy = localCenters[i * 3 + 1] - cy
         const dz = localCenters[i * 3 + 2] - cz
+
         const lx = cosA * dx + sinA * dz
-        const ly = dy
         const lz = -sinA * dx + cosA * dz
+
         if (lx < minX) minX = lx
         if (lx > maxX) maxX = lx
-        if (ly < minY) minY = ly
-        if (ly > maxY) maxY = ly
         if (lz < minZ) minZ = lz
         if (lz > maxZ) maxZ = lz
     }
+
     if (maxZ - minZ > maxX - minX) {
         angle += Math.PI / 2
-        cosA = Math.cos(angle)
-        sinA = Math.sin(angle)
-        minX = Infinity
-        maxX = -Infinity
-        minY = Infinity
-        maxY = -Infinity
-        minZ = Infinity
-        maxZ = -Infinity
-        for (let i = 0; i < count; i++) {
-            const dx = localCenters[i * 3] - cx
-            const dy = localCenters[i * 3 + 1] - cy
-            const dz = localCenters[i * 3 + 2] - cz
-            const lx = cosA * dx + sinA * dz
-            const ly = dy
-            const lz = -sinA * dx + cosA * dz
-            if (lx < minX) minX = lx
-            if (lx > maxX) maxX = lx
-            if (ly < minY) minY = ly
-            if (ly > maxY) maxY = ly
-            if (lz < minZ) minZ = lz
-            if (lz > maxZ) maxZ = lz
-        }
     }
 
+    // normalize
     while (angle > Math.PI) angle -= Math.PI * 2
     while (angle < -Math.PI) angle += Math.PI * 2
 
-    const midX = (minX + maxX) / 2
-    const midY = (minY + maxY) / 2
-    const midZ = (minZ + maxZ) / 2
-
-    const position = {
-        x: cx + cosA * midX - sinA * midZ,
-        y: cy + midY,
-        z: cz + sinA * midX + cosA * midZ,
-    }
-
-    const size = {
-        x: maxX - minX,
-        y: maxY - minY,
-        z: maxZ - minZ,
-    }
-
-    const rotation = {
+    return {
         x: 0,
-        y: calRota ? -(angle * (180 / Math.PI)) : 0,
+        y: angle * (180 / Math.PI),
         z: 0,
     }
-
-    return { rotation, position, size }
 }
+
 let visiblePoints
 function getVisiblePoints(modelEntity) {
     if (visiblePoints) return visiblePoints
