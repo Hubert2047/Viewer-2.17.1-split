@@ -270,23 +270,15 @@ class HotspotManager {
             entityInfo,
         }
     }
-    isSameVec3(v1, v2, precision = 1e-5) {
-        return (
-            Math.abs(v1.x - v2.x) < precision && Math.abs(v1.y - v2.y) < precision && Math.abs(v1.z - v2.z) < precision
-        )
-    }
-    isSameFloat(a, b, eps = 1e-4) {
-        return Math.abs(a - b) < eps
-    }
     isSamePose(hotspot) {
         const controller = this.controllers[this.state.cameraMode]
         if (!controller) return false
         const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
         return (
-            this.isSameVec3(p, modelEntity.localPosition) &&
-            this.isSameVec3(r, modelEntity.localRotation) &&
-            this.isSameVec3(f, controller.focus) &&
-            this.isSameFloat(controller.getActualDistance(d), controller.distance)
+            isSameVec3(p, modelEntity.localPosition) &&
+            isSameQuat(r, modelEntity.localRotation) &&
+            isSameVec3(f, controller.focus) &&
+            isSameFloat(controller.getActualDistance(d), controller.distance)
         )
     }
     editorCancelled() {

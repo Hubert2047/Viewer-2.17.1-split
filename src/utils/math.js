@@ -4,6 +4,16 @@ function degToRad(d) {
 function radToDeg(r) {
     return (r * 180) / Math.PI
 }
+function isSameVec3(v1, v2, precision = 1e-5) {
+    return Math.abs(v1.x - v2.x) < precision && Math.abs(v1.y - v2.y) < precision && Math.abs(v1.z - v2.z) < precision
+}
+function isSameQuat(q1, q2, precision = 1e-5) {
+    const dot = q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w
+    return Math.abs(Math.abs(dot) - 1) < precision
+}
+function isSameFloat(a, b, eps = 1e-4) {
+    return Math.abs(a - b) < eps
+}
 function dimensionWorldToLocal(worldPos, rotation) {
     const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
     const right = q.transformVector(new Vec3(1, 0, 0))
@@ -31,7 +41,8 @@ function getDimensionsRotation(localCenters) {
     const count = localCenters.length / 3
 
     // --- centroid ---
-    let cx = 0, cz = 0
+    let cx = 0,
+        cz = 0
     for (let i = 0; i < count; i++) {
         cx += localCenters[i * 3]
         cz += localCenters[i * 3 + 2]
@@ -40,7 +51,9 @@ function getDimensionsRotation(localCenters) {
     cz /= count
 
     // --- covariance XZ ---
-    let cxx = 0, cxz = 0, czz = 0
+    let cxx = 0,
+        cxz = 0,
+        czz = 0
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx
         const dz = localCenters[i * 3 + 2] - cz
@@ -58,8 +71,10 @@ function getDimensionsRotation(localCenters) {
     const cosA = Math.cos(angle)
     const sinA = Math.sin(angle)
 
-    let minX = Infinity, maxX = -Infinity
-    let minZ = Infinity, maxZ = -Infinity
+    let minX = Infinity,
+        maxX = -Infinity
+    let minZ = Infinity,
+        maxZ = -Infinity
 
     for (let i = 0; i < count; i++) {
         const dx = localCenters[i * 3] - cx

@@ -1,3 +1,4 @@
+console.log('ortery')
 const initPoster = (events) => {
     const poster = document.getElementById('poster')
     events.on('loaded:changed', () => {

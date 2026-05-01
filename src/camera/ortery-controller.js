@@ -30,6 +30,7 @@ class OtherController {
         const { app, events } = global
         this.app = app
         this.bbox = bbox
+        this.camera = global.camera.camera
         this.minDistance = minDistance
         this.events = events
         this.settings = global.settings
@@ -59,359 +60,7 @@ class OtherController {
         this.originPivot = this.bbox.center.clone()
         this.listenEvents()
     }
-    startAutoRotate(direction) {
-        if (this._autoRotating) return
-        this._autoRotating = true
-
-        const totalAngle = Math.PI * 2 // 1 vòng = 360°
-        const speed = 3 // rad/s, tăng/giảm tùy ý
-        let rotated = 0
-
-        const tick = (dt) => {
-            if (!this._autoRotating) return
-
-            const delta = Math.min(speed * dt, totalAngle - rotated)
-            rotated += delta
-
-            // delta theo đơn vị pixel-like vì rotateSpeed sẽ nhân vào
-            // sphericalAxisRot nhân rotateSpeed = 0.04, nên cần chia ra
-            const step = (delta / this.rotateSpeed) * direction
-
-            if (this.isEditingOrientation) {
-                this.sphericalAxisRot(step, 0)
-            } else {
-                this.setHemiPitchYaw(step, 0)
-                this.hemisphericalRot(this.currentYaw, this.currentPitch)
-            }
-            this.syncHierarchyAndRender()
-
-            if (rotated >= totalAngle) {
-                this._autoRotating = false
-                this._autoRotateTick = null
-                return
-            }
-
-            this._autoRotateTick = tick
-        }
-
-        this._autoRotateTick = tick
-    }
     listenEvents() {
-        window.addEventListener('keydown', (event) => {
-            const tag = document.activeElement?.tagName
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-
-            const yawStep = 3 // độ mạnh mỗi bước, tăng/giảm tùy ý
-            const pitchStep = 1 // độ mạnh mỗi bước, tăng/giảm tùy ý
-            switch (event.key) {
-                case 'ArrowLeft':
-                    if (this._autoRotating) {
-                        this._autoRotating = false // bấm lại thì dừng
-                    } else {
-                        this.startAutoRotate(-1)
-                    }
-                    break
-                case 'ArrowRight':
-                    if (this.isEditingOrientation) {
-                        this.sphericalAxisRot(yawStep, 0)
-                    } else {
-                        this.setHemiPitchYaw(yawStep, 0)
-                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                    }
-                    this.syncHierarchyAndRender()
-                    break
-                case 'ArrowUp':
-                    if (this.isEditingOrientation) {
-                        this.sphericalAxisRot(0, -pitchStep)
-                    } else {
-                        this.setHemiPitchYaw(0, -pitchStep)
-                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                    }
-                    this.syncHierarchyAndRender()
-                    break
-                case 'ArrowDown':
-                    if (this.isEditingOrientation) {
-                        this.sphericalAxisRot(0, pitchStep)
-                    } else {
-                        this.setHemiPitchYaw(0, pitchStep)
-                        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                    }
-                    this.syncHierarchyAndRender()
-                    break
-            }
-        })
-        this.events.on('orientation:auto-fit-y', () => {
-            if (!modelEntity) return
-
-            // ===== 1. Lấy points WORLD =====
-            const pointsWorld = getVisiblePointsWorld(modelEntity)
-
-            // ===== 2. PCA → normal =====
-            let normal = computePCAGroundNormal(pointsWorld)
-            normal.normalize()
-
-            const worldDown = new Vec3(0, -1, 0)
-
-            // ===== 3. Fix hướng normal (tránh lật ngược) =====
-            const center = this.bbox.center.clone()
-
-            // lấy 1 điểm bất kỳ trong cloud
-            const p0 = new Vec3(pointsWorld[0], pointsWorld[1], pointsWorld[2])
-            const toCenter = center.clone().sub(p0).normalize()
-
-            // nếu normal hướng vào trong → đảo lại
-            if (normal.dot(toCenter) > 0) {
-                normal.mulScalar(-1)
-            }
-
-            // đảm bảo hướng xuống dưới
-            if (normal.dot(worldDown) < 0) {
-                normal.mulScalar(-1)
-            }
-
-            // nếu đã gần đúng thì bỏ qua
-            if (Math.abs(normal.dot(worldDown) - 1) < 0.999) {
-                // vẫn cho chạy nhẹ nếu cần
-            }
-
-            // ===== 4. Tính rotation correction (WORLD) =====
-            const correction = quatFromTo(normal, worldDown)
-
-            // ===== 5. Lấy WORLD transform hiện tại =====
-         const currentWorldRot = modelEntity.getRotation().clone()
-const currentWorldPos = modelEntity.getPosition().clone()
-
-            // ===== 6. Apply rotation =====
-            const newWorldRot = correction.clone().mul(currentWorldRot).normalize()
-
-            // ===== 7. Rotate quanh pivot (WORLD) =====
-            const pivot = this.centerPivot.clone()
-
-            const offsetWorld = currentWorldPos.clone().sub(pivot)
-
-            const rotatedOffset = this.rotateOffsetByQuat(offsetWorld, correction)
-
-            const newWorldPos = pivot.clone().add(rotatedOffset)
-
-            // ===== 8. Apply về entity =====
-            modelEntity.setPosition(newWorldPos)
-            modelEntity.setRotation(newWorldRot)
-
-            // ===== 9. Sync lại state =====
-            this.baseRotation = modelEntity.localRotation.clone()
-            this.basePosition = modelEntity.localPosition.clone()
-
-            this.currentYaw = 0
-            this.currentPitch = 0
-
-            this.updateModelRotation()
-            this.syncHierarchyAndRender()
-
-            // ===== 10. Save lại =====
-            this.settings.orientation.pose = {
-                rotation: this.baseRotation,
-                position: this.basePosition,
-            }
-
-            // emit euler nếu cần
-            const euler = newWorldRot.getEulerAngles()
-            this.events.fire('orientation:eulersynced', {
-                x: euler.x,
-                y: euler.y,
-                z: euler.z,
-            })
-        })
-        function getVisiblePointsWorld(modelEntity) {
-            // Lấy points từ model trong world space
-            const positions = getVisiblePoints(modelEntity) // Hàm này trả về local positions
-            const worldMatrix = modelEntity.getWorldTransform()
-            const pointsWorld = []
-
-            for (let i = 0; i < positions.length; i += 3) {
-                const localPoint = new Vec3(positions[i], positions[i + 1], positions[i + 2])
-                const worldPoint = new Vec3()
-                worldMatrix.transformPoint(localPoint, worldPoint)
-                pointsWorld.push(worldPoint.x, worldPoint.y, worldPoint.z)
-            }
-            return pointsWorld
-        }
-
-        // PCA tìm normal của mặt phẳng "đáy" — eigenvector nhỏ nhất = normal của mặt phẳng chính
-        function computePCAGroundNormal(positions) {
-            const n = positions.length / 3
-            if (n < 3) return new Vec3(0, -1, 0)
-
-            // Subsample nếu quá nhiều điểm (max 5000)
-            const step = Math.max(1, Math.floor(n / 5000))
-
-            // 1. Tính centroid
-            let cx = 0,
-                cy = 0,
-                cz = 0,
-                count = 0
-            for (let i = 0; i < n; i += step) {
-                cx += positions[i * 3]
-                cy += positions[i * 3 + 1]
-                cz += positions[i * 3 + 2]
-                count++
-            }
-            cx /= count
-            cy /= count
-            cz /= count
-
-            // 2. Tính covariance matrix 3x3
-            let c00 = 0,
-                c01 = 0,
-                c02 = 0,
-                c11 = 0,
-                c12 = 0,
-                c22 = 0
-            for (let i = 0; i < n; i += step) {
-                const x = positions[i * 3] - cx
-                const y = positions[i * 3 + 1] - cy
-                const z = positions[i * 3 + 2] - cz
-                c00 += x * x
-                c01 += x * y
-                c02 += x * z
-                c11 += y * y
-                c12 += y * z
-                c22 += z * z
-            }
-            c00 /= count
-            c01 /= count
-            c02 /= count
-            c11 /= count
-            c12 /= count
-            c22 /= count
-
-            // 3. Power iteration để tìm 3 eigenvectors
-            // Eigenvector nhỏ nhất = normal của mặt phẳng point cloud
-            const cov = [
-                [c00, c01, c02],
-                [c01, c11, c12],
-                [c02, c12, c22],
-            ]
-
-            const [e1, e2, e3] = eigenVectors3x3(cov)
-            // e3 = eigenvector ứng với eigenvalue nhỏ nhất = normal mặt phẳng
-            return new Vec3(e3[0], e3[1], e3[2])
-        }
-
-        function eigenVectors3x3(m) {
-            // Jacobi iteration cho symmetric 3x3
-            let a = [
-                [m[0][0], m[0][1], m[0][2]],
-                [m[1][0], m[1][1], m[1][2]],
-                [m[2][0], m[2][1], m[2][2]],
-            ]
-            let v = [
-                [1, 0, 0],
-                [0, 1, 0],
-                [0, 0, 1],
-            ] // eigenvectors
-
-            for (let iter = 0; iter < 50; iter++) {
-                // Tìm off-diagonal lớn nhất
-                let maxVal = 0,
-                    p = 0,
-                    q = 1
-                for (let i = 0; i < 3; i++) {
-                    for (let j = i + 1; j < 3; j++) {
-                        if (Math.abs(a[i][j]) > maxVal) {
-                            maxVal = Math.abs(a[i][j])
-                            p = i
-                            q = j
-                        }
-                    }
-                }
-                if (maxVal < 1e-10) break
-
-                // Jacobi rotation
-                const theta = (a[q][q] - a[p][p]) / (2 * a[p][q])
-                const t = Math.sign(theta) / (Math.abs(theta) + Math.sqrt(1 + theta * theta))
-                const c = 1 / Math.sqrt(1 + t * t)
-                const s = t * c
-
-                // Update a
-                const app = a[p][p],
-                    aqq = a[q][q],
-                    apq = a[p][q]
-                a[p][p] = c * c * app - 2 * s * c * apq + s * s * aqq
-                a[q][q] = s * s * app + 2 * s * c * apq + c * c * aqq
-                a[p][q] = 0
-                a[q][p] = 0
-                for (let r = 0; r < 3; r++) {
-                    if (r !== p && r !== q) {
-                        const arp = a[r][p],
-                            arq = a[r][q]
-                        a[r][p] = c * arp - s * arq
-                        a[p][r] = a[r][p]
-                        a[r][q] = s * arp + c * arq
-                        a[q][r] = a[r][q]
-                    }
-                    // Update eigenvectors
-                    const vrp = v[r][p],
-                        vrq = v[r][q]
-                    v[r][p] = c * vrp - s * vrq
-                    v[r][q] = s * vrp + c * vrq
-                }
-            }
-
-            // Eigenvalues = diagonal của a, sort theo thứ tự tăng dần
-            const pairs = [0, 1, 2].map((i) => ({ val: a[i][i], vec: [v[0][i], v[1][i], v[2][i]] }))
-            pairs.sort((a, b) => a.val - b.val)
-            return pairs.map((p) => p.vec) // [smallest, medium, largest]
-        }
-
-        // Pitch rotate: thay đổi pitch thêm stepDeg rồi tự xoay 1 vòng 360° theo yaw
-        this.events.on('orientation:pitch-rotate', ({ stepDeg }) => {
-            if (!modelEntity) return
-            if (this._pitchRotating) return
-
-            const stepRad = (stepDeg * Math.PI) / 180
-
-            // apply pitch trước (dùng sphericalAxisRot như khi editing, step=0 nếu chỉ spin)
-            if (stepRad !== 0) {
-                const pitchStep = stepRad / this.rotateSpeed
-                this.sphericalAxisRot(0, pitchStep)
-                this.syncHierarchyAndRender()
-            }
-
-            // xoay 1 vòng 360° — copy đúng pattern startAutoRotate
-            this._pitchRotating = true
-            const totalAngle = Math.PI * 2
-            const speed = 5 // rad/s, giống startAutoRotate
-            let rotated = 0
-
-            const tick = (dt) => {
-                if (!this._pitchRotating) return
-
-                const delta = Math.min(speed * dt, totalAngle - rotated)
-                rotated += delta
-
-                // convert rad → pixel-like unit giống startAutoRotate
-                const step = (delta / this.rotateSpeed) * 1 // direction = 1
-
-                if (this.isEditingOrientation) {
-                    this.sphericalAxisRot(step, 0)
-                } else {
-                    this.setHemiPitchYaw(step, 0)
-                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
-                }
-                this.syncHierarchyAndRender()
-
-                if (rotated >= totalAngle) {
-                    this._pitchRotating = false
-                    this._pitchRotateTick = null
-                    this.events.fire('ortery:rotate')
-                    return
-                }
-                this._pitchRotateTick = tick
-            }
-
-            this._pitchRotateTick = tick
-        })
-
         this.events.on('hotspot:editing', (isEdit) => {
             this.isEditHotspot = isEdit
         })
@@ -439,6 +88,30 @@ const currentWorldPos = modelEntity.getPosition().clone()
             this.reset()
         })
 
+        this.events.on('orientation:spin', ({ speed }) => this.spin360(speed))
+        this.events.on('orientation:yaw-step', ({ deg }) => {
+            if (!this.isEditingOrientation) return
+            const rad = degToRad(deg)
+            const step = rad / this.rotateSpeed
+            this.sphericalAxisRot(step, 0)
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+        })
+        this.events.on('orientation:pitch-step', ({ deg }) => {
+            if (!this.isEditingOrientation) return
+            const rad = degToRad(deg)
+            const step = rad / this.rotateSpeed
+            this.sphericalAxisRot(0, step)
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+        })
+        this.events.on('orientation:roll', ({ deg }) => {
+            if (!this.isEditingOrientation) return
+            const rad = degToRad(deg)
+            this.axisRoll(rad)
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+        })
         this.events.on('orientation:groundplane', (points) => {
             this.applyGroundPlaneOrientation(points)
         })
@@ -446,7 +119,7 @@ const currentWorldPos = modelEntity.getPosition().clone()
             this.applyManualOrientation()
         })
         this.events.on('orientation:switch-method', (currentMethod) => {
-            this.startEditModelOrientation(currentMethod)
+            this.editOrientation(currentMethod)
         })
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
@@ -657,7 +330,37 @@ const currentWorldPos = modelEntity.getPosition().clone()
         const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
         return centerPivot.clone().add(baseOffset)
     }
-    initView(isShowToast = true, defaultDistance = false) {
+    initView(isShowToast = true, defaultDistance = false, translateMinPitch = false) {
+        if (translateMinPitch) {
+            const currentPosition = modelEntity.localPosition.clone()
+            const currentRotation = modelEntity.localRotation.clone()
+            this.hemisphericalRot(this.currentYaw, this.minPitch)
+            const targetPosition = modelEntity.localPosition.clone()
+            const targetRotation = modelEntity.localRotation.clone()
+            const startPose = {
+                focus: this.focus.clone(),
+                position: currentPosition,
+                rotation: currentRotation,
+                distance: this.distance,
+            }
+            const targetPose = {
+                focus: this.centerPivot.clone(),
+                position: targetPosition,
+                rotation: targetRotation,
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.minPitch,
+            }
+            this.setupTransition({
+                targetPose,
+                startPose,
+                lerpDuration: NORMAL_FADE_TIME,
+                onTransitionFinished: () => {
+                    this.initView(isShowToast, defaultDistance, false)
+                },
+            })
+            return
+        }
         const pose = this.getEntityInfo()
         if (defaultDistance) {
             this.settings.initview = { pose: { ...pose, distanceScale: 1 } }
@@ -787,30 +490,67 @@ const currentWorldPos = modelEntity.getPosition().clone()
         this.inertiaVelX = 0
         this.inertiaVelY = 0
     }
-    startEditModelOrientation(currentMethod) {
-        if (currentMethod === 'ground') {
-            this.model = 'spherical'
-        } else {
-            this.isEditingOrientation = true
+    editOrientation(currentMethod) {
+        this.isEditingOrientation = true
+        if (currentMethod === 'manual') {
+            const startPose = {
+                position: modelEntity.localPosition.clone(),
+                rotation: modelEntity.localRotation.clone(),
+                focus: this.focus.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            }
+            const targetYaw = 0
+            const targetPitch = 0
+            const combinedQuat = this.buildCombinedQuat(targetYaw, targetPitch)
+            const offset = this.basePosition.clone().sub(this.centerPivot)
+            const rotatedOffset = this.rotateOffsetByQuat(offset, combinedQuat)
+            const targetPosition = this.centerPivot.clone().add(rotatedOffset)
+            const targetRotation = combinedQuat.mul(this.baseRotation).normalize()
+            const targetPose = {
+                position: targetPosition,
+                rotation: targetRotation,
+                focus: this.centerPivot.clone(),
+                distance: this.distance,
+                yaw: targetYaw,
+                pitch: targetPitch,
+            }
+            if (
+                isSameVec3(startPose.position, targetPose.position) &&
+                isSameQuat(startPose.rotation, targetPose.rotation)
+            ) {
+                this.events.fire('orientation:update-horizon', { y: this.getModelBottomScreenY() })
+                return
+            }
+            this.setupTransition({
+                startPose: startPose,
+                targetPose: targetPose,
+                lerpDuration: NORMAL_FADE_TIME,
+                onTransitionFinished: () => {
+                    this.events.fire('orientation:update-horizon', { y: this.getModelBottomScreenY() })
+                },
+            })
         }
         this.updateModelRotation()
     }
     cancelOrientation() {
         this.updateModelRotation()
         this.isEditingOrientation = false
-        this.model = this.originModel
         this.reset()
     }
     setCameraPitchOffset(value) {
         this.minPitch = this.pitchRad - value
         this.maxPitch = this.pitchRad - value + Math.PI / 2
-        this.currentPitch = this.minPitch
+        this.currentPitch -= value - (this.lastPitchOffset ?? 0)
+        this.lastPitchOffset = value
         this.hemisphericalRot(this.currentYaw, this.currentPitch)
         this.syncHierarchyAndRender()
     }
 
     saveCameraPitchOffset(value) {
         this.settings.orientation.pitchOffset = value
+        this.initView(false, true, true)
     }
     cancelCameraPitchOffset() {
         const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
@@ -820,35 +560,53 @@ const currentWorldPos = modelEntity.getPosition().clone()
         this.hemisphericalRot(this.currentYaw, this.currentPitch)
         this.syncHierarchyAndRender()
     }
-    applyManualOrientation() {
-        const currentPosition = modelEntity.localPosition.clone()
-        const currentRotation = modelEntity.localRotation.clone()
-        const pivot = this.centerPivot.clone()
-        this.currentYaw = 0
-        this.currentPitch = 0
-        this.baseRotation = currentRotation.clone()
-        this.basePosition = currentPosition.clone()
-        this.centerPivot = pivot
+    spin360(speed) {
+        if (!modelEntity) return
+        if (this._autoRotating || this._pitchRotating) return
+        this.updateModelRotation()
+        this._autoRotating = true
+        const totalAngle = Math.PI * 2
+        const radPerSec = speed * 0.5
+        let rotated = 0
 
+        const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
+        const spinSign = forward.x * 0 + forward.y * 0 + forward.z * 1 >= 0 ? 1 : -1
+
+        const tick = (dt) => {
+            if (!this._autoRotating) return
+            const delta = Math.min(radPerSec * dt, totalAngle - rotated)
+            rotated += delta
+            const step = (delta / this.rotateSpeed) * spinSign
+            this.sphericalAxisRot(step, 0)
+            this.syncHierarchyAndRender()
+            if (rotated >= totalAngle) {
+                this._autoRotating = false
+                this._autoRotateTick = null
+                return
+            }
+            this._autoRotateTick = tick
+        }
+        this._autoRotateTick = tick
+    }
+    applyManualOrientation() {
+        this.baseRotation = modelEntity.localRotation.clone()
+        this.basePosition = modelEntity.localPosition.clone()
+        this.originEntityRotation = this.baseRotation
+        this.originEntityPos = this.basePosition
+        this.centerPivot = this.centerPivot.clone()
+        const euler = this.baseRotation.getEulerAngles()
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
         this.settings.orientation.pose = {
             rotation: this.baseRotation,
             position: this.basePosition,
         }
-        // this.minPitch = 0
-        // this.maxPitch = Math.PI / 2
-        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        this.updateModelRotation()
-        this.model = this.originModel
         this.isEditingOrientation = false
-        this.syncHierarchyAndRender()
+        this.initView(false, true, true)
     }
     applyGroundPlaneOrientation(points) {
         const localNormal = fitPlaneNormal(points)
-        if (localNormal.y > 0) localNormal.mulScalar(-1)
-
-        const originRot = this.originEntityRotation ? this.originEntityRotation.clone() : new Quat()
         const normalInWorld = new Vec3()
-        originRot.transformVector(localNormal, normalInWorld)
+        this.initialModelRotation.transformVector(localNormal, normalInWorld)
         normalInWorld.normalize()
 
         const pickCentroid = new Vec3(
@@ -857,8 +615,7 @@ const currentWorldPos = modelEntity.getPosition().clone()
             (points[0].z + points[1].z + points[2].z) / 3,
         )
         const pickCentroidWorld = new Vec3()
-        originRot.transformVector(pickCentroid, pickCentroidWorld)
-
+        this.initialModelRotation.transformVector(pickCentroid, pickCentroidWorld)
         const modelCentroid = this.bbox.center.clone()
         const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
         if (normalInWorld.dot(toModelCenter) > 0) {
@@ -867,10 +624,7 @@ const currentWorldPos = modelEntity.getPosition().clone()
 
         const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
         const newBaseRotation = new Quat()
-        newBaseRotation.mul2(correctionQuat, originRot)
-
-        this.currentYaw = 0
-        this.currentPitch = 0
+        newBaseRotation.mul2(correctionQuat, this.initialModelRotation)
 
         const currentPosition = modelEntity.localPosition.clone()
 
@@ -885,43 +639,17 @@ const currentWorldPos = modelEntity.getPosition().clone()
         const rotatedOffsetToPivot = this.rotateOffsetByQuat(offsetToPivot, deltaQuat)
         const newPosition = pivot.clone().sub(rotatedOffsetToPivot)
 
-        const newFocus = pivot.clone()
-
         this.baseRotation = newBaseRotation
-        this.basePosition = newPosition.clone()
+        this.basePosition = newPosition
+        this.originEntityRotation = this.baseRotation
+        this.originEntityPos = this.basePosition
         this.centerPivot = pivot
-        const startPose = {
-            focus: this.focus.clone(),
-            position: currentPosition,
-            rotation: currentRotation,
-            distance: this.distance,
-        }
-        const targetPose = {
-            focus: newFocus,
-            position: newPosition,
-            rotation: newBaseRotation,
-            distance: this.distance,
-            yaw: 0,
-            pitch: 0,
-        }
+
         this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
-        this.model = this.originModel
         this.isEditingOrientation = false
-        const r = this.baseRotation
-        const q = new Quat(r.x, r.y, r.z, r.w)
-        const euler = q.getEulerAngles()
-        this.updateModelRotation()
+        const euler = newBaseRotation.getEulerAngles()
         this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-        this.setupTransition({
-            targetPose,
-            startPose,
-            lerpDuration: NORMAL_FADE_TIME,
-            onTransitionFinished: () => {
-                this.originEntityRotation = modelEntity.localRotation.clone()
-                this.originEntityPos = modelEntity.localPosition.clone()
-                this.initView(false, true)
-            },
-        })
+        this.initView(false, true, true)
     }
     lerp(a, b, t) {
         return a + (b - a) * t
@@ -946,17 +674,15 @@ const currentWorldPos = modelEntity.getPosition().clone()
             this.distance = this.clampDistance(this.targetPose.distance)
             modelEntity.localPosition.copy(this.targetPose.position)
             modelEntity.localRotation.copy(this.targetPose.rotation)
-
+            this.currentYaw = this.targetPose.yaw
+            this.currentPitch = this.targetPose.pitch
+            this.updateModelRotation()
             if (this.onTransitionFinished) {
                 this.onTransitionFinished()
                 this.onTransitionFinished = null
             }
-            this.updateModelRotation()
-            this.currentYaw = this.targetPose.yaw
-            this.currentPitch = this.targetPose.pitch
             this.targetPose = null
             this.startPose = null
-            this.events.fire('ortery:rotate')
         }
         this.syncHierarchyAndRender()
     }
@@ -1170,16 +896,23 @@ const currentWorldPos = modelEntity.getPosition().clone()
         pose.position = newPos
         pose.distance = this.distance
     }
-    setupGroundAxis() {
-        if (this._groundAxisActive) return
-        this._groundAxisActive = true
+    axisRoll(rad) {
+        const forwardCam = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
+        const quatRoll = new Quat3().setFromAxisAngle(forwardCam, rad)
 
-        // lưu x,z của bbox center lúc bắt đầu edit làm mốc cố định
-        const worldMatrix = modelEntity.getWorldTransform()
-        const bboxCenterWorld = new Vec3()
-        worldMatrix.transformPoint(this.bbox.center, bboxCenterWorld)
-        this._groundAxisOrigin = { x: bboxCenterWorld.x, z: bboxCenterWorld.z }
+        v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
+        v$2.transformQuat(quatRoll)
+        modelEntity.localPosition.copy(this.centerPivot).add(v$2)
 
-        this.app.renderNextFrame = true
+        const result = quatRoll.mul(this.modelRotation).normalize()
+        modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
+        this.modelRotation.copy(modelEntity.localRotation)
+    }
+    getModelBottomScreenY() {
+        const bottomWorld = this.bbox.center.clone()
+        bottomWorld.y -= this.bbox.halfExtents.y
+        const screenPos = new Vec3()
+        this.camera.worldToScreen(bottomWorld, screenPos)
+        return screenPos.y
     }
 }

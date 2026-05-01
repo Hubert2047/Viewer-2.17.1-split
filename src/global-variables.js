@@ -8,7 +8,7 @@ const isMobile =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0
-const LARGE_AUDIO_THRESHOLD_MB  = 2
+const LARGE_AUDIO_THRESHOLD_MB = 2
 const OPACITY_THRESHOLD = 0.1
 const SVG_ICONS = {
     resetCamera: {
@@ -82,4 +82,36 @@ const SVG_ICONS = {
         },
         d: ['M12 3L20 7L12 11L4 7L12 3Z', 'M4 7V17L12 21V11', 'M20 7V17L12 21'],
     },
+}
+const ORIENT_ICONS = {
+    arrowUp: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
+    arrowDown: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+    rollCCW: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+     <g transform="translate(0,4)">
+  <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+  <polyline points="4 6 4 12 10 12"/>
+  </g>
+</svg>`,
+    rollCW: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(0,4)">
+    <path d="M20 12c0-4.4-3.6-8-8-8s-8 3.6-8 8"/>
+    <polyline points="20 6 20 12 14 12"/>
+  </g>
+</svg>`,
+    spin: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+  <polygon points="6 4 20 12 6 20"></polygon>
+</svg>`,
+    crosshair: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`,
+    x: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    yawCCW: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 12a8 8 0 1 0-2.3 5.7"/>
+  <polyline points="20 4 20 10 14 10"/>
+</svg>`,
+    yawCW: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 12a8 8 0 1 1 2.3 5.7"/>
+  <polyline points="4 4 4 10 10 10"/>
+</svg>`,
 }

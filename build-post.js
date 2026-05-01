@@ -29,10 +29,10 @@ function copyDir(src, dest) {
 }
 
 const files = [
-    'src/global-variables.js',
     'src/libs/engine-1.js',
     'src/libs/engine-2.js',
     'src/libs/engine-3.js',
+    'src/global-variables.js',
     'src/default-settings.js',
     'src/utils/math.js',
     'src/libs/engine-4.js',
@@ -45,6 +45,9 @@ const files = [
     'src/components/loading.js',
     'src/components/ground-plane-picker.js',
     'src/components/ui/color-swatch.js',
+    'src/components/ui/icon-btn.js',
+    'src/components/ui/divider.js',
+    'src/components/ui/section-row.js',
     'src/components/ui/tab.js',
     'src/components/ui/color-alpha.js',
     'src/components/ui/color-picker.js',
@@ -57,6 +60,9 @@ const files = [
     'src/components/hotspots/hotspot.js',
     'src/components/hotspots/hotspot-manager.js',
     'src/components/hotspots/hotspot-editor-ui.js',
+    'src/components/orientation/manual.js',
+    'src/components/orientation/ground.js',
+    'src/components/orientation/orientation.js',
     'src/components/download-helper.js',
     'src/components/sidebar.js',
     'src/main.js',
