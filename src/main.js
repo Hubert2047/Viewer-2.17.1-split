@@ -101,6 +101,15 @@ const initUI = (global) => {
         }
     }
     events.on('inputEvent:toggle-help', () => toggleHelp())
+    events.on('inputEvent:toggle-measure', () => {
+        if (!global.measureTool) {
+            global.measureTool = new MeasureTool(global.app, global.camera)
+            global.measureTool._buildGizmos()
+        }
+        const tool = global.measureTool
+        tool.activate()
+        if (dom.measure) dom.measure.classList.toggle('active', tool.active)
+    })
     events.on('inputEvent:show-dimensions', () => {
         global.bbox.draw(global.settings.dimensions)
     })

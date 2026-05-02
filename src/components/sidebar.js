@@ -77,7 +77,6 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
 
     return section
 }
-
 function renderPivot(group, global, editGroup) {
     const { events, settings } = global
     editGroup.register('pivot', {
@@ -429,6 +428,10 @@ function dimensionSection(el, global) {
             background: { color: 'white', alpha: 0.8 },
             foregroundColor: '#f95f4d',
             realSize: { x: 0, y: 0, z: 0 },
+            measurement: {
+                enabled: true,
+                color: '#f95f4d',
+            },
             unit: 'cm',
         }
         global.loading.hide()
@@ -507,10 +510,56 @@ function dimensionSection(el, global) {
     )
     backgroundRow.appendChild(labelEl)
     backgroundRow.appendChild(backgroundColor)
+    // ── Measurement toggle ──
+    const measureToggleRow = document.createElement('div')
+    measureToggleRow.classList.add('section-group-row')
+
+    const measureLabel = document.createElement('span')
+    measureLabel.style.cssText = 'min-width:160px'
+    measureLabel.textContent = 'Measurement'
+
+    const measureToggleEl = document.createElement('div')
+    measureToggleEl.classList.add('toggle')
+    measureToggleEl.classList.add('disabled')
+    if (currentDimensions?.measurement?.enabled) measureToggleEl.classList.add('active')
+
+    const measureToggleKnob = document.createElement('div')
+    measureToggleKnob.classList.add('toggle-knob')
+
+    measureToggleEl.appendChild(measureToggleKnob)
+    measureToggleRow.appendChild(measureLabel)
+    measureToggleRow.appendChild(measureToggleEl)
+    // ── Measurement color row ──
+    const {
+        setDisabled: setMeasurementColorDisabled,
+        group: measurementColor,
+        input: measurementColorInput,
+    } = createColorPicker('Measurement Color', currentDimensions?.foregroundColor || 'f95f4d', (color) => {
+        currentDimensions = { ...currentDimensions, measurement: { ...currentDimensions.measurement, color } }
+    })
+
+    // ── Toggle logic ──
+    const setMeasureToggle = (enabled) => {
+        measureToggleEl.classList.toggle('active', enabled)
+        measurementColor.style.display = enabled ? '' : 'none'
+    }
+
+    measureToggleEl.addEventListener('click', () => {
+        if (measureToggleEl.classList.contains('disabled')) return
+        const enabled = !measureToggleEl.classList.contains('active')
+        setMeasureToggle(enabled)
+        currentDimensions = {
+            ...currentDimensions,
+            measurement: { ...currentDimensions?.measurement, enabled },
+        }
+        events.fire('dimensions:change', currentDimensions)
+    })
 
     displayGroup.appendChild(boxColorGroup)
     displayGroup.appendChild(textColor)
     displayGroup.appendChild(backgroundRow)
+    displayGroup.appendChild(measureToggleRow)
+    displayGroup.appendChild(measurementColor)
 
     // ── Group 1: Box Transform ──
     const boxGroup = document.createElement('div')
@@ -733,6 +782,8 @@ function dimensionSection(el, global) {
         realUnitSelect.value = dim.unit
         backgroundColor.setColor(dim.background.color)
         backgroundColor.setAlpha(dim.background.alpha)
+        setMeasureToggle(dim.measurement?.enabled ?? false)
+        measurementColorInput.value = dim.measurement?.color ?? '#f95f4d'
     }
 
     const setEditable = (on) => {
@@ -745,6 +796,8 @@ function dimensionSection(el, global) {
         setTextColorDisabled(!on)
         backgroundColor.setDisabled(!on)
         autoFitBtn.disabled = !on
+        measureToggleEl.classList.toggle('disabled', !on)
+        setMeasurementColorDisabled(!on)
     }
 
     // ── Buttons ──

@@ -1,40 +1,40 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
     <head>
         <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
+        <meta charset="UTF-8">
         <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=6" />
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <meta http-equiv="Cache-Control"
+            content="no-cache, no-store, must-revalidate">
+        <base href>
+        <link rel="icon" href="data:,">
+        <link rel="stylesheet" href="viewer.css?v=7">
         <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
         <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
+        }
+    </script>
     </head>
     <body>
         <canvas id="application-canvas"></canvas>
@@ -49,16 +49,9 @@
         </div>
     </body>
     <script>
-        window.sse = {
-            settings: {
-                v: 6,
-                contentUrl: 'models/saw2.ply',
-                // contentUrl: 'canon.ply',
-                background: { color: '#000000' },
-                model: 'hemispherical',
-                setupStep: 1,
-            },
-        }
+        window.sse = {"settings":{"v":7,
+        "contentUrl":"test.ply",
+        "model":"hemispherical","setupStep":3}}
     </script>
-    <script src="./viewer.js?v=6"></script>
+    <script src="./viewer.js?v=7"></script>
 </html>

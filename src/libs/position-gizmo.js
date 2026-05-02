@@ -122,7 +122,7 @@ class PointGizmo {
     }
 
     _worldAxisDir(axis) {
-        const dirs = { x: new Vec3(1, 0, 0), y: new Vec3(0, 1, 0), z: new Vec3(0, 0, 1) }
+        const dirs = { x: new Vec3(-1, 0, 0), y: new Vec3(0, -1, 0), z: new Vec3(0, 0, -1) }
         const dir = dirs[axis]
         this._modelEntity.getRotation().transformVector(dir, dir)
         return dir.normalize()
