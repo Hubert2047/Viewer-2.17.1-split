@@ -366,10 +366,12 @@ function createButton(id, iconKey) {
 function createControlBotGroup(settings, tooltip, events, dom) {
     const group = document.createElement('div')
     group.className = 'buttonGroup'
-    // buttons: [id, iconKey,tooltip, show, event, toggle]
+    // buttons: [id, iconKey,label,create, show, event, toggle]
     const hasDimension = !!settings.dimensions
+    const hasMeasurement = hasDimension && settings.measurement?.enabled
     const buttons = [
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
+        ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
             'showDimension',
@@ -379,7 +381,6 @@ function createControlBotGroup(settings, tooltip, events, dom) {
             'inputEvent:show-dimensions',
             'hideDimension',
         ],
-        ['measure', 'measure', 'Measurement', true, true, 'inputEvent:toggle-measure'],
         [
             'hideDimension',
             'hideDimension',
@@ -606,7 +607,6 @@ function checkPerformance(app, global) {
         }
     })
 }
-
 function transparentColor(color, alpha = 0.5) {
     if (!color) return ''
     const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)

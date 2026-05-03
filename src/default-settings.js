@@ -11,9 +11,10 @@ const defaultSettings = Object.freeze({
     pivot: Object.freeze({ position: null }),
     initview: Object.freeze({ pose: null }),
     inertia: true,
-    orientation:  Object.freeze({ pose: null }),
+    orientation: Object.freeze({ pose: null }),
     hotspots: Object.freeze([]),
     dimensions: null,
+    measurement: null,
     tonemapping: 'none',
     setupStep: 1,
 })

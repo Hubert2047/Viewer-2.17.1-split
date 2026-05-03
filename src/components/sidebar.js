@@ -428,10 +428,6 @@ function dimensionSection(el, global) {
             background: { color: 'white', alpha: 0.8 },
             foregroundColor: '#f95f4d',
             realSize: { x: 0, y: 0, z: 0 },
-            measurement: {
-                enabled: true,
-                color: '#f95f4d',
-            },
             unit: 'cm',
         }
         global.loading.hide()
@@ -441,7 +437,7 @@ function dimensionSection(el, global) {
         prevRotation = { ...currentDimensions.rotation }
         setDimConfigured(true)
         setValues(currentDimensions)
-        events.fire('dimensions:add', currentDimensions)
+        events.fire('dimensions:configured', currentDimensions)
     }
 
     events.on('gizmo-rotation:drag-end', async () => {
@@ -510,56 +506,10 @@ function dimensionSection(el, global) {
     )
     backgroundRow.appendChild(labelEl)
     backgroundRow.appendChild(backgroundColor)
-    // ── Measurement toggle ──
-    const measureToggleRow = document.createElement('div')
-    measureToggleRow.classList.add('section-group-row')
-
-    const measureLabel = document.createElement('span')
-    measureLabel.style.cssText = 'min-width:160px'
-    measureLabel.textContent = 'Measurement'
-
-    const measureToggleEl = document.createElement('div')
-    measureToggleEl.classList.add('toggle')
-    measureToggleEl.classList.add('disabled')
-    if (currentDimensions?.measurement?.enabled) measureToggleEl.classList.add('active')
-
-    const measureToggleKnob = document.createElement('div')
-    measureToggleKnob.classList.add('toggle-knob')
-
-    measureToggleEl.appendChild(measureToggleKnob)
-    measureToggleRow.appendChild(measureLabel)
-    measureToggleRow.appendChild(measureToggleEl)
-    // ── Measurement color row ──
-    const {
-        setDisabled: setMeasurementColorDisabled,
-        group: measurementColor,
-        input: measurementColorInput,
-    } = createColorPicker('Measurement Color', currentDimensions?.foregroundColor || 'f95f4d', (color) => {
-        currentDimensions = { ...currentDimensions, measurement: { ...currentDimensions.measurement, color } }
-    })
-
-    // ── Toggle logic ──
-    const setMeasureToggle = (enabled) => {
-        measureToggleEl.classList.toggle('active', enabled)
-        measurementColor.style.display = enabled ? '' : 'none'
-    }
-
-    measureToggleEl.addEventListener('click', () => {
-        if (measureToggleEl.classList.contains('disabled')) return
-        const enabled = !measureToggleEl.classList.contains('active')
-        setMeasureToggle(enabled)
-        currentDimensions = {
-            ...currentDimensions,
-            measurement: { ...currentDimensions?.measurement, enabled },
-        }
-        events.fire('dimensions:change', currentDimensions)
-    })
 
     displayGroup.appendChild(boxColorGroup)
     displayGroup.appendChild(textColor)
     displayGroup.appendChild(backgroundRow)
-    displayGroup.appendChild(measureToggleRow)
-    displayGroup.appendChild(measurementColor)
 
     // ── Group 1: Box Transform ──
     const boxGroup = document.createElement('div')
@@ -737,7 +687,7 @@ function dimensionSection(el, global) {
         const opt = document.createElement('option')
         opt.value = u
         opt.textContent = u
-        if (u === (settings.realSizeUnit ?? 'cm')) opt.selected = true
+        if (u === (settings.unit ?? 'cm')) opt.selected = true
         realUnitSelect.appendChild(opt)
     })
     const setRealUnitDisabled = (val) => {
@@ -782,8 +732,6 @@ function dimensionSection(el, global) {
         realUnitSelect.value = dim.unit
         backgroundColor.setColor(dim.background.color)
         backgroundColor.setAlpha(dim.background.alpha)
-        setMeasureToggle(dim.measurement?.enabled ?? false)
-        measurementColorInput.value = dim.measurement?.color ?? '#f95f4d'
     }
 
     const setEditable = (on) => {
@@ -796,8 +744,6 @@ function dimensionSection(el, global) {
         setTextColorDisabled(!on)
         backgroundColor.setDisabled(!on)
         autoFitBtn.disabled = !on
-        measureToggleEl.classList.toggle('disabled', !on)
-        setMeasurementColorDisabled(!on)
     }
 
     // ── Buttons ──
@@ -861,7 +807,7 @@ function dimensionSection(el, global) {
                 editDimension = null
                 currentDimensions = null
                 setDimConfigured(false)
-                events.fire('dimensions:delete')
+                events.fire('dimensions:configured', null)
             }
 
             btnRow.appendChild(btnEdit)
@@ -889,6 +835,86 @@ function dimensionSection(el, global) {
     setEditable(false)
     setDimConfigured(!!settings.dimensions)
     if (settings.dimensions) setValues(settings.dimensions)
+}
+function measurementSection(el, global) {
+    if (!global.settings.measurement) {
+        global.settings.measurement = {
+            enabled: false,
+            lineColor: '#f95f4d',
+            textColor: '#fff',
+            background: {
+                color: '#000000A6',
+                alpha: 0.8,
+            },
+        }
+    }
+    const {
+        settings: { measurement },
+        events,
+    } = global
+    const measurementGroup = document.createElement('div')
+    measurementGroup.classList.add('section-group')
+    // ── Measurement toggle ──
+    const measureToggleRow = document.createElement('div')
+    measureToggleRow.classList.add('section-group-row')
+
+    const measureLabel = document.createElement('span')
+    measureLabel.style.cssText = 'min-width:160px'
+    measureLabel.textContent = 'Enabled'
+
+    const measureToggleEl = document.createElement('div')
+    measureToggleEl.classList.add('toggle')
+    if (measurement?.enabled) measureToggleEl.classList.add('active')
+
+    const measureToggleKnob = document.createElement('div')
+    measureToggleKnob.classList.add('toggle-knob')
+
+    measureToggleEl.appendChild(measureToggleKnob)
+    measureToggleRow.appendChild(measureLabel)
+    measureToggleRow.appendChild(measureToggleEl)
+    // ── Measurement color row ──
+    const { group: lineColor } = createColorPicker('Line Color', measurement.lineColor, (color) => {
+        measurement.lineColor = color
+        if (global.measureTool) global.measureTool.setConfig(measurement)
+    })
+    const { group: textColor } = createColorPicker('Text Color', measurement.textColor, (color) => {
+        measurement.textColor = color
+        if (global.measureTool) global.measureTool.setConfig(measurement)
+    })
+    const backgroundRow = document.createElement('div')
+    backgroundRow.classList.add('section-group-row')
+    const labelEl = document.createElement('span')
+    labelEl.style.cssText = 'min-width:160px'
+    labelEl.textContent = 'Text Background'
+    const backgroundColor = makeColorAlpha(
+        measurement.background.color,
+        measurement.background.alpha,
+        (color) => {
+            measurement.background.color = color
+            if (global.measureTool) global.measureTool.setConfig(measurement)
+        },
+        (alpha) => {
+            measurement.background.alpha = alpha
+            if (global.measureTool) global.measureTool.setConfig(measurement)
+        },
+    )
+    backgroundRow.appendChild(labelEl)
+    backgroundRow.appendChild(backgroundColor)
+
+    measureToggleEl.addEventListener('click', () => {
+        if (measureToggleEl.classList.contains('disabled')) return
+        const enabled = !measureToggleEl.classList.contains('active')
+        measureToggleEl.classList.toggle('active', enabled)
+        measurement.enabled = enabled
+        events.fire('ui:re-render-control-wrap')
+        if (!enabled && global.measureTool) global.measureTool.deactivate()
+    })
+    measurementGroup.appendChild(measureToggleRow)
+    measurementGroup.appendChild(lineColor)
+    measurementGroup.appendChild(textColor)
+    measurementGroup.appendChild(backgroundRow)
+
+    el.appendChild(measurementGroup)
 }
 function exportSection(el, global) {
     const hint = document.createElement('p')
@@ -1113,6 +1139,29 @@ function createSidebar(global, dom) {
                 events,
             }),
         )
+        const measurementContainer = document.createElement('div')
+        contentArea.appendChild(measurementContainer)
+
+        const renderMeasurementSection = () => {
+            measurementContainer.innerHTML = ''
+            if (global.settings.dimensions) {
+                measurementContainer.appendChild(
+                    createSection({
+                        id: 'measurement',
+                        title: 'Measurement',
+                        classname: 'measurement-section',
+                        body: (el) => measurementSection(el, global),
+                        events,
+                    }),
+                )
+            }
+        }
+
+        if (global.settings.measurement) renderMeasurementSection()
+        events.on('dimensions:configured', () => {
+            renderMeasurementSection()
+        })
+
         contentArea.appendChild(
             createSection({
                 id: 'export',

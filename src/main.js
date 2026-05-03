@@ -103,7 +103,7 @@ const initUI = (global) => {
     events.on('inputEvent:toggle-help', () => toggleHelp())
     events.on('inputEvent:toggle-measure', () => {
         if (!global.measureTool) {
-            global.measureTool = new MeasureTool(global.app, global.camera)
+            global.measureTool = new MeasureTool(global)
             global.measureTool._buildGizmos()
         }
         const tool = global.measureTool
@@ -3030,12 +3030,8 @@ class Viewer {
                 if (enable) pivotGizmo.enable()
                 else pivotGizmo.disable()
             })
-            // events.on('gizmo:rotation-enable', (enable) => {
-            //     if (enable) rotationGizmo.enable(new EntityRotatable(modelEntity, events))
-            //     else rotationGizmo.disable()
-            // })
             // Redraw bbox theo events
-            events.on('dimensions:add', (dim) => {
+            events.on('dimensions:configured', (dim) => {
                 global.bbox.draw(dim)
                 events.fire('ui:re-render-control-wrap')
                 this.dom.showDimension.classList.add('hidden')
@@ -3071,7 +3067,9 @@ class Viewer {
                 global.bbox.hide()
                 events.fire('ui:re-render-control-wrap')
             }
-            events.on('dimensions:delete', () => hideDimensions())
+            events.on('dimensions:configured', (dim) => {
+                if (dim === null) hideDimensions()
+            })
             events.on('setup-reset', () => hideDimensions())
 
             events.on('viewer:lock-zoom-in', (value) => {
