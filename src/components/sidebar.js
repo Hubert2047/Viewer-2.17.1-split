@@ -804,6 +804,7 @@ function dimensionSection(el, global) {
             </svg>`
             btnDelete.onclick = () => {
                 settings.dimensions = null
+                settings.measurement = JSON.parse(JSON.stringify(defaultSettings.measurement)) 
                 editDimension = null
                 currentDimensions = null
                 setDimConfigured(false)

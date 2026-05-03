@@ -14,7 +14,12 @@ const defaultSettings = Object.freeze({
     orientation: Object.freeze({ pose: null }),
     hotspots: Object.freeze([]),
     dimensions: null,
-    measurement: null,
+    measurement: {
+        enabled: false,
+        lineColor: '#f95f4d',
+        textColor: '#fff',
+        background: { color: '#000000A6', alpha: 0.8 },
+    },
     tonemapping: 'none',
     setupStep: 1,
 })

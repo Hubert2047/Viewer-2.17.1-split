@@ -3032,10 +3032,13 @@ class Viewer {
             })
             // Redraw bbox theo events
             events.on('dimensions:configured', (dim) => {
-                global.bbox.draw(dim)
-                events.fire('ui:re-render-control-wrap')
-                this.dom.showDimension.classList.add('hidden')
-                this.dom.hideDimension.classList.remove('hidden')
+                if (dim === null) hideDimensions()
+                else {
+                    global.bbox.draw(dim)
+                    events.fire('ui:re-render-control-wrap')
+                    this.dom.showDimension.classList.add('hidden')
+                    this.dom.hideDimension.classList.remove('hidden')
+                }
             })
             events.on('dimensions:edit', (dim) => {
                 global.bbox.draw(dim)
@@ -3067,9 +3070,6 @@ class Viewer {
                 global.bbox.hide()
                 events.fire('ui:re-render-control-wrap')
             }
-            events.on('dimensions:configured', (dim) => {
-                if (dim === null) hideDimensions()
-            })
             events.on('setup-reset', () => hideDimensions())
 
             events.on('viewer:lock-zoom-in', (value) => {
