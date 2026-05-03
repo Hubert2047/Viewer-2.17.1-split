@@ -37,7 +37,7 @@ const initUI = (global) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
-    dom.ui.appendChild(createControlsWrap(settings, tooltip, events, dom))
+    dom.ui.appendChild(createControlsWrap(global, tooltip, dom))
     new HotspotManager({ global, dom, tooltip })
     let sidebar
     if (config.editable) {
@@ -4042,6 +4042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const hideDimensionBox = () => {
+            if (!visible) return
             visible = false
             bboxEntity.enabled = false
             currentCorners = null
@@ -4068,6 +4069,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         })
 
         viewer.global.bbox = {
+            get show(){
+                return visible
+            },
             get center() {
                 return modelEntity?.gsplat?.customAabb?.center ?? new Vec3()
             },

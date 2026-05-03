@@ -55,7 +55,6 @@ const files = [
     'src/components/orientation/manual.js',
     'src/components/orientation/ground.js',
     'src/components/orientation/orientation.js',
-    'src/components/download-helper.js',
     'src/components/sidebar.js',
     'src/main.js',
 ]

@@ -363,11 +363,13 @@ function createButton(id, iconKey) {
     btn.appendChild(createSVG(SVG_ICONS[iconKey]))
     return btn
 }
-function createControlBotGroup(settings, tooltip, events, dom) {
+function createControlBotGroup(global, tooltip, dom) {
+    const { settings, events, bbox } = global
     const group = document.createElement('div')
     group.className = 'buttonGroup'
     // buttons: [id, iconKey,label,create, show, event, toggle]
     const hasDimension = !!settings.dimensions
+    const isShowDimensions = !bbox?.show
     const hasMeasurement = hasDimension && settings.measurement?.enabled
     const buttons = [
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
@@ -377,7 +379,7 @@ function createControlBotGroup(settings, tooltip, events, dom) {
             'showDimension',
             'Show Dimensions',
             hasDimension,
-            true,
+            isShowDimensions,
             'inputEvent:show-dimensions',
             'hideDimension',
         ],
@@ -386,7 +388,7 @@ function createControlBotGroup(settings, tooltip, events, dom) {
             'hideDimension',
             'Hide Dimensions',
             hasDimension,
-            false,
+            !isShowDimensions,
             'inputEvent:hide-dimensions',
             'showDimension',
         ],
@@ -459,7 +461,7 @@ function createHotspotActionGroup(tooltip, events, dom) {
     })
     return group
 }
-function createControlsWrap(settings, tooltip, events, dom) {
+function createControlsWrap(global, tooltip, dom) {
     const wrap = document.createElement('div')
     wrap.id = 'controlsWrap'
     dom[wrap.id] = wrap
@@ -469,10 +471,10 @@ function createControlsWrap(settings, tooltip, events, dom) {
     dom[container.id] = container
     const render = () => {
         container.innerHTML = ''
-        container.appendChild(createControlBotGroup(settings, tooltip, events, dom))
+        container.appendChild(createControlBotGroup(global, tooltip, dom))
     }
     render()
-    events.on('ui:re-render-control-wrap', render)
+    global.events.on('ui:re-render-control-wrap', render)
     wrap.appendChild(container)
     const hotspotcontainer = document.createElement('div')
     hotspotcontainer.id = 'hotspotContainer'
