@@ -1,42 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=18">
-    <link
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=26" />
+        <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-      <div id="ui">
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
             <div id="poster"></div>
             <div id="loadingWrap">
                 <div id="fileSizeInfo"></div>
@@ -45,9 +47,27 @@
             </div>
             <div id="tooltip"></div>
         </div>
-</body>
-<script>
-        window.sse = {"settings":{"v":18,"contentUrl":"test.ply","model":"hemispherical","setupStep":3}}
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                v: 26,
+                contentUrl: 'hemi.ply',
+                model: 'hemispherical',
+                dimensions: {
+                    boxColor: '#f95f4d',
+                    background: { color: 'white', alpha: 0.8 },
+                    foregroundColor: '#f95f4d',
+                    realSize: { x: 12, y: 15, z: 20 },
+                    unit: 'cm',
+                    rotation: { x: -40.20714536736296, y: -3.973650346415924, z: 87.30064383893841 },
+                    position: { x: 0.3199203611985586, y: -5.993859097747849, z: -3.481949772970296 },
+                    size: { x: 13.045434365107553, y: 21.63592020093961, z: 18.824379797814856 },
+                },
+                setupStep: 3,
+                fileAudioStore: {},
+            },
+        }
     </script>
-<script src="./viewer.js?v=18"></script>
+    <script src="./viewer.js?v=26"></script>
 </html>

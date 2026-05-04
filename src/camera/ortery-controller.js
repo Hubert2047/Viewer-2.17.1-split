@@ -16,7 +16,7 @@ class OtherController {
     minPitch = 0
     maxPitch = Math.PI / 2
     model = 'spherical'
-    minDistance
+    minDistance = 11
     maxDistance = 200
     resetPose = null
     inertiaVelX = 0
@@ -26,18 +26,16 @@ class OtherController {
     pointerMoveHistory = []
     isFlick = false
     inertiaFlickThreshold = 0.005
-    constructor({ global, bbox, minDistance }) {
+    constructor({ global, bbox }) {
         const { app, events } = global
         this.app = app
         this.bbox = bbox
         this.camera = global.camera.camera
-        this.minDistance = minDistance
         this.events = events
         this.settings = global.settings
+
         if (['spherical', 'hemispherical', 'cylindrical'].includes(this.settings.model)) {
             this.model = this.settings.model
-        } else if (!params.spherical) {
-            this.model = 'hemispherical'
         } else {
             this.model = 'spherical'
         }
@@ -57,7 +55,7 @@ class OtherController {
             this.originEntityPos = modelEntity.localPosition.clone()
         }
 
-        this.originPivot = this.bbox.center.clone()
+        this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
     }
     listenEvents() {
@@ -79,11 +77,20 @@ class OtherController {
         })
         this.events.on('setup-reset', () => this.handleSetupReset())
 
+        this.events.on('viewer:inertia', (value) => this.resetInertia())
         this.events.on('viewer:save-initview', () => this.initView())
         this.events.on('viewer:remove-saved-view', () => this.removeInitview())
+        this.events.on('viewer:lock-zoom-in', (value) => {
+            const lockZoomIn = {
+                locked: value,
+                value: value ? this.getCurrentDistanceScale() : this.minDistance,
+            }
+            this.settings.lockZoomIn = lockZoomIn
+        })
 
         this.events.on('pivot:positionsynced', (position) => this.syncPivotPoint(position))
         this.events.on('pivot:delete', () => {
+            this.settings.pivot.position = null
             this.applyAabbPivot()
             this.reset()
         })
@@ -164,7 +171,7 @@ class OtherController {
         })
     }
     applyAabbPivot() {
-        this.centerPivot = this.originPivot.clone()
+        this.centerPivot = this.originBboxPivot.clone()
         this.basePosition = this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone()
     }
 
@@ -276,7 +283,7 @@ class OtherController {
             modelEntity.localRotation.copy(targetRotation)
             this.modelRotation = targetRotation.clone()
 
-            if (this.settings.pivot.enabled && this.settings.pivot.position) {
+            if (this.settings.pivot.position) {
                 this.centerPivot = this.getWorldCenterPivot(this.settings.pivot.position)
                 this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
             } else {
@@ -720,7 +727,7 @@ class OtherController {
         this.originEntityPos = this.initialModelPosition
         this.basePosition = this.initialModelPosition
         this.baseRotation = this.initialModelRotation
-        this.centerPivot = this.originPivot
+        this.centerPivot = this.originBboxPivot
         this.currentPitch = 0
         this.currentYaw = 0
         this.reset()
@@ -744,7 +751,7 @@ class OtherController {
         const isPanning = x !== 0 || y !== 0
         let didRotate = false
         if (!this.initPivot) {
-            if (this.settings.pivot.enabled && this.settings.pivot.position) {
+            if (this.settings.pivot.position) {
                 this.centerPivot = this.getWorldCenterPivot(this.settings.pivot.position)
                 this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
             } else {
@@ -762,10 +769,10 @@ class OtherController {
                     this.inertiaVelX = this.inertiaVelX * 0.6 + deltaX * 0.4
                     this.inertiaVelY = this.inertiaVelY * 0.6 + deltaY * 0.4
                 }
-                if (this.model === 'spherical') {
-                    this.sphericalRot(deltaX, deltaY)
-                } else if (this.isEditingOrientation) {
+                if (this.isEditingOrientation) {
                     this.sphericalAxisRot(deltaX, deltaY)
+                } else if (this.model === 'spherical') {
+                    this.sphericalRot(deltaX, deltaY)
                 } else {
                     this.setHemiPitchYaw(deltaX, deltaY)
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)

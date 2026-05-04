@@ -17,8 +17,8 @@ const initUI = (global) => {
     global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
     const ui = document.getElementById('ui')
-    ui.appendChild(createInfoPanel(settings, events))
-    ui.appendChild(createSettingsPanel(global.app))
+    ui.appendChild(makeInfoPanel(settings, events))
+    ui.appendChild(makeSettingsPanel(global.app))
     const dom = [
         'ui',
         'infoPanel',
@@ -37,14 +37,14 @@ const initUI = (global) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
-    dom.ui.appendChild(createControlsWrap(global, tooltip, dom))
+    dom.ui.appendChild(makeControlsWrap(global, tooltip, dom))
     new HotspotManager({ global, dom, tooltip })
     let sidebar
     if (config.editable) {
-        sidebar = createSidebar(global, dom)
+        sidebar = makeSidebar(global, dom)
     }
     if (settings.hotspots.length > 0) {
-        dom.buttonsContainer.appendChild(createHotspotActionGroup(tooltip, events, dom))
+        dom.buttonsContainer.appendChild(makeHotspotActionGroup(tooltip, events, dom))
     }
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
@@ -111,10 +111,11 @@ const initUI = (global) => {
         if (dom.measure) dom.measure.classList.toggle('active', tool.active)
     })
     events.on('inputEvent:show-dimensions', () => {
-        global.bbox.draw(global.settings.dimensions)
+        if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
+        global.dimensionsBox.draw(global.settings.dimensions)
     })
     events.on('inputEvent:hide-dimensions', () => {
-        global.bbox.hide()
+        global.dimensionsBox.hide()
     })
     dom.infoPanel.addEventListener('pointerdown', () => {
         dom.infoPanel.classList.add('hidden')
@@ -148,7 +149,7 @@ const initUI = (global) => {
             if (!annotationVisible && settings.autoHideUI) {
                 state.controlsHidden = true
             }
-        }, 4000)
+        }, 3000)
     }
     // Show controls once loaded
     events.on('loaded:changed', () => {
@@ -1062,7 +1063,6 @@ const createFrameCamera = (bbox, fov) => {
 class CameraManager {
     update
     controllers
-    minDistance = 11
     // holds the camera state
     camera = new Camera()
     constructor(global, bbox, collider = null) {
@@ -1090,7 +1090,7 @@ class CameraManager {
             fly: new FlyController(),
             walk: new WalkController(),
             anim: animTrack ? new AnimController(animTrack) : null,
-            ortery: new OtherController({ global, bbox, minDistance: this.minDistance }),
+            ortery: new OtherController({ global, bbox }),
         }
 
         events.fire('controllers:created', this.controllers)
@@ -3030,18 +3030,22 @@ class Viewer {
                 if (enable) pivotGizmo.enable()
                 else pivotGizmo.disable()
             })
+            if (settings.dimensions) {
+                global.dimensionsBox = dimensionsSetup(app, camera, config)
+            }
             // Redraw bbox theo events
             events.on('dimensions:configured', (dim) => {
                 if (dim === null) hideDimensions()
                 else {
-                    global.bbox.draw(dim)
+                    if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
+                    global.dimensionsBox.draw(dim)
                     events.fire('ui:re-render-control-wrap')
                     this.dom.showDimension.classList.add('hidden')
                     this.dom.hideDimension.classList.remove('hidden')
                 }
             })
             events.on('dimensions:edit', (dim) => {
-                global.bbox.draw(dim)
+                global.dimensionsBox.draw(dim)
                 if (!dimensionRotatable)
                     dimensionRotatable = new DimensionRotatable(app, dim, ({ x, y, z }) => {
                         events.fire('dimensions:eulersynced', { x, y, z })
@@ -3054,41 +3058,25 @@ class Viewer {
                 if (dimensionRotatable) {
                     dimensionRotatable.syncFromExternal(dim)
                 }
-                global.bbox.draw(dim)
+                global.dimensionsBox.draw(dim)
             })
             events.on('dimensions:save', (dim) => {
-                global.bbox.draw(dim)
+                global.dimensionsBox.draw(dim)
                 rotationGizmo.disable()
             })
             events.on('dimensions:cancel', () => {
-                global.bbox.hide()
-                this.dom.showDimension.classList.remove('hidden')
-                this.dom.hideDimension.classList.add('hidden')
+                hideDimensions()
                 rotationGizmo.disable()
             })
             function hideDimensions() {
-                global.bbox.hide()
-                events.fire('ui:re-render-control-wrap')
+                if (global.dimensionsBox && global.dimensionsBox.show) {
+                    global.dimensionsBox.hide()
+                    events.fire('ui:re-render-control-wrap')
+                }
             }
+
             events.on('setup-reset', () => hideDimensions())
 
-            events.on('viewer:lock-zoom-in', (value) => {
-                const lockZoomIn = {
-                    locked: value,
-                    value: value
-                        ? this.cameraManager.controllers.ortery.getCurrentDistanceScale()
-                        : this.cameraManager.controllers.minDistance,
-                }
-                global.settings.lockZoomIn = lockZoomIn
-            })
-
-            events.on('viewer:inertia', (value) => {
-                global.settings.inertia = value
-                this.cameraManager.controllers.ortery.resetInertia()
-            })
-            events.on('viewer:auto-hide-ui', (value) => {
-                global.settings.autoHideUI = value
-            })
             applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
@@ -3210,7 +3198,6 @@ class Viewer {
             !app.xr.active && !config.nofx && (anyPostEffectEnabled(postEffectSettings) || highPrecisionRendering)
         global.events.on('viewer:background-changed', (color) => {
             camera.camera.clearColor = new Color(normalizeColor(color))
-            global.settings.background.color = color
             global.app.render()
         })
         if (enableCameraFrame) {
@@ -3691,395 +3678,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)
-
-    const bboxSetup = (() => {
-        let currentDim = null
-        const { app, config } = viewer.global
-        const setCameraFrameSamples = (samples) => {
-            const settings = viewer.global.settings
-            if (samples > 1) {
-                const origHpr = viewer.global.config.hpr
-                viewer.global.config.hpr = true
-                viewer.configureCamera(settings)
-                viewer.global.config.hpr = origHpr
-
-                if (viewer.cameraFrame) {
-                    viewer.cameraFrame.rendering.samples = samples
-                    viewer.cameraFrame.update()
-                }
-            } else {
-                viewer.global.config.hpr = undefined
-                if (viewer.cameraFrame) viewer.cameraFrame.rendering.samples = samples
-                viewer.configureCamera(settings)
-            }
-            app.renderNextFrame = true
-        }
-
-        const layers = app.scene.layers
-        const worldLayer = layers.getLayerByName('World')
-
-        const layerBBox = new Layer({ name: 'BBox' })
-        const worldIndex = layers.getOpaqueIndex(worldLayer)
-        layers.insert(layerBBox, worldIndex)
-
-        const cam = viewer.global.camera
-        cam.camera.layers = [...cam.camera.layers, layerBBox.id]
-
-        const lineMesh = new Mesh(app.graphicsDevice)
-
-        let lineMat = new StandardMaterial()
-        lineMat.diffuse = new Color(0, 0, 0)
-        lineMat.blendType = BLEND_NORMAL
-        lineMat.depthTest = true
-        lineMat.depthWrite = true
-        lineMat.useLighting = false
-        lineMat.cull = CULLFACE_NONE
-        lineMat.emissive = new Color(normalizeColor('#00ffcc'))
-        lineMat.depthBias = -0.1
-        lineMat.slopeDepthBias = -0.1
-        lineMat.alphaToCoverage = true
-        lineMat.update()
-
-        const bboxEntity = new Entity('bbox')
-        app.root.addChild(bboxEntity)
-        const mi = new MeshInstance(lineMesh, lineMat)
-        mi.cull = false
-        bboxEntity.addComponent('render', {
-            layers: [layerBBox.id],
-            meshInstances: [mi],
-        })
-
-        const canvas = app.graphicsDevice.canvas
-
-        // Create SVG overlay for lines
-        const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svgOverlay.style.cssText =
-            'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;overflow:visible;'
-        document.body.appendChild(svgOverlay)
-
-        // Create lines and labels
-        const elements = {}
-        for (const axis of ['x', 'y', 'z']) {
-            // Line from edge to label (will be updated to point to center of label)
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-            line.setAttribute('stroke-width', '1.5')
-            line.setAttribute('stroke-dasharray', '4,3')
-            line.style.display = 'none'
-            svgOverlay.appendChild(line)
-
-            // Small dot at edge position
-            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-            dot.setAttribute('r', '3')
-            dot.style.display = 'none'
-            svgOverlay.appendChild(dot)
-
-            // Label
-            const label = document.createElement('div')
-            label.classList.add('dimension-label')
-            document.body.appendChild(label)
-
-            elements[axis] = { line, dot, label }
-        }
-
-        const worldToScreen = (wx, wy, wz) => {
-            const sp = viewer.global.camera.camera.worldToScreen(new Vec3(wx, wy, wz))
-            const rect = canvas.getBoundingClientRect()
-            return {
-                x: rect.left + sp.x,
-                y: rect.top + sp.y,
-            }
-        }
-
-        // Get the 8 corners of the box in world space
-        const getWorldCorners = (dim) => {
-            const { position, rotation, size } = dim
-            const center = new Vec3(position.x, position.y, position.z)
-            const he = { x: size.x / 2, y: size.y / 2, z: size.z / 2 }
-
-            const localCorners = [
-                new Vec3(-he.x, -he.y, -he.z),
-                new Vec3(he.x, -he.y, -he.z),
-                new Vec3(-he.x, he.y, -he.z),
-                new Vec3(he.x, he.y, -he.z),
-                new Vec3(-he.x, -he.y, he.z),
-                new Vec3(he.x, -he.y, he.z),
-                new Vec3(-he.x, he.y, he.z),
-                new Vec3(he.x, he.y, he.z),
-            ]
-
-            const quat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
-            const worldMatrix = modelEntity.getWorldTransform()
-
-            return localCorners.map((local) => {
-                const rotated = quat.clone().transformVector(local)
-                const worldPos = new Vec3(center.x + rotated.x, center.y + rotated.y, center.z + rotated.z)
-                const final = new Vec3()
-                worldMatrix.transformPoint(worldPos, final)
-                return final
-            })
-        }
-
-        // Get the midpoint of the edge that is most aligned with the camera view direction
-        const getBestEdgeMidpoint = (corners, axis, cameraDir) => {
-            const axisEdges = {
-                x: [
-                    [0, 1],
-                    [2, 3],
-                    [4, 5],
-                    [6, 7],
-                ],
-                y: [
-                    [0, 2],
-                    [1, 3],
-                    [4, 6],
-                    [5, 7],
-                ],
-                z: [
-                    [0, 4],
-                    [1, 5],
-                    [2, 6],
-                    [3, 7],
-                ],
-            }
-
-            let bestMid = null
-            let bestScore = -Infinity
-
-            for (const [i, j] of axisEdges[axis]) {
-                const p1 = corners[i]
-                const p2 = corners[j]
-                const mid = new Vec3((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2)
-
-                const toCamera = new Vec3(
-                    viewer.global.camera.getPosition().x - mid.x,
-                    viewer.global.camera.getPosition().y - mid.y,
-                    viewer.global.camera.getPosition().z - mid.z,
-                ).normalize()
-
-                const edgeDir = new Vec3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z).normalize()
-                const perpendicularity = Math.abs(edgeDir.dot(toCamera))
-                const dist = viewer.global.camera.getPosition().distance(mid)
-                const distanceScore = 1 / (dist + 0.1)
-                const score = perpendicularity * 2 + distanceScore
-
-                if (score > bestScore) {
-                    bestScore = score
-                    bestMid = mid
-                }
-            }
-
-            return bestMid
-        }
-
-        // Update line to point to center of label
-        const updateLineToLabelCenter = (line, edgeScreen, labelElement) => {
-            // Get label's bounding rect to find its center
-            const labelRect = labelElement.getBoundingClientRect()
-            const labelCenterX = labelRect.left + labelRect.width / 2
-            const labelCenterY = labelRect.top + labelRect.height / 2
-
-            line.setAttribute('x1', edgeScreen.x)
-            line.setAttribute('y1', edgeScreen.y)
-            line.setAttribute('x2', labelCenterX)
-            line.setAttribute('y2', labelCenterY)
-        }
-
-        const updateLabels = (corners, dim) => {
-            if (!dim?.realSize) return
-            const cameraDir = new Vec3(0, 0, -1)
-            viewer.global.camera.getRotation().transformVector(cameraDir, cameraDir)
-            const screenCorners = corners.map((c) => worldToScreen(c.x, c.y, c.z))
-            const screenMinX = Math.min(...screenCorners.map((c) => c.x))
-            const screenMaxX = Math.max(...screenCorners.map((c) => c.x))
-            const screenMinY = Math.min(...screenCorners.map((c) => c.y))
-            const screenMaxY = Math.max(...screenCorners.map((c) => c.y))
-            const screenCenterX = (screenMinX + screenMaxX) / 2
-            const screenCenterY = (screenMinY + screenMaxY) / 2
-
-            for (const axis of ['x', 'y', 'z']) {
-                const midpoint = getBestEdgeMidpoint(corners, axis, cameraDir)
-                if (!midpoint) continue
-
-                const edgeScreen = worldToScreen(midpoint.x, midpoint.y, midpoint.z)
-
-                const dx = edgeScreen.x - screenCenterX
-                const dy = edgeScreen.y - screenCenterY
-                const len = Math.sqrt(dx * dx + dy * dy) || 1
-
-                const { line, dot, label } = elements[axis]
-
-                const value = dim.realSize[axis]
-                const unit = dim.unit || 'cm'
-                const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
-                const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
-                label.textContent = config.editable ? `${axis}: ${mainText}` : mainText
-                label.style.display = 'block'
-                label.style.left = '-9999px'
-                label.style.top = '-9999px'
-
-                const lw = label.offsetWidth
-                const lh = label.offsetHeight
-
-                const MARGIN = 16
-                let ox = dx / len
-                let oy = dy / len
-
-                let extraOffset = 8
-                if (ox > 0)
-                    extraOffset = Math.max(
-                        extraOffset,
-                        screenMaxX - edgeScreen.x + lw / 2 + MARGIN - (screenMaxX - edgeScreen.x),
-                    )
-                if (ox < 0)
-                    extraOffset = Math.max(
-                        extraOffset,
-                        edgeScreen.x - screenMinX + lw / 2 + MARGIN - (edgeScreen.x - screenMinX),
-                    )
-                if (oy > 0)
-                    extraOffset = Math.max(
-                        extraOffset,
-                        screenMaxY - edgeScreen.y + lh / 2 + MARGIN - (screenMaxY - edgeScreen.y),
-                    )
-                if (oy < 0)
-                    extraOffset = Math.max(
-                        extraOffset,
-                        edgeScreen.y - screenMinY + lh / 2 + MARGIN - (edgeScreen.y - screenMinY),
-                    )
-                const offset = Math.max(40, extraOffset)
-                const labelCX = edgeScreen.x + ox * offset
-                const labelCY = edgeScreen.y + oy * offset
-                const SCREEN_MARGIN = 8
-                const clampedX = Math.max(
-                    SCREEN_MARGIN + lw / 2,
-                    Math.min(window.innerWidth - SCREEN_MARGIN - lw / 2, labelCX),
-                )
-                const clampedY = Math.max(
-                    SCREEN_MARGIN + lh / 2,
-                    Math.min(window.innerHeight - SCREEN_MARGIN - lh / 2, labelCY),
-                )
-                label.style.left = clampedX - lw / 2 + 'px'
-                label.style.top = clampedY - lh / 2 + 'px'
-
-                dot.setAttribute('cx', edgeScreen.x)
-                dot.setAttribute('cy', edgeScreen.y)
-                dot.style.display = 'block'
-
-                updateLineToLabelCenter(line, edgeScreen, label)
-                line.style.display = 'block'
-            }
-        }
-
-        const hideLabels = () => {
-            for (const axis of ['x', 'y', 'z']) {
-                elements[axis].line.style.display = 'none'
-                elements[axis].dot.style.display = 'none'
-                elements[axis].label.style.display = 'none'
-            }
-        }
-
-        let visible = false
-        let currentCorners = null
-
-        const edges = [
-            [0, 1],
-            [1, 3],
-            [3, 2],
-            [2, 0],
-            [4, 5],
-            [5, 7],
-            [7, 6],
-            [6, 4],
-            [0, 4],
-            [1, 5],
-            [2, 6],
-            [3, 7],
-        ]
-
-        const updateColor = (dim) => {
-            lineMat.emissive = new Color(normalizeColor(dim.boxColor))
-            lineMat.update()
-            app.renderNextFrame = true
-            for (const axis of ['x', 'y', 'z']) {
-                elements[axis].line.setAttribute('stroke', dim.foregroundColor)
-                elements[axis].dot.setAttribute('stroke', dim.foregroundColor)
-                elements[axis].dot.setAttribute('fill', dim.foregroundColor)
-                elements[axis].label.style.color = dim.foregroundColor
-                elements[axis].label.style.backgroundColor = transparentColor(
-                    dim.background.color,
-                    dim.background.alpha,
-                )
-            }
-        }
-
-        const drawCorners = (corners) => {
-            const pos = []
-            for (const [i, j] of edges) {
-                pos.push(corners[i].x, corners[i].y, corners[i].z)
-                pos.push(corners[j].x, corners[j].y, corners[j].z)
-            }
-            lineMesh.setPositions(pos)
-            lineMesh.update(PRIMITIVE_LINES, false)
-            app.renderNextFrame = true
-        }
-
-        const getCorners = (dim) => {
-            if (!dim) return null
-            return getWorldCorners(dim)
-        }
-
-        const drawDimensionBox = (dim) => {
-            if (!modelEntity) return
-            currentDim = dim
-            updateColor(dim)
-            const corners = getCorners(dim)
-            if (!corners) return
-            currentCorners = corners
-            visible = true
-            bboxEntity.enabled = true
-            drawCorners(corners)
-            updateLabels(corners, dim)
-            setCameraFrameSamples(isMobile ? 1 : 1)
-        }
-
-        const hideDimensionBox = () => {
-            if (!visible) return
-            visible = false
-            bboxEntity.enabled = false
-            currentCorners = null
-            hideLabels()
-            app.renderNextFrame = true
-            setCameraFrameSamples(1)
-        }
-
-        window.addEventListener('resize', () => {
-            if (visible && currentCorners) {
-                updateLabels(currentCorners, currentDim)
-            }
-        })
-
-        app.on('update', () => {
-            if (!visible || currentDim === null) return
-            if (!modelEntity) return
-            const corners = getCorners(currentDim)
-            if (corners) {
-                currentCorners = corners
-                drawCorners(corners)
-                updateLabels(corners, currentDim)
-            }
-        })
-
-        viewer.global.bbox = {
-            get show(){
-                return visible
-            },
-            get center() {
-                return modelEntity?.gsplat?.customAabb?.center ?? new Vec3()
-            },
-            get halfExtents() {
-                return modelEntity?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
-            },
-            draw: drawDimensionBox,
-            hide: hideDimensionBox,
-        }
-    })()
 })

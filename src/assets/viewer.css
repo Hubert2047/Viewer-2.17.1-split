@@ -200,9 +200,9 @@ button {
   display: none;
 }
 #controlsWrap > #buttonsContainer {
-  /* controlButton */
+  /* control-btn */
 }
-#controlsWrap > #buttonsContainer .controlButton {
+#controlsWrap > #buttonsContainer .control-btn {
   width: 34px;
   height: 34px;
   padding: 0;
@@ -213,59 +213,59 @@ button {
   color: black;
   background-color: #dddd;
 }
-#controlsWrap > #buttonsContainer .controlButton:hover {
+#controlsWrap > #buttonsContainer .control-btn:hover {
   background-color: #ded7d7;
 }
-#controlsWrap > #buttonsContainer .controlButton {
+#controlsWrap > #buttonsContainer .control-btn {
   /* icon styling */
 }
-#controlsWrap > #buttonsContainer .controlButton > svg {
+#controlsWrap > #buttonsContainer .control-btn > svg {
   display: block;
   margin: auto;
 }
-#controlsWrap > #buttonsContainer .controlButton > svg > g.stroke {
+#controlsWrap > #buttonsContainer .control-btn > svg > g.stroke {
   fill: none;
   stroke: black;
   stroke-width: 2;
   stroke-linejoin: round;
   opacity: 0.4;
 }
-#controlsWrap > #buttonsContainer .controlButton > svg > g.fill {
+#controlsWrap > #buttonsContainer .control-btn > svg > g.fill {
   fill: currentColor;
   stroke: none;
 }
-#controlsWrap > #buttonsContainer .controlButton {
+#controlsWrap > #buttonsContainer .control-btn {
   /* active highlight for simple toggle buttons (e.g. voxel overlay) */
 }
-#controlsWrap > #buttonsContainer .controlButton.active:not(.toggle) {
+#controlsWrap > #buttonsContainer .control-btn.active:not(.toggle) {
   color: #f60;
 }
-#controlsWrap > #buttonsContainer .controlButton {
+#controlsWrap > #buttonsContainer .control-btn {
   /* camera toggle styling */
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle {
+#controlsWrap > #buttonsContainer .control-btn.toggle {
   background: linear-gradient(90deg, transparent 0%, transparent 50%, #f60 50%, #f60 100%);
   background-size: 200% 100%;
   background-position: 100% 0%;
   background-repeat: no-repeat;
   transition: background-position 0.1s ease-in-out;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.left {
+#controlsWrap > #buttonsContainer .control-btn.toggle.left {
   border-radius: 4px 0px 0px 4px;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.left:not(.active) {
+#controlsWrap > #buttonsContainer .control-btn.toggle.left:not(.active) {
   background-position: 0% 0%;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.middle {
+#controlsWrap > #buttonsContainer .control-btn.toggle.middle {
   border-radius: 0;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.middle:not(.active) {
+#controlsWrap > #buttonsContainer .control-btn.toggle.middle:not(.active) {
   background-position: 0% 0%;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.right {
+#controlsWrap > #buttonsContainer .control-btn.toggle.right {
   border-radius: 0px 4px 4px 0px;
 }
-#controlsWrap > #buttonsContainer .controlButton.toggle.right:not(.active) {
+#controlsWrap > #buttonsContainer .control-btn.toggle.right:not(.active) {
   background-position: 200% 0%;
 }
 /* infoPanel */
@@ -619,6 +619,11 @@ button {
   -ms-border-radius: 3px;
   -o-border-radius: 3px;
 }
+.hotspot-align-btns > .btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
 .hotspot-drag-handle {
   cursor: grab;
   padding: 0 4px;
@@ -721,6 +726,17 @@ button {
   box-sizing: border-box;
   height: 30px;
 }
+.input-field:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.orientation-step-input {
+  width: 56px;
+  height: 28px;
+  padding: 0 6px;
+  text-align: center;
+  font-family: inherit;
+}
 .select-field {
   cursor: pointer;
 }
@@ -798,12 +814,11 @@ button {
 .hotspot-field.embed {
   gap: 0px;
 }
-.embed-info-icon {
+.info-icon {
+  top: -9px;
+  position: relative;
   width: 14px;
   height: 14px;
-  margin-bottom: 2px;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -812,14 +827,12 @@ button {
   font-weight: 700;
   color: var(--text-muted, #888);
   cursor: pointer;
-  position: relative;
-  margin-left: 4px;
   vertical-align: middle;
   user-select: none;
   flex-shrink: 0;
   line-height: 1;
 }
-.embed-info-icon:hover {
+.info-icon:hover {
   color: var(--accent, #378add);
   border-color: var(--accent, #378add);
 }
@@ -832,14 +845,14 @@ button {
   border: 1px solid var(--border, #333);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text, #eee);
   line-height: 1.5;
   z-index: 9999;
   pointer-events: none;
 }
-.embed-info-icon:hover .embed-tooltip,
-.embed-info-icon:focus .embed-tooltip {
+.info-icon:hover .embed-tooltip,
+.info-icon:focus .embed-tooltip {
   display: block;
 }
 
@@ -907,13 +920,14 @@ button {
   border-color: rgba(249, 87, 68, 0.4);
 }
 /* Style toggle */
-.hotspot-style-row {
+.segment-row {
   display: flex;
   gap: 4px;
 }
-.hotspot-style-btn {
+.segment-btn {
   flex: 1;
   height: 26px;
+  min-width: max-content;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -925,53 +939,12 @@ button {
   border: 0.5px solid rgba(0, 0, 0, 0.1);
   color: rgba(0, 0, 0, 0.4);
 }
-.hotspot-style-btn.active {
+.segment-btn.active {
   background: rgba(249, 87, 68, 0.12);
   border-color: rgba(249, 87, 68, 0.45);
   color: var(--primary);
 }
-.viewr-icon-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
-  color: rgba(0, 0, 0, 0.4);
-}
-/* Icon action buttons */
-.icon-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
-  color: rgba(0, 0, 0, 0.4);
-}
 
-.icon-btn:hover {
-  background: rgba(0, 0, 0, 0.07);
-  color: var(--text-main);
-}
-.icon-btn.active {
-  background: rgba(249, 87, 68, 0.12);
-  border-color: rgba(249, 87, 68, 0.4);
-  color: var(--primary);
-}
-.icon-btn.del:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #e53e3e;
-}
 /* Bottom grid Auto Play + Button */
 .hotspot-autoplay {
   display: flex;
@@ -998,6 +971,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.audio-clear-btn{
+  width: 32px;
 }
 .audio-file-label {
   display: flex;
@@ -1378,7 +1354,7 @@ button {
   cursor: pointer;
   transition: background 0.15s;
 }
-.export-link-btn {
+.link-btn {
   font-size: 13px;
   color: var(--primary);
 }
@@ -1458,6 +1434,10 @@ button {
 
 .confirm-btn:hover {
   filter: brightness(0.9);
+}
+.hotspot-action-btn {
+  height: 30px;
+  width: 30px;
 }
 .active-hotspot-btn {
   position: relative;
@@ -1705,9 +1685,18 @@ button {
   gap: 14px;
   width: 100%;
 }
-
-.orientation-btn {
+.orientation-method-btns > .btn {
+  font-size: 12px;
+}
+.orientation-btn,
+.edit-btn {
   flex: 1;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .vec-inputs {
@@ -1715,7 +1704,7 @@ button {
   gap: 6px;
 }
 .vec-row {
-  margin: 4px 0;
+  margin: 4px 0 8px 0;
 }
 
 .vec-inputs .axis-col {
@@ -2035,6 +2024,7 @@ button {
   padding: 0 7px;
   outline: none;
   height: 30px;
+  width: max-content;
   cursor: pointer;
   font-family: inherit;
 }
@@ -2347,7 +2337,38 @@ button {
   text-align: center;
 }
 .toggle.disabled {
-    opacity: 0.4;
-    pointer-events: none;
-    cursor: not-allowed;
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+.background-row > span {
+  min-width: 160px;
+}
+
+.hint-icon {
+  position: absolute;
+  right: -16px;
+}
+
+.hint-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 14px;
+  font-weight: 500;
+  left: 50%;
+  text-transform: none;
+  background: var(--panel-bg, #1e1e1e);
+  border: 1px solid var(--border, #333);
+  color: var(--text, #eee);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 8px;
+  border-radius: 6px;
+  width: 200px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.hint-icon:hover .hint-tooltip {
+  display: block;
 }

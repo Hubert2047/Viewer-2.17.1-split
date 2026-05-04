@@ -1,4 +1,4 @@
-function renderGroundPanel(events, global) {
+function makeGroundPanel(events, global) {
     const panel = document.createElement('div')
     panel.style.cssText = 'display:none; flex-direction:column; gap:8px; min-height:82px;'
 
@@ -10,27 +10,24 @@ function renderGroundPanel(events, global) {
     const hint = document.createElement('div')
     hint.style.cssText = 'font-size:12px; color:var(--text-main); height:28px;'
 
-    const pickRow = document.createElement('div')
-    pickRow.classList.add('section-group-row')
-    const pickLabel = document.createElement('span')
-    pickLabel.textContent = 'Set ground plane'
+    const pickRow = makeRow('Set ground plane')
+    
     const pickActionRow = document.createElement('div')
     pickActionRow.style.cssText = 'display:flex; gap:6px;'
 
     const pickBtn = document.createElement('button')
     pickBtn.classList.add('btn', 'pick-ground-btn')
-    pickBtn.innerHTML = ORIENT_ICONS.crosshair
+    pickBtn.innerHTML = ICONS.crosshair
     pickBtn.title = 'Pick ground plane'
 
     const btnCancelGround = document.createElement('button')
     btnCancelGround.classList.add('btn', 'cancel-btn')
     btnCancelGround.style.cssText = 'height:30px; display:none;'
-    btnCancelGround.innerHTML = ORIENT_ICONS.x
+    btnCancelGround.innerHTML = ICONS.x
     btnCancelGround.title = 'Cancel'
 
     pickActionRow.appendChild(pickBtn)
     pickActionRow.appendChild(btnCancelGround)
-    pickRow.appendChild(pickLabel)
     pickRow.appendChild(pickActionRow)
     // const flipRow = document.createElement('div')
     // flipRow.classList.add('section-group-row')
@@ -41,7 +38,7 @@ function renderGroundPanel(events, global) {
     // const flipActions = document.createElement('div')
     // flipActions.style.cssText = 'display:flex; gap:4px; flex-shrink:0;'
 
-    // const flipBtn = makeIconBtn(ORIENT_ICONS.flipMirror, 'Flip up')
+    // const flipBtn = makeIconBtn(ICONS.flipMirror, 'Flip up')
     // flipActions.appendChild(flipBtn)
     // flipBtn.onclick = () => events.fire('orientation:flip-model')
     // flipRow.appendChild(flipLabel)
@@ -50,9 +47,9 @@ function renderGroundPanel(events, global) {
     const pointInputsWrap = document.createElement('div')
     pointInputsWrap.style.cssText = 'display:none; flex-direction:column; gap:4px; margin-top:4px;'
     const pointInputRows = [1, 2, 3].map((n) => {
-        const { row, setValues } = createVec3Inputs({
+        const { row, setValues } = makeVec3Inputs({
             title: `Point ${n}`,
-            editable: true,
+            disabled: false,
             onChange: ({ x, y, z }) => {
                 const idx = n - 1
                 if (pickedPoints[idx]) {

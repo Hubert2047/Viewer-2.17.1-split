@@ -1,6 +1,5 @@
 class HotspotEditorUI {
     isCreatingHotspot = false
-    controllers = null
     constructor(body, { global, dom }) {
         this.body = body
         this.dom = dom
@@ -51,7 +50,7 @@ class HotspotEditorUI {
             </div>
             <div class="embed-tip-row">
                 <span class="embed-tip-dot green"></span>
-                <span>Keep embed off and copy the audio file into the <b>audios/</b> folder — include that folder when sharing.</span>
+                <span>Keep embed off and copy the audio file into the <b style="color:var(--primary)">audios/</b> folder — include that folder when sharing.</span>
             </div>
             `
             document.body.appendChild(t)
@@ -92,7 +91,6 @@ class HotspotEditorUI {
         header.appendChild(addBtn)
         this.body.appendChild(header)
     }
-
     onAdd(e) {
         if (this.isCreatingHotspot) {
             this.events.fire('hotspot:add-cancelled')
@@ -112,7 +110,7 @@ class HotspotEditorUI {
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
             const position = pickModelLocalPoint(mouseX, mouseY, this.camera)
-            this.events.fire('hotspot:add', { position})
+            this.events.fire('hotspot:add', { position })
             document.body.style.cursor = 'default'
             this.isCreatingHotspot = false
             this.setAddBtnCancel(false)
@@ -134,11 +132,9 @@ class HotspotEditorUI {
             this.addBtn.classList.remove('cancel-mode')
         }
     }
-
     resetAddBtn() {
         this.setAddBtnCancel(false)
     }
-
     async onDelete(id) {
         const ok = await this.confirmDialog.ask('Delete Hotspot', 'Are you sure? This cannot be undone.', 'delete')
         if (ok) {
@@ -148,11 +144,9 @@ class HotspotEditorUI {
     onCancel() {
         this.events.fire('hotspot:editor-cancelled')
     }
-
     onApply() {
         this.events.fire('hotspot:apply', this.activeHotspotData)
     }
-
     render(hotspotData, activeHotspotData) {
         this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
         this.listEl.innerHTML = ''
@@ -192,17 +186,12 @@ class HotspotEditorUI {
             this.listEl.appendChild(item)
         })
     }
-
     renderItemHeader(h, isExpanded) {
         const row = document.createElement('div')
         row.classList.add('hotspot-header')
         const handle = document.createElement('div')
         handle.classList.add('hotspot-drag-handle')
-        handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-        <circle cx="4" cy="2.5" r="1"/><circle cx="8" cy="2.5" r="1"/>
-        <circle cx="4" cy="6"   r="1"/><circle cx="8" cy="6"   r="1"/>
-        <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
-        </svg>`
+        handle.innerHTML = ICONS.hotspotDragHandle
 
         row.dataset.dragId = h.id
 
@@ -226,21 +215,20 @@ class HotspotEditorUI {
         const actions = document.createElement('div')
         actions.classList.add('hotspot-header-actions')
 
-        const editBtn = this.makeIconBtn(
-            `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5L11.5 3.5L4.5 10.5H2.5V8.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
-        )
-        if (isExpanded) editBtn.classList.add('active')
-        editBtn.title = 'Edit'
-        editBtn.addEventListener('click', () => {
-            this.events.fire('hotspot:editor-selected', isExpanded ? null : h)
+        const editBtn = makeButton({
+            icon: ICONS.hotspotEditBtn,
+            title: 'Edit',
+            className: 'hotspot-action-btn',
+            onClick: () => this.events.fire('hotspot:editor-selected', isExpanded ? null : h),
         })
+        if (isExpanded) editBtn.classList.add('active')
 
-        const delBtn = this.makeIconBtn(
-            `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-            'del',
-        )
-        delBtn.title = 'Delete'
-        delBtn.addEventListener('click', () => this.onDelete(h.id))
+        const delBtn = makeButton({
+            icon: ICONS.hotspotDelete,
+            title: 'Delete',
+            className: 'hotspot-action-btn',
+            onClick: () => this.onDelete(h.id),
+        })
 
         actions.appendChild(editBtn)
         actions.appendChild(delBtn)
@@ -248,23 +236,19 @@ class HotspotEditorUI {
         row.appendChild(actions)
         return { row, headerTitle: name }
     }
-
     applyDraft = (refreshUIPanel = false) => {
         this.events.fire('hotspot:editor-changed', {
             data: JSON.parse(JSON.stringify(this.activeHotspotData)),
             refreshUIPanel,
         })
     }
-
     renderEditPanel(headerTitle) {
-        const panel = document.createElement('div')
-        panel.classList.add('hotspot-edit-panel','section-wrap')
+        const panel = makeSectionWrap({ className: 'hotspot-edit-panel' })
 
-        const buttonGrid = document.createElement('div')
-        const buttonGroup = this.makeGroup('Button')
+        const buttonGroup = makeSectionGroup('Button')
         const btnTitleField = this.makeField('Title')
         btnTitleField.appendChild(
-            this.makeInput('text', this.activeHotspotData.button.title, {
+            makeInput('text', this.activeHotspotData.button.title, {
                 placeholder: 'Title...',
                 name: 'button-title',
                 onChange: (v) => {
@@ -275,53 +259,35 @@ class HotspotEditorUI {
             }),
         )
         buttonGroup.appendChild(btnTitleField)
-        buttonGrid.appendChild(buttonGroup)
-        panel.appendChild(buttonGrid)
-        
-        const textGroup = this.makeGroup('Text')
+        panel.appendChild(buttonGroup)
+
+        const textGroup = makeSectionGroup('Text')
         const labelField = this.makeField('Label')
+
         const formatRow = document.createElement('div')
         formatRow.classList.add('hotspot-label-row')
         formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.activeHotspotData, this.applyDraft))
         formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.activeHotspotData, this.applyDraft))
 
-        const alignIcons = {
-            left: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                    <rect x="0" y="1" width="14" height="2" rx="1"/>
-                    <rect x="0" y="5" width="9" height="2" rx="1"/>
-                    <rect x="0" y="9" width="12" height="2" rx="1"/>
-                </svg>`,
-            center: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                    <rect x="0" y="1" width="14" height="2" rx="1"/>
-                    <rect x="2.5" y="5" width="9" height="2" rx="1"/>
-                    <rect x="1" y="9" width="12" height="2" rx="1"/>
-                </svg>`,
-            right: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                    <rect x="0" y="1" width="14" height="2" rx="1"/>
-                    <rect x="5" y="5" width="9" height="2" rx="1"/>
-                    <rect x="2" y="9" width="12" height="2" rx="1"/>
-                </svg>`,
-        }
-
-        ;['left', 'center', 'right'].forEach((align) => {
-            const btn = document.createElement('button')
-            btn.classList.add('fmt-btn')
-            btn.innerHTML = alignIcons[align]
-            if ((this.activeHotspotData.text.align || 'center') === align) btn.classList.add('active')
-            btn.dataset.align = align
-            btn.addEventListener('click', () => {
-                this.activeHotspotData.text.align = align
-                formatRow.querySelectorAll('.fmt-btn[data-align]').forEach((b) => b.classList.remove('active'))
-                btn.classList.add('active')
+        const alignRow = makeSegmentRow({
+            options: [
+                { icon: ICONS.alignLeft, value: 'left' },
+                { icon: ICONS.alignCenter, value: 'center' },
+                { icon: ICONS.alignRight, value: 'right' },
+            ],
+            className: 'hotspot-align-btns',
+            defaultValue: this.activeHotspotData.text.align || 'center',
+            onChange: (val) => {
+                this.activeHotspotData.text.align = val
                 this.applyDraft()
-            })
-            formatRow.appendChild(btn)
+            },
         })
+        formatRow.appendChild(alignRow)
 
         const labelRow = document.createElement('div')
         labelRow.classList.add('hotspot-label-row')
         labelRow.appendChild(
-            this.makeTextarea(this.activeHotspotData.text.content, {
+            makeTextarea(this.activeHotspotData.text.content, {
                 placeholder: 'Enter label...',
                 classname: 'hotspot-text',
                 name: this.activeHotspotData.text.content,
@@ -346,18 +312,18 @@ class HotspotEditorUI {
         )
         const bgField = this.makeField('Background')
         bgField.appendChild(
-            makeColorAlpha(
-                this.activeHotspotData.text.background,
-                this.activeHotspotData.text.backgroundAlpha,
-                (v) => {
+            makeColorAlpha({
+                color: this.activeHotspotData.text.background,
+                alpha: this.activeHotspotData.text.backgroundAlpha,
+                onChangeColor: (v) => {
                     this.activeHotspotData.text.background = v
                     this.applyDraft()
                 },
-                (v) => {
+                onChangeAlpha: (v) => {
                     this.activeHotspotData.text.backgroundAlpha = v
                     this.applyDraft()
                 },
-            ),
+            }),
         )
         colorGrid.appendChild(colorField)
         colorGrid.appendChild(bgField)
@@ -366,7 +332,7 @@ class HotspotEditorUI {
         const fontGrid = this.makeGrid(2)
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
-            this.makeInput('number', this.activeHotspotData.text.fontSize, {
+            makeInput('number', this.activeHotspotData.text.fontSize, {
                 min: 8,
                 max: 72,
                 name: 'font-size',
@@ -378,7 +344,7 @@ class HotspotEditorUI {
         )
         const fontFamilyField = this.makeField('Font')
         fontFamilyField.appendChild(
-            this.makeSelect(
+            makeSelect(
                 ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
                 this.activeHotspotData.text.font,
                 (v) => {
@@ -393,21 +359,19 @@ class HotspotEditorUI {
         textGroup.appendChild(fontGrid)
         panel.appendChild(textGroup)
 
-        const hotspotGroup = this.makeGroup('Hotspot')
+        const hotspotGroup = makeSectionGroup('Hotspot')
         const styleField = this.makeField('Style')
-        const styleRow = document.createElement('div')
-        styleRow.classList.add('hotspot-style-row')
-        ;['circle', 'dot'].forEach((opt) => {
-            const btn = document.createElement('div')
-            btn.classList.add('hotspot-style-btn')
-            if (this.activeHotspotData.dot.style === opt) btn.classList.add('active')
-            btn.textContent = opt.charAt(0).toUpperCase() + opt.slice(1)
-            btn.addEventListener('click', () => {
-                this.activeHotspotData.dot.style = opt
-                styleRow.querySelectorAll('.hotspot-style-btn').forEach((b) => b.classList.toggle('active', b === btn))
+        const styleRow = makeSegmentRow({
+            options: [
+                { label: 'Circle', value: 'circle' },
+                { label: 'Dot', value: 'dot' },
+            ],
+            defaultValue: this.activeHotspotData.dot.style,
+            onChange: (val) => {
+                this.activeHotspotData.dot.style = val
+                strokeField.style.display = val === 'dot' ? 'none' : 'block'
                 this.applyDraft()
-            })
-            styleRow.appendChild(btn)
+            },
         })
         styleField.appendChild(styleRow)
         hotspotGroup.appendChild(styleField)
@@ -415,7 +379,7 @@ class HotspotEditorUI {
         const dotGrid = this.makeGrid(3)
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
-            this.makeInput('number', this.activeHotspotData.dot.size, {
+            makeInput('number', this.activeHotspotData.dot.size, {
                 min: 10,
                 max: 80,
                 name: 'dot-size',
@@ -427,7 +391,7 @@ class HotspotEditorUI {
         )
         const strokeField = this.makeField('Stroke width')
         strokeField.appendChild(
-            this.makeInput('number', this.activeHotspotData.dot.stroke, {
+            makeInput('number', this.activeHotspotData.dot.stroke, {
                 min: 0,
                 max: 10,
                 step: 0.5,
@@ -438,6 +402,9 @@ class HotspotEditorUI {
                 },
             }),
         )
+        if (this.activeHotspotData.dot.style === 'dot') {
+            strokeField.style.display = 'none'
+        }
         const strokeColorField = this.makeField('Stroke color')
         strokeColorField.appendChild(
             makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
@@ -454,10 +421,10 @@ class HotspotEditorUI {
         const autoplayGrid = document.createElement('div')
         autoplayGrid.classList.add('hotspot-autoplay')
 
-        const autoPlayGroup = this.makeGroup('Auto Play')
+        const autoPlayGroup = makeSectionGroup('Auto Play')
         const timeField = this.makeField('Time (ms)')
         timeField.appendChild(
-            this.makeInput('number', this.activeHotspotData.autoPlay.time, {
+            makeInput('number', this.activeHotspotData.autoPlay.time, {
                 min: 0,
                 step: 500,
                 name: 'play-time',
@@ -472,7 +439,7 @@ class HotspotEditorUI {
         autoplayGrid.appendChild(autoPlayGroup)
         panel.appendChild(autoplayGrid)
 
-        const audioGroup = this.makeGroup('Audio')
+        const audioGroup = makeSectionGroup('Audio')
 
         const hasAudio = !!(this.activeHotspotData.audio?.fileName || this.activeHotspotData.audio?.src)
 
@@ -499,13 +466,12 @@ class HotspotEditorUI {
         audioSettings.classList.add('audio-settings')
         if (!hasAudio) audioSettings.style.display = 'none'
 
-        const clearAudioBtn = document.createElement('button')
-        clearAudioBtn.classList.add('icon-btn', 'del')
+        const clearAudioBtn = makeButton({
+            icon: ICONS.trash,
+            title: 'Remove audio',
+            className: 'delete-btn audio-clear-btn',
+        })
         if (!hasAudio) clearAudioBtn.style.display = 'none'
-        clearAudioBtn.title = 'Remove audio'
-        clearAudioBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>`
 
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0]
@@ -588,47 +554,47 @@ class HotspotEditorUI {
 
         const iconBgField = this.makeField('Background', 'background-color')
         iconBgField.appendChild(
-            makeColorAlpha(
-                this.activeHotspotData.audio?.bgColor || '#000000',
-                this.activeHotspotData.audio?.bgAlpha ?? 0.35,
-                (v) => {
+            makeColorAlpha({
+                color: this.activeHotspotData.audio?.bgColor || '#000000',
+                alpha: this.activeHotspotData.audio?.bgAlpha ?? 0.35,
+                onChangecolor: (v) => {
                     this.activeHotspotData.audio.bgColor = v
                     this.applyDraft()
                 },
-                (v) => {
+                onChangeAlpha: (v) => {
                     this.activeHotspotData.audio.bgAlpha = v
                     this.applyDraft()
                 },
-            ),
+            }),
         )
 
         const loopField = this.makeField('Loop')
         loopField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio?.loop, () => {
-                this.activeHotspotData.audio.loop = !this.activeHotspotData.audio.loop
-                return this.activeHotspotData.audio.loop
+            makeToggle(this.activeHotspotData.audio?.loop, (value) => {
+                this.activeHotspotData.audio.loop = value
+                this.applyDraft()
             }),
         )
 
         const showField = this.makeField('Show')
         showField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio?.show, () => {
-                this.activeHotspotData.audio.show = !this.activeHotspotData.audio.show
-                return this.activeHotspotData.audio.show
+            makeToggle(this.activeHotspotData.audio?.show, (value) => {
+                this.activeHotspotData.audio.show = value
+                this.applyDraft()
             }),
         )
         // const persistField = this.makeField('Persist')
         // persistField.appendChild(
-        //     this.makeToggle(this.activeHotspotData.audio?.persist, () => {
-        //         this.activeHotspotData.audio.persist = !this.activeHotspotData.audio.persist
+        //     makeToggle(this.activeHotspotData.audio?.persist, (value) => {
+        //         this.activeHotspotData.audio.persist = value
         //         return this.activeHotspotData.audio.persist
         //     }),
         // )
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
-            this.makeToggle(this.activeHotspotData.audio?.autoPlay, () => {
-                this.activeHotspotData.audio.autoPlay = !this.activeHotspotData.audio.autoPlay
-                return this.activeHotspotData.audio.autoPlay
+            makeToggle(this.activeHotspotData.audio?.autoPlay, (value) => {
+                this.activeHotspotData.audio.autoPlay = value
+                this.applyDraft()
             }),
         )
 
@@ -636,8 +602,8 @@ class HotspotEditorUI {
         const embedLabel = embedField.querySelector('div:first-child')
         if (embedLabel) {
             const infoIcon = document.createElement('span')
-            infoIcon.classList.add('embed-info-icon')
-            infoIcon.textContent = 'i'
+            infoIcon.classList.add('info-icon')
+            infoIcon.innerHTML = ICONS.hintInfo
             infoIcon.setAttribute('tabindex', '0')
 
             infoIcon.addEventListener('mouseenter', () => {
@@ -661,18 +627,8 @@ class HotspotEditorUI {
             })
             embedLabel.appendChild(infoIcon)
         }
-        const embedWrap = document.createElement('div')
-        embedWrap.classList.add('audio-toggle-wrap')
-        const embedToggle = document.createElement('div')
-        embedToggle.classList.add('toggle')
-        if (this.activeHotspotData.audio?.embed) embedToggle.classList.add('active')
-        const embedKnob = document.createElement('div')
-        embedKnob.classList.add('toggle-knob')
-        embedToggle.appendChild(embedKnob)
-
-        embedToggle.addEventListener('click', () => {
-            const isEmbed = !this.activeHotspotData.audio.embed
-            if (isEmbed) {
+        const embedToggle = makeToggle(this.activeHotspotData.audio?.embed, (value) => {
+            if (value) {
                 const src = this.activeHotspotData.audio.src
                 const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
                 if (!hasValidSrc && this.activeHotspotData.audio.fileName) {
@@ -680,17 +636,15 @@ class HotspotEditorUI {
                         duration: 5000,
                         type: 'warning',
                     })
+                    embedToggle.setValue(false)
                     return
                 }
             }
-
-            this.activeHotspotData.audio.embed = isEmbed
-            embedToggle.classList.toggle('active', isEmbed)
+            this.activeHotspotData.audio.embed = value
             this.applyDraft()
         })
 
-        embedWrap.appendChild(embedToggle)
-        embedField.appendChild(embedWrap)
+        embedField.appendChild(embedToggle)
 
         const audioToggleGrid = this.makeGrid(3)
         audioGrid.appendChild(iconColorField)
@@ -706,46 +660,32 @@ class HotspotEditorUI {
         const volumeWrap = document.createElement('div')
         volumeWrap.classList.add('volume-wrap')
 
-        const volumeSlider = document.createElement('input')
-        const updateSlider = (v) => {
-            volumeSlider.style.background = `linear-gradient(
-        to right,
-        #f95f4d 0%,
-        #f95f4d ${v * 100}%,
-        rgba(0,0,0,0.1) ${v * 100}%,
-        rgba(0,0,0,0.1) 100%
-    )`
-        }
-        volumeSlider.type = 'range'
-        volumeSlider.classList.add('volume-slider')
-        volumeSlider.min = 0
-        volumeSlider.max = 1
-        volumeSlider.step = 0.1
-        volumeSlider.value = this.activeHotspotData.audio?.volume ?? 1
-        updateSlider(this.activeHotspotData.audio?.volume ?? 1)
-
-        const volumeInput = document.createElement('input')
-        volumeInput.type = 'number'
-        volumeInput.classList.add('input-field', 'volume-number')
-        volumeInput.min = 0
-        volumeInput.max = 1
-        volumeInput.step = 0.1
-        volumeInput.value = this.activeHotspotData.audio?.volume ?? 1
-
-        volumeSlider.addEventListener('input', () => {
-            const v = parseFloat(volumeSlider.value)
-            volumeInput.value = v
-            this.activeHotspotData.audio.volume = v
-            updateSlider(v)
-            this.applyDraft()
+        const volumeSlider = makeSlider({
+            min: 0,
+            max: 1,
+            step: 0.1,
+            className: 'volume-slider',
+            value: this.activeHotspotData.audio?.volume ?? 1,
+            variant: 'progress',
+            onChange: (v) => {
+                this.activeHotspotData.audio.volume = v
+                volumeInput.value = v
+                this.applyDraft()
+            },
         })
 
-        volumeInput.addEventListener('input', () => {
-            const v = Math.min(1, Math.max(0, parseFloat(volumeInput.value) || 0))
-            volumeSlider.value = v
-            this.activeHotspotData.audio.volume = v
-            updateSlider(v)
-            this.applyDraft()
+        const volumeInput = makeInput('number', this.activeHotspotData.audio?.volume ?? 1, {
+            min: 0,
+            max: 1,
+            step: 0.1,
+            className: 'volume-number',
+            name: 'volume',
+            onChange: (v) => {
+                const value = Math.min(1, Math.max(0, parseFloat(v) || 0))
+                this.activeHotspotData.audio.volume = value
+                volumeSlider.setValue(value)
+                this.applyDraft()
+            },
         })
 
         volumeWrap.appendChild(volumeSlider)
@@ -762,76 +702,26 @@ class HotspotEditorUI {
         const applyRow = document.createElement('div')
         applyRow.classList.add('apply-row')
 
-        const cancelBtn = document.createElement('button')
-        cancelBtn.classList.add('cancel-btn', 'btn', 'hotspot-cancel-btn')
-        cancelBtn.style.flex = '1'
-        cancelBtn.textContent = 'Cancel'
-        cancelBtn.addEventListener('click', () => {
-            this.onCancel()
+        const cancelBtn = makeButton({
+            title: 'Cancel',
+            className: 'cancel-btn hotspot-cancel-btn',
+            onClick: () => {
+                this.onCancel()
+            },
         })
 
-        const applyBtn = document.createElement('button')
-        applyBtn.classList.add('hotspot-apply-btn', 'confirm-btn', 'btn')
-        applyBtn.style.flex = '1'
-        applyBtn.textContent = 'Apply'
-        applyBtn.addEventListener('click', () => this.onApply())
+        const applyBtn = makeButton({
+            title: 'Apply',
+            className: 'hotspot-apply-btn confirm-btn',
+            onClick: () => {
+                this.onApply()
+            },
+        })
 
         applyRow.appendChild(cancelBtn)
         applyRow.appendChild(applyBtn)
         panel.appendChild(applyRow)
         return panel
-    }
-
-    makeToggle(initialValue, onChange) {
-        const wrap = document.createElement('div')
-        wrap.classList.add('audio-toggle-wrap')
-
-        const toggle = document.createElement('div')
-        toggle.classList.add('toggle')
-        if (initialValue) toggle.classList.add('active')
-
-        const knob = document.createElement('div')
-        knob.classList.add('toggle-knob')
-        toggle.appendChild(knob)
-
-        toggle.addEventListener('click', () => {
-            const newVal = onChange()
-            toggle.classList.toggle('active', newVal)
-            this.applyDraft()
-        })
-
-        wrap.appendChild(toggle)
-        return wrap
-    }
-
-    makeTextarea(value, opts = {}) {
-        const textarea = document.createElement('textarea')
-        textarea.value = value
-        textarea.classList.add('textarea-field')
-        const autoResize = () => {
-            textarea.style.height = 'auto'
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
-        }
-        textarea.addEventListener('input', () => {
-            autoResize()
-            if (opts.onChange) opts.onChange(textarea.value)
-        })
-
-        requestAnimationFrame(autoResize)
-        if (opts.name) textarea.name = opts.name
-        if (opts.classname) textarea.classList.add(opts.classname)
-        if (opts.placeholder) textarea.placeholder = opts.placeholder
-        return textarea
-    }
-
-    makeGroup(title) {
-        const g = document.createElement('div')
-        g.classList.add('section-group')
-        const t = document.createElement('div')
-        t.classList.add('section-group-title')
-        t.textContent = title
-        g.appendChild(t)
-        return g
     }
 
     makeField(label, classname = '') {
@@ -851,38 +741,6 @@ class HotspotEditorUI {
         return grid
     }
 
-    makeInput(type, value, opts = {}) {
-        const input = document.createElement('input')
-        input.type = type
-        input.value = value
-        input.classList.add('input-field')
-        if (opts.min !== undefined) input.min = opts.min
-        if (opts.name) input.name = opts.name
-        if (opts.max !== undefined) input.max = opts.max
-        if (opts.step !== undefined) input.step = opts.step
-        if (opts.placeholder) input.placeholder = opts.placeholder
-        if (opts.onChange)
-            input.addEventListener('input', (e) => {
-                e.stopPropagation()
-                opts.onChange(input.value)
-            })
-        return input
-    }
-
-    makeSelect(options, value, onChange, opts = {}) {
-        const select = document.createElement('select')
-        select.classList.add('input-field', 'select-field')
-        if (opts.name) select.name = opts.name
-        options.forEach((opt) => {
-            const el = document.createElement('option')
-            el.value = el.textContent = opt
-            if (opt === value) el.selected = true
-            select.appendChild(el)
-        })
-        select.addEventListener('change', () => onChange(select.value))
-        return select
-    }
-
     makeFormatBtn(char, key, draft, onChange) {
         const btn = document.createElement('button')
         btn.classList.add('fmt-btn')
@@ -893,14 +751,6 @@ class HotspotEditorUI {
             btn.classList.toggle('active', draft.text[key])
             onChange()
         })
-        return btn
-    }
-
-    makeIconBtn(svgPath, variant = '') {
-        const btn = document.createElement('button')
-        btn.classList.add('icon-btn')
-        if (variant) btn.classList.add(variant)
-        btn.innerHTML = svgPath
         return btn
     }
 }

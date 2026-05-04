@@ -1,8 +1,8 @@
-function initHotspotSection(body, global, dom) {
+function makeHotspotSection(body, global, dom) {
     const editor = new HotspotEditorUI(body, { dom, global })
     editor.mount()
 }
-function createSection({ id, title, body: renderBody, classname = '', events, icon }) {
+function makeSection({ id, title, body: renderBody, classname = '', events, icon }) {
     const section = document.createElement('div')
     section.classList.add('section')
 
@@ -66,7 +66,7 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
 
     header.addEventListener('click', toggle)
 
-    events.on('hotspot:active', (activeId) => {
+    events.on('sidebar:active', (activeId) => {
         if (activeId === id) {
             open()
         }
@@ -77,15 +77,14 @@ function createSection({ id, title, body: renderBody, classname = '', events, ic
 
     return section
 }
-function renderPivot(group, global, editGroup) {
+function makePivotGroup(global, editGroup) {
     const { events, settings } = global
+    const group = makeSectionGroup('Pivot Point')
     editGroup.register('pivot', {
         cancel: () => {
             onCancel()
         },
     })
-    events.on('hotspot:active', () => onCancel())
-    events.on('sidebar:clicked', () => onCancel())
     events.on('inputEvent:reset', () => onCancel())
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
@@ -94,10 +93,11 @@ function renderPivot(group, global, editGroup) {
     container.classList.add('pivot-wrap')
     const {
         row: positionRow,
-        setEditable: setInputsEditable,
+        setDisabled: setInputsDisabled,
         setValues: setInputValues,
-    } = createVec3Inputs({
+    } = makeVec3Inputs({
         title: 'Position',
+        disabled: true,
         onChange: ({ x, y, z }) => {
             if (!isEditing) return
             events.fire('pivot:positionsynced', { x, y, z })
@@ -135,13 +135,13 @@ function renderPivot(group, global, editGroup) {
         editGroup.startEdit('pivot')
         isEditing = true
         editPivotPos = { x, y, z }
-        setInputsEditable(true)
+        setInputsDisabled(false)
         renderBtns()
         events.fire('pivot:enable-edit', { position: { x, y, z }, enable: true })
     }
     const onCancel = () => {
         if (!isEditing) return
-        setInputsEditable(false)
+        setInputsDisabled(true)
         if (editPivotPos) {
             events.fire('pivot:positionsynced', editPivotPos)
         }
@@ -152,45 +152,37 @@ function renderPivot(group, global, editGroup) {
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
-            const btnCancel = document.createElement('button')
-            btnCancel.classList.add('btn', 'cancel-btn')
-            btnCancel.textContent = 'Cancel'
-            btnCancel.onclick = onCancel
-            const btnSave = document.createElement('button')
-            btnSave.classList.add('btn', 'confirm-btn')
-            btnSave.textContent = 'Apply'
-            btnSave.onclick = () => {
-                const { x, y, z } = currrentPivotPos
-                editPivotPos = { x, y, z }
-                settings.pivot.position = { x, y, z }
-                isEditing = false
-                setInputsEditable(false)
-                renderBtns()
-                events.fire('pivot:save')
-            }
+            const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancel })
+            const btnSave = makeButton({
+                title: 'Apply',
+                className: 'confirm-btn',
+                onClick: () => {
+                    const { x, y, z } = currrentPivotPos
+                    editPivotPos = { x, y, z }
+                    settings.pivot.position = { x, y, z }
+                    isEditing = false
+                    setInputsDisabled(true)
+                    renderBtns()
+                    events.fire('pivot:save')
+                },
+            })
+
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnSave)
         } else {
-            const btnEdit = document.createElement('button')
-            btnEdit.classList.add('btn')
-            btnEdit.textContent = 'Edit'
-            btnEdit.onclick = () => onEdit(editPivotPos)
-
-            const btnDelete = document.createElement('button')
-            btnDelete.classList.add('btn', 'delete-btn')
-            btnDelete.title = 'Delete'
-            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>`
-            btnDelete.onclick = () => {
-                settings.pivot.position = null
-                editPivotPos = null
-                currrentPivotPos = null
-                setPivotConfigured(false)
-                events.fire('pivot:delete')
-                renderBtns()
-            }
+            const btnEdit = makeButton({ title: 'Edit', className: 'edit-btn', onClick: () => onEdit(editPivotPos) })
+            const btnDelete = makeButton({
+                title: 'Delete',
+                icon: ICONS.trash,
+                className: 'delete-btn',
+                onClick: () => {
+                    editPivotPos = null
+                    currrentPivotPos = null
+                    setPivotConfigured(false)
+                    events.fire('pivot:delete')
+                    renderBtns()
+                },
+            })
 
             btnRow.appendChild(btnEdit)
             btnRow.appendChild(btnDelete)
@@ -221,180 +213,121 @@ function renderPivot(group, global, editGroup) {
 
     renderBtns()
     setPivotConfigured(!!settings.pivot.position)
+    return group
 }
-function modelSection(el, global) {
-    const { settings } = global
+function makeModelSection(el, global) {
+    const { settings, events } = global
     const step = settings.setupStep
     const isHemi = settings.model === 'hemispherical'
-    const editGroup = createEditGroup(global.events)
-    const container = document.createElement('div')
-    container.classList.add('section-wrap')
+    const editGroup = makeEditGroup(events, ['sidebar:active', 'sidebar:clicked'])
+    const container = makeSectionWrap()
 
-    if (isHemi && step === 1 && settings.model !== 'spherical') {
-        const orientationGroup = document.createElement('div')
-        orientationGroup.classList.add('section-group')
-        const orientationTitle = document.createElement('div')
-        orientationTitle.classList.add('section-group-title')
-        orientationTitle.textContent = 'transform'
-        orientationGroup.appendChild(orientationTitle)
-
-        const { cameraLimitsGroup } = renderOrientation(orientationGroup, global, editGroup)
-
-        container.appendChild(orientationGroup)
-        container.appendChild(cameraLimitsGroup)
+    if (isHemi && step === 1) {
+        container.appendChild(makeOrientationGroup(global, editGroup))
+        container.appendChild(makeCameraLimitsGroup(global, editGroup))
     }
 
     const isPivotStep = (isHemi && step === 2) || (!isHemi && step === 1)
     if (isPivotStep) {
-        const pivotGroup = document.createElement('div')
-        pivotGroup.classList.add('section-group')
-        const pivotTitle = document.createElement('div')
-        pivotTitle.classList.add('section-group-title')
-        pivotTitle.textContent = 'Pivot Point'
-        pivotGroup.appendChild(pivotTitle)
-        renderPivot(pivotGroup, global, editGroup)
-        container.appendChild(pivotGroup)
+        container.appendChild(makePivotGroup(global, editGroup))
     }
 
     el.appendChild(container)
 }
-function viewerSettingsSection(el, global) {
-    const settings = global.settings
-    const container = document.createElement('div')
-    container.classList.add('section-wrap')
-    global.events.on('viewer:re-render', () => renderGroup())
-    const renderItem = (item) => {
-        const row = document.createElement('div')
-        row.classList.add('section-group-row')
+function makeInitViewGroup(events, settings) {
+    const wrap = document.createElement('div')
+    wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
 
-        const labelEl = document.createElement('span')
-        labelEl.textContent = item.label
-        row.appendChild(labelEl)
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
 
-        if (item.type === 'toggle') {
-            const toggle = document.createElement('div')
-            toggle.classList.add('toggle')
-
-            const knob = document.createElement('div')
-            knob.classList.add('toggle-knob')
-            toggle.appendChild(knob)
-
-            if (item.active) toggle.classList.add('active')
-
-            toggle.addEventListener('click', (e) => {
-                e.stopPropagation()
-                const newValue = !toggle.classList.contains('active')
-                toggle.classList.toggle('active', newValue)
-                global.events.fire(`viewer:${item.event}`, newValue)
-            })
-
-            row.appendChild(toggle)
-        } else if (item.type === 'color') {
-            const colorInput = document.createElement('input')
-            colorInput.type = 'color'
-            colorInput.classList.add('color-input', 'viewer-background-input')
-            colorInput.value = item.value
-
-            colorInput.addEventListener('input', () => {
-                document.documentElement.style.setProperty('--viewer-bg', colorInput.value)
-                global.events.fire(`viewer:${item.event}`, colorInput.value)
-            })
-
-            row.appendChild(colorInput)
-        } else if (item.type === 'button') {
-            const btn = document.createElement('button')
-            btn.classList.add('btn')
-            btn.style.cssText = 'width:"max-content";height:28px; font-size:12px;'
-            btn.textContent = item.label
-            btn.addEventListener('click', item.onClick)
-            row.innerHTML = ''
-            row.appendChild(btn)
+    const btnSave = document.createElement('button')
+    btnSave.classList.add('btn', 'initview-btn')
+    btnSave.textContent = 'Save current view'
+    function updateState(hasPose) {
+        if (hasPose) {
+            btnSave.classList.add('active')
+            btnDefault.classList.remove('active')
+        } else {
+            btnDefault.classList.add('active')
+            btnSave.classList.remove('active')
         }
-        return row
     }
 
-    const renderInitViewFooter = (events) => {
-        const btnRow = document.createElement('div')
-        btnRow.classList.add('btn-row')
-
-        const hasPose = !!settings.initview.pose
-
-        const btnSave = document.createElement('button')
-        btnSave.classList.add('btn', 'initview-btn')
-        if (hasPose) btnSave.classList.add('active')
-        btnSave.textContent = hasPose ? 'Update saved view' : 'Save current view'
-        btnSave.onclick = () => {
-            events.fire('viewer:save-initview')
-            events.fire('viewer:re-render')
-        }
-
-        const btnDefault = document.createElement('button')
-        btnDefault.classList.add('btn', 'initview-btn')
-        if (!hasPose) btnDefault.classList.add('active')
-        btnDefault.textContent = 'Default view'
-        btnDefault.onclick = () => {
-            if (!settings.initview.pose) return
-            events.fire('viewer:remove-saved-view')
-            events.fire('viewer:re-render')
-        }
-
-        btnRow.appendChild(btnSave)
-        btnRow.appendChild(btnDefault)
-
-        return btnRow
+    btnSave.onclick = () => {
+        events.fire('viewer:save-initview')
+        updateState(true)
     }
 
-    const getGroups = () => [
-        {
-            label: 'General',
-            items: [
-                { type: 'color', label: 'Background', value: settings.background.color, event: 'background-changed' },
-                { type: 'toggle', key: 'inertia', label: 'Inertia', active: settings.inertia, event: 'inertia' },
-                {
-                    type: 'toggle',
-                    key: 'autoHideUI',
-                    label: 'Auto Hide UI',
-                    active: settings.autoHideUI,
-                    event: 'auto-hide-ui',
-                },
-                {
-                    type: 'toggle',
-                    key: 'lockZoomIn',
-                    label: 'Lock Zoom In',
-                    active: settings.lockZoomIn.locked,
-                    event: 'lock-zoom-in',
-                },
-            ],
+    const btnDefault = document.createElement('button')
+    btnDefault.classList.add('btn', 'initview-btn')
+    btnDefault.textContent = 'Default view'
+    btnDefault.onclick = () => {
+        updateState(false)
+        if (!settings.initview.pose) return
+        events.fire('viewer:remove-saved-view')
+    }
+
+    btnRow.appendChild(btnSave)
+    btnRow.appendChild(btnDefault)
+    updateState(!!settings.initview.pose)
+
+    wrap.appendChild(btnRow)
+    return wrap
+}
+function makeViewerSection(el, global) {
+    const { settings, events } = global
+    const container = makeSectionWrap()
+
+    const generalGroup = makeSectionGroup('General')
+
+    const { row: backgroundColor } = makeColorPicker({
+        label: 'Background',
+        defaultValue: settings.background.color,
+        onChange: (color) => {
+            settings.background.color = color
+            events.fire('viewer:background-changed', color)
         },
-        {
-            label: 'Initial View',
-            items: [],
-            footer: () => renderInitViewFooter(global.events),
-        },
-    ]
+    })
 
-    const renderGroup = () => {
-        container.innerHTML = ''
-        getGroups().forEach(({ label, items, footer }) => {
-            const group = document.createElement('div')
-            group.classList.add('section-group')
+    const inertiaRow = makeRow('Inertia')
+    const inertiaToggleEl = makeToggle(settings.inertia, (value) => {
+        settings.inertia = value
+        events.fire('viewer:inertia', value)
+    })
+    inertiaRow.appendChild(inertiaToggleEl)
 
-            const groupTitle = document.createElement('div')
-            groupTitle.classList.add('section-group-title')
-            groupTitle.textContent = label
-            group.appendChild(groupTitle)
+    const autoHideUIRow = makeRow('Auto Hide UI')
+    const autoHideUIToggleEl = makeToggle(settings.autoHideUI, (value) => {
+        settings.autoHideUI = value
+        events.fire('viewer:auto-hide-ui', value)
+    })
+    autoHideUIRow.appendChild(autoHideUIToggleEl)
 
-            items.forEach((item) => group.appendChild(renderItem(item)))
-            if (footer) group.appendChild(footer())
-            container.appendChild(group)
-        })
-    }
-    renderGroup()
+    const lockZoomInRow = makeRow('Lock Zoom In')
+    const lockZoomInToggleEl = makeToggle(settings.lockZoomIn.locked, (value) => {
+        events.fire('viewer:lock-zoom-in', value)
+    })
+    lockZoomInRow.appendChild(lockZoomInToggleEl)
+
+    generalGroup.appendChild(backgroundColor)
+    generalGroup.appendChild(inertiaRow)
+    generalGroup.appendChild(autoHideUIRow)
+    generalGroup.appendChild(lockZoomInRow)
+
+    const initviewHint =
+        'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
+    const initviewGroup = makeSectionGroup('Initial View', initviewHint)
+    initviewGroup.appendChild(makeInitViewGroup(events, settings))
+
+    container.appendChild(generalGroup)
+    container.appendChild(initviewGroup)
+
     el.appendChild(container)
 }
-function dimensionSection(el, global) {
+function makeDimensionSection(el, global) {
     const { events, settings } = global
-    events.on('hotspot:active', () => onCancel())
+    events.on('sidebar:active', () => onCancel())
     events.on('sidebar:clicked', () => onCancel())
     let isEditing = false
     let editDimension = settings.dimensions ?? null
@@ -416,7 +349,7 @@ function dimensionSection(el, global) {
     addBtn.textContent = '+ Add'
 
     addBtn.onclick = async () => {
-        global.loading.show()
+        await global.loading.show()
         const points = getVisiblePoints(modelEntity)
         const result = await snapToFitOBBAsync(points, getDimensionsRotation(points), {
             maxIterations: 10000,
@@ -459,52 +392,48 @@ function dimensionSection(el, global) {
     noDimRow.appendChild(addBtn)
 
     // ── Has dimension ──
-    const hasDimWrap = document.createElement('div')
-    hasDimWrap.classList.add('section-wrap')
-
-    // ── Group 0: Display ──
-    const displayGroup = document.createElement('div')
-    displayGroup.classList.add('section-group')
-    const displayGroupTitle = document.createElement('div')
-    displayGroupTitle.classList.add('section-group-title')
-    displayGroupTitle.textContent = 'Display'
-    displayGroup.appendChild(displayGroupTitle)
+    const hasDimWrap = makeSectionWrap()
+    const displayGroup = makeSectionGroup('display')
 
     // Color picker
     const {
         setDisabled: setBoxColorDisabled,
-        group: boxColorGroup,
+        row: boxColorGroup,
         input: boxColorInput,
-    } = createColorPicker('Box Color', currentDimensions?.boxColor || '#ffffff', (color) => {
-        currentDimensions = { ...currentDimensions, boxColor: color }
-        events.fire('dimensions:change', currentDimensions)
+    } = makeColorPicker({
+        label: 'Box Color',
+        defaultValue: currentDimensions?.boxColor || '#ffffff',
+        onChange: (color) => {
+            currentDimensions = { ...currentDimensions, boxColor: color }
+            events.fire('dimensions:change', currentDimensions)
+        },
     })
     const {
         setDisabled: setTextColorDisabled,
-        group: textColor,
+        row: textColor,
         input: textColorInput,
-    } = createColorPicker('Text Color', currentDimensions?.foregroundColor || '#ffffff', (color) => {
-        currentDimensions = { ...currentDimensions, foregroundColor: color }
-        events.fire('dimensions:change', currentDimensions)
+    } = makeColorPicker({
+        label: 'Text Color',
+        defaultValue: currentDimensions?.foregroundColor || '#ffffff',
+        onChange: (color) => {
+            currentDimensions = { ...currentDimensions, foregroundColor: color }
+            events.fire('dimensions:change', currentDimensions)
+        },
     })
-    const backgroundRow = document.createElement('div')
-    backgroundRow.classList.add('section-group-row')
-    const labelEl = document.createElement('span')
-    labelEl.style.cssText = 'min-width:160px'
-    labelEl.textContent = 'Text Background'
-    const backgroundColor = makeColorAlpha(
-        currentDimensions?.background.color || '#000000',
-        currentDimensions?.background.alpha ?? 0.8,
-        (color) => {
+
+    const backgroundRow = makeRow('Text Background', 'background-row')
+    const backgroundColor = makeColorAlpha({
+        color: currentDimensions?.background.color || '#000000',
+        alpha: currentDimensions?.background.alpha ?? 0.8,
+        onChangeColor: (color) => {
             currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, color } }
             events.fire('dimensions:change', currentDimensions)
         },
-        (alpha) => {
+        onChangeAlpha: (alpha) => {
             currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, alpha } }
             events.fire('dimensions:change', currentDimensions)
         },
-    )
-    backgroundRow.appendChild(labelEl)
+    })
     backgroundRow.appendChild(backgroundColor)
 
     displayGroup.appendChild(boxColorGroup)
@@ -512,17 +441,12 @@ function dimensionSection(el, global) {
     displayGroup.appendChild(backgroundRow)
 
     // ── Group 1: Box Transform ──
-    const boxGroup = document.createElement('div')
-    boxGroup.classList.add('section-group')
-    const boxGroupTitle = document.createElement('div')
-    boxGroupTitle.classList.add('section-group-title')
-    boxGroupTitle.textContent = 'Box transform'
-    boxGroup.appendChild(boxGroupTitle)
+    const boxGroup = makeSectionGroup('Box transform')
     const {
         row: positionRow,
-        setEditable: setPosEditable,
+        setDisabled: setPosDisabled,
         setValues: setPosValues,
-    } = createVec3Inputs({
+    } = makeVec3Inputs({
         title: 'Position',
         step: 0.5,
         onFocus: () => {
@@ -549,9 +473,9 @@ function dimensionSection(el, global) {
 
     const {
         row: rotationRow,
-        setEditable: setRotEditable,
+        setDisabled: setRotDisabled,
         setValues: setRotValues,
-    } = createVec3Inputs({
+    } = makeVec3Inputs({
         title: 'Rotation',
         step: 0.5,
         onFocus: () => {
@@ -606,9 +530,9 @@ function dimensionSection(el, global) {
 
     const {
         row: sizeRow,
-        setEditable: setSizeEditable,
+        setDisabled: setSizeDisabled,
         setValues: setSizeValues,
-    } = createVec3Inputs({
+    } = makeVec3Inputs({
         title: 'Size',
         step: 0.5,
         onChange: ({ x, y, z }) => {
@@ -618,51 +542,32 @@ function dimensionSection(el, global) {
         },
     })
     // ── Auto Fit row ──
-    const autoFitRow = document.createElement('div')
-    autoFitRow.classList.add('section-group-row')
-
-    const autoFitLabel = document.createElement('span')
-    autoFitLabel.textContent = 'Auto fit'
-
-    const autoFitBtn = document.createElement('button')
-    autoFitBtn.classList.add('btn')
+    const autoFitRow = makeRow('Auto Fit')
+    const autoFitBtn = makeButton({
+        icon: ICONS.autoFit,
+        title: 'Auto Fit',
+        onClick: async () => {
+            if (!currentDimensions || !isEditing) return
+            await global.loading.show()
+            const points = getVisiblePoints(modelEntity)
+            const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
+                maxIterations: 300,
+                learningRate: 1,
+                chunkSize: 50,
+            })
+            currentDimensions = {
+                ...currentDimensions,
+                ...result,
+                ...result,
+                ...result,
+            }
+            setValues(currentDimensions)
+            events.fire('dimensions:change', currentDimensions)
+            global.loading.hide()
+        },
+    })
     autoFitBtn.style.cssText = 'height:32px;'
-    autoFitBtn.title = 'Auto Fit'
-    autoFitBtn.innerHTML = `
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="5" y="5" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1" stroke-dasharray="2 1.5"/>
-    <line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    <polyline points="4,10 2,12 4,14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="22" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    <polyline points="20,10 22,12 20,14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    <polyline points="10,4 12,2 14,4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="12" y1="22" x2="12" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    <polyline points="10,20 12,22 14,20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-  </svg>
-`
 
-    autoFitBtn.onclick = async () => {
-        if (!currentDimensions || !isEditing) return
-        global.loading.show()
-        const points = getVisiblePoints(modelEntity)
-        const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
-            maxIterations: 300,
-            learningRate: 1,
-            chunkSize: 50,
-        })
-        currentDimensions = {
-            ...currentDimensions,
-            ...result,
-            ...result,
-            ...result,
-        }
-        setValues(currentDimensions)
-        events.fire('dimensions:change', currentDimensions)
-        global.loading.hide()
-    }
-
-    autoFitRow.appendChild(autoFitLabel)
     autoFitRow.appendChild(autoFitBtn)
 
     boxGroup.appendChild(positionRow)
@@ -670,42 +575,29 @@ function dimensionSection(el, global) {
     boxGroup.appendChild(sizeRow)
     boxGroup.appendChild(autoFitRow)
     // ── Group 2: Real Dimensions ──
-    const realGroup = document.createElement('div')
-    realGroup.classList.add('section-group')
-    const realGroupTitle = document.createElement('div')
-    realGroupTitle.classList.add('section-group-title')
-    realGroupTitle.textContent = 'Real dimensions'
-    realGroup.appendChild(realGroupTitle)
+    const realGroup = makeSectionGroup('Real dimensions')
 
-    const realUnitRow = document.createElement('div')
-    realUnitRow.classList.add('section-group-row')
-    const realUnitLabel = document.createElement('span')
-    realUnitLabel.textContent = 'Unit'
-    const realUnitSelect = document.createElement('select')
-    realUnitSelect.classList.add('unit-select')
-    ;['mm', 'cm', 'm', 'inch'].forEach((u) => {
-        const opt = document.createElement('option')
-        opt.value = u
-        opt.textContent = u
-        if (u === (settings.unit ?? 'cm')) opt.selected = true
-        realUnitSelect.appendChild(opt)
-    })
+    const realUnitRow = makeRow('Unit')
+    const realUnitSelect = makeSelect(
+        ['mm', 'cm', 'm', 'inch'],
+        settings.dimensions?.unit || 'cm',
+        (v) => {
+            currentDimensions = { ...currentDimensions, unit: v }
+            events.fire('dimensions:change', currentDimensions)
+        },
+        { name: 'unit', className: 'unit-select' },
+    )
     const setRealUnitDisabled = (val) => {
         realUnitSelect.disabled = val
         realUnitSelect.classList.toggle('unit-select-disabled', val)
     }
-    realUnitSelect.onchange = (e) => {
-        currentDimensions = { ...currentDimensions, unit: e.target.value }
-        events.fire('dimensions:change', currentDimensions)
-    }
-    realUnitRow.appendChild(realUnitLabel)
     realUnitRow.appendChild(realUnitSelect)
 
     const {
         row: realSizeRow,
-        setEditable: setRealEditable,
+        setDisabled: setRealDisabled,
         setValues: setRealValues,
-    } = createVec3Inputs({
+    } = makeVec3Inputs({
         title: 'Size',
         step: 0.5,
         onChange: ({ x, y, z }) => {
@@ -734,11 +626,11 @@ function dimensionSection(el, global) {
         backgroundColor.setAlpha(dim.background.alpha)
     }
 
-    const setEditable = (on) => {
-        setPosEditable(on)
-        setRotEditable(on)
-        setSizeEditable(on)
-        setRealEditable(on)
+    const setDisabled = (on) => {
+        setPosDisabled(!on)
+        setRotDisabled(!on)
+        setSizeDisabled(!on)
+        setRealDisabled(!on)
         setRealUnitDisabled(!on)
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
@@ -752,7 +644,7 @@ function dimensionSection(el, global) {
 
     const onEdit = () => {
         isEditing = true
-        setEditable(true)
+        setDisabled(true)
         renderBtns()
         events.fire('dimensions:edit', currentDimensions)
     }
@@ -760,7 +652,7 @@ function dimensionSection(el, global) {
     const onCancel = () => {
         if (!isEditing) return
         isEditing = false
-        setEditable(false)
+        setDisabled(false)
         if (editDimension) setValues(editDimension)
         currentDimensions = { ...editDimension }
         renderBtns()
@@ -770,46 +662,36 @@ function dimensionSection(el, global) {
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
-            const btnCancel = document.createElement('button')
-            btnCancel.classList.add('btn', 'cancel-btn')
-            btnCancel.textContent = 'Cancel'
-            btnCancel.onclick = onCancel
-
-            const btnApply = document.createElement('button')
-            btnApply.classList.add('btn', 'confirm-btn')
-            btnApply.textContent = 'Apply'
-            btnApply.onclick = () => {
-                editDimension = { ...currentDimensions }
-                settings.dimensions = { ...currentDimensions }
-                isEditing = false
-                setEditable(false)
-                renderBtns()
-                events.fire('dimensions:save', currentDimensions)
-            }
-
+            const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancel })
+            const btnApply = makeButton({
+                title: 'Apply',
+                className: 'confirm-btn',
+                onClick: () => {
+                    editDimension = { ...currentDimensions }
+                    settings.dimensions = { ...currentDimensions }
+                    isEditing = false
+                    setDisabled(false)
+                    renderBtns()
+                    events.fire('dimensions:save', currentDimensions)
+                },
+            })
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnApply)
         } else {
-            const btnEdit = document.createElement('button')
-            btnEdit.classList.add('btn')
-            btnEdit.textContent = 'Edit'
-            btnEdit.onclick = onEdit
-
-            const btnDelete = document.createElement('button')
-            btnDelete.classList.add('btn', 'delete-btn')
-            btnDelete.title = 'Delete'
-            btnDelete.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>`
-            btnDelete.onclick = () => {
-                settings.dimensions = null
-                settings.measurement = JSON.parse(JSON.stringify(defaultSettings.measurement))
-                editDimension = null
-                currentDimensions = null
-                setDimConfigured(false)
-                events.fire('dimensions:configured', null)
-            }
+            const btnEdit = makeButton({ title: 'Edit', className: 'edit-btn', onClick: onEdit })
+            const btnDelete = makeButton({
+                title: 'Delete',
+                icon: ICONS.trash,
+                className: 'delete-btn',
+                onClick: () => {
+                    settings.dimensions = null
+                    settings.measurement = JSON.parse(JSON.stringify(defaultSettings.measurement))
+                    editDimension = null
+                    currentDimensions = null
+                    setDimConfigured(false)
+                    events.fire('dimensions:configured', null)
+                },
+            })
 
             btnRow.appendChild(btnEdit)
             btnRow.appendChild(btnDelete)
@@ -833,11 +715,11 @@ function dimensionSection(el, global) {
     el.appendChild(container)
 
     renderBtns()
-    setEditable(false)
+    setDisabled(false)
     setDimConfigured(!!settings.dimensions)
     if (settings.dimensions) setValues(settings.dimensions)
 }
-function measurementSection(el, global) {
+function makeMeasurementSection(el, global) {
     if (!global.settings.measurement) {
         global.settings.measurement = {
             enabled: false,
@@ -853,63 +735,50 @@ function measurementSection(el, global) {
         settings: { measurement },
         events,
     } = global
-    const measurementGroup = document.createElement('div')
-    measurementGroup.classList.add('section-group')
+    const measurementGroup = makeSectionGroup()
     // ── Measurement toggle ──
-    const measureToggleRow = document.createElement('div')
-    measureToggleRow.classList.add('section-group-row')
-
-    const measureLabel = document.createElement('span')
-    measureLabel.style.cssText = 'min-width:160px'
-    measureLabel.textContent = 'Enabled'
-
-    const measureToggleEl = document.createElement('div')
-    measureToggleEl.classList.add('toggle')
-    if (measurement?.enabled) measureToggleEl.classList.add('active')
-
-    const measureToggleKnob = document.createElement('div')
-    measureToggleKnob.classList.add('toggle-knob')
-
-    measureToggleEl.appendChild(measureToggleKnob)
-    measureToggleRow.appendChild(measureLabel)
+    const measureToggleRow = makeRow('Enabled')
+    const measureToggleEl = makeToggle(measurement?.enabled, (value) => {
+        if (measureToggleEl.classList.contains('disabled')) return
+        measureToggleEl.classList.toggle('active', value)
+        measurement.enabled = value
+        events.fire('ui:re-render-control-wrap')
+        if (!value && global.measureTool) global.measureTool.deactivate()
+    })
     measureToggleRow.appendChild(measureToggleEl)
+
     // ── Measurement color row ──
-    const { group: lineColor } = createColorPicker('Line Color', measurement.lineColor, (color) => {
-        measurement.lineColor = color
-        if (global.measureTool) global.measureTool.setConfig(measurement)
+    const { row: lineColor } = makeColorPicker({
+        label: 'Line Color',
+        defaultValue: measurement.lineColor,
+        onChange: (color) => {
+            measurement.lineColor = color
+            if (global.measureTool) global.measureTool.setConfig(measurement)
+        },
     })
-    const { group: textColor } = createColorPicker('Text Color', measurement.textColor, (color) => {
-        measurement.textColor = color
-        if (global.measureTool) global.measureTool.setConfig(measurement)
+    const { row: textColor } = makeColorPicker({
+        label: 'Text Color',
+        defaultValue: measurement.textColor,
+        onChange: (color) => {
+            measurement.textColor = color
+            if (global.measureTool) global.measureTool.setConfig(measurement)
+        },
     })
-    const backgroundRow = document.createElement('div')
-    backgroundRow.classList.add('section-group-row')
-    const labelEl = document.createElement('span')
-    labelEl.style.cssText = 'min-width:160px'
-    labelEl.textContent = 'Text Background'
-    const backgroundColor = makeColorAlpha(
-        measurement.background.color,
-        measurement.background.alpha,
-        (color) => {
+    const backgroundRow = makeRow('Text Background', 'background-row')
+    const backgroundColor = makeColorAlpha({
+        color: measurement.background.color,
+        alpha: measurement.background.alpha,
+        onChangeColor: (color) => {
             measurement.background.color = color
             if (global.measureTool) global.measureTool.setConfig(measurement)
         },
-        (alpha) => {
+        onChangeAlpha: (alpha) => {
             measurement.background.alpha = alpha
             if (global.measureTool) global.measureTool.setConfig(measurement)
         },
-    )
-    backgroundRow.appendChild(labelEl)
+    })
     backgroundRow.appendChild(backgroundColor)
 
-    measureToggleEl.addEventListener('click', () => {
-        if (measureToggleEl.classList.contains('disabled')) return
-        const enabled = !measureToggleEl.classList.contains('active')
-        measureToggleEl.classList.toggle('active', enabled)
-        measurement.enabled = enabled
-        events.fire('ui:re-render-control-wrap')
-        if (!enabled && global.measureTool) global.measureTool.deactivate()
-    })
     measurementGroup.appendChild(measureToggleRow)
     measurementGroup.appendChild(lineColor)
     measurementGroup.appendChild(textColor)
@@ -917,14 +786,11 @@ function measurementSection(el, global) {
 
     el.appendChild(measurementGroup)
 }
-function exportSection(el, global) {
+function makeExportSection(el, global) {
     const hint = document.createElement('p')
     hint.textContent = 'Please put the exported HTML file in the current folder.'
     hint.classList.add('export-hint')
-    const helperBtn = document.createElement('a')
-    helperBtn.classList.add('export-link-btn')
-    helperBtn.textContent = 'Export Location Change Helper'
-    helperBtn.href = '#'
+
     const edgeStepsData = {
         title: 'To change your downloads folder location in Microsoft Edge:',
         items: [
@@ -949,43 +815,49 @@ function exportSection(el, global) {
             'Enable **Always ask you where to save files**.',
         ],
     }
-    helperBtn.addEventListener('click', (e) => {
-        e.preventDefault()
-        const tabs = createTabs({
-            tabs: [
-                {
-                    label: 'Chrome',
-                    content: () => downloadHelper(chromeStepsData),
-                },
-                {
-                    label: 'Firefox',
-                    content: () => downloadHelper(firefoxStepsData),
-                },
-                {
-                    label: 'Microsoft Edge',
-                    content: () => downloadHelper(edgeStepsData),
-                },
-            ],
-            width: 800,
-            height: 350,
-        })
-
-        global.modal.open('Export Location Change Helper', tabs, 'top', {
-            showCancel: false,
-        })
+    let tabs = null
+    const helperBtn = makeLink({
+        text: 'Export Location Change Helper',
+        onClick: (e) => {
+            e.preventDefault()
+            if (!tabs) {
+                tabs = makeTabs({
+                    tabs: [
+                        {
+                            label: 'Chrome',
+                            content: () => makeDownloadHelper(chromeStepsData),
+                        },
+                        {
+                            label: 'Firefox',
+                            content: () => makeDownloadHelper(firefoxStepsData),
+                        },
+                        {
+                            label: 'Microsoft Edge',
+                            content: () => makeDownloadHelper(edgeStepsData),
+                        },
+                    ],
+                    width: 800,
+                    height: 350,
+                })
+            }
+            global.modal.open('Export Location Change Helper', tabs, 'top', {
+                showCancel: false,
+            })
+        },
     })
     el.appendChild(helperBtn)
     el.appendChild(hint)
-    const btn = document.createElement('button')
-    btn.classList.add('export-btn')
-    btn.textContent = 'Export HTML'
-    btn.addEventListener('click', () => {
-        const filename = 'index.html'
-        exportHtml(filename, { settings: global.settings }, global.settings.fileAudioStore)
+    const btn = makeButton({
+        className: 'export-btn',
+        title: 'Export HTML',
+        onClick: () => {
+            const filename = 'index.html'
+            exportHtml(filename, global.settings)
+        },
     })
     el.appendChild(btn)
 }
-function createSidebar(global, dom) {
+function makeSidebar(global, dom) {
     const { events } = global
     const SIDEBAR_WIDTH = '360px'
     const isHemi = global.settings.model === 'hemispherical'
@@ -1012,52 +884,56 @@ function createSidebar(global, dom) {
     stepBadge.classList.add('step-badge')
     header.appendChild(stepBadge)
 
-    const backBtn = document.createElement('button')
-    backBtn.classList.add('btn', 'back-btn')
-    backBtn.textContent = 'Back'
-    backBtn.addEventListener('click', () => {
-        if (global.settings.setupStep > minStep) {
-            if (isHemi && global.settings.setupStep === 2) {
-                global.settings.pivot = { position: null, enabled: true }
+    const backBtn = makeButton({
+        className: 'back-btn',
+        title: 'Back',
+        onClick: () => {
+            if (global.settings.setupStep > minStep) {
+                if (isHemi && global.settings.setupStep === 2) {
+                    events.fire('pivot:delete')
+                }
+                global.settings.setupStep--
+                renderStep()
             }
-            global.settings.setupStep--
-            renderStep()
-        }
+        },
     })
     header.appendChild(backBtn)
 
-    const nextBtn = document.createElement('button')
-    nextBtn.classList.add('btn', 'next-btn')
-    nextBtn.addEventListener('click', () => {
-        if (global.settings.setupStep < totalSteps) {
-            global.settings.setupStep++
-            renderStep()
-        }
+    const nextBtn = makeButton({
+        className: 'next-btn',
+        title: 'Next',
+        onClick: () => {
+            if (global.settings.setupStep < totalSteps) {
+                global.settings.setupStep++
+                renderStep()
+            }
+        },
     })
     header.appendChild(nextBtn)
 
-    const resetBtn = document.createElement('button')
-    resetBtn.classList.add('reset-setup-btn')
-    resetBtn.textContent = '↺ Reset Model Setup'
-    resetBtn.title = 'Reset Model Setup'
-    resetBtn.addEventListener('click', async () => {
-        const ok = await global.confirmDialog.ask(
-            'Reset Model Setup',
-            'All your settings will be permanently cleared and you will start over from the beginning.',
-            'delete',
-            'top',
-            'Reset',
-        )
-        if (ok) {
-            Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                setupStep: 1,
-                contentUrl: global.settings.contentUrl,
-                base64: global.settings.base64,
-                model: global.settings.model,
-            })
-            events.fire('setup-reset', global.settings)
-            renderStep()
-        }
+    const resetBtn = makeButton({
+        className: 'reset-setup-btn',
+        title: '↺ Reset Model Setup',
+        onClick: async () => {
+            const ok = await global.confirmDialog.ask(
+                'Reset Model Setup',
+                'All your settings will be permanently cleared and you will start over from the beginning.',
+                'delete',
+                'top',
+                'Reset',
+            )
+            if (ok) {
+                Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                    setupStep: 1,
+                    contentUrl: global.settings.contentUrl,
+                    base64: global.settings.base64,
+                    model: global.settings.model,
+                    v: global.settings.v,
+                })
+                events.fire('setup-reset', global.settings)
+                renderStep()
+            }
+        },
     })
     header.appendChild(resetBtn)
 
@@ -1092,83 +968,83 @@ function createSidebar(global, dom) {
 
     const renderModelStep = () => {
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'model',
                 title: 'Model',
                 classname: 'model-section',
-                body: (el) => modelSection(el, global),
+                body: (el) => makeModelSection(el, global),
                 events,
             }),
         )
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'export',
                 title: 'Export',
                 classname: 'export-section',
-                body: (el) => exportSection(el, global),
+                body: (el) => makeExportSection(el, global),
                 events,
             }),
         )
-        setTimeout(() => events.fire('hotspot:active', 'model'), 0)
+        setTimeout(() => events.fire('sidebar:active', 'model'), 0)
     }
 
     const renderFullStep = () => {
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'settings',
                 title: 'Viewer',
                 classname: 'viewer-setting-section',
-                body: (el) => viewerSettingsSection(el, global),
+                body: (el) => makeViewerSection(el, global),
                 events,
             }),
         )
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'hotspot',
                 title: 'Hotspots',
                 classname: 'hotspot-section',
-                body: (el) => initHotspotSection(el, global, dom),
+                body: (el) => makeHotspotSection(el, global, dom),
                 events,
             }),
         )
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'dimension',
                 title: 'Dimensions',
                 classname: 'dimension-section',
-                body: (el) => dimensionSection(el, global, dom),
+                body: (el) => makeDimensionSection(el, global, dom),
                 events,
             }),
         )
         const measurementContainer = document.createElement('div')
         contentArea.appendChild(measurementContainer)
 
-        const renderMeasurementSection = () => {
-            measurementContainer.innerHTML = ''
-            if (global.settings.dimensions) {
-                measurementContainer.appendChild(
-                    createSection({
-                        id: 'measurement',
-                        title: 'Measurement',
-                        classname: 'measurement-section',
-                        body: (el) => measurementSection(el, global),
-                        events,
-                    }),
-                )
-            }
-        }
+        // const renderMeasurementSection = () => {
+        //     measurementContainer.innerHTML = ''
+        //     if (global.settings.dimensions) {
+        //         measurementContainer.appendChild(
+        //             makeSection({
+        //                 id: 'measurement',
+        //                 title: 'Measurement',
+        //                 classname: 'measurement-section',
+        //                 body: (el) => makeMeasurementSection(el, global),
+        //                 events,
+        //             }),
+        //         )
+        //     }
+        // }
 
-        if (global.settings.measurement) renderMeasurementSection()
-        events.on('dimensions:configured', () => {
-            renderMeasurementSection()
-        })
+        // if (global.settings.measurement) renderMeasurementSection()
+        // events.on('dimensions:configured', () => {
+        //     renderMeasurementSection()
+        // })
 
         contentArea.appendChild(
-            createSection({
+            makeSection({
                 id: 'export',
                 title: 'Export',
                 classname: 'export-section',
-                body: (el) => exportSection(el, global),
+                body: (el) => makeExportSection(el, global),
                 events,
             }),
         )

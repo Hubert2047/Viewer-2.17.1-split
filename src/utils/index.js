@@ -130,20 +130,17 @@ function stripDefaults(settings, defaults = defaultSettings) {
     }
     return result
 }
-async function exportHtml(name, data, fileAudioStore) {
-    const newVersion = (data.settings.v ?? 0) + 1
-
-    let updatedSettings = {
-        ...data.settings,
-        v: newVersion,
-    }
+async function exportHtml(name, settings) {
+    const copySettings = JSON.parse(JSON.stringify(settings))
     const hotspots = await Promise.all(
-        (updatedSettings.hotspots ?? []).map(async (h) => {
+        (copySettings.hotspots ?? []).map(async (h) => {
             if (!h.audio) return h
             const audio = { ...h.audio }
-            let src = ''
-            if (audio.embed && fileAudioStore) {
-                const file = fileAudioStore.get(audio.fileId)
+            const isBase64 =
+                typeof audio.src === 'string' && audio.src.startsWith('data:') && audio.src.includes('base64')
+            let src = isBase64 ? audio.src : ''
+            if (audio.embed && settings.fileAudioStore instanceof Map) {
+                const file = settings.fileAudioStore.get(audio.fileId)
                 if (!file) {
                     console.warn('Missing audio file:', h.id)
                     return h
@@ -165,32 +162,30 @@ async function exportHtml(name, data, fileAudioStore) {
             }
         }),
     )
-    delete updatedSettings.fileAudioStore
+    delete copySettings.fileAudioStore
     const STEP_REQUIREMENTS = {
-        spherical: [{ step: 2, condition: () => updatedSettings.pivot?.position }],
+        spherical: [{ step: 2, condition: () => copySettings.pivot?.position }],
         hemispherical: [
-            { step: 3, condition: () => updatedSettings.pivot?.position },
-            { step: 2, condition: () => updatedSettings.orientation?.pose },
+            { step: 3, condition: () => copySettings.pivot?.position },
+            { step: 2, condition: () => copySettings.orientation?.pose },
         ],
     }
 
-    const requirements = STEP_REQUIREMENTS[updatedSettings.model] ?? []
+    const requirements = STEP_REQUIREMENTS[copySettings.model] ?? []
     const setupStep = requirements.reduce((currentStep, { step, condition }) => {
         return condition() && currentStep < step ? step : currentStep
-    }, updatedSettings.setupStep)
-    updatedSettings = {
-        ...updatedSettings,
-        hotspots,
-        setupStep,
-        base64: updatedSettings.base64,
-    }
-    const cleaned = stripDefaults(updatedSettings)
-    const payload = {
-        ...data,
-        settings: cleaned,
-    }
+    }, copySettings.setupStep)
+    const newVersion = (copySettings.v ?? 0) + 1
     const injectedScript = `<script>
-        window.sse = ${JSON.stringify(payload)}
+        window.sse = { settings: ${JSON.stringify(
+            stripDefaults({
+                ...copySettings,
+                v: newVersion,
+                hotspots,
+                setupStep,
+                base64: copySettings.base64,
+            }),
+        )}}
     <\/script>`
     const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
@@ -256,7 +251,7 @@ function getHtmlTemplate(version) {
 </html>`
 }
 
-function createControlItems(items) {
+function makeControlItems(items) {
     return items.map(({ action, key, cls }) => {
         const div = document.createElement('div')
         div.className = 'control-item' + (cls ? ' ' + cls : '')
@@ -268,15 +263,15 @@ function createControlItems(items) {
     })
 }
 
-function createTabPanel(id, items, hidden = false) {
+function makeTabPanel(id, items, hidden = false) {
     const panel = document.createElement('div')
     panel.id = id
     if (hidden) panel.className = 'hidden'
-    createControlItems(items).forEach((el) => panel.appendChild(el))
+    makeControlItems(items).forEach((el) => panel.appendChild(el))
     return panel
 }
 
-function createInfoPanel(settings, events) {
+function makeInfoPanel(settings, events) {
     const baseDesktop = [
         { action: 'Rotate', key: 'Left Mouse' },
         { action: 'Pan', key: 'Right Mouse' },
@@ -324,8 +319,8 @@ function createInfoPanel(settings, events) {
     const rebuild = () => {
         const controls = getControls()
         panels.innerHTML = ''
-        panels.appendChild(createTabPanel('desktopInfoPanel', controls.desktop))
-        panels.appendChild(createTabPanel('touchInfoPanel', controls.touch, true))
+        panels.appendChild(makeTabPanel('desktopInfoPanel', controls.desktop))
+        panels.appendChild(makeTabPanel('touchInfoPanel', controls.touch, true))
     }
 
     rebuild()
@@ -337,43 +332,17 @@ function createInfoPanel(settings, events) {
     return wrapper
 }
 
-function createSVG({ size, vb, fill, attr = {}, d }) {
-    const ns = 'http://www.w3.org/2000/svg'
-    const svg = document.createElementNS(ns, 'svg')
-    svg.setAttribute('width', size + 'px')
-    svg.setAttribute('height', size + 'px')
-    svg.setAttribute('viewBox', vb)
-    svg.setAttribute('fill', fill)
-    svg.setAttribute('xmlns', ns)
-
-    const paths = Array.isArray(d) ? d : [d]
-    paths.forEach((pathD) => {
-        const path = document.createElementNS(ns, 'path')
-        path.setAttribute('d', pathD)
-        Object.entries(attr).forEach(([k, v]) => path.setAttribute(k, v))
-        svg.appendChild(path)
-    })
-    return svg
-}
-
-function createButton(id, iconKey) {
-    const btn = document.createElement('button')
-    btn.id = id
-    btn.className = 'controlButton'
-    btn.appendChild(createSVG(SVG_ICONS[iconKey]))
-    return btn
-}
-function createControlBotGroup(global, tooltip, dom) {
-    const { settings, events, bbox } = global
+function makeControlBotGroup(global, tooltip, dom) {
+    const { settings, events, dimensionsBox } = global
     const group = document.createElement('div')
     group.className = 'buttonGroup'
     // buttons: [id, iconKey,label,create, show, event, toggle]
     const hasDimension = !!settings.dimensions
-    const isShowDimensions = !bbox?.show
+    const isShowDimensions = !dimensionsBox?.show
     const hasMeasurement = hasDimension && settings.measurement?.enabled
     const buttons = [
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
-        ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
+        // ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
             'showDimension',
@@ -398,26 +367,30 @@ function createControlBotGroup(global, tooltip, dom) {
 
     buttons.forEach(([id, icon, label, create, show, eventName, toggleId]) => {
         if (!create) return
-        const btn = createButton(id, icon)
+        const btn = makeButton({
+            id,
+            icon: ICONS[icon],
+            className: 'control-btn',
+            onClick: (e) => {
+                events.fire(eventName, e)
+                if (toggleId) {
+                    const toggleBtn = group.querySelector(`#${toggleId}`)
+                    if (toggleBtn) {
+                        btn.classList.add('hidden')
+                        toggleBtn.classList.remove('hidden')
+                    }
+                }
+            },
+        })
         dom[id] = btn
         group.appendChild(btn)
         tooltip.register(btn, label, 'top')
-        btn.addEventListener('click', (e) => {
-            events.fire(eventName, e)
-            if (toggleId) {
-                const toggleBtn = group.querySelector(`#${toggleId}`)
-                if (toggleBtn) {
-                    btn.classList.add('hidden')
-                    toggleBtn.classList.remove('hidden')
-                }
-            }
-        })
         if (show) btn.classList.remove('hidden')
         else btn.classList.add('hidden')
     })
     return group
 }
-function createHotspotActionGroup(tooltip, events, dom) {
+function makeHotspotActionGroup(tooltip, events, dom) {
     const group = document.createElement('div')
     group.id = 'hotspotActionGroup'
     dom['hotspotActionGroup'] = group
@@ -442,18 +415,22 @@ function createHotspotActionGroup(tooltip, events, dom) {
         }
     })
     buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
-        const el = createButton(id, icon)
-        dom[id] = el
-        el.addEventListener('click', () => {
-            events.fire(`hotspot:${eventname}`)
-            if (toggleId) {
-                const toggleBtn = group.querySelector(`#${toggleId}`)
-                if (toggleBtn) {
-                    el.classList.add('hidden')
-                    toggleBtn.classList.remove('hidden')
+        const el = makeButton({
+            id,
+            icon: ICONS[icon],
+            className: 'control-btn',
+            onClick: (e) => {
+                events.fire(`hotspot:${eventname}`)
+                if (toggleId) {
+                    const toggleBtn = group.querySelector(`#${toggleId}`)
+                    if (toggleBtn) {
+                        el.classList.add('hidden')
+                        toggleBtn.classList.remove('hidden')
+                    }
                 }
-            }
+            },
         })
+        dom[id] = el
         if (defaultShow) el.classList.remove('hidden')
         else el.classList.add('hidden')
         group.appendChild(el)
@@ -461,7 +438,7 @@ function createHotspotActionGroup(tooltip, events, dom) {
     })
     return group
 }
-function createControlsWrap(global, tooltip, dom) {
+function makeControlsWrap(global, tooltip, dom) {
     const wrap = document.createElement('div')
     wrap.id = 'controlsWrap'
     dom[wrap.id] = wrap
@@ -471,7 +448,7 @@ function createControlsWrap(global, tooltip, dom) {
     dom[container.id] = container
     const render = () => {
         container.innerHTML = ''
-        container.appendChild(createControlBotGroup(global, tooltip, dom))
+        container.appendChild(makeControlBotGroup(global, tooltip, dom))
     }
     render()
     global.events.on('ui:re-render-control-wrap', render)
@@ -483,7 +460,7 @@ function createControlsWrap(global, tooltip, dom) {
 
     return wrap
 }
-function createGroupWrapper(title) {
+function makeGroupWrapper(title) {
     const group = document.createElement('div')
     group.className = 'optionGroup'
 
@@ -495,8 +472,8 @@ function createGroupWrapper(title) {
     return group
 }
 
-function createQualityGroup(app) {
-    const group = createGroupWrapper('Quality')
+function makeQualityGroup(app) {
+    const group = makeGroupWrapper('Quality')
     const optionsEl = document.createElement('div')
     optionsEl.className = 'quality-options'
     const qualities = [
@@ -545,7 +522,7 @@ function createQualityGroup(app) {
     return group
 }
 
-function createSettingsPanel(app) {
+function makeSettingsPanel(app) {
     const panel = document.createElement('div')
     panel.id = 'settingsPanel'
     panel.classList.add('setting-panel', 'hidden')
@@ -557,16 +534,23 @@ function createSettingsPanel(app) {
     const viewOptionContent = document.createElement('div')
     viewOptionContent.className = 'view-option-content'
 
-    viewOptionContent.appendChild(createQualityGroup(app))
+    viewOptionContent.appendChild(makeQualityGroup(app))
 
     panel.appendChild(viewOptionHeader)
     panel.appendChild(viewOptionContent)
     return panel
 }
 
-function createEditGroup(events) {
+function makeEditGroup(events, cancelAllEvents = []) {
     const members = new Map() // name -> { cancel }
-
+    cancelAllEvents.forEach((event) => {
+        events.on(event, () => cancelAll())
+    })
+    function cancelAll() {
+        members.forEach((member, key) => {
+            member.cancel()
+        })
+    }
     return {
         register(name, { cancel }) {
             members.set(name, { cancel })
@@ -628,4 +612,387 @@ function transparentColor(color, alpha = 0.5) {
         return `rgba(${r},${g},${b},${alpha})`
     }
     return color
+}
+function dimensionsSetup(app, camera, config) {
+    let currentDim = null
+    const layers = app.scene.layers
+    const worldLayer = layers.getLayerByName('World')
+
+    const layerBBox = new Layer({ name: 'BBox' })
+    const worldIndex = layers.getOpaqueIndex(worldLayer)
+    layers.insert(layerBBox, worldIndex)
+    camera.camera.layers = [...camera.camera.layers, layerBBox.id]
+    const lineMesh = new Mesh(app.graphicsDevice)
+
+    let lineMat = new StandardMaterial()
+    lineMat.diffuse = new Color(0, 0, 0)
+    lineMat.blendType = BLEND_NORMAL
+    lineMat.depthTest = true
+    lineMat.depthWrite = true
+    lineMat.useLighting = false
+    lineMat.cull = CULLFACE_NONE
+    lineMat.emissive = new Color(normalizeColor('#00ffcc'))
+    lineMat.depthBias = -0.1
+    lineMat.slopeDepthBias = -0.1
+    lineMat.alphaToCoverage = true
+    lineMat.update()
+
+    const bboxEntity = new Entity('bbox')
+    app.root.addChild(bboxEntity)
+    const mi = new MeshInstance(lineMesh, lineMat)
+    mi.cull = false
+    bboxEntity.addComponent('render', {
+        layers: [layerBBox.id],
+        meshInstances: [mi],
+    })
+
+    const canvas = app.graphicsDevice.canvas
+
+    // Create SVG overlay for lines
+    const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svgOverlay.style.cssText =
+        'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;overflow:visible;'
+    document.body.appendChild(svgOverlay)
+
+    // Create lines and labels
+    const elements = {}
+    for (const axis of ['x', 'y', 'z']) {
+        // Line from edge to label (will be updated to point to center of label)
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+        line.setAttribute('stroke-width', '1.5')
+        line.setAttribute('stroke-dasharray', '4,3')
+        line.style.display = 'none'
+        svgOverlay.appendChild(line)
+
+        // Small dot at edge position
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        dot.setAttribute('r', '3')
+        dot.style.display = 'none'
+        svgOverlay.appendChild(dot)
+
+        // Label
+        const label = document.createElement('div')
+        label.classList.add('dimension-label')
+        document.body.appendChild(label)
+
+        elements[axis] = { line, dot, label }
+    }
+
+    const worldToScreen = (wx, wy, wz) => {
+        const sp = camera.camera.worldToScreen(new Vec3(wx, wy, wz))
+        const rect = canvas.getBoundingClientRect()
+        return {
+            x: rect.left + sp.x,
+            y: rect.top + sp.y,
+        }
+    }
+
+    // Get the 8 corners of the box in world space
+    const getWorldCorners = (dim) => {
+        const { position, rotation, size } = dim
+        const center = new Vec3(position.x, position.y, position.z)
+        const he = { x: size.x / 2, y: size.y / 2, z: size.z / 2 }
+
+        const localCorners = [
+            new Vec3(-he.x, -he.y, -he.z),
+            new Vec3(he.x, -he.y, -he.z),
+            new Vec3(-he.x, he.y, -he.z),
+            new Vec3(he.x, he.y, -he.z),
+            new Vec3(-he.x, -he.y, he.z),
+            new Vec3(he.x, -he.y, he.z),
+            new Vec3(-he.x, he.y, he.z),
+            new Vec3(he.x, he.y, he.z),
+        ]
+
+        const quat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+        const worldMatrix = modelEntity.getWorldTransform()
+
+        return localCorners.map((local) => {
+            const rotated = quat.clone().transformVector(local)
+            const worldPos = new Vec3(center.x + rotated.x, center.y + rotated.y, center.z + rotated.z)
+            const final = new Vec3()
+            worldMatrix.transformPoint(worldPos, final)
+            return final
+        })
+    }
+
+    // Get the midpoint of the edge that is most aligned with the camera view direction
+    const getBestEdgeMidpoint = (corners, axis, cameraDir) => {
+        const axisEdges = {
+            x: [
+                [0, 1],
+                [2, 3],
+                [4, 5],
+                [6, 7],
+            ],
+            y: [
+                [0, 2],
+                [1, 3],
+                [4, 6],
+                [5, 7],
+            ],
+            z: [
+                [0, 4],
+                [1, 5],
+                [2, 6],
+                [3, 7],
+            ],
+        }
+
+        let bestMid = null
+        let bestScore = -Infinity
+
+        for (const [i, j] of axisEdges[axis]) {
+            const p1 = corners[i]
+            const p2 = corners[j]
+            const mid = new Vec3((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2)
+
+            const toCamera = new Vec3(
+                camera.getPosition().x - mid.x,
+                camera.getPosition().y - mid.y,
+                camera.getPosition().z - mid.z,
+            ).normalize()
+
+            const edgeDir = new Vec3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z).normalize()
+            const perpendicularity = Math.abs(edgeDir.dot(toCamera))
+            const dist = camera.getPosition().distance(mid)
+            const distanceScore = 1 / (dist + 0.1)
+            const score = perpendicularity * 2 + distanceScore
+
+            if (score > bestScore) {
+                bestScore = score
+                bestMid = mid
+            }
+        }
+
+        return bestMid
+    }
+
+    const updateLineToLabelCenter = (line, edgeScreen, labelElement) => {
+        const rect = labelElement.getBoundingClientRect()
+
+        const labelCenter = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+        }
+
+        const dx = edgeScreen.x - labelCenter.x
+        const dy = edgeScreen.y - labelCenter.y
+
+        if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+            line.setAttribute('x1', edgeScreen.x)
+            line.setAttribute('y1', edgeScreen.y)
+            line.setAttribute('x2', labelCenter.x)
+            line.setAttribute('y2', labelCenter.y)
+            return
+        }
+
+        const halfW = rect.width / 2
+        const halfH = rect.height / 2
+
+        const txPos = dx !== 0 ? halfW / Math.abs(dx) : Infinity
+        const tyPos = dy !== 0 ? halfH / Math.abs(dy) : Infinity
+
+        const tHit = Math.min(txPos, tyPos)
+        const edgeX = labelCenter.x + dx * tHit
+        const edgeY = labelCenter.y + dy * tHit
+
+        line.setAttribute('x1', edgeScreen.x)
+        line.setAttribute('y1', edgeScreen.y)
+        line.setAttribute('x2', edgeX)
+        line.setAttribute('y2', edgeY)
+    }
+
+    const updateLabels = (corners, dim) => {
+        if (!dim?.realSize) return
+        const cameraDir = new Vec3(0, 0, -1)
+        camera.getRotation().transformVector(cameraDir, cameraDir)
+        const screenCorners = corners.map((c) => worldToScreen(c.x, c.y, c.z))
+        const screenMinX = Math.min(...screenCorners.map((c) => c.x))
+        const screenMaxX = Math.max(...screenCorners.map((c) => c.x))
+        const screenMinY = Math.min(...screenCorners.map((c) => c.y))
+        const screenMaxY = Math.max(...screenCorners.map((c) => c.y))
+        const screenCenterX = (screenMinX + screenMaxX) / 2
+        const screenCenterY = (screenMinY + screenMaxY) / 2
+
+        for (const axis of ['x', 'y', 'z']) {
+            const midpoint = getBestEdgeMidpoint(corners, axis, cameraDir)
+            if (!midpoint) continue
+
+            const edgeScreen = worldToScreen(midpoint.x, midpoint.y, midpoint.z)
+
+            const dx = edgeScreen.x - screenCenterX
+            const dy = edgeScreen.y - screenCenterY
+            const len = Math.sqrt(dx * dx + dy * dy) || 1
+
+            const { line, dot, label } = elements[axis]
+
+            const value = dim.realSize[axis]
+            const unit = dim.unit || 'cm'
+            const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
+            const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
+            label.textContent = config.editable ? `${axis}: ${mainText}` : mainText
+            label.style.display = 'block'
+            label.style.left = '-9999px'
+            label.style.top = '-9999px'
+
+            const lw = label.offsetWidth
+            const lh = label.offsetHeight
+
+            const MARGIN = 16
+            let ox = dx / len
+            let oy = dy / len
+
+            let extraOffset = 8
+            if (ox > 0)
+                extraOffset = Math.max(
+                    extraOffset,
+                    screenMaxX - edgeScreen.x + lw / 2 + MARGIN - (screenMaxX - edgeScreen.x),
+                )
+            if (ox < 0)
+                extraOffset = Math.max(
+                    extraOffset,
+                    edgeScreen.x - screenMinX + lw / 2 + MARGIN - (edgeScreen.x - screenMinX),
+                )
+            if (oy > 0)
+                extraOffset = Math.max(
+                    extraOffset,
+                    screenMaxY - edgeScreen.y + lh / 2 + MARGIN - (screenMaxY - edgeScreen.y),
+                )
+            if (oy < 0)
+                extraOffset = Math.max(
+                    extraOffset,
+                    edgeScreen.y - screenMinY + lh / 2 + MARGIN - (edgeScreen.y - screenMinY),
+                )
+            const offset = Math.max(40, extraOffset)
+            const labelCX = edgeScreen.x + ox * offset
+            const labelCY = edgeScreen.y + oy * offset
+            const SCREEN_MARGIN = 8
+            const clampedX = Math.max(
+                SCREEN_MARGIN + lw / 2,
+                Math.min(window.innerWidth - SCREEN_MARGIN - lw / 2, labelCX),
+            )
+            const clampedY = Math.max(
+                SCREEN_MARGIN + lh / 2,
+                Math.min(window.innerHeight - SCREEN_MARGIN - lh / 2, labelCY),
+            )
+            label.style.left = clampedX - lw / 2 + 'px'
+            label.style.top = clampedY - lh / 2 + 'px'
+
+            dot.setAttribute('cx', edgeScreen.x)
+            dot.setAttribute('cy', edgeScreen.y)
+            dot.style.display = 'block'
+
+            updateLineToLabelCenter(line, edgeScreen, label)
+            line.style.display = 'block'
+        }
+    }
+
+    const hideLabels = () => {
+        for (const axis of ['x', 'y', 'z']) {
+            elements[axis].line.style.display = 'none'
+            elements[axis].dot.style.display = 'none'
+            elements[axis].label.style.display = 'none'
+        }
+    }
+
+    let visible = false
+    let currentCorners = null
+
+    const edges = [
+        [0, 1],
+        [1, 3],
+        [3, 2],
+        [2, 0],
+        [4, 5],
+        [5, 7],
+        [7, 6],
+        [6, 4],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+    ]
+
+    const updateColor = (dim) => {
+        lineMat.emissive = new Color(normalizeColor(dim.boxColor))
+        lineMat.update()
+        app.renderNextFrame = true
+        for (const axis of ['x', 'y', 'z']) {
+            elements[axis].line.setAttribute('stroke', dim.foregroundColor)
+            elements[axis].dot.setAttribute('stroke', dim.foregroundColor)
+            elements[axis].dot.setAttribute('fill', dim.foregroundColor)
+            elements[axis].label.style.color = dim.foregroundColor
+            elements[axis].label.style.backgroundColor = transparentColor(dim.background.color, dim.background.alpha)
+        }
+    }
+
+    const drawCorners = (corners) => {
+        const pos = []
+        for (const [i, j] of edges) {
+            pos.push(corners[i].x, corners[i].y, corners[i].z)
+            pos.push(corners[j].x, corners[j].y, corners[j].z)
+        }
+        lineMesh.setPositions(pos)
+        lineMesh.update(PRIMITIVE_LINES, false)
+        app.renderNextFrame = true
+    }
+
+    const getCorners = (dim) => {
+        if (!dim) return null
+        return getWorldCorners(dim)
+    }
+
+    const drawDimensionBox = (dim) => {
+        if (!modelEntity) return
+        currentDim = dim
+        updateColor(dim)
+        const corners = getCorners(dim)
+        if (!corners) return
+        currentCorners = corners
+        visible = true
+        bboxEntity.enabled = true
+        drawCorners(corners)
+        updateLabels(corners, dim)
+    }
+
+    const hideDimensionBox = () => {
+        if (!visible) return
+        visible = false
+        bboxEntity.enabled = false
+        currentCorners = null
+        hideLabels()
+        app.renderNextFrame = true
+    }
+
+    window.addEventListener('resize', () => {
+        if (visible && currentCorners) {
+            updateLabels(currentCorners, currentDim)
+        }
+    })
+
+    app.on('update', () => {
+        if (!visible || currentDim === null) return
+        if (!modelEntity) return
+        const corners = getCorners(currentDim)
+        if (corners) {
+            currentCorners = corners
+            drawCorners(corners)
+            updateLabels(corners, currentDim)
+        }
+    })
+
+    return {
+        get show() {
+            return visible
+        },
+        get center() {
+            return modelEntity?.gsplat?.customAabb?.center ?? new Vec3()
+        },
+        get halfExtents() {
+            return modelEntity?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
+        },
+        draw: drawDimensionBox,
+        hide: hideDimensionBox,
+    }
 }

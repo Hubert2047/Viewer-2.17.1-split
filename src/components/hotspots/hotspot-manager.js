@@ -2,23 +2,22 @@ class HotspotManager {
     editor
     translatingId
     constructor({ global, dom, tooltip }) {
+        this.global = global
         this.camera = global.camera.camera
         this.events = global.events
         this.editable = global.config.editable
         this.dom = dom
         this.tooltip = tooltip
-        this.state = global.state
 
         this.hotspots = []
         this.settings = global.settings
-
+        
         this.activeHotspot = null
         this.activeData = null
         this.isShowActiveHotspotBtns = !isMobile
         this.isAutoPlay = false
         this.intervalID = null
         this.listenEvents()
-        this.controllers = null
         global.app.on('postrender', () => this.update())
         this.initHotspot()
     }
@@ -74,20 +73,16 @@ class HotspotManager {
     }
 
     listenEvents() {
-        this.events.on('controllers:created', (controllers) => {
-            this.controllers = controllers
-        })
         this.events.on('setup-reset', () => this.rebuild())
         this.events.on('hotspot:add', ({ position }) => {
-            if (!this.controllers) return
             if (this.hotspots.length === 0) {
                 if (this.dom.hotspotActionGroup) this.dom.hotspotActionGroup.classList.remove('hidden')
                 else {
-                    this.dom.buttonsContainer.appendChild(createHotspotActionGroup(this.tooltip, this.events, this.dom))
+                    this.dom.buttonsContainer.appendChild(makeHotspotActionGroup(this.tooltip, this.events, this.dom))
                 }
                 this.events.fire('hotspot:rebuild-info')
             }
-            const entityInfo = this.controllers.ortery.getEntityInfo()
+            const entityInfo = this.global.cameraManager.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
             this.settings.hotspots.push(data)
             this.hotspots.push(this.createHotspot(data))
@@ -162,7 +157,7 @@ class HotspotManager {
                 if (d.id === applyData.id) {
                     const newData = {
                         ...applyData,
-                        entityInfo: this.controllers[this.state.cameraMode].getEntityInfo(),
+                        entityInfo: this.global.cameraManager.controllers.ortery.getEntityInfo(),
                     }
                     if (this.activeHotspot) this.activeHotspot.data = newData
                     return newData
@@ -271,7 +266,7 @@ class HotspotManager {
         }
     }
     isSamePose(hotspot) {
-        const controller = this.controllers[this.state.cameraMode]
+        const controller = this.global.cameraManager.controllers.ortery
         if (!controller) return false
         const { position: p, rotation: r, focus: f, distanceScale: d } = hotspot.data.entityInfo
         return (
@@ -301,7 +296,7 @@ class HotspotManager {
             this.activeHotspot.data = JSON.parse(JSON.stringify(data))
             this.activeHotspot.update(true, this.activeHotspot.data.button.title)
         }
-        this.events.fire('hotspot:active', 'hotspot')
+        this.events.fire('sidebar:active', 'hotspot')
         this.activeHotspot?.hide()
         const isSamePose = this.isSamePose(hotspot)
         if (isSamePose && hotspot.id === this.activeHotspot?.id) {

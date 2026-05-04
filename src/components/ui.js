@@ -1,4 +1,53 @@
-function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = false) {
+function makeRow(labelText, className) {
+    const row = document.createElement('div')
+    row.classList.add('section-group-row')
+    if (className) {
+        row.classList.add(className)
+    }
+    const label = document.createElement('span')
+    label.textContent = labelText
+    row.appendChild(label)
+    return row
+}
+function makeSectionWrap(otps = {}) {
+    const container = document.createElement('div')
+    container.classList.add('section-wrap')
+    if (otps.className) {
+        container.classList.add(otps.className)
+    }
+    return container
+}
+const makeSectionGroup = (title, hint) => {
+    const group = document.createElement('div')
+    group.classList.add('section-group')
+    if (title) {
+        const titleRow = document.createElement('div')
+        titleRow.classList.add('section-group-title')
+
+        const titleText = document.createElement('span')
+        titleText.style.cssText = 'position:relative;'
+        titleText.textContent = title
+        titleRow.appendChild(titleText)
+
+        if (hint) {
+            const icon = document.createElement('div')
+            icon.classList.add('hint-icon', 'info-icon')
+            icon.innerHTML = ICONS.hintInfo
+
+            const tooltip = document.createElement('div')
+            tooltip.classList.add('hint-tooltip')
+            tooltip.textContent = hint
+
+            icon.appendChild(tooltip)
+            titleText.appendChild(icon)
+        }
+        group.appendChild(titleRow)
+    }
+
+    return group
+}
+
+function makeColorAlpha({ color, alpha, onChangeColor, onChangeAlpha, disabled = false, debounceMs = 150 }) {
     const block = document.createElement('div')
     block.classList.add('color-alpha-block')
 
@@ -20,6 +69,8 @@ function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = f
     checkerColor.style.background = color
     checkerColor.style.opacity = alpha
 
+    let colorDebounce = null
+    let alphaDebounce = null
     const colorInput = document.createElement('input')
     colorInput.type = 'color'
     colorInput.value = color
@@ -29,7 +80,9 @@ function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = f
         const v = colorInput.value
         checkerColor.style.background = v
         swatch.style.background = v
-        onChangeColor(v)
+
+        clearTimeout(colorDebounce)
+        colorDebounce = setTimeout(() => onChangeColor(v), debounceMs)
     })
 
     checkerWrap.appendChild(checkerColor)
@@ -66,7 +119,9 @@ function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = f
         if (disabled) return
         const v = parseFloat(slider.value)
         updateTrack(v)
-        onChangeAlpha(v)
+
+        clearTimeout(alphaDebounce)
+        alphaDebounce = setTimeout(() => onChangeAlpha(v), debounceMs)
     })
 
     sliderWrap.appendChild(slider)
@@ -102,22 +157,67 @@ function makeColorAlpha(color, alpha, onChangeColor, onChangeAlpha, disabled = f
 
     return block
 }
-function createColorPicker(label, initialColor, onColorChange, disabled = false) {
-    const group = document.createElement('div')
-    group.classList.add('section-group-row')
+function makeLink({ text, href = '#', className = 'export-link-btn', onClick } = {}) {
+    const el = document.createElement('a')
+    el.classList.add('link-btn')
+    if (className) el.classList.add(className)
+    el.textContent = text
+    el.href = href
+    if (onClick) {
+        el.addEventListener('click', (e) => {
+            e.preventDefault()
+            onClick(e)
+        })
+    }
+    return el
+}
+function makeToggle(initialValue, onChange) {
+    let value = initialValue
 
-    const labelEl = document.createElement('span')
-    labelEl.textContent = label
+    const wrap = document.createElement('div')
+    wrap.classList.add('audio-toggle-wrap')
 
+    const toggle = document.createElement('div')
+    toggle.classList.add('toggle')
+    if (value) toggle.classList.add('active')
+
+    const knob = document.createElement('div')
+    knob.classList.add('toggle-knob')
+    toggle.appendChild(knob)
+
+    toggle.addEventListener('click', () => {
+        value = !value
+        toggle.classList.toggle('active', value)
+        onChange(value)
+    })
+
+    wrap.appendChild(toggle)
+    wrap.setValue = (newVal) => {
+        value = newVal
+        toggle.classList.toggle('active', value)
+    }
+    return wrap
+}
+function makeColorPicker({ label, defaultValue, onChange, disabled = false, debounceMs = 300 }) {
+    const row = makeRow(label)
     const input = document.createElement('input')
     input.type = 'color'
     input.classList.add('color-input', 'background-input')
-    input.value = initialColor
+    input.value = defaultValue
+
+    let debounceTimer = null
+
     input.addEventListener('input', (e) => {
         if (disabled) return
         const newColor = e.target.value
         input.value = newColor
-        if (onColorChange) onColorChange(newColor)
+
+        if (onChange) {
+            clearTimeout(debounceTimer)
+            debounceTimer = setTimeout(() => {
+                onChange(newColor)
+            }, debounceMs)
+        }
     })
 
     const applyDisabled = (val) => {
@@ -125,14 +225,80 @@ function createColorPicker(label, initialColor, onColorChange, disabled = false)
         input.disabled = val
         input.classList.toggle('color-picker-disabled', val)
     }
-
     applyDisabled(disabled)
+    row.appendChild(input)
+    row.setDisabled = (val) => applyDisabled(val)
+    return { row, input, setDisabled: (val) => applyDisabled(val) }
+}
+function makeSegmentRow({ options, className, defaultValue, onChange }) {
+    const row = document.createElement('div')
+    if (className) row.classList.add(className)
+    row.classList.add('segment-row')
 
-    group.appendChild(labelEl)
-    group.appendChild(input)
+    options.forEach(({ label, value, icon }) => {
+        const btn = document.createElement('div')
+        btn.classList.add('btn', 'segment-btn')
+        btn.innerHTML = icon ? icon : label
+        if (value === defaultValue) btn.classList.add('active')
+        btn.onclick = () => {
+            row.querySelectorAll('.segment-btn').forEach((b) => b.classList.remove('active'))
+            btn.classList.add('active')
+            onChange(value)
+        }
+        row.appendChild(btn)
+    })
 
-    group.setDisabled = (val) => applyDisabled(val)
-    return { group, input, setDisabled: (val) => applyDisabled(val) }
+    return row
+}
+function makeSlider({ min, max, step = 0.1, value, className, variant = 'default', onChange } = {}) {
+    const slider = document.createElement('input')
+    slider.type = 'range'
+    slider.min = min
+    slider.max = max
+    slider.step = step
+
+    let internalValue = value ?? 0
+    slider.value = internalValue
+
+    if (className) {
+        slider.classList.add(...className.trim().split(/\s+/))
+    }
+
+    const updateProgress = (v) => {
+        if (variant !== 'progress') return
+
+        slider.style.background = `
+            linear-gradient(
+                to right,
+                #f95f4d 0%,
+                #f95f4d ${v * 100}%,
+                rgba(0,0,0,0.1) ${v * 100}%,
+                rgba(0,0,0,0.1) 100%
+            )
+        `
+    }
+
+    updateProgress(internalValue)
+
+    const setValue = (v, trigger = false) => {
+        internalValue = v
+        slider.value = v
+        updateProgress(v)
+
+        if (trigger && onChange) {
+            onChange(v)
+        }
+    }
+
+    slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value)
+        setValue(v, true)
+    })
+
+    slider.setValue = setValue
+    slider.getValue = () => internalValue
+
+    return slider
 }
 function makeColorSwatch(value, onChange) {
     const label = document.createElement('label')
@@ -150,28 +316,108 @@ function makeColorSwatch(value, onChange) {
     label.appendChild(input)
     return label
 }
+function makeTextarea(value, opts = {}) {
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.classList.add('textarea-field')
+    const autoResize = () => {
+        textarea.style.height = 'auto'
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
+    }
+    textarea.addEventListener('input', () => {
+        autoResize()
+        if (opts.onChange) opts.onChange(textarea.value)
+    })
+
+    requestAnimationFrame(autoResize)
+    if (opts.name) textarea.name = opts.name
+    if (opts.classname) textarea.classList.add(opts.classname)
+    if (opts.placeholder) textarea.placeholder = opts.placeholder
+    return textarea
+}
 function makeDivider() {
     const el = document.createElement('div')
     el.style.cssText = 'border-top:0.5px solid rgba(0,0,0,0.08); margin:2px 0;'
     return el
 }
-function makeIconBtn(icon, title) {
+function makeButton({ icon, title, className, id, onClick, onHold = false }) {
     const btn = document.createElement('button')
-    btn.classList.add('btn', 'orientation-btn')
-    btn.style.cssText = 'height:28px; width:28px; padding:0; display:flex; align-items:center; justify-content:center;'
-    btn.innerHTML = icon
-    btn.title = title
+    btn.classList.add('btn')
+    if (id) btn.id = id
+    if (className) {
+        btn.classList.add(...className.trim().split(/\s+/))
+    }
+    if (title) btn.title = title
+    btn.innerHTML = icon ? icon : title
+    if (onHold) {
+        let interval = null
+        let timeout = null
+
+        const start = (e) => {
+            onClick?.(e)
+            timeout = setTimeout(() => {
+                interval = setInterval(() => onClick?.(e), 80)
+            }, 400)
+        }
+
+        const stop = () => {
+            clearTimeout(timeout)
+            clearInterval(interval)
+            timeout = null
+            interval = null
+        }
+
+        btn.addEventListener('mousedown', (e) => start(e))
+        btn.addEventListener('mouseup', stop)
+        btn.addEventListener('mouseleave', stop)
+
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault()
+            start(e)
+        })
+        btn.addEventListener('touchend', stop)
+    } else {
+        if (onClick) btn.addEventListener('click', (e) => onClick(e))
+    }
     return btn
 }
-function makeRow(labelText) {
-    const row = document.createElement('div')
-    row.classList.add('section-group-row')
-    const label = document.createElement('span')
-    label.textContent = labelText
-    row.appendChild(label)
-    return row
+
+function makeInput(type, value, opts = {}) {
+    const input = document.createElement('input')
+    input.type = type
+    input.value = value
+    input.classList.add('input-field')
+    if (opts.className) {
+        input.classList.add(...opts.className.trim().split(/\s+/))
+    }
+    if (opts.min !== undefined) input.min = opts.min
+    if (opts.name) input.name = opts.name
+    if (opts.max !== undefined) input.max = opts.max
+    if (opts.step !== undefined) input.step = opts.step
+    if (opts.placeholder) input.placeholder = opts.placeholder
+    if (opts.disabled) input.disabled = true
+    if (opts.onChange)
+        input.addEventListener('input', (e) => {
+            e.stopPropagation()
+            opts.onChange(input.value)
+        })
+    return input
 }
-function createTabs({ tabs, width = 100, height = 100, onTabChange }) {
+function makeSelect(options, value, onChange, opts = {}) {
+    const select = document.createElement('select')
+    select.classList.add('input-field', 'select-field')
+    if (opts.name) select.name = opts.name
+    if (opts.className) select.classList.add(opts.className)
+    options.forEach((opt) => {
+        const el = document.createElement('option')
+        el.value = el.textContent = opt
+        if (opt === value) el.selected = true
+        select.appendChild(el)
+    })
+    select.addEventListener('change', () => onChange(select.value))
+    return select
+}
+function makeTabs({ tabs, width = 100, height = 100, onTabChange }) {
     const container = document.createElement('div')
     container.className = 'tab-container'
     container.style.cssText = `width: ${width}px; height : ${height}px`
@@ -219,10 +465,10 @@ function createTabs({ tabs, width = 100, height = 100, onTabChange }) {
 
     return container
 }
-function createVec3Inputs({
+function makeVec3Inputs({
     title = '',
     defaultValues = { x: 0, y: 0, z: 0 },
-    editable = true,
+    disabled = true,
     step = '1',
     onChange,
     onFocus,
@@ -267,17 +513,17 @@ function createVec3Inputs({
         inputEls[axis] = input
     })
 
-    const setEditable = (on) => {
+    const setDisabled = (on) => {
         AXIS.forEach((axis) => {
             const el = inputEls[axis]
-            el.disabled = !on
-            el.style.border = on ? `0.5px solid ${COLORS[axis]}88` : '0.5px solid rgba(0,0,0,0.13)'
-            el.style.background = on ? '#fff' : 'rgba(0,0,0,0.04)'
-            el.style.color = on ? '#2d3748' : 'rgba(0,0,0,0.3)'
-            el.style.cursor = on ? 'text' : 'not-allowed'
+            el.disabled = on
+            el.style.border = !on ? `0.5px solid ${COLORS[axis]}88` : '0.5px solid rgba(0,0,0,0.13)'
+            el.style.background = !on ? '#fff' : 'rgba(0,0,0,0.04)'
+            el.style.color = !on ? '#2d3748' : 'rgba(0,0,0,0.3)'
+            el.style.cursor = !on ? 'text' : 'not-allowed'
         })
     }
-    setEditable(editable)
+    setDisabled(disabled)
 
     const setValues = ({ x, y, z }) => {
         inputEls.x.value = x.toFixed(1)
@@ -297,8 +543,62 @@ function createVec3Inputs({
 
     wrapper.appendChild(row)
 
-    return { row: wrapper, setEditable, setValues }
+    return { row: wrapper, setDisabled, setValues }
 }
+function makeDownloadHelper(steps) {
+    const container = document.createElement('div')
+    container.style.cssText = `
+    font-family: Arial, sans-serif;
+    padding: 16px 24px;
+    color: #2d3748;
+    font-size: 14px;
+    line-height: 1.6;
+  `
+
+    // Title
+    const title = document.createElement('p')
+    title.style.cssText = `margin: 0 0 16px 0; color: #2d3748; text-align: left;`
+    title.textContent = steps.title || ''
+    container.appendChild(title)
+
+    // Steps list
+    const ol = document.createElement('ol')
+    ol.style.cssText = `
+    margin: 0;
+    padding: 0 0 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    list-style: decimal;
+    text-align: left;
+  `
+    ;(steps.items || []).forEach((item) => {
+        const li = document.createElement('li')
+        li.style.cssText = `padding-left: 8px; color: #2d3748; text-align: left;`
+
+        const [mainText, ...subItems] = item.split('\n')
+        const mainHtml = mainText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        li.innerHTML = mainHtml
+
+        if (subItems.length > 0) {
+            const ul = document.createElement('ul')
+            ul.style.cssText = `margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; list-style: disc;`
+            subItems.forEach((sub) => {
+                const subLi = document.createElement('li')
+                subLi.style.cssText = `color: #2d3748;`
+                subLi.innerHTML = sub.replace(/^•\s*/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                ul.appendChild(subLi)
+            })
+            li.appendChild(ul)
+        }
+
+        ol.appendChild(li)
+    })
+
+    container.appendChild(ol)
+    return container
+}
+
 class ConfirmDialog {
     constructor() {
         this._resolve = null
@@ -476,57 +776,4 @@ class ModalDialog {
 
         return new Promise((res) => (this._resolve = res))
     }
-}
-function downloadHelper(steps) {
-    const container = document.createElement('div')
-    container.style.cssText = `
-    font-family: Arial, sans-serif;
-    padding: 16px 24px;
-    color: #2d3748;
-    font-size: 14px;
-    line-height: 1.6;
-  `
-
-    // Title
-    const title = document.createElement('p')
-    title.style.cssText = `margin: 0 0 16px 0; color: #2d3748; text-align: left;`
-    title.textContent = steps.title || ''
-    container.appendChild(title)
-
-    // Steps list
-    const ol = document.createElement('ol')
-    ol.style.cssText = `
-    margin: 0;
-    padding: 0 0 0 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    list-style: decimal;
-    text-align: left;
-  `
-    ;(steps.items || []).forEach((item) => {
-        const li = document.createElement('li')
-        li.style.cssText = `padding-left: 8px; color: #2d3748; text-align: left;`
-
-        const [mainText, ...subItems] = item.split('\n')
-        const mainHtml = mainText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        li.innerHTML = mainHtml
-
-        if (subItems.length > 0) {
-            const ul = document.createElement('ul')
-            ul.style.cssText = `margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; list-style: disc;`
-            subItems.forEach((sub) => {
-                const subLi = document.createElement('li')
-                subLi.style.cssText = `color: #2d3748;`
-                subLi.innerHTML = sub.replace(/^•\s*/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                ul.appendChild(subLi)
-            })
-            li.appendChild(ul)
-        }
-
-        ol.appendChild(li)
-    })
-
-    container.appendChild(ol)
-    return container
 }

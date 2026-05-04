@@ -5,7 +5,7 @@ class PointGizmo {
     _svg = null
     _axes = {}
     _dot = null
-    _pivotLocal = null
+    _localPos = null
     _updateFn = null
     _prevMouse = null
     _dragAxisWorld = null
@@ -128,15 +128,15 @@ class PointGizmo {
         return dir.normalize()
     }
 
-    _pivotWorldPos() {
-        if (!this._pivotLocal) return null
+    _getWorldPos() {
+        if (!this._localPos) return null
         const worldPos = new Vec3()
-        this._modelEntity.getWorldTransform().transformPoint(this._pivotLocal, worldPos)
+        this._modelEntity.getWorldTransform().transformPoint(this._localPos, worldPos)
         return worldPos
     }
 
     _axisLength() {
-        const worldPos = this._pivotWorldPos()
+        const worldPos = this._getWorldPos()
         if (!worldPos) return 1
         const camPos = this._camEntity.getPosition()
         const dist = new Vec3().copy(worldPos).sub(camPos).length()
@@ -146,8 +146,8 @@ class PointGizmo {
     }
 
     _update() {
-        if (!this._enabled || !this._pivotLocal) return
-        const worldPos = this._pivotWorldPos()
+        if (!this._enabled || !this._localPos) return
+        const worldPos = this._getWorldPos()
         if (!worldPos) return
         const cfg = PointGizmo.CONFIG
         const center = this._w2s(worldPos)
@@ -195,7 +195,7 @@ class PointGizmo {
     }
 
     _startDrag(axis, cx, cy) {
-        if (!this._pivotLocal) return
+        if (!this._localPos) return
         this._dragging = true
         this._activeAxis = axis
         this._prevMouse = { x: cx, y: cy }
@@ -205,34 +205,34 @@ class PointGizmo {
     }
 
     _onDrag(cx, cy) {
-        if (!this._dragging || !this._pivotLocal) return
+        if (!this._dragging || !this._localPos) return
         const dx = cx - this._prevMouse.x
         const dy = cy - this._prevMouse.y
         if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
 
-        const worldPos = this._pivotWorldPos()
+        const worldPos = this._getWorldPos()
         const center = this._w2s(worldPos)
         const axisDir = this._dragAxisWorld
 
         const tipScr = this._w2s(new Vec3(worldPos.x + axisDir.x, worldPos.y + axisDir.y, worldPos.z + axisDir.z))
         const axScr = { x: tipScr.x - center.x, y: tipScr.y - center.y }
         const axLen = Math.sqrt(axScr.x ** 2 + axScr.y ** 2) || 1
+        
         const axNorm = { x: axScr.x / axLen, y: axScr.y / axLen }
         const dot = dx * axNorm.x + dy * axNorm.y
-
         const invWorld = new Mat4().copy(this._modelEntity.getWorldTransform()).invert()
         const axisLocal = new Vec3()
         invWorld.transformVector(axisDir, axisLocal)
-        const localScale = axisLocal.length()
+        const localScale = axisLocal.length()   
         axisLocal.normalize()
 
         const delta = dot / axLen / localScale
-        this._pivotLocal.x += axisLocal.x * delta
-        this._pivotLocal.y += axisLocal.y * delta
-        this._pivotLocal.z += axisLocal.z * delta
+        this._localPos.x += axisLocal.x * delta
+        this._localPos.y += axisLocal.y * delta
+        this._localPos.z += axisLocal.z * delta
 
         this._prevMouse = { x: cx, y: cy }
-        this._onMove?.({ x: this._pivotLocal.x, y: this._pivotLocal.y, z: this._pivotLocal.z })
+        this._onMove?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         this._app.renderNextFrame = true
     }
 
@@ -243,8 +243,8 @@ class PointGizmo {
         this._dragAxisWorld = null
         this._resetStyle()
         document.body.style.cursor = ''
-        if (this._pivotLocal) {
-            this._onEnd?.({ x: this._pivotLocal.x, y: this._pivotLocal.y, z: this._pivotLocal.z })
+        if (this._localPos) {
+            this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         }
     }
 
@@ -274,11 +274,11 @@ class PointGizmo {
     }
 
     get position() {
-        return this._pivotLocal ? { x: this._pivotLocal.x, y: this._pivotLocal.y, z: this._pivotLocal.z } : null
+        return this._localPos ? { x: this._localPos.x, y: this._localPos.y, z: this._localPos.z } : null
     }
 
     setPosition(localPos) {
-        this._pivotLocal = localPos ? new Vec3(localPos.x, localPos.y, localPos.z) : null
+        this._localPos = localPos ? new Vec3(localPos.x, localPos.y, localPos.z) : null
     }
 
     enable() {
