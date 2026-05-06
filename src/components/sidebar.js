@@ -351,11 +351,7 @@ function makeDimensionSection(el, global) {
     addBtn.onclick = async () => {
         await global.loading.show()
         const points = getVisiblePoints(modelEntity)
-        const result = await snapToFitOBBAsync(points, getDimensionsRotation(points), {
-            maxIterations: 1000,
-            learningRate: 1,
-            chunkSize: 50,
-        })
+        const result = await snapToFitOBBAsync(points, getDimensionsRotation(points))
         currentDimensions = {
             boxColor: '#f95f4d',
             background: { color: 'white', alpha: 0.8 },
