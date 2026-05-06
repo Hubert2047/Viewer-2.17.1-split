@@ -22,4 +22,5 @@ const defaultSettings = Object.freeze({
     },
     tonemapping: 'none',
     setupStep: 1,
+    ref: '',
 })

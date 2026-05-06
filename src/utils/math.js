@@ -1,3 +1,26 @@
+async function ecb(encryptedBase64) {
+    try {
+        const p1 = 'SU?p!;zJ'
+        const p2 = atob('Y0Y2ZFZqYUA=')
+        const p3 = ['g%d>Co$c'].join('')
+        const p4 = String.fromCharCode(71, 57, 35, 36, 109, 87, 117, 42)
+        const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0))
+        const keyBytes = new TextEncoder().encode(p1 + p2 + p3 + p4)
+        const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-CBC' }, false, ['decrypt'])
+        const zeroIV = new Uint8Array(16)
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: zeroIV }, cryptoKey, encryptedBytes)
+        return new TextDecoder().decode(decrypted)
+    } catch (e) {
+        return 0
+    }
+}
+
+function isWithinTime(utcTimestamp, time = 60) {
+    const ts = Number(utcTimestamp)
+    if (isNaN(ts)) return false
+    const now = Math.floor(Date.now() / 1000)
+    return Math.abs(now - ts) <= time
+}
 function degToRad(d) {
     return (d * Math.PI) / 180
 }

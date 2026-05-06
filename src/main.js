@@ -11,7 +11,7 @@ const initPoster = (events) => {
     events.on('progress:changed', blur)
 }
 
-const initUI = (global) => {
+const initUI = async (global) => {
     const { config, events, state, settings } = global
     const loading = new LoadingOverlay()
     global.loading = loading
@@ -38,9 +38,17 @@ const initUI = (global) => {
         return acc
     }, {})
     dom.ui.appendChild(makeControlsWrap(global, tooltip, dom))
+    if (window.location.protocol === 'https:' || isMobile) {
+        global.config.editable = false
+    } else if (url.searchParams.get('ref') === 'ortery') {
+        global.config.editable = true
+    } else {
+        const time = await ecb(settings.ref)
+        global.config.editable = isWithinTime(time)
+    }
     new HotspotManager({ global, dom, tooltip })
     let sidebar
-    if (config.editable) {
+    if (global.config.editable) {
         sidebar = makeSidebar(global, dom)
     }
     if (settings.hotspots.length > 0) {
@@ -3557,7 +3565,6 @@ const config = {
     contentUrl: settings.contentUrl,
     contents: settings.base64 ? base64ToBlobWithProgress(settings.base64) : createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
-    editable: url.searchParams.get('edit') === 'true' && window.location.protocol !== 'https:' && !isMobile,
     noanim: true,
     nofx: url.searchParams.has('nofx'),
     hpr: url.searchParams.has('hpr') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('hpr')) : undefined,
