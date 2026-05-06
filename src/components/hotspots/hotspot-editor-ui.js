@@ -12,7 +12,7 @@ class HotspotEditorUI {
         this.listEl = null
         this.countEl = null
         this.listenEvents()
-        this.createEmbedTooltip()
+        // this.createEmbedTooltip()
     }
     listenEvents() {
         this.events.on('hotspot:add-cancelled', () => {
@@ -439,7 +439,9 @@ class HotspotEditorUI {
         autoplayGrid.appendChild(autoPlayGroup)
         panel.appendChild(autoplayGrid)
 
-        const audioGroup = makeSectionGroup('Audio')
+        const initviewHint =
+            'Please copy the audio file into the <b style="color:var(--primary)">audios/</b> folder and ensure it is included when sharing.'
+        const audioGroup = makeSectionGroup('Audio', initviewHint)
 
         const hasAudio = !!(this.activeHotspotData.audio?.fileName || this.activeHotspotData.audio?.src)
 
@@ -502,18 +504,20 @@ class HotspotEditorUI {
             fileNameSpan.textContent = file.name
             clearAudioBtn.style.display = ''
             audioSettings.style.display = ''
-            if (!(this.settings.fileAudioStore instanceof Map)) {
-                this.settings.fileAudioStore = new Map()
-            }
-            if (!(this.settings.fileAudioStore instanceof Map)) {
-                this.settings.fileAudioStore = new Map()
-            }
 
-            const store = this.settings.fileAudioStore
-            const fileId = guid.create()
+            // if (!(this.settings.fileAudioStore instanceof Map)) {
+            //     this.settings.fileAudioStore = new Map()
+            // }
+            // if (!(this.settings.fileAudioStore instanceof Map)) {
+            //     this.settings.fileAudioStore = new Map()
+            // }
 
-            this.activeHotspotData.audio.fileId = fileId
-            store.set(fileId, file)
+            // const store = this.settings.fileAudioStore
+            // const fileId = guid.create()
+
+            // this.activeHotspotData.audio.fileId = fileId
+            // store.set(fileId, file)
+
             this.applyDraft(true)
         })
 
@@ -523,9 +527,9 @@ class HotspotEditorUI {
             if (audio?.src?.startsWith('blob:')) {
                 URL.revokeObjectURL(audio.src)
             }
-            if (audio?.fileId && store instanceof Map) {
-                store.delete(audio.fileId)
-            }
+            // if (audio?.fileId && store instanceof Map) {
+            //     store.delete(audio.fileId)
+            // }
             delete this.activeHotspotData.audio
             fileInput.value = ''
             fileNameSpan.textContent = 'No file chosen'
@@ -598,53 +602,53 @@ class HotspotEditorUI {
             }),
         )
 
-        const embedField = this.makeField('Embed', 'embed')
-        const embedLabel = embedField.querySelector('div:first-child')
-        if (embedLabel) {
-            const infoIcon = document.createElement('span')
-            infoIcon.classList.add('info-icon')
-            infoIcon.innerHTML = ICONS.hintInfo
-            infoIcon.setAttribute('tabindex', '0')
+        // const embedField = this.makeField('Embed', 'embed')
+        // const embedLabel = embedField.querySelector('div:first-child')
+        // if (embedLabel) {
+        //     const infoIcon = document.createElement('span')
+        //     infoIcon.classList.add('info-icon')
+        //     infoIcon.innerHTML = ICONS.hintInfo
+        //     infoIcon.setAttribute('tabindex', '0')
 
-            infoIcon.addEventListener('mouseenter', () => {
-                const rect = infoIcon.getBoundingClientRect()
-                this.embedTooltip.style.display = 'block'
-                const tooltipW = this.embedTooltip.offsetWidth
-                const tooltipH = this.embedTooltip.offsetHeight
-                const margin = 8
-                let left = rect.left + rect.width / 2 - tooltipW / 2
-                let top = rect.top - tooltipH - 6
-                left = Math.max(margin, Math.min(left, window.innerWidth - tooltipW - margin))
-                if (top < margin) {
-                    top = rect.bottom + 6
-                }
-                this.embedTooltip.style.left = `${left}px`
-                this.embedTooltip.style.top = `${top}px`
-            })
+        //     infoIcon.addEventListener('mouseenter', () => {
+        //         const rect = infoIcon.getBoundingClientRect()
+        //         this.embedTooltip.style.display = 'block'
+        //         const tooltipW = this.embedTooltip.offsetWidth
+        //         const tooltipH = this.embedTooltip.offsetHeight
+        //         const margin = 8
+        //         let left = rect.left + rect.width / 2 - tooltipW / 2
+        //         let top = rect.top - tooltipH - 6
+        //         left = Math.max(margin, Math.min(left, window.innerWidth - tooltipW - margin))
+        //         if (top < margin) {
+        //             top = rect.bottom + 6
+        //         }
+        //         this.embedTooltip.style.left = `${left}px`
+        //         this.embedTooltip.style.top = `${top}px`
+        //     })
 
-            infoIcon.addEventListener('mouseleave', () => {
-                this.embedTooltip.style.display = 'none'
-            })
-            embedLabel.appendChild(infoIcon)
-        }
-        const embedToggle = makeToggle(this.activeHotspotData.audio?.embed, (value) => {
-            if (value) {
-                const src = this.activeHotspotData.audio.src
-                const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
-                if (!hasValidSrc && this.activeHotspotData.audio.fileName) {
-                    showToast('To embed, please re-select the audio file using the file picker.', {
-                        duration: 5000,
-                        type: 'warning',
-                    })
-                    embedToggle.setValue(false)
-                    return
-                }
-            }
-            this.activeHotspotData.audio.embed = value
-            this.applyDraft()
-        })
+        //     infoIcon.addEventListener('mouseleave', () => {
+        //         this.embedTooltip.style.display = 'none'
+        //     })
+        //     embedLabel.appendChild(infoIcon)
+        // }
+        // const embedToggle = makeToggle(this.activeHotspotData.audio?.embed, (value) => {
+        //     if (value) {
+        //         const src = this.activeHotspotData.audio.src
+        //         const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
+        //         if (!hasValidSrc && this.activeHotspotData.audio.fileName) {
+        //             showToast('To embed, please re-select the audio file using the file picker.', {
+        //                 duration: 5000,
+        //                 type: 'warning',
+        //             })
+        //             embedToggle.setValue(false)
+        //             return
+        //         }
+        //     }
+        //     this.activeHotspotData.audio.embed = value
+        //     this.applyDraft()
+        // })
 
-        embedField.appendChild(embedToggle)
+        // embedField.appendChild(embedToggle)
 
         const audioToggleGrid = this.makeGrid(3)
         audioGrid.appendChild(iconColorField)
@@ -654,7 +658,7 @@ class HotspotEditorUI {
         audioToggleGrid.appendChild(autoPlayField)
         audioToggleGrid.appendChild(loopField)
         // audioToggleGrid.appendChild(persistField)
-        audioToggleGrid.appendChild(embedField)
+        // audioToggleGrid.appendChild(embedField)
 
         const volumeField = this.makeField('Volume', 'volume')
         const volumeWrap = document.createElement('div')

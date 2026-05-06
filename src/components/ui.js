@@ -36,7 +36,7 @@ const makeSectionGroup = (title, hint) => {
 
             const tooltip = document.createElement('div')
             tooltip.classList.add('hint-tooltip')
-            tooltip.textContent = hint
+            tooltip.innerHTML = hint
 
             icon.appendChild(tooltip)
             titleText.appendChild(icon)

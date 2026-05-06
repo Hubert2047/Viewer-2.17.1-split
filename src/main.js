@@ -1101,7 +1101,6 @@ class CameraManager {
             ortery: new OtherController({ global, bbox }),
         }
 
-        events.fire('controllers:created', this.controllers)
         this.controllers.orbit.fov = resetCamera.fov
         this.controllers.fly.fov = resetCamera.fov
         this.controllers.fly.collider = collider
@@ -3048,8 +3047,6 @@ class Viewer {
                     if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
                     global.dimensionsBox.draw(dim)
                     events.fire('ui:re-render-control-wrap')
-                    this.dom.showDimension.classList.add('hidden')
-                    this.dom.hideDimension.classList.remove('hidden')
                 }
             })
             events.on('dimensions:edit', (dim) => {
@@ -3059,8 +3056,7 @@ class Viewer {
                         events.fire('dimensions:eulersynced', { x, y, z })
                     })
                 rotationGizmo.enable(dimensionRotatable)
-                this.dom.showDimension.classList.add('hidden')
-                this.dom.hideDimension.classList.remove('hidden')
+                events.fire('ui:re-render-control-wrap')
             })
             events.on('dimensions:change', (dim) => {
                 if (dimensionRotatable) {

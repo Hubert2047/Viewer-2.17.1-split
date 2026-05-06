@@ -11,7 +11,7 @@ function makeGroundPanel(events, global) {
     hint.style.cssText = 'font-size:12px; color:var(--text-main); height:28px;'
 
     const pickRow = makeRow('Set ground plane')
-    
+
     const pickActionRow = document.createElement('div')
     pickActionRow.style.cssText = 'display:flex; gap:6px;'
 
@@ -50,6 +50,7 @@ function makeGroundPanel(events, global) {
         const { row, setValues } = makeVec3Inputs({
             title: `Point ${n}`,
             disabled: false,
+            step: 0.1,
             onChange: ({ x, y, z }) => {
                 const idx = n - 1
                 if (pickedPoints[idx]) {
