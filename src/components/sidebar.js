@@ -383,9 +383,7 @@ function makeDimensionSection(el, global) {
 
     async function getUpdateBoxSize(rotation) {
         const points = getVisiblePoints(modelEntity)
-        const result = await snapToFitOBBAsync(points, rotation, {
-            maxIterations: 0,
-        })
+        const result = await getBoxSize(points, rotation)
         return result
     }
     noDimRow.appendChild(noDimText)
@@ -541,39 +539,39 @@ function makeDimensionSection(el, global) {
             events.fire('dimensions:change', currentDimensions)
         },
     })
-    // ── Auto Fit row ──
-    const autoFitRow = makeRow('Auto Fit')
-    const autoFitBtn = makeButton({
-        icon: ICONS.autoFit,
-        title: 'Auto Fit',
-        onClick: async () => {
-            if (!currentDimensions || !isEditing) return
-            await global.loading.show()
-            const points = getVisiblePoints(modelEntity)
-            const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
-                maxIterations: 300,
-                learningRate: 1,
-                chunkSize: 50,
-            })
-            currentDimensions = {
-                ...currentDimensions,
-                ...result,
-                ...result,
-                ...result,
-            }
-            setValues(currentDimensions)
-            events.fire('dimensions:change', currentDimensions)
-            global.loading.hide()
-        },
-    })
-    autoFitBtn.style.cssText = 'height:32px;'
+    // // ── Auto Fit row ──
+    // const autoFitRow = makeRow('Auto Fit')
+    // const autoFitBtn = makeButton({
+    //     icon: ICONS.autoFit,
+    //     title: 'Auto Fit',
+    //     onClick: async () => {
+    //         if (!currentDimensions || !isEditing) return
+    //         await global.loading.show()
+    //         const points = getVisiblePoints(modelEntity)
+    //         const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
+    //             maxIterations: 300,
+    //             learningRate: 1,
+    //             chunkSize: 50,
+    //         })
+    //         currentDimensions = {
+    //             ...currentDimensions,
+    //             ...result,
+    //             ...result,
+    //             ...result,
+    //         }
+    //         setValues(currentDimensions)
+    //         events.fire('dimensions:change', currentDimensions)
+    //         global.loading.hide()
+    //     },
+    // })
+    // autoFitBtn.style.cssText = 'height:32px;'
 
-    autoFitRow.appendChild(autoFitBtn)
+    // autoFitRow.appendChild(autoFitBtn)
 
     boxGroup.appendChild(positionRow)
     boxGroup.appendChild(rotationRow)
     boxGroup.appendChild(sizeRow)
-    boxGroup.appendChild(autoFitRow)
+    // boxGroup.appendChild(autoFitRow)
     // ── Group 2: Real Dimensions ──
     const realGroup = makeSectionGroup('Real dimensions')
 
@@ -635,7 +633,7 @@ function makeDimensionSection(el, global) {
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
         backgroundColor.setDisabled(!on)
-        autoFitBtn.disabled = !on
+        // autoFitBtn.disabled = !on
     }
 
     // ── Buttons ──

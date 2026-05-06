@@ -575,38 +575,52 @@ function mergeSettings(settings, defaultSettings) {
     }
     return merged
 }
+function getOBBInfo(rx, ry, rz, count, points) {
+    const q = new Quat().setFromEulerAngles(rx, ry, rz)
+    const axisX = q.transformVector(new Vec3(1, 0, 0))
+    const axisY = q.transformVector(new Vec3(0, 1, 0))
+    const axisZ = q.transformVector(new Vec3(0, 0, 1))
+
+    let minX = Infinity,
+        maxX = -Infinity
+    let minY = Infinity,
+        maxY = -Infinity
+    let minZ = Infinity,
+        maxZ = -Infinity
+
+    for (let i = 0; i < count; i++) {
+        const px = points[i * 3],
+            py = points[i * 3 + 1],
+            pz = points[i * 3 + 2]
+        const lx = px * axisX.x + py * axisX.y + pz * axisX.z
+        const ly = px * axisY.x + py * axisY.y + pz * axisY.z
+        const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
+        if (lx < minX) minX = lx
+        if (lx > maxX) maxX = lx
+        if (ly < minY) minY = ly
+        if (ly > maxY) maxY = ly
+        if (lz < minZ) minZ = lz
+        if (lz > maxZ) maxZ = lz
+    }
+
+    const sx = maxX - minX,
+        sy = maxY - minY,
+        sz = maxZ - minZ
+    const volume = sx * sy * sz
+    const midX = (minX + maxX) / 2
+    const midY = (minY + maxY) / 2
+    const midZ = (minZ + maxZ) / 2
+    const cx = midX * axisX.x + midY * axisY.x + midZ * axisZ.x
+    const cy = midX * axisX.y + midY * axisY.y + midZ * axisZ.y
+    const cz = midX * axisX.z + midY * axisY.z + midZ * axisZ.z
+
+    return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
+}
 function snapToFitOBBAsync(points, initialRotation, options = {}) {
     const { chunkSize = 50 } = options
 
     return new Promise((resolve) => {
         const count = points.length / 3
-
-        function getOBBInfo(rx, ry, rz) {
-            const q = new Quat().setFromEulerAngles(rx, ry, rz)
-            const axisX = q.transformVector(new Vec3(1, 0, 0))
-            const axisY = q.transformVector(new Vec3(0, 1, 0))
-            const axisZ = q.transformVector(new Vec3(0, 0, 1))
-            let minX = Infinity, maxX = -Infinity
-            let minY = Infinity, maxY = -Infinity
-            let minZ = Infinity, maxZ = -Infinity
-            for (let i = 0; i < count; i++) {
-                const px = points[i * 3], py = points[i * 3 + 1], pz = points[i * 3 + 2]
-                const lx = px * axisX.x + py * axisX.y + pz * axisX.z
-                const ly = px * axisY.x + py * axisY.y + pz * axisY.z
-                const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
-                if (lx < minX) minX = lx; if (lx > maxX) maxX = lx
-                if (ly < minY) minY = ly; if (ly > maxY) maxY = ly
-                if (lz < minZ) minZ = lz; if (lz > maxZ) maxZ = lz
-            }
-            const sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ
-            const volume = sx * sy * sz
-            const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2, midZ = (minZ + maxZ) / 2
-            const cx = midX * axisX.x + midY * axisY.x + midZ * axisZ.x
-            const cy = midX * axisX.y + midY * axisY.y + midZ * axisZ.y
-            const cz = midX * axisX.z + midY * axisY.z + midZ * axisZ.z
-            return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
-        }
-
         const rx0 = initialRotation.x
         const rz0 = initialRotation.z
         let ry = initialRotation.y
@@ -619,8 +633,8 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
         function phase1() {
             for (let i = 0; i < chunkSize && iter < maxIter; i++, iter++) {
                 const eps = 1.0
-                const v0 = getOBBInfo(rx0, ry, rz0).volume
-                const gy = (getOBBInfo(rx0, ry + eps, rz0).volume - v0) / eps
+                const v0 = getOBBInfo(rx0, ry, rz0, count, points).volume
+                const gy = (getOBBInfo(rx0, ry + eps, rz0, count, points).volume - v0) / eps
                 ry -= lr * gy
                 lr *= 0.95
                 if (Math.abs(prevVolume - v0) < 0.0001 || lr < 0.01) {
@@ -646,7 +660,7 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
             for (let dy = -10; dy <= 10 + 1e-9; dy += 0.5) {
                 scan2.push(ryAfterGD + dy)
             }
-            bestVol2 = getOBBInfo(rx0, ryAfterGD, rz0).volume
+            bestVol2 = getOBBInfo(rx0, ryAfterGD, rz0, count, points).volume
             bestRy2 = ryAfterGD
             phase2Chunk()
         }
@@ -655,7 +669,7 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
             const end = Math.min(scan2Idx + chunkSize, scan2.length)
             for (; scan2Idx < end; scan2Idx++) {
                 const testRy = scan2[scan2Idx]
-                const { volume } = getOBBInfo(rx0, testRy, rz0)
+                const { volume } = getOBBInfo(rx0, testRy, rz0, count, points)
                 if (volume < bestVol2) {
                     bestVol2 = volume
                     bestRy2 = testRy
@@ -679,7 +693,7 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
             for (let dy = -0.5; dy <= 0.5 + 1e-9; dy += 0.05) {
                 scan3.push(ryBase + dy)
             }
-            bestVol3 = getOBBInfo(rx0, ryBase, rz0).volume
+            bestVol3 = getOBBInfo(rx0, ryBase, rz0, count, points).volume
             bestRy3 = ryBase
             phase3Chunk()
         }
@@ -688,7 +702,7 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
             const end = Math.min(scan3Idx + chunkSize, scan3.length)
             for (; scan3Idx < end; scan3Idx++) {
                 const testRy = scan3[scan3Idx]
-                const { volume } = getOBBInfo(rx0, testRy, rz0)
+                const { volume } = getOBBInfo(rx0, testRy, rz0, count, points)
                 if (volume < bestVol3) {
                     bestVol3 = volume
                     bestRy3 = testRy
@@ -696,7 +710,7 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
             }
             if (scan3Idx >= scan3.length) {
                 ry = bestRy3
-                const { size, position } = getOBBInfo(rx0, ry, rz0)
+                const { size, position } = getOBBInfo(rx0, ry, rz0, count, points)
                 resolve({ rotation: { x: rx0, y: ry, z: rz0 }, position, size })
             } else {
                 setTimeout(phase3Chunk, 0)
@@ -705,4 +719,10 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
 
         setTimeout(phase1, 0)
     })
-}   
+}
+function getBoxSize(points, initialRotation) {
+    const count = points.length / 3
+    const { x: rx0, y: ry0, z: rz0 } = initialRotation
+    const { size, position } = getOBBInfo(rx0, ry0, rz0, count, points)
+    return Promise.resolve({ rotation: initialRotation, position, size })
+}

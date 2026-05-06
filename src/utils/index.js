@@ -132,8 +132,8 @@ function stripDefaults(settings, defaults = defaultSettings) {
 }
 async function exportHtml(name, settings) {
     const copySettings = JSON.parse(JSON.stringify(settings))
-    const hotspots = await Promise.all(
-        (copySettings.hotspots ?? []).map(async (h) => {
+    const messages = await Promise.all(
+        (copySettings.messages ?? []).map(async (h) => {
             if (!h.audio) return h
             const audio = { ...h.audio }
             const isBase64 =
@@ -181,7 +181,7 @@ async function exportHtml(name, settings) {
             stripDefaults({
                 ...copySettings,
                 v: newVersion,
-                hotspots,
+                messages,
                 setupStep,
                 base64: copySettings.base64,
             }),
@@ -294,8 +294,8 @@ function makeInfoPanel(settings, events) {
     ]
 
     const getControls = () => ({
-        desktop: settings.hotspots?.length ? [...baseDesktop, ...hotspotDesktop] : baseDesktop,
-        touch: settings.hotspots?.length ? [...baseTouch, ...hotspotTouch] : baseTouch,
+        desktop: settings.messages?.length ? [...baseDesktop, ...hotspotDesktop] : baseDesktop,
+        touch: settings.messages?.length ? [...baseTouch, ...hotspotTouch] : baseTouch,
     })
 
     const wrapper = document.createElement('div')
