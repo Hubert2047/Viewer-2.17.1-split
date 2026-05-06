@@ -1,5 +1,5 @@
-function makeHotspotSection(body, global, dom) {
-    const editor = new HotspotEditorUI(body, { dom, global })
+function makeMessagesSection(body, global, dom) {
+    const editor = new MessageEditorUI(body, { dom, global })
     editor.mount()
 }
 function makeSection({ id, title, body: renderBody, classname = '', events, icon }) {
@@ -1000,10 +1000,10 @@ function makeSidebar(global, dom) {
         )
         contentArea.appendChild(
             makeSection({
-                id: 'hotspot',
-                title: 'Hotspots',
-                classname: 'hotspot-section',
-                body: (el) => makeHotspotSection(el, global, dom),
+                id: 'message',
+                title: 'Messages',
+                classname: 'message-section',
+                body: (el) => makeMessagesSection(el, global, dom),
                 events,
             }),
         )

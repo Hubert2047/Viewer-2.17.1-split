@@ -327,7 +327,7 @@ function makeInfoPanel(settings, events) {
     content.append(tabs, panels)
     wrapper.appendChild(content)
 
-    events.on('hotspot:rebuild-info', rebuild)
+    events.on('message:rebuild-info', rebuild)
 
     return wrapper
 }
@@ -390,17 +390,17 @@ function makeControlBotGroup(global, tooltip, dom) {
     })
     return group
 }
-function makeHotspotActionGroup(tooltip, events, dom) {
+function makeMessageActionGroup(tooltip, events, dom) {
     const group = document.createElement('div')
-    group.id = 'hotspotActionGroup'
-    dom['hotspotActionGroup'] = group
+    group.id = 'messageActionGroup'
+    dom['messageActionGroup'] = group
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
     const buttons = [
         ['stopHotspot', 'stopHotspot', 'Stop Auto Play', false, 'stop-auto', 'startHotspot'],
         ['startHotspot', 'startHotspot', 'Auto Play', true, 'start-auto', 'stopHotspot'],
-        ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-hotspot-btns'],
-        ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-hotspot-btns'],
+        ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-message-btns'],
+        ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-message-btns'],
     ]
     events.on('setup-reset', (settings) => {
         dom.stopHotspot?.classList.add('hidden')
@@ -408,10 +408,10 @@ function makeHotspotActionGroup(tooltip, events, dom) {
         dom.hideHotspotButton?.classList.toggle('hidden', isMobile)
         dom.showHotspotButton?.classList.toggle('hidden', !isMobile)
 
-        if (settings.hotspots.length > 0) {
-            dom.hotspotActionGroup?.classList.remove('hidden')
+        if (settings.messages.length > 0) {
+            dom.messageActionGroup?.classList.remove('hidden')
         } else {
-            dom.hotspotActionGroup?.classList.add('hidden')
+            dom.messageActionGroup?.classList.add('hidden')
         }
     })
     buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
@@ -420,7 +420,7 @@ function makeHotspotActionGroup(tooltip, events, dom) {
             icon: ICONS[icon],
             className: 'control-btn',
             onClick: (e) => {
-                events.fire(`hotspot:${eventname}`)
+                events.fire(`message:${eventname}`)
                 if (toggleId) {
                     const toggleBtn = group.querySelector(`#${toggleId}`)
                     if (toggleBtn) {
@@ -453,10 +453,10 @@ function makeControlsWrap(global, tooltip, dom) {
     render()
     global.events.on('ui:re-render-control-wrap', render)
     wrap.appendChild(container)
-    const hotspotcontainer = document.createElement('div')
-    hotspotcontainer.id = 'hotspotContainer'
-    dom.hotspotContainer = hotspotcontainer
-    wrap.appendChild(hotspotcontainer)
+    const messageContainer = document.createElement('div')
+    messageContainer.id = 'messageContainer'
+    dom.messageContainer = messageContainer
+    wrap.appendChild(messageContainer)
 
     return wrap
 }

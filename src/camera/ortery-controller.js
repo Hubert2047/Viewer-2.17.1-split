@@ -58,7 +58,7 @@ class OtherController {
         this.listenEvents()
     }
     listenEvents() {
-        this.events.on('hotspot:editing', (isEdit) => {
+        this.events.on('message:editing', (isEdit) => {
             this.isEditHotspot = isEdit
         })
         this.events.on('inputEvent', (eventName, event) => {

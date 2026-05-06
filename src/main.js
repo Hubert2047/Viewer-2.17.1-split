@@ -30,8 +30,8 @@ const initUI = async (global) => {
         'loadingText',
         'loadingBar',
         'tooltip',
-        'hotspotContainer',
-        'hotspotActionGroup',
+        'messageContainer',
+        'messageActionGroup',
         'settingsPanel',
     ].reduce((acc, id) => {
         acc[id] = document.getElementById(id)
@@ -46,13 +46,13 @@ const initUI = async (global) => {
         const time = await ecb(settings.ref)
         global.config.editable = isWithinTime(time)
     }
-    new HotspotManager({ global, dom, tooltip })
+    new MessagesManager({ global, dom, tooltip })
     let sidebar
     if (global.config.editable) {
         sidebar = makeSidebar(global, dom)
     }
-    if (settings.hotspots.length > 0) {
-        dom.buttonsContainer.appendChild(makeHotspotActionGroup(tooltip, events, dom))
+    if (settings.messages.length > 0) {
+        dom.buttonsContainer.appendChild(makeMessageActionGroup(tooltip, events, dom))
     }
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
@@ -1650,7 +1650,7 @@ class InputController {
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
                 return
             if (event.key === 'Escape') {
-                events.fire('hotspot:add-cancelled')
+                events.fire('message:add-cancelled')
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
                     state.gamingControls = false
@@ -1662,10 +1662,10 @@ class InputController {
             } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
                 switch (event.key) {
                     case 'p':
-                        events.fire('hotspot:toggle-play')
+                        events.fire('message:toggle-play')
                         break
                     case 't':
-                        events.fire('hotspot:hotspot-btns')
+                        events.fire('message:message-btns')
                         break
                     case 'r':
                         events.fire('inputEvent:reset', event)

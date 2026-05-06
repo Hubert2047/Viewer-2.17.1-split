@@ -705,4 +705,4 @@ function snapToFitOBBAsync(points, initialRotation, options = {}) {
 
         setTimeout(phase1, 0)
     })
-}
+}   

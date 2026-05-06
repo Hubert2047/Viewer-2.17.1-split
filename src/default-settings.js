@@ -12,7 +12,7 @@ const defaultSettings = Object.freeze({
     initview: Object.freeze({ pose: null }),
     inertia: true,
     orientation: Object.freeze({ pose: null }),
-    hotspots: Object.freeze([]),
+    messages: Object.freeze([]),
     dimensions: null,
     measurement: {
         enabled: false,
