@@ -236,15 +236,15 @@ function getHtmlTemplate(version) {
 </head>
 <body>
     <canvas id="application-canvas"></canvas>
-      <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="tooltip"></div>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
         </div>
+    </div>
+    <div id="tooltip"></div>
 </body>
 <!-- INJECT_SCRIPT -->
 <script src="./viewer.js?v=${version}"><\/script>
