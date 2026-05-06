@@ -24973,7 +24973,7 @@ const importSettings = (settings) => {
     } else {
         throw new Error(`Unsupported experience settings version: ${version}`)
     }
-    return mergeSettings(result, defaultSettings)
+    return result
 }
 
 class Tooltip {

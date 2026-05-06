@@ -3552,7 +3552,10 @@ const url = new URL(location.href)
 const posterUrl = url.searchParams.get('poster')
 const skyboxUrl = url.searchParams.get('skybox')
 const voxelUrl = url.searchParams.get('voxel')
-const { settings } = window?.sse
+
+const rawSettings = window?.sse?.settings ?? {}
+if (!rawSettings.contentUrl) rawSettings.contentUrl = 'ortery_default.ply'
+const settings = mergeSettings(rawSettings, defaultSettings)
 const hasPoster = !!posterUrl
 const config = {
     poster: posterUrl && createImage(posterUrl),
@@ -3603,7 +3606,7 @@ const main = async (canvas, settingsJson, config) => {
     const modal = new ModalDialog()
     const global = {
         app,
-        settings: importSettings(settingsJson),
+        settings: importSettings(settings),
         config,
         state,
         events,
