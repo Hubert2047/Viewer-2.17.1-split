@@ -60,6 +60,7 @@ function dimensionLocalToWorld(localPos, rotation) {
         z: x * right.z + y * up.z + z * forward.z,
     }
 }
+
 function getDimensionsRotation(localCenters) {
     const count = localCenters.length / 3
 
@@ -575,98 +576,133 @@ function mergeSettings(settings, defaultSettings) {
     return merged
 }
 function snapToFitOBBAsync(points, initialRotation, options = {}) {
-    const {
-        maxIterations = 200,
-        learningRate = 0.5,
-        minLearningRate = 0.001,
-        decay = 0.95,
-        convergenceThreshold = 0.0001,
-        chunkSize = 50,
-    } = options
+    const { chunkSize = 50 } = options
 
     return new Promise((resolve) => {
         const count = points.length / 3
+
         function getOBBInfo(rx, ry, rz) {
             const q = new Quat().setFromEulerAngles(rx, ry, rz)
             const axisX = q.transformVector(new Vec3(1, 0, 0))
             const axisY = q.transformVector(new Vec3(0, 1, 0))
             const axisZ = q.transformVector(new Vec3(0, 0, 1))
-
-            let minX = Infinity,
-                maxX = -Infinity
-            let minY = Infinity,
-                maxY = -Infinity
-            let minZ = Infinity,
-                maxZ = -Infinity
-
+            let minX = Infinity, maxX = -Infinity
+            let minY = Infinity, maxY = -Infinity
+            let minZ = Infinity, maxZ = -Infinity
             for (let i = 0; i < count; i++) {
-                const px = points[i * 3],
-                    py = points[i * 3 + 1],
-                    pz = points[i * 3 + 2]
+                const px = points[i * 3], py = points[i * 3 + 1], pz = points[i * 3 + 2]
                 const lx = px * axisX.x + py * axisX.y + pz * axisX.z
                 const ly = px * axisY.x + py * axisY.y + pz * axisY.z
                 const lz = px * axisZ.x + py * axisZ.y + pz * axisZ.z
-                if (lx < minX) minX = lx
-                if (lx > maxX) maxX = lx
-                if (ly < minY) minY = ly
-                if (ly > maxY) maxY = ly
-                if (lz < minZ) minZ = lz
-                if (lz > maxZ) maxZ = lz
+                if (lx < minX) minX = lx; if (lx > maxX) maxX = lx
+                if (ly < minY) minY = ly; if (ly > maxY) maxY = ly
+                if (lz < minZ) minZ = lz; if (lz > maxZ) maxZ = lz
             }
-
-            const sx = maxX - minX,
-                sy = maxY - minY,
-                sz = maxZ - minZ
+            const sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ
             const volume = sx * sy * sz
-
-            // Center world space
-            const midX = (minX + maxX) / 2
-            const midY = (minY + maxY) / 2
-            const midZ = (minZ + maxZ) / 2
+            const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2, midZ = (minZ + maxZ) / 2
             const cx = midX * axisX.x + midY * axisY.x + midZ * axisZ.x
             const cy = midX * axisX.y + midY * axisY.y + midZ * axisZ.y
             const cz = midX * axisX.z + midY * axisY.z + midZ * axisZ.z
-
             return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
         }
 
-        let rx = initialRotation.x
+        const rx0 = initialRotation.x
+        const rz0 = initialRotation.z
         let ry = initialRotation.y
-        let rz = initialRotation.z
-        let lr = learningRate
+
+        let lr = 0.5
         let prevVolume = Infinity
         let iter = 0
+        const maxIter = 200
 
-        function runChunk() {
-            for (let i = 0; i < chunkSize && iter < maxIterations; i++, iter++) {
-                const eps = 0.1
-                const v0 = getOBBInfo(rx, ry, rz).volume
-                const gx = (getOBBInfo(rx + eps, ry, rz).volume - v0) / eps
-                const gy = (getOBBInfo(rx, ry + eps, rz).volume - v0) / eps
-                const gz = (getOBBInfo(rx, ry, rz + eps).volume - v0) / eps
-                rx -= lr * gx
+        function phase1() {
+            for (let i = 0; i < chunkSize && iter < maxIter; i++, iter++) {
+                const eps = 1.0
+                const v0 = getOBBInfo(rx0, ry, rz0).volume
+                const gy = (getOBBInfo(rx0, ry + eps, rz0).volume - v0) / eps
                 ry -= lr * gy
-                rz -= lr * gz
-                lr *= decay
-                if (Math.abs(prevVolume - v0) < convergenceThreshold) {
-                    iter = maxIterations
+                lr *= 0.95
+                if (Math.abs(prevVolume - v0) < 0.0001 || lr < 0.01) {
+                    iter = maxIter
                     break
                 }
                 prevVolume = v0
-                if (lr < minLearningRate) {
-                    iter = maxIterations
-                    break
-                }
             }
-
-            if (iter >= maxIterations) {
-                const { size, position } = getOBBInfo(rx, ry, rz)
-                resolve({ rotation: { x: rx, y: ry, z: rz }, position, size })
+            if (iter >= maxIter) {
+                setTimeout(phase2, 0)
             } else {
-                setTimeout(runChunk, 0)
+                setTimeout(phase1, 0)
             }
         }
 
-        setTimeout(runChunk, 0)
+        const scan2 = []
+        let scan2Idx = 0
+        let bestRy2 = ry
+        let bestVol2 = Infinity
+
+        function phase2() {
+            const ryAfterGD = ry
+            for (let dy = -10; dy <= 10 + 1e-9; dy += 0.5) {
+                scan2.push(ryAfterGD + dy)
+            }
+            bestVol2 = getOBBInfo(rx0, ryAfterGD, rz0).volume
+            bestRy2 = ryAfterGD
+            phase2Chunk()
+        }
+
+        function phase2Chunk() {
+            const end = Math.min(scan2Idx + chunkSize, scan2.length)
+            for (; scan2Idx < end; scan2Idx++) {
+                const testRy = scan2[scan2Idx]
+                const { volume } = getOBBInfo(rx0, testRy, rz0)
+                if (volume < bestVol2) {
+                    bestVol2 = volume
+                    bestRy2 = testRy
+                }
+            }
+            if (scan2Idx >= scan2.length) {
+                ry = bestRy2
+                setTimeout(phase3, 0)
+            } else {
+                setTimeout(phase2Chunk, 0)
+            }
+        }
+
+        const scan3 = []
+        let scan3Idx = 0
+        let bestRy3 = ry
+        let bestVol3 = Infinity
+
+        function phase3() {
+            const ryBase = ry
+            for (let dy = -0.5; dy <= 0.5 + 1e-9; dy += 0.05) {
+                scan3.push(ryBase + dy)
+            }
+            bestVol3 = getOBBInfo(rx0, ryBase, rz0).volume
+            bestRy3 = ryBase
+            phase3Chunk()
+        }
+
+        function phase3Chunk() {
+            const end = Math.min(scan3Idx + chunkSize, scan3.length)
+            for (; scan3Idx < end; scan3Idx++) {
+                const testRy = scan3[scan3Idx]
+                const { volume } = getOBBInfo(rx0, testRy, rz0)
+                if (volume < bestVol3) {
+                    bestVol3 = volume
+                    bestRy3 = testRy
+                }
+            }
+            if (scan3Idx >= scan3.length) {
+                ry = bestRy3
+                const { size, position } = getOBBInfo(rx0, ry, rz0)
+                resolve({ rotation: { x: rx0, y: ry, z: rz0 }, position, size })
+            } else {
+                setTimeout(phase3Chunk, 0)
+            }
+        }
+
+        setTimeout(phase1, 0)
     })
 }

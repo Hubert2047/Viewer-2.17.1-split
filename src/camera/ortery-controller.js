@@ -33,7 +33,6 @@ class OtherController {
         this.camera = global.camera.camera
         this.events = events
         this.settings = global.settings
-
         if (['spherical', 'hemispherical', 'cylindrical'].includes(this.settings.model)) {
             this.model = this.settings.model
         } else {

@@ -352,8 +352,8 @@ function makeDimensionSection(el, global) {
         await global.loading.show()
         const points = getVisiblePoints(modelEntity)
         const result = await snapToFitOBBAsync(points, getDimensionsRotation(points), {
-            maxIterations: 10000,
-            learningRate: 0.01,
+            maxIterations: 1000,
+            learningRate: 1,
             chunkSize: 50,
         })
         currentDimensions = {
