@@ -284,18 +284,18 @@ function makeInfoPanel(settings, events) {
         { action: 'Zoom', key: 'Pinch' },
         { action: 'Reset Camera', key: 'Camera Icon' },
     ]
-    const hotspotDesktop = [
+    const messageDesktop = [
         { action: 'Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
         { action: 'Messages Disable', key: 'T / Text Icon', cls: 'messages-info' },
     ]
-    const hotspotTouch = [
+    const messageTouch = [
         { action: 'Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
         { action: 'Messages Disable', key: 'Text Icon', cls: 'messages-info' },
     ]
 
     const getControls = () => ({
-        desktop: settings.messages?.length ? [...baseDesktop, ...hotspotDesktop] : baseDesktop,
-        touch: settings.messages?.length ? [...baseTouch, ...hotspotTouch] : baseTouch,
+        desktop: settings.messages?.length ? [...baseDesktop, ...messageDesktop] : baseDesktop,
+        touch: settings.messages?.length ? [...baseTouch, ...messageTouch] : baseTouch,
     })
 
     const wrapper = document.createElement('div')
@@ -397,16 +397,16 @@ function makeMessageActionGroup(tooltip, events, dom) {
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
     const buttons = [
-        ['stopHotspot', 'stopHotspot', 'Stop Auto Play', false, 'stop-auto', 'startHotspot'],
-        ['startHotspot', 'startHotspot', 'Auto Play', true, 'start-auto', 'stopHotspot'],
-        ['hideHotspotButton', 'hideHotspotButton', 'Message Disable', !isMobile, 'hide-message-btns'],
-        ['showHotspotButton', 'showHotspotButton', 'Message Enable', isMobile, 'show-message-btns'],
+        ['stopMessage', 'stopMessage', 'Stop Auto Play', false, 'stop-auto', 'startMessage'],
+        ['startMessage', 'startMessage', 'Auto Play', true, 'start-auto', 'stopMessage'],
+        ['hideMessageButton', 'hideMessageButton', 'Message Disable', !isMobile, 'hide-message-btns'],
+        ['showMessageButton', 'showMessageButton', 'Message Enable', isMobile, 'show-message-btns'],
     ]
     events.on('setup-reset', (settings) => {
-        dom.stopHotspot?.classList.add('hidden')
-        dom.startHotspot?.classList.remove('hidden')
-        dom.hideHotspotButton?.classList.toggle('hidden', isMobile)
-        dom.showHotspotButton?.classList.toggle('hidden', !isMobile)
+        dom.stopMessage?.classList.add('hidden')
+        dom.startMessage?.classList.remove('hidden')
+        dom.hideMessageButton?.classList.toggle('hidden', isMobile)
+        dom.showMessageButton?.classList.toggle('hidden', !isMobile)
 
         if (settings.messages.length > 0) {
             dom.messageActionGroup?.classList.remove('hidden')

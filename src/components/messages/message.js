@@ -2,7 +2,7 @@ class Messages {
     dragging = false
     resizing = false
     resizeEdge = null
-    hotspotMaxScale = 1.5
+    messageMaxScale = 1.5
     circumference = 100.53
 
     isEdit = false
@@ -43,7 +43,7 @@ class Messages {
     // ── DOM creation ─────────────────────────
     createDot() {
         this.dot = document.createElement('div')
-        this.dot.classList.add('hotspotDot')
+        this.dot.classList.add('message-dot')
         this.dot.style.cssText = 'position:absolute; border-radius:50%; cursor:grab;'
         this.dom.ui.appendChild(this.dot)
     }
@@ -293,7 +293,7 @@ class Messages {
             let fontSize = this.data.text.fontSize || 16
             const fontScaleX = width / this.data.text.originWidth
             const fontScaleY = height / this.data.text.originHeight
-            const fontScale = Math.min(fontScaleX, fontScaleY, this.hotspotMaxScale)
+            const fontScale = Math.min(fontScaleX, fontScaleY, this.messageMaxScale)
             const minFontSize = Math.min(16, fontSize)
             fontSize = Math.max(minFontSize, Math.round(fontSize * fontScale))
             this.div.style.fontSize = fontSize + 'px'
@@ -324,8 +324,8 @@ class Messages {
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
             }
-            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.hotspotMaxScale))
-            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * this.hotspotMaxScale))
+            let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.messageMaxScale))
+            let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * this.messageMaxScale))
             let finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth - 20)
             let finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight - 20)
             const dotCenterX = dotRect.left + dotRect.width / 2

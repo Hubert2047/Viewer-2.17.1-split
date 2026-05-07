@@ -1,5 +1,5 @@
 class MessageEditorUI {
-    isCreatingHotspot = false
+    isCreatinMessage = false
     constructor(body, { global, dom }) {
         this.body = body
         this.dom = dom
@@ -8,7 +8,7 @@ class MessageEditorUI {
         this.events = global.events
         this.state = global.state
         this.settings = global.settings
-        this.activeHotspotData = null
+        this.activeMessageData = null
         this.listEl = null
         this.countEl = null
         this.listenEvents()
@@ -18,24 +18,24 @@ class MessageEditorUI {
         this.events.on('message:add-cancelled', () => {
             document.body.style.cursor = 'default'
             this.events.fire('message:editing', false)
-            this.isCreatingHotspot = false
+            this.isCreatinMessage = false
             this.resetAddBtn()
         })
         this.events.on('message:update-ui-data', (data) => {
-            if (!this.activeHotspotData) return
-            if (this.activeHotspotData.dot.size !== data.dot.size) {
+            if (!this.activeMessageData) return
+            if (this.activeMessageData.dot.size !== data.dot.size) {
                 if (!this.dotSizeInput) this.dotSizeInput = this.body.querySelector('input[name="dot-size"]')
                 if (this.dotSizeInput && document.activeElement !== this.dotSizeInput) {
                     this.dotSizeInput.value = data.dot.size
                 }
             }
-            if (this.activeHotspotData.text.fontSize !== data.text.fontSize) {
+            if (this.activeMessageData.text.fontSize !== data.text.fontSize) {
                 if (!this.fontSizeInput) this.fontSizeInput = this.body.querySelector('input[name="font-size"]')
                 if (this.fontSizeInput && document.activeElement !== this.fontSizeInput) {
                     this.fontSizeInput.value = data.text.fontSize
                 }
             }
-            this.activeHotspotData = data
+            this.activeMessageData = data
         })
     }
     createEmbedTooltip() {
@@ -92,27 +92,27 @@ class MessageEditorUI {
         this.body.appendChild(header)
     }
     onAdd(e) {
-        if (this.isCreatingHotspot) {
+        if (this.isCreatinMessage) {
             this.events.fire('message:add-cancelled')
             this.resetAddBtn()
             return
         }
         document.body.style.cursor = 'crosshair'
-        this.isCreatingHotspot = true
+        this.isCreatinMessage = true
         this.events.fire('message:editing', true)
         this.events.fire('message:editor-selected', null)
 
         this.setAddBtnCancel(true)
 
         this.events.on('pointerup', (e) => {
-            if (!this.isCreatingHotspot) return
+            if (!this.isCreatinMessage) return
             const rect = this.dom.ui.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
             const position = pickModelLocalPoint(mouseX, mouseY, this.camera)
             this.events.fire('message:add', { position })
             document.body.style.cursor = 'default'
-            this.isCreatingHotspot = false
+            this.isCreatinMessage = false
             this.setAddBtnCancel(false)
         })
     }
@@ -145,15 +145,15 @@ class MessageEditorUI {
         this.events.fire('message:editor-cancelled')
     }
     onApply() {
-        this.events.fire('message:apply', this.activeHotspotData)
+        this.events.fire('message:apply', this.activeMessageData)
     }
-    render(hotspotData, activeHotspotData) {
-        this.activeHotspotData = activeHotspotData ? JSON.parse(JSON.stringify(activeHotspotData)) : null
+    render(messageData, activeMessageData) {
+        this.activeMessageData = activeMessageData ? JSON.parse(JSON.stringify(activeMessageData)) : null
         this.listEl.innerHTML = ''
-        this.countEl.textContent = `${hotspotData.length} message${hotspotData.length !== 1 ? 's' : ''} configured`
+        this.countEl.textContent = `${messageData.length} message${messageData.length !== 1 ? 's' : ''} configured`
 
-        hotspotData.forEach((h) => {
-            const isExpanded = this.activeHotspotData?.id === h.id
+        messageData.forEach((h) => {
+            const isExpanded = this.activeMessageData?.id === h.id
             const item = document.createElement('div')
             item.classList.add('message-item')
             item.dataset.id = h.id
@@ -191,7 +191,7 @@ class MessageEditorUI {
         row.classList.add('message-header')
         const handle = document.createElement('div')
         handle.classList.add('message-drag-handle')
-        handle.innerHTML = ICONS.hotspotDragHandle
+        handle.innerHTML = ICONS.messageDragHandle
 
         row.dataset.dragId = h.id
 
@@ -216,7 +216,7 @@ class MessageEditorUI {
         actions.classList.add('message-header-actions')
 
         const editBtn = makeButton({
-            icon: ICONS.hotspotEditBtn,
+            icon: ICONS.messageEditBtn,
             title: 'Edit',
             className: 'message-action-btn',
             onClick: () => this.events.fire('message:editor-selected', isExpanded ? null : h),
@@ -224,7 +224,7 @@ class MessageEditorUI {
         if (isExpanded) editBtn.classList.add('active')
 
         const delBtn = makeButton({
-            icon: ICONS.hotspotDelete,
+            icon: ICONS.messageDelete,
             title: 'Delete',
             className: 'message-action-btn',
             onClick: () => this.onDelete(h.id),
@@ -238,7 +238,7 @@ class MessageEditorUI {
     }
     applyDraft = (refreshUIPanel = false) => {
         this.events.fire('message:editor-changed', {
-            data: JSON.parse(JSON.stringify(this.activeHotspotData)),
+            data: JSON.parse(JSON.stringify(this.activeMessageData)),
             refreshUIPanel,
         })
     }
@@ -248,11 +248,11 @@ class MessageEditorUI {
         const buttonGroup = makeSectionGroup('Button')
         const btnTitleField = this.makeField('Title')
         btnTitleField.appendChild(
-            makeInput('text', this.activeHotspotData.button.title, {
+            makeInput('text', this.activeMessageData.button.title, {
                 placeholder: 'Title...',
                 name: 'button-title',
                 onChange: (v) => {
-                    this.activeHotspotData.button.title = v
+                    this.activeMessageData.button.title = v
                     headerTitle.textContent = v
                     this.applyDraft()
                 },
@@ -266,8 +266,8 @@ class MessageEditorUI {
 
         const formatRow = document.createElement('div')
         formatRow.classList.add('message-label-row')
-        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.activeHotspotData, this.applyDraft))
-        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.activeHotspotData, this.applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.activeMessageData, this.applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.activeMessageData, this.applyDraft))
 
         const alignRow = makeSegmentRow({
             options: [
@@ -276,9 +276,9 @@ class MessageEditorUI {
                 { icon: ICONS.alignRight, value: 'right' },
             ],
             className: 'message-align-btns',
-            defaultValue: this.activeHotspotData.text.align || 'center',
+            defaultValue: this.activeMessageData.text.align || 'center',
             onChange: (val) => {
-                this.activeHotspotData.text.align = val
+                this.activeMessageData.text.align = val
                 this.applyDraft()
             },
         })
@@ -287,12 +287,12 @@ class MessageEditorUI {
         const labelRow = document.createElement('div')
         labelRow.classList.add('message-label-row')
         labelRow.appendChild(
-            makeTextarea(this.activeHotspotData.text.content, {
+            makeTextarea(this.activeMessageData.text.content, {
                 placeholder: 'Enter label...',
                 classname: 'message-text',
-                name: this.activeHotspotData.text.content,
+                name: this.activeMessageData.text.content,
                 onChange: (v) => {
-                    this.activeHotspotData.text.content = v
+                    this.activeMessageData.text.content = v
                     this.applyDraft()
                 },
             }),
@@ -305,22 +305,22 @@ class MessageEditorUI {
         const colorGrid = this.makeGrid(2)
         const colorField = this.makeField('Color')
         colorField.appendChild(
-            makeColorSwatch(this.activeHotspotData.text.color, (v) => {
-                this.activeHotspotData.text.color = v
+            makeColorSwatch(this.activeMessageData.text.color, (v) => {
+                this.activeMessageData.text.color = v
                 this.applyDraft()
             }),
         )
         const bgField = this.makeField('Background')
         bgField.appendChild(
             makeColorAlpha({
-                color: this.activeHotspotData.text.background,
-                alpha: this.activeHotspotData.text.backgroundAlpha,
+                color: this.activeMessageData.text.background,
+                alpha: this.activeMessageData.text.backgroundAlpha,
                 onChangeColor: (v) => {
-                    this.activeHotspotData.text.background = v
+                    this.activeMessageData.text.background = v
                     this.applyDraft()
                 },
                 onChangeAlpha: (v) => {
-                    this.activeHotspotData.text.backgroundAlpha = v
+                    this.activeMessageData.text.backgroundAlpha = v
                     this.applyDraft()
                 },
             }),
@@ -332,12 +332,12 @@ class MessageEditorUI {
         const fontGrid = this.makeGrid(2)
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
-            makeInput('number', this.activeHotspotData.text.fontSize, {
+            makeInput('number', this.activeMessageData.text.fontSize, {
                 min: 8,
                 max: 72,
                 name: 'font-size',
                 onChange: (v) => {
-                    this.activeHotspotData.text.fontSize = parseInt(v)
+                    this.activeMessageData.text.fontSize = parseInt(v)
                     this.applyDraft()
                 },
             }),
@@ -346,9 +346,9 @@ class MessageEditorUI {
         fontFamilyField.appendChild(
             makeSelect(
                 ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
-                this.activeHotspotData.text.font,
+                this.activeMessageData.text.font,
                 (v) => {
-                    this.activeHotspotData.text.font = v
+                    this.activeMessageData.text.font = v
                     this.applyDraft()
                 },
                 { name: 'font-family' },
@@ -359,64 +359,64 @@ class MessageEditorUI {
         textGroup.appendChild(fontGrid)
         panel.appendChild(textGroup)
 
-        const hotspotGroup = makeSectionGroup('Messages')
+        const messageGroup = makeSectionGroup('Messages')
         const styleField = this.makeField('Style')
         const styleRow = makeSegmentRow({
             options: [
                 { label: 'Circle', value: 'circle' },
                 { label: 'Dot', value: 'dot' },
             ],
-            defaultValue: this.activeHotspotData.dot.style,
+            defaultValue: this.activeMessageData.dot.style,
             onChange: (val) => {
-                this.activeHotspotData.dot.style = val
+                this.activeMessageData.dot.style = val
                 strokeField.style.display = val === 'dot' ? 'none' : 'block'
                 this.applyDraft()
             },
         })
         styleField.appendChild(styleRow)
-        hotspotGroup.appendChild(styleField)
+        messageGroup.appendChild(styleField)
 
         const dotGrid = this.makeGrid(3)
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
-            makeInput('number', this.activeHotspotData.dot.size, {
+            makeInput('number', this.activeMessageData.dot.size, {
                 min: 10,
                 max: 80,
                 name: 'dot-size',
                 onChange: (v) => {
-                    this.activeHotspotData.dot.size = parseInt(v)
+                    this.activeMessageData.dot.size = parseInt(v)
                     this.applyDraft()
                 },
             }),
         )
         const strokeField = this.makeField('Stroke width')
         strokeField.appendChild(
-            makeInput('number', this.activeHotspotData.dot.stroke, {
+            makeInput('number', this.activeMessageData.dot.stroke, {
                 min: 0,
                 max: 10,
                 step: 0.5,
                 name: 'stroke-width',
                 onChange: (v) => {
-                    this.activeHotspotData.dot.stroke = parseFloat(v)
+                    this.activeMessageData.dot.stroke = parseFloat(v)
                     this.applyDraft()
                 },
             }),
         )
-        if (this.activeHotspotData.dot.style === 'dot') {
+        if (this.activeMessageData.dot.style === 'dot') {
             strokeField.style.display = 'none'
         }
         const strokeColorField = this.makeField('Stroke color')
         strokeColorField.appendChild(
-            makeColorSwatch(this.activeHotspotData.dot.strokeColor, (v) => {
-                this.activeHotspotData.dot.strokeColor = v
+            makeColorSwatch(this.activeMessageData.dot.strokeColor, (v) => {
+                this.activeMessageData.dot.strokeColor = v
                 this.applyDraft()
             }),
         )
         dotGrid.appendChild(sizeField)
         dotGrid.appendChild(strokeField)
         dotGrid.appendChild(strokeColorField)
-        hotspotGroup.appendChild(dotGrid)
-        panel.appendChild(hotspotGroup)
+        messageGroup.appendChild(dotGrid)
+        panel.appendChild(messageGroup)
 
         const autoplayGrid = document.createElement('div')
         autoplayGrid.classList.add('message-autoplay')
@@ -424,12 +424,12 @@ class MessageEditorUI {
         const autoPlayGroup = makeSectionGroup('Auto Play')
         const timeField = this.makeField('Time (ms)')
         timeField.appendChild(
-            makeInput('number', this.activeHotspotData.autoPlay.time, {
+            makeInput('number', this.activeMessageData.autoPlay.time, {
                 min: 0,
                 step: 500,
                 name: 'play-time',
                 onChange: (v) => {
-                    this.activeHotspotData.autoPlay.time = parseInt(v)
+                    this.activeMessageData.autoPlay.time = parseInt(v)
                     this.applyDraft()
                 },
             }),
@@ -443,7 +443,7 @@ class MessageEditorUI {
             'Please copy the audio file into the <b style="color:var(--primary)">audios/</b> folder and ensure it is included when sharing.'
         const audioGroup = makeSectionGroup('Audio', initviewHint)
 
-        const hasAudio = !!(this.activeHotspotData.audio?.fileName || this.activeHotspotData.audio?.src)
+        const hasAudio = !!(this.activeMessageData.audio?.fileName || this.activeMessageData.audio?.src)
 
         const audioFileFieldGroup = this.makeGrid(2)
         const audioFileField = this.makeField('Audio File')
@@ -462,7 +462,7 @@ class MessageEditorUI {
 
         const fileNameSpan = document.createElement('span')
         fileNameSpan.classList.add('audio-file-name')
-        fileNameSpan.textContent = this.activeHotspotData.audio?.fileName || 'No file chosen'
+        fileNameSpan.textContent = this.activeMessageData.audio?.fileName || 'No file chosen'
 
         const audioSettings = document.createElement('div')
         audioSettings.classList.add('audio-settings')
@@ -479,12 +479,12 @@ class MessageEditorUI {
             const file = e.target.files[0]
             if (!file) return
 
-            if (this.activeHotspotData.audio?.src?.startsWith('blob:')) {
-                URL.revokeObjectURL(this.activeHotspotData.audio.src)
+            if (this.activeMessageData.audio?.src?.startsWith('blob:')) {
+                URL.revokeObjectURL(this.activeMessageData.audio.src)
             }
 
-            if (!this.activeHotspotData.audio || !this.activeHotspotData.audio.fileName) {
-                this.activeHotspotData.audio = {
+            if (!this.activeMessageData.audio || !this.activeMessageData.audio.fileName) {
+                this.activeMessageData.audio = {
                     show: true,
                     src: null,
                     fileName: null,
@@ -499,8 +499,8 @@ class MessageEditorUI {
                 }
             }
 
-            this.activeHotspotData.audio.fileName = file.name
-            this.activeHotspotData.audio.src = URL.createObjectURL(file)
+            this.activeMessageData.audio.fileName = file.name
+            this.activeMessageData.audio.src = URL.createObjectURL(file)
             fileNameSpan.textContent = file.name
             clearAudioBtn.style.display = ''
             audioSettings.style.display = ''
@@ -515,14 +515,14 @@ class MessageEditorUI {
             // const store = this.settings.fileAudioStore
             // const fileId = guid.create()
 
-            // this.activeHotspotData.audio.fileId = fileId
+            // this.activeMessageData.audio.fileId = fileId
             // store.set(fileId, file)
 
             this.applyDraft(true)
         })
 
         clearAudioBtn.addEventListener('click', () => {
-            const audio = this.activeHotspotData.audio
+            const audio = this.activeMessageData.audio
             const store = this.settings.fileAudioStore
             if (audio?.src?.startsWith('blob:')) {
                 URL.revokeObjectURL(audio.src)
@@ -530,7 +530,7 @@ class MessageEditorUI {
             // if (audio?.fileId && store instanceof Map) {
             //     store.delete(audio.fileId)
             // }
-            delete this.activeHotspotData.audio
+            delete this.activeMessageData.audio
             fileInput.value = ''
             fileNameSpan.textContent = 'No file chosen'
             clearAudioBtn.style.display = 'none'
@@ -550,8 +550,8 @@ class MessageEditorUI {
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Color')
         iconColorField.appendChild(
-            makeColorSwatch(this.activeHotspotData.audio?.iconColor || '#ffffff', (v) => {
-                this.activeHotspotData.audio.iconColor = v
+            makeColorSwatch(this.activeMessageData.audio?.iconColor || '#ffffff', (v) => {
+                this.activeMessageData.audio.iconColor = v
                 this.applyDraft()
             }),
         )
@@ -559,14 +559,14 @@ class MessageEditorUI {
         const iconBgField = this.makeField('Background', 'background-color')
         iconBgField.appendChild(
             makeColorAlpha({
-                color: this.activeHotspotData.audio?.bgColor || '#000000',
-                alpha: this.activeHotspotData.audio?.bgAlpha ?? 0.35,
+                color: this.activeMessageData.audio?.bgColor || '#000000',
+                alpha: this.activeMessageData.audio?.bgAlpha ?? 0.35,
                 onChangecolor: (v) => {
-                    this.activeHotspotData.audio.bgColor = v
+                    this.activeMessageData.audio.bgColor = v
                     this.applyDraft()
                 },
                 onChangeAlpha: (v) => {
-                    this.activeHotspotData.audio.bgAlpha = v
+                    this.activeMessageData.audio.bgAlpha = v
                     this.applyDraft()
                 },
             }),
@@ -574,30 +574,30 @@ class MessageEditorUI {
 
         const loopField = this.makeField('Loop')
         loopField.appendChild(
-            makeToggle(this.activeHotspotData.audio?.loop, (value) => {
-                this.activeHotspotData.audio.loop = value
+            makeToggle(this.activeMessageData.audio?.loop, (value) => {
+                this.activeMessageData.audio.loop = value
                 this.applyDraft()
             }),
         )
 
         const showField = this.makeField('Show')
         showField.appendChild(
-            makeToggle(this.activeHotspotData.audio?.show, (value) => {
-                this.activeHotspotData.audio.show = value
+            makeToggle(this.activeMessageData.audio?.show, (value) => {
+                this.activeMessageData.audio.show = value
                 this.applyDraft()
             }),
         )
         // const persistField = this.makeField('Persist')
         // persistField.appendChild(
-        //     makeToggle(this.activeHotspotData.audio?.persist, (value) => {
-        //         this.activeHotspotData.audio.persist = value
-        //         return this.activeHotspotData.audio.persist
+        //     makeToggle(this.activeMessageData.audio?.persist, (value) => {
+        //         this.activeMessageData.audio.persist = value
+        //         return this.activeMessageData.audio.persist
         //     }),
         // )
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
-            makeToggle(this.activeHotspotData.audio?.autoPlay, (value) => {
-                this.activeHotspotData.audio.autoPlay = value
+            makeToggle(this.activeMessageData.audio?.autoPlay, (value) => {
+                this.activeMessageData.audio.autoPlay = value
                 this.applyDraft()
             }),
         )
@@ -631,11 +631,11 @@ class MessageEditorUI {
         //     })
         //     embedLabel.appendChild(infoIcon)
         // }
-        // const embedToggle = makeToggle(this.activeHotspotData.audio?.embed, (value) => {
+        // const embedToggle = makeToggle(this.activeMessageData.audio?.embed, (value) => {
         //     if (value) {
-        //         const src = this.activeHotspotData.audio.src
+        //         const src = this.activeMessageData.audio.src
         //         const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
-        //         if (!hasValidSrc && this.activeHotspotData.audio.fileName) {
+        //         if (!hasValidSrc && this.activeMessageData.audio.fileName) {
         //             showToast('To embed, please re-select the audio file using the file picker.', {
         //                 duration: 5000,
         //                 type: 'warning',
@@ -644,7 +644,7 @@ class MessageEditorUI {
         //             return
         //         }
         //     }
-        //     this.activeHotspotData.audio.embed = value
+        //     this.activeMessageData.audio.embed = value
         //     this.applyDraft()
         // })
 
@@ -669,16 +669,16 @@ class MessageEditorUI {
             max: 1,
             step: 0.1,
             className: 'volume-slider',
-            value: this.activeHotspotData.audio?.volume ?? 1,
+            value: this.activeMessageData.audio?.volume ?? 1,
             variant: 'progress',
             onChange: (v) => {
-                this.activeHotspotData.audio.volume = v
+                this.activeMessageData.audio.volume = v
                 volumeInput.value = v
                 this.applyDraft()
             },
         })
 
-        const volumeInput = makeInput('number', this.activeHotspotData.audio?.volume ?? 1, {
+        const volumeInput = makeInput('number', this.activeMessageData.audio?.volume ?? 1, {
             min: 0,
             max: 1,
             step: 0.1,
@@ -686,7 +686,7 @@ class MessageEditorUI {
             name: 'volume',
             onChange: (v) => {
                 const value = Math.min(1, Math.max(0, parseFloat(v) || 0))
-                this.activeHotspotData.audio.volume = value
+                this.activeMessageData.audio.volume = value
                 volumeSlider.setValue(value)
                 this.applyDraft()
             },

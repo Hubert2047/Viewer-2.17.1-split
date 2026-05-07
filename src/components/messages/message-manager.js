@@ -14,7 +14,7 @@ class MessagesManager {
         
         this.activeMessage = null
         this.activeData = null
-        this.isShowActiveHotspotBtns = !isMobile
+        this.isShowActiveMessageBtns = !isMobile
         this.isAutoPlay = false
         this.intervalID = null
         this.listenEvents()
@@ -119,7 +119,7 @@ class MessagesManager {
                 data.dot.botRight = botRight
             }
             this.activeData = data
-            this.updateHotspotData()
+            this.updateMessageData()
             if (refreshUIPanel) this.updateUIPanel()
         })
         this.events.on('message:drag-changed', (data) => {
@@ -128,8 +128,8 @@ class MessagesManager {
         })
         this.events.on('message:start-auto', () => this.startAutoPlay())
         this.events.on('message:stop-auto', () => this.stopAutoPlay())
-        this.events.on('message:show-message-btns', () => this.showActiveHotspotBtns(true))
-        this.events.on('message:hide-message-btns', () => this.showActiveHotspotBtns(false))
+        this.events.on('message:show-message-btns', () => this.showActiveMessageBtns(true))
+        this.events.on('message:hide-message-btns', () => this.showActiveMessageBtns(false))
         this.events.on('message:editor-cancelled', () => this.editorCancelled())
         this.events.on('message:delete', (id) => {
             const idx = this.messages.findIndex((h) => h.id === id)
@@ -176,11 +176,11 @@ class MessagesManager {
                 this.settings.messages[toDataIdx],
                 this.settings.messages[fromDataIdx],
             ]
-            const fromHotspotIdx = this.messages.findIndex((h) => h.id === fromId)
-            const toHotspotIdx = this.messages.findIndex((h) => h.id === toId)
-            ;[this.messages[fromHotspotIdx], this.messages[toHotspotIdx]] = [
-                this.messages[toHotspotIdx],
-                this.messages[fromHotspotIdx],
+            const fromMessageIdx = this.messages.findIndex((h) => h.id === fromId)
+            const toMessageIdx = this.messages.findIndex((h) => h.id === toId)
+            ;[this.messages[fromMessageIdx], this.messages[toMessageIdx]] = [
+                this.messages[toMessageIdx],
+                this.messages[fromMessageIdx],
             ]
             this.messages.forEach((h) => {
                 this.dom.messageContainer.appendChild(h.button.el)
@@ -196,13 +196,13 @@ class MessagesManager {
             else this.startAutoPlay()
         })
         this.events.on('message:message-btns', () => {
-            this.showActiveHotspotBtns(!this.isShowActiveHotspotBtns)
+            this.showActiveMessageBtns(!this.isShowActiveMessageBtns)
         })
-        this.events.on('ortery:rotate', () => this.hideAllHotspot())
-        this.events.on('ortery:reset', () => this.hideAllHotspot())
+        this.events.on('ortery:rotate', () => this.hideAllMessages())
+        this.events.on('ortery:reset', () => this.hideAllMessages())
         this.events.on('ortery:interaction', () => this.stopAutoPlay())
     }
-    hideAllHotspot() {
+    hideAllMessages() {
         if (this.activeData) this.events.fire('message:editor-cancelled')
         this.activeData = null
         if (this.activeMessage) {
@@ -338,8 +338,8 @@ class MessagesManager {
     }
     startAutoPlay() {
         this.events.fire('message:editor-selected', null)
-        this.dom.stopHotspot.classList.remove('hidden')
-        this.dom.startHotspot.classList.add('hidden')
+        this.dom.stopMessage.classList.remove('hidden')
+        this.dom.startMessage.classList.add('hidden')
         this.autoPlay()
     }
 
@@ -349,22 +349,22 @@ class MessagesManager {
             clearTimeout(this.intervalID)
             this.intervalID = null
         }
-        this.dom.stopHotspot.classList.add('hidden')
-        this.dom.startHotspot.classList.remove('hidden')
+        this.dom.stopMessage.classList.add('hidden')
+        this.dom.startMessage.classList.remove('hidden')
         this.isAutoPlay = false
     }
-    showActiveHotspotBtns(show) {
+    showActiveMessageBtns(show) {
         if (show) {
-            this.dom.hideHotspotButton.classList.remove('hidden')
-            this.dom.showHotspotButton.classList.add('hidden')
+            this.dom.hideMessageButton.classList.remove('hidden')
+            this.dom.showMessageButton.classList.add('hidden')
         } else {
-            this.dom.hideHotspotButton.classList.add('hidden')
-            this.dom.showHotspotButton.classList.remove('hidden')
+            this.dom.hideMessageButton.classList.add('hidden')
+            this.dom.showMessageButton.classList.remove('hidden')
         }
-        this.isShowActiveHotspotBtns = show
+        this.isShowActiveMessageBtns = show
         this.messages.forEach((h) => h.button.show(show))
     }
-    updateHotspotData() {
+    updateMessageData() {
         if (this.activeMessage && this.activeData) {
             if (this.activeData) this.activeMessage.data = JSON.parse(JSON.stringify(this.activeData))
             this.activeMessage.update(true, this.activeData.button.title)

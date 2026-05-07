@@ -59,7 +59,7 @@ class OtherController {
     }
     listenEvents() {
         this.events.on('message:editing', (isEdit) => {
-            this.isEditHotspot = isEdit
+            this.isEditMessage = isEdit
         })
         this.events.on('inputEvent', (eventName, event) => {
             switch (eventName) {
@@ -463,7 +463,7 @@ class OtherController {
     }
     onExit() {}
     applyInertia() {
-        if (this.isEditHotspot || this.targetPose || !modelEntity || !this.modelRotation) return
+        if (this.isEditMessage || this.targetPose || !modelEntity || !this.modelRotation) return
         if (this.isEditingOrientation) return
         const speed = Math.sqrt(this.inertiaVelX ** 2 + this.inertiaVelY ** 2)
         if (speed < this.inertiaMinSpeed) {
@@ -736,7 +736,7 @@ class OtherController {
         return Math.min(this.maxDistance, Math.max(this.getActualDistance(this.settings.lockZoomIn.value), distance))
     }
     move(move, rotate) {
-        if (this.isEditHotspot) return
+        if (this.isEditMessage) return
         if (this._gizmo?.isDragging) return
         const [x, y, z] = move
         this.distance = this.clampDistance(this.distance + this.distance * move[2])
