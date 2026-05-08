@@ -239,6 +239,7 @@ function makeSegmentRow({ options, className, defaultValue, onChange }) {
         const btn = document.createElement('div')
         btn.classList.add('btn', 'segment-btn')
         btn.innerHTML = icon ? icon : label
+        btn.dataset.value = value
         if (value === defaultValue) btn.classList.add('active')
         btn.onclick = () => {
             row.querySelectorAll('.segment-btn').forEach((b) => b.classList.remove('active'))
@@ -247,6 +248,12 @@ function makeSegmentRow({ options, className, defaultValue, onChange }) {
         }
         row.appendChild(btn)
     })
+
+    row.setValue = (value) => {
+        row.querySelectorAll('.segment-btn').forEach((b) => {
+            b.classList.toggle('active', b.dataset.value === String(value))
+        })
+    }
 
     return row
 }

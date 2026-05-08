@@ -443,6 +443,9 @@ function makeControlsWrap(global, tooltip, dom) {
     wrap.id = 'controlsWrap'
     dom[wrap.id] = wrap
     wrap.className = 'hidden'
+    wrap.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+    })
     const container = document.createElement('div')
     container.id = 'buttonsContainer'
     dom[container.id] = container

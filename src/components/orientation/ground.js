@@ -8,7 +8,7 @@ function makeGroundPanel(events, global) {
     const MAX_POINTS = 3
 
     const hint = document.createElement('div')
-    hint.style.cssText = 'font-size:12px; color:var(--text-main); height:28px;'
+    hint.style.cssText = 'font-size:13px; color:var(--text-main); height:28px;'
 
     const pickRow = makeRow('Set ground plane')
 

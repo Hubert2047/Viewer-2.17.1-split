@@ -1066,7 +1066,7 @@ const createCamera = (position, target, fov) => {
 const createFrameCamera = (bbox, fov) => {
     const sceneSize = bbox.halfExtents.length()
     const distance = sceneSize / Math.sin((fov / 180) * Math.PI * 0.5)
-    return createCamera(new Vec3(2, 0, 2).normalize().mulScalar(distance).add(bbox.center), bbox.center, fov)
+    return createCamera(new Vec3(2, 1, 2).normalize().mulScalar(distance).add(bbox.center), bbox.center, fov)
 }
 class CameraManager {
     update
@@ -1153,6 +1153,7 @@ class CameraManager {
             } else {
                 this.camera.copy(target)
             }
+            // console.log(this.camera)
             // update animation timeline
             if (state.cameraMode === 'anim') {
                 state.animationTime = this.controllers.anim.animState.cursor.value

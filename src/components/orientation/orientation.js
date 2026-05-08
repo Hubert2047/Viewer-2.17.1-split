@@ -32,7 +32,7 @@ function makeOrientationGroup(global, editGroup) {
         syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
     })
 
-    const { panel: manualPanel, showHorizon } = makeManualPanel(events)
+    const { panel: manualPanel } = makeManualPanel(events)
     const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
 
     const methodWrap = document.createElement('div')
@@ -54,8 +54,10 @@ function makeOrientationGroup(global, editGroup) {
         currentMethod = method
         manualPanel.style.display = method === 'manual' ? 'flex' : 'none'
         groundPanel.style.display = method === 'ground' ? 'flex' : 'none'
-        if (method === 'manual') stopPicking()
-        if (method === 'ground') showHorizon(false)
+        if (method === 'manual') {
+            stopPicking()
+        } else {
+        }
         events.fire('orientation:switch-method', currentMethod)
     }
     methodWrap.appendChild(methodRow)
@@ -69,8 +71,9 @@ function makeOrientationGroup(global, editGroup) {
         if (!isEditing) return
         isEditing = false
         stopPicking()
-        showHorizon(false)
         methodWrap.style.display = 'none'
+        currentMethod = 'ground'
+        methodBtns.setValue('ground')
         if (settings.orientation.pose) {
             const { rotation: r } = settings.orientation.pose
             syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
@@ -102,9 +105,10 @@ function makeOrientationGroup(global, editGroup) {
                         events.fire('orientation:groundplane', pts)
                     } else {
                         events.fire('orientation:manual-apply')
-                        showHorizon(false)
                     }
                     isEditing = false
+                    currentMethod = 'ground'
+                    methodBtns.setValue('ground')
                     methodWrap.style.display = 'none'
                     renderOrientBtns()
                 },
@@ -155,21 +159,18 @@ function makeCameraLimitsGroup(global, editGroup) {
     pitchEditWrap.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-bottom:8px;'
 
     const pitchInputRow = makeRow('Pitch offset')
-    const defaultValue = settings.orientation.pitchOffset !== undefined ? Math.round(radToDeg(settings.orientation.pitchOffset)) : 0
-    const pitchInput = makeInput(
-        'number',
-        defaultValue,
-        {
-            step: 1,
-            disabled: true,
-            min: PITCH_MIN_DEG,
-            max: PITCH_MAX_DEG,
-            className: 'orientation-step-input',
-            onChange: (value) => {
-                setPitchDraft(parseFloat(value) || 0)
-            },
+    const defaultValue =
+        settings.orientation.pitchOffset !== undefined ? Math.round(radToDeg(settings.orientation.pitchOffset)) : 0
+    const pitchInput = makeInput('number', defaultValue, {
+        step: 1,
+        disabled: true,
+        min: PITCH_MIN_DEG,
+        max: PITCH_MAX_DEG,
+        className: 'orientation-step-input',
+        onChange: (value) => {
+            setPitchDraft(parseFloat(value) || 0)
         },
-    )
+    })
     pitchInputRow.appendChild(pitchInput)
 
     const pitchSliderRow = document.createElement('div')

@@ -2,52 +2,16 @@ function makeManualPanel(events) {
     const panel = document.createElement('div')
     panel.style.cssText = 'display:none; flex-direction:column; gap:10px;'
 
-    const makeSectionLabel = (text) => {
-        const el = document.createElement('div')
-        el.style.cssText =
-            'font-size:12px; font-weight:600; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; padding-top:2px;'
-        el.textContent = text
-        return el
-    }
-    // ── Horizon line overlay ──
-    let horizonOverlay = document.getElementById('horizon-overlay')
-    let horizonLine = document.getElementById('horizon-line')
-    if (!horizonOverlay && !horizonLine) {
-        horizonOverlay = document.createElement('div')
-        horizonOverlay.id = 'horizon-overlay'
-        horizonOverlay.style.cssText =
-            'position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999; display:none;'
-        const horizonSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        horizonSVG.setAttribute('width', '100%')
-        horizonSVG.setAttribute('height', '100%')
-        horizonLine = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-        horizonLine.id = 'horizon-line'
-        horizonLine.setAttribute('x1', '0')
-        horizonLine.setAttribute('x2', '100%')
-        horizonLine.setAttribute('stroke', 'var(--primary)')
-        horizonLine.setAttribute('stroke-width', '1.5')
-        horizonLine.setAttribute('stroke-dasharray', '8 6')
-        horizonSVG.appendChild(horizonLine)
-        horizonOverlay.appendChild(horizonSVG)
-        document.body.appendChild(horizonOverlay)
-    }
+    const hint = document.createElement('p')
+    hint.style.cssText = `
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--text-main);
+`
+    hint.textContent =
+        'The red line marks the ground. Align the bottom of the model flat on it — spin it around to check every angle. You can drag with left click to rotate, right click to adjust the height, or use the Height and Lean buttons to fine-tune until it looks right.'
 
-    let horizonActive = false
-    const setHorizonVisible = (visible) => {
-        horizonActive = visible
-        horizonOverlay.style.display = visible ? 'block' : 'none'
-    }
-    events.on('orientation:update-horizon', ({ y }) => {
-        if (y === null) return
-        horizonLine.setAttribute('y1', y)
-        horizonLine.setAttribute('y2', y)
-        showHorizon(true)
-    })
-    // ─────────────────────────────────────────
-    // SECTION 1: SPIN PREVIEW
-    // ─────────────────────────────────────────
-
-    const spinRow = makeRow('Spin 360°')
+    const spinRow = makeRow('Auto Spin 360°')
     const spinRight = document.createElement('div')
     spinRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
 
@@ -70,7 +34,7 @@ function makeManualPanel(events) {
 
     const btnSpin = makeButton({
         icon: ICONS.spin,
-        title: 'Spin 360°',
+        title: 'Auto Spin 360°',
         className: 'orientation-btn',
         onClick: () => events.fire('orientation:spin', { speed: parseFloat(spinSpeedSlider.value) || 5 }),
     })
@@ -83,119 +47,116 @@ function makeManualPanel(events) {
     const yawStepInput = makeInput('number', 5, { step: 1, min: 0, className: 'orientation-step-input' })
     const getYawStep = () => parseFloat(yawStepInput.value) || 5
     // ── Yaw row
-    const yawRow = makeRow('Yaw')
+    const yawRow = makeRow('Spin')
     const yawRight = document.createElement('div')
     yawRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
     const btnYawLeft = makeButton({
         icon: ICONS.yawCCW,
-        title: 'Yaw left',
+        title: 'Spin left',
         className: 'orientation-btn',
         onHold: true,
         onClick: () => events.fire('orientation:yaw-step', { deg: -getYawStep() }),
     })
     const btnYawRight = makeButton({
         icon: ICONS.yawCW,
-        title: 'Yaw right',
+        title: 'Spin right',
         className: 'orientation-btn',
         onHold: true,
         onClick: () => events.fire('orientation:yaw-step', { deg: getYawStep() }),
     })
-    yawRight.appendChild(yawStepInput)
     yawRight.appendChild(btnYawLeft)
+    yawRight.appendChild(yawStepInput)
     yawRight.appendChild(btnYawRight)
     yawRow.appendChild(yawRight)
 
-    // ─────────────────────────────────────────
-    // SECTION 2: ADJUST
-    // ─────────────────────────────────────────
+    // ── Y Position row
+    const yPosStepInput = makeInput('number', 1, { step: 0.5, min: 0, className: 'orientation-step-input' })
+    const getYPosStep = () => parseFloat(yPosStepInput.value) || 0.1
 
-    // ── Pitch ──
-    const pitchStepInput = makeInput('number', 5, { step: 1, min: 0, className: 'orientation-step-input' })
-    const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
+    const yPosRow = makeRow('Height')
+    const yPosRight = document.createElement('div')
+    yPosRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
 
-    const pitchRow = makeRow('Pitch')
-    const pitchRight = document.createElement('div')
-    pitchRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
-    const btnPitchUp = makeButton({
-        icon: ICONS.arrowUp,
-        title: 'Pitch up',
-        className: 'orientation-btn',
-        onClick: () => events.fire('orientation:pitch-step', { deg: -getPitchStep() }),
-    })
-    const btnPitchDown = makeButton({
+    const btnYPosDown = makeButton({
         icon: ICONS.arrowDown,
-        title: 'Pitch down',
+        title: 'Move down',
         className: 'orientation-btn',
-        onClick: () => events.fire('orientation:pitch-step', { deg: getPitchStep() }),
+        onHold: true,
+        onClick: () => events.fire('orientation:translate-y', { delta: -getYPosStep() }),
     })
-    pitchRight.appendChild(pitchStepInput)
-    pitchRight.appendChild(btnPitchUp)
-    pitchRight.appendChild(btnPitchDown)
-    pitchRow.appendChild(pitchRight)
+    const btnYPosUp = makeButton({
+        icon: ICONS.arrowUp,
+        title: 'Move up',
+        className: 'orientation-btn',
+        onHold: true,
+        onClick: () => events.fire('orientation:translate-y', { delta: getYPosStep() }),
+    })
+
+    yPosRight.appendChild(btnYPosDown)
+    yPosRight.appendChild(yPosStepInput)
+    yPosRight.appendChild(btnYPosUp)
+    yPosRow.appendChild(yPosRight)
+
+    // // ── Pitch ──
+    // const pitchStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
+    // const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
+
+    // const pitchRow = makeRow('Tilt Up / Down')
+    // const pitchRight = document.createElement('div')
+    // pitchRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
+    // const btnPitchUp = makeButton({
+    //     icon: ICONS.arrowUp,
+    //     title: 'Tilt up',
+    //     className: 'orientation-btn',
+    //     onHold: true,
+    //     onClick: () => events.fire('orientation:pitch-step', { deg: -getPitchStep() }),
+    // })
+    // const btnPitchDown = makeButton({
+    //     icon: ICONS.arrowDown,
+    //     title: 'Tilt down',
+    //     onHold: true,
+    //     className: 'orientation-btn',
+    //     onClick: () => events.fire('orientation:pitch-step', { deg: getPitchStep() }),
+    // })
+    // pitchRight.appendChild(btnPitchDown)
+    // pitchRight.appendChild(pitchStepInput)
+    // pitchRight.appendChild(btnPitchUp)
+    // pitchRow.appendChild(pitchRight)
 
     // ── Roll ──
-    const rollStepInput = makeInput('number', 1, { step: 0.1, min: 0, className: 'orientation-step-input' })
+    const rollStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
     const getRollStep = () => parseFloat(rollStepInput.value) || 0.5
 
-    const rollRow = makeRow('Roll')
+    const rollRow = makeRow('Lean Left / Right')
     const rollRight = document.createElement('div')
     rollRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
     const btnRollCCW = makeButton({
         icon: ICONS.rollCCW,
-        title: 'Roll counter-clockwise',
+        title: 'Lean Left',
         className: 'orientation-btn',
+        onHold: true,
         onClick: () => events.fire('orientation:roll', { deg: -getRollStep() }),
     })
     const btnRollCW = makeButton({
         icon: ICONS.rollCW,
-        title: 'Roll clockwise',
+        title: 'Lean Right',
         className: 'orientation-btn',
+        onHold: true,
         onClick: () => events.fire('orientation:roll', { deg: getRollStep() }),
     })
-    rollRight.appendChild(rollStepInput)
     rollRight.appendChild(btnRollCCW)
+    rollRight.appendChild(rollStepInput)
     rollRight.appendChild(btnRollCW)
     rollRow.appendChild(rollRight)
 
-    // ─────────────────────────────────────────
-    // SECTION 3: HORIZON LINE
-    // ─────────────────────────────────────────
-
-    const horizonRow = makeRow('Show')
-    const horizonToggle = makeToggle(horizonActive, (value) => {
-        horizonToggle.classList.toggle('active', !horizonActive)
-        setHorizonVisible(!horizonActive)
-    })
-    horizonRow.appendChild(horizonToggle)
-
-    // ─────────────────────────────────────────
-    // ASSEMBLE
-    // ─────────────────────────────────────────
-    function showHorizon(show) {
-        horizonToggle.setValue(show)
-        if (!show) horizonToggle.classList.remove('active')
-        else horizonToggle.classList.add('active')
-        setHorizonVisible(show)
-    }
-    // panel.appendChild(makeDivider())
-    panel.appendChild(makeSectionLabel('Spin preview'))
+    panel.appendChild(hint)
     panel.appendChild(spinRow)
     panel.appendChild(yawRow)
-
-    // panel.appendChild(makeDivider())
-
-    panel.appendChild(makeSectionLabel('Adjust'))
-    panel.appendChild(pitchRow)
+    panel.appendChild(yPosRow)
+    // panel.appendChild(pitchRow)
     panel.appendChild(rollRow)
-
-    // panel.appendChild(makeDivider())
-
-    panel.appendChild(makeSectionLabel('Horizon line'))
-    panel.appendChild(horizonRow)
-    // panel.appendChild(makeDivider())
 
     return {
         panel,
-        showHorizon,
     }
 }

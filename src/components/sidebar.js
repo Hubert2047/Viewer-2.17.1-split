@@ -224,7 +224,7 @@ function makeModelSection(el, global) {
 
     if (isHemi && step === 1) {
         container.appendChild(makeOrientationGroup(global, editGroup))
-        container.appendChild(makeCameraLimitsGroup(global, editGroup))
+        // container.appendChild(makeCameraLimitsGroup(global, editGroup))
     }
 
     const isPivotStep = (isHemi && step === 2) || (!isHemi && step === 1)
@@ -861,6 +861,9 @@ function makeSidebar(global, dom) {
     if (!global.settings.setupStep) global.settings.setupStep = 1
 
     const sidebar = document.createElement('div')
+    sidebar.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+    })
     sidebar.id = 'app-sidebar'
     sidebar.classList.add('sidebar')
     sidebar.style.cssText = `width: ${SIDEBAR_WIDTH}`

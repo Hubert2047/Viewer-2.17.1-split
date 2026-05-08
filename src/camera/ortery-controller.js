@@ -53,7 +53,6 @@ class OtherController {
             this.originEntityRotation = modelEntity.localRotation.clone()
             this.originEntityPos = modelEntity.localPosition.clone()
         }
-
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -74,6 +73,7 @@ class OtherController {
                     break
             }
         })
+
         this.events.on('setup-reset', () => this.handleSetupReset())
 
         this.events.on('viewer:inertia', (value) => this.resetInertia())
@@ -94,6 +94,14 @@ class OtherController {
             this.reset()
         })
 
+        this.events.on('orientation:translate-y', ({ delta }) => {
+            if (!this.isEditingOrientation) return
+            modelEntity.localPosition.y += delta
+            this.basePosition.y += delta
+            this.centerPivot.y += delta
+            this.updateModelRotation()
+            this.syncHierarchyAndRender()
+        })
         this.events.on('orientation:spin', ({ speed }) => this.spin360(speed))
         this.events.on('orientation:yaw-step', ({ deg }) => {
             if (!this.isEditingOrientation) return
@@ -128,9 +136,9 @@ class OtherController {
             this.editOrientation(currentMethod)
         })
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
-        this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
-        this.events.on('orientation:cancel-pitchoffset', () => this.cancelCameraPitchOffset())
+        // this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
+        // this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
+        // this.events.on('orientation:cancel-pitchoffset', () => this.cancelCameraPitchOffset())
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
@@ -401,13 +409,11 @@ class OtherController {
         this.smooth(dt)
         this.updateModelEntity(dt)
         if (this.settings.inertia && this.isFlick) this.applyInertia()
-        this.getPose(camera)
         if (this._autoRotateTick) {
             this._autoRotateTick(dt)
         }
-        if (this._pitchRotateTick) {
-            this._pitchRotateTick(dt)
-        }
+
+        this.getPose(camera)
     }
     getDeafultDistance() {
         const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
@@ -429,6 +435,8 @@ class OtherController {
         const distance = this.getDeafultDistance()
         this.maxDistance = Math.max(distance, 200)
 
+        this.originCameraPosition = camera.position.clone()
+        this.originCameraAnglesX = camera.angles.x
         this.pitchRad = (camera.angles.x * Math.PI) / 180
         const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
         if (this.model === 'cylindrical') {
@@ -458,7 +466,7 @@ class OtherController {
             forward,
             focus: focusPoint,
         }
-
+        this._groundLineY = this.bbox.center.y - this.bbox.halfExtents.y
         this.reset(this.resetPose)
     }
     onExit() {}
@@ -497,75 +505,123 @@ class OtherController {
         this.inertiaVelY = 0
     }
     editOrientation(currentMethod) {
-        this.isEditingOrientation = true
-        if (currentMethod === 'manual') {
-            const startPose = {
-                position: modelEntity.localPosition.clone(),
-                rotation: modelEntity.localRotation.clone(),
-                focus: this.focus.clone(),
-                distance: this.distance,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
-            }
-            const targetYaw = 0
-            const targetPitch = 0
-            const combinedQuat = this.buildCombinedQuat(targetYaw, targetPitch)
-            const offset = this.basePosition.clone().sub(this.centerPivot)
-            const rotatedOffset = this.rotateOffsetByQuat(offset, combinedQuat)
-            const targetPosition = this.centerPivot.clone().add(rotatedOffset)
-            const targetRotation = combinedQuat.mul(this.baseRotation).normalize()
-            const targetPose = {
-                position: targetPosition,
-                rotation: targetRotation,
-                focus: this.centerPivot.clone(),
-                distance: this.distance,
-                yaw: targetYaw,
-                pitch: targetPitch,
-            }
-            if (
-                isSameVec3(startPose.position, targetPose.position) &&
-                isSameQuat(startPose.rotation, targetPose.rotation)
-            ) {
-                this.events.fire('orientation:update-horizon', { y: this.getModelBottomScreenY() })
-                return
-            }
-            this.setupTransition({
-                startPose: startPose,
-                targetPose: targetPose,
-                lerpDuration: NORMAL_FADE_TIME,
-                onTransitionFinished: () => {
-                    this.events.fire('orientation:update-horizon', { y: this.getModelBottomScreenY() })
-                },
-            })
+        const prevMethod = this.orientationEditMethod
+
+        if (!this.isEditingOrientation) {
+            this._preEditBasePosition = this.basePosition.clone()
+            this._preEditCenterPivot = this.centerPivot.clone()
+            this._preEditFocus = this.focus.clone()
         }
+
+        this.isEditingOrientation = true
+        this.orientationEditMethod = currentMethod
+
+        if (currentMethod === 'manual') {
+            this.transitionToBasePose()
+            this.drawOrientationManualLine()
+        } else {
+            if (prevMethod === 'manual') {
+                this.hideOrientationManualLine()
+                if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
+                if (this._preEditBasePosition) this.basePosition = this._preEditBasePosition.clone()
+                if (this._preEditFocus) this.focus.copy(this._preEditFocus)
+
+                this._snapCameraToOrigin = true
+
+                this.lerpPositionY = undefined
+                this.lerpAnglesX = undefined
+            }
+
+            this.reset()
+        }
+
         this.updateModelRotation()
-    }
-    cancelOrientation() {
-        this.updateModelRotation()
-        this.isEditingOrientation = false
-        this.reset()
-    }
-    setCameraPitchOffset(value) {
-        this.minPitch = this.pitchRad - value
-        this.maxPitch = this.pitchRad - value + Math.PI / 2
-        this.currentPitch -= value - (this.lastPitchOffset ?? 0)
-        this.lastPitchOffset = value
-        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        this.syncHierarchyAndRender()
     }
 
-    saveCameraPitchOffset(value) {
-        this.settings.orientation.pitchOffset = value
-        this.initView(false, true, true)
+    cancelOrientation() {
+        this.hideOrientationManualLine()
+
+        if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
+        if (this._preEditBasePosition) this.basePosition = this._preEditBasePosition.clone()
+
+        this._snapCameraToOrigin = true
+        this.lerpPositionY = undefined
+        this.lerpAnglesX = undefined
+
+        this._preEditBasePosition = null
+        this._preEditCenterPivot = null
+        this._preEditFocus = null
+
+        this.isEditingOrientation = false
+        this.orientationEditMethod = undefined
+        this.updateModelRotation()
+        this.reset()
     }
-    cancelCameraPitchOffset() {
-        const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
-        this.minPitch = offsetPitch
-        this.maxPitch = Math.PI / 2 + offsetPitch
-        this.currentPitch = this.minPitch
-        this.hemisphericalRot(this.currentYaw, this.currentPitch)
-        this.syncHierarchyAndRender()
+    transitionToBasePose() {
+        const startPose = {
+            position: modelEntity.localPosition.clone(),
+            rotation: modelEntity.localRotation.clone(),
+            focus: this.focus.clone(),
+            distance: this.distance,
+            yaw: this.currentYaw,
+            pitch: this.currentPitch,
+        }
+
+        const targetYaw = 0
+        const targetPitch = 0
+
+        const combinedQuat = this.buildCombinedQuat(targetYaw, targetPitch)
+
+        const offset = this.basePosition.clone().sub(this.centerPivot)
+        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedQuat)
+
+        const targetPosition = this.centerPivot.clone().add(rotatedOffset)
+        const targetRotation = combinedQuat.mul(this.baseRotation).normalize()
+
+        const targetPose = {
+            position: targetPosition,
+            rotation: targetRotation,
+            focus: this.centerPivot.clone(),
+            distance: this.distance,
+            yaw: targetYaw,
+            pitch: targetPitch,
+        }
+
+        if (
+            isSameVec3(startPose.position, targetPose.position) &&
+            isSameQuat(startPose.rotation, targetPose.rotation)
+        ) {
+            return
+        }
+
+        this.setupTransition({
+            startPose,
+            targetPose,
+            lerpDuration: NORMAL_FADE_TIME,
+        })
     }
+
+    // setCameraPitchOffset(value) {
+    //     this.minPitch = this.pitchRad - value
+    //     this.maxPitch = this.pitchRad - value + Math.PI / 2
+    //     this.currentPitch -= value - (this.lastPitchOffset ?? 0)
+    //     this.lastPitchOffset = value
+    //     this.hemisphericalRot(this.currentYaw, this.currentPitch)
+    //     this.syncHierarchyAndRender()
+    // }
+
+    // saveCameraPitchOffset(value) {
+    //     this.settings.orientation.pitchOffset = value
+    //     this.initView(false, true, true)
+    // }
+    // cancelCameraPitchOffset() {
+    //     const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
+    //     this.minPitch = offsetPitch
+    //     this.maxPitch = Math.PI / 2 + offsetPitch
+    //     this.currentPitch = this.minPitch
+    //     this.hemisphericalRot(this.currentYaw, this.currentPitch)
+    //     this.syncHierarchyAndRender()
+    // }
     spin360(speed) {
         if (!modelEntity) return
         if (this._autoRotating || this._pitchRotating) return
@@ -595,18 +651,32 @@ class OtherController {
         this._autoRotateTick = tick
     }
     applyManualOrientation() {
+        this.hideOrientationManualLine()
         this.baseRotation = modelEntity.localRotation.clone()
         this.basePosition = modelEntity.localPosition.clone()
         this.originEntityRotation = this.baseRotation
         this.originEntityPos = this.basePosition
         this.centerPivot = this.centerPivot.clone()
+
         const euler = this.baseRotation.getEulerAngles()
         this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
+
         this.settings.orientation.pose = {
             rotation: this.baseRotation,
             position: this.basePosition,
         }
+
+        this._snapCameraToOrigin = true
+        this.lerpPositionY = undefined
+        this.lerpAnglesX = undefined
+
+        this._preEditBasePosition = null
+        this._preEditCenterPivot = null
+        this._preEditFocus = null
+
         this.isEditingOrientation = false
+        this.orientationEditMethod = undefined
+
         this.initView(false, true, true)
     }
     applyGroundPlaneOrientation(points) {
@@ -652,8 +722,18 @@ class OtherController {
         this.centerPivot = pivot
 
         this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
+        this._snapCameraToOrigin = true
+        this.lerpPositionY = undefined
+        this.lerpAnglesX = undefined
+
+        this._preEditBasePosition = null
+        this._preEditCenterPivot = null
+        this._preEditFocus = null
+
         this.isEditingOrientation = false
+        this.orientationEditMethod = undefined
         const euler = newBaseRotation.getEulerAngles()
+        this.orientationEditMethod = undefined
         this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
         this.initView(false, true, true)
     }
@@ -741,10 +821,33 @@ class OtherController {
         const [x, y, z] = move
         this.distance = this.clampDistance(this.distance + this.distance * move[2])
         if (x !== 0 || y !== 0 || z !== 0) {
-            v$2.copy(this.rightCam).mulScalar(move[0])
-            this.focus.add(v$2)
-            v$2.copy(this.upCam).mulScalar(move[1])
-            this.focus.add(v$2)
+            if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
+                const deltaY = move[1] * this.distance * 0.01
+                const deltaX = move[0] * this.distance * 0.01
+
+                modelEntity.localPosition.y -= deltaY
+                this.basePosition.y -= deltaY
+                this.centerPivot.y -= deltaY
+                if (this.cachePositionY !== undefined) {
+                    this.cachePositionY -= deltaY
+                }
+
+                const rightOffset = this.rightCam.clone().mulScalar(deltaX)
+                modelEntity.localPosition.x -= rightOffset.x
+                modelEntity.localPosition.z -= rightOffset.z
+                this.basePosition.x -= rightOffset.x
+                this.basePosition.z -= rightOffset.z
+                this.centerPivot.x -= rightOffset.x
+                this.centerPivot.z -= rightOffset.z
+
+                this.updateModelRotation()
+                this.syncHierarchyAndRender()
+            } else {
+                v$2.copy(this.rightCam).mulScalar(move[0])
+                this.focus.add(v$2)
+                v$2.copy(this.upCam).mulScalar(move[1])
+                this.focus.add(v$2)
+            }
         }
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
@@ -896,11 +999,50 @@ class OtherController {
         value[5] = q.z
         value[6] = q.w
     }
-    getPose(pose) {
+    getPose(pose, dt = 1 / 60) {
         const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
         pose.distance = this.distance
+
+        if (this._snapCameraToOrigin) {
+            this._snapCameraToOrigin = false
+            pose.angles.x = this.originCameraAnglesX ?? pose.angles.x
+            this.lerpPositionY = undefined
+            this.lerpAnglesX = undefined
+            return
+        }
+
+        if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
+            const speed = 1 - Math.pow(0.00001, dt)
+            if (this.lerpPositionY === undefined) this.lerpPositionY = pose.position.y
+            if (this.lerpAnglesX === undefined) this.lerpAnglesX = pose.angles.x
+
+            this.lerpPositionY += (0 - this.lerpPositionY) * speed
+            this.lerpAnglesX += (0 - this.lerpAnglesX) * speed
+
+            pose.position.y = Math.abs(this.lerpPositionY) < 0.01 ? 0 : this.lerpPositionY
+            pose.angles.x = Math.abs(this.lerpAnglesX) < 0.01 ? 0 : this.lerpAnglesX
+        } else if (this.lerpPositionY !== undefined || this.lerpAnglesX !== undefined) {
+            const targetY = this.originCameraPosition?.y ?? pose.position.y
+            const targetAnglesX = this.originCameraAnglesX ?? pose.angles.x
+
+            const speed = 1 - Math.pow(0.00001, dt)
+
+            this.lerpPositionY += (targetY - this.lerpPositionY) * speed
+            this.lerpAnglesX += (targetAnglesX - this.lerpAnglesX) * speed
+
+            const doneY = Math.abs(this.lerpPositionY - targetY) < 0.001
+            const doneA = Math.abs(this.lerpAnglesX - targetAnglesX) < 0.001
+
+            pose.position.y = doneY ? targetY : this.lerpPositionY
+            pose.angles.x = doneA ? targetAnglesX : this.lerpAnglesX
+
+            if (doneY && doneA) {
+                this.lerpPositionY = undefined
+                this.lerpAnglesX = undefined
+            }
+        }
     }
     axisRoll(rad) {
         const forwardCam = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
@@ -914,11 +1056,50 @@ class OtherController {
         modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
         this.modelRotation.copy(modelEntity.localRotation)
     }
-    getModelBottomScreenY() {
-        const bottomWorld = this.bbox.center.clone()
-        bottomWorld.y -= this.bbox.halfExtents.y
-        const screenPos = new Vec3()
-        this.camera.worldToScreen(bottomWorld, screenPos)
-        return screenPos.y
+    initOrientationLine() {
+        const layers = this.app.scene.layers
+        const worldLayer = layers.getLayerByName('World')
+        const layerBBox = new Layer({ name: 'orientationLine' })
+        const worldIndex = layers.getTransparentIndex(worldLayer)
+        layers.insert(layerBBox, worldIndex + 1)
+        this.camera.layers = [...this.camera.layers, layerBBox.id]
+        const lineMesh = new Mesh(this.app.graphicsDevice)
+        const lineMat = new StandardMaterial()
+        const color = new Color()
+        color.fromString('#f71a02')
+        lineMat.emissive = color
+        lineMat.cull = CULLFACE_NONE
+        lineMat.useLighting = false
+        lineMat.depthTest = false
+        lineMat.update()
+
+        this.orientationLineEntity = new Entity('orientationLine')
+        this.app.root.addChild(this.orientationLineEntity)
+
+        const mi = new MeshInstance(lineMesh, lineMat)
+        mi.cull = false
+        this.orientationLineEntity.addComponent('render', {
+            layers: [layerBBox.id],
+            meshInstances: [mi],
+        })
+        this._orientationLineMesh = lineMesh
+    }
+    drawOrientationManualLine() {
+        if (!this.orientationLineEntity) {
+            this.initOrientationLine()
+        }
+
+        const size = this.distance * 2
+        const positions = [-size * 1.5, 0, 0, size * 1.5, 0, 0]
+        this._orientationLineMesh.setPositions(positions)
+        this._orientationLineMesh.update(PRIMITIVE_LINES)
+
+        this.orientationLineEntity.enabled = true
+    }
+
+    hideOrientationManualLine() {
+        if (this.orientationLineEntity) {
+            this.orientationLineEntity.enabled = false
+        }
     }
 }
