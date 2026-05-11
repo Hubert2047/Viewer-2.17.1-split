@@ -128,9 +128,7 @@ function getDimensionsRotation(localCenters) {
     }
 }
 
-let visiblePoints
 function getVisiblePoints(modelEntity) {
-    if (visiblePoints) return visiblePoints
     const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
     const resource = gsplatInstance.resource
     const gsplatData = resource.gsplatData
