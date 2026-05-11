@@ -336,8 +336,8 @@ class OtherController {
         const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
         return centerPivot.clone().add(baseOffset)
     }
-    initView(isShowToast = true, defaultDistance = false, translateMinPitch = false) {
-        if (translateMinPitch) {
+    initView(isShowToast = true, defaultDistance = false, saveMinPitch = false) {
+        if (saveMinPitch) {
             this.hemisphericalRot(this.currentYaw, this.minPitch)
             const targetPosition = modelEntity.localPosition.clone()
             const targetRotation = modelEntity.localRotation.clone()
@@ -525,7 +525,6 @@ class OtherController {
                 this.startPose.position = currentPosition
                 this.startPose.rotation = currentRotation
             }
-
         } else {
             this._snapCameraToOrigin = true
             this.lerpPositionY = undefined
@@ -693,15 +692,11 @@ class OtherController {
         newBaseRotation.mul2(correctionQuat, this.initialModelRotation)
 
         const currentPosition = modelEntity.localPosition.clone()
-
         const pivot = this.centerPivot.clone()
-
         const offsetToPivot = pivot.clone().sub(currentPosition)
-
         const currentRotation = modelEntity.localRotation.clone()
         const invCurrentRot = currentRotation.clone().invert()
         const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
-
         const rotatedOffsetToPivot = this.rotateOffsetByQuat(offsetToPivot, deltaQuat)
         const newPosition = pivot.clone().sub(rotatedOffsetToPivot)
 
@@ -712,20 +707,52 @@ class OtherController {
         this.centerPivot = pivot
 
         this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
-        this._snapCameraToOrigin = true
-        this.lerpPositionY = undefined
-        this.lerpAnglesX = undefined
 
         this._preEditBasePosition = null
         this._preEditCenterPivot = null
         this._preEditFocus = null
-
         this.isEditingOrientation = false
         this.orientationEditMethod = undefined
+
         const euler = newBaseRotation.getEulerAngles()
-        this.orientationEditMethod = undefined
         this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-        this.initView(false, true, true)
+
+        const targetYaw = 0
+        const targetPitch = this.minPitch
+
+        const combinedQuat = this.buildCombinedQuat(targetYaw, targetPitch)
+        const offset = newPosition.clone().sub(pivot)
+        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedQuat)
+        const targetPosition = pivot.clone().add(rotatedOffset)
+        const targetRotation = combinedQuat.mul(newBaseRotation).normalize()
+
+        this.setupTransition({
+            startPose: {
+                position: modelEntity.localPosition.clone(),
+                rotation: modelEntity.localRotation.clone(),
+                focus: this.focus.clone(),
+                distance: this.distance,
+                yaw: this.currentYaw,
+                pitch: this.currentPitch,
+            },
+            targetPose: {
+                position: targetPosition,
+                rotation: targetRotation,
+                focus: pivot.clone(),
+                distance: this.distance,
+                yaw: targetYaw,
+                pitch: targetPitch,
+            },
+            lerpDuration: NORMAL_FADE_TIME,
+            onTransitionFinished: () => {
+                this.currentYaw = targetYaw
+                this.currentPitch = targetPitch
+                this._snapCameraToOrigin = true
+                this.lerpPositionY = undefined
+                this.lerpAnglesX = undefined
+                this.initView(false, true, true)
+            },
+        })
     }
     lerp(a, b, t) {
         return a + (b - a) * t

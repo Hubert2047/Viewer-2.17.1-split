@@ -1,62 +1,53 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
-        <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=31" />
-        <link
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=32">
+    <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
-        <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-        </div>
-        <div id="tooltip"></div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                v: 31,
-                contentUrl: 'canon.ply',
-                model: 'spherical',
-                setupStep: 3,
-            },
         }
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>
+        window.sse = { settings: {"v":32,"contentUrl":"hemi.ply","model":"hemispherical","initview":{"pose":{"focus":{"x":-1.9661900454555543,"y":5.015850568359486,"z":-2.9548889224142787},"position":{"x":1.3575251603059868,"y":1.301413532880853,"z":0.6384247993782921},"rotation":{"x":0.008461847794290807,"y":0.07723705979095491,"z":0.986082265571392,"w":-0.1469850307083869},"distanceScale":1,"yaw":0,"pitch":-0.3398369094541219}},"orientation":{"pose":{"rotation":{"x":2.620501878561473e-18,"y":-0.04279604340428552,"z":0.998692203623575,"w":-0.02797107596118269},"position":{"x":0.28422819806114696,"y":-0.11651360652271858,"z":-0.43487216286654773}}},"setupStep":2}}
     </script>
-    <script src="./viewer.js?v=31"></script>
+<script src="./viewer.js?v=32"></script>
 </html>
