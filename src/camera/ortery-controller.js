@@ -136,9 +136,6 @@ class OtherController {
             this.editOrientation(currentMethod)
         })
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        // this.events.on('orientation:pitchoffset', ({ value }) => this.setCameraPitchOffset(value))
-        // this.events.on('orientation:save-pitchoffset', ({ value }) => this.saveCameraPitchOffset(value))
-        // this.events.on('orientation:cancel-pitchoffset', () => this.cancelCameraPitchOffset())
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
             quat.setFromEulerAngles(x, y, z)
@@ -600,28 +597,6 @@ class OtherController {
             lerpDuration: NORMAL_FADE_TIME,
         })
     }
-
-    // setCameraPitchOffset(value) {
-    //     this.minPitch = this.pitchRad - value
-    //     this.maxPitch = this.pitchRad - value + Math.PI / 2
-    //     this.currentPitch -= value - (this.lastPitchOffset ?? 0)
-    //     this.lastPitchOffset = value
-    //     this.hemisphericalRot(this.currentYaw, this.currentPitch)
-    //     this.syncHierarchyAndRender()
-    // }
-
-    // saveCameraPitchOffset(value) {
-    //     this.settings.orientation.pitchOffset = value
-    //     this.initView(false, true, true)
-    // }
-    // cancelCameraPitchOffset() {
-    //     const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
-    //     this.minPitch = offsetPitch
-    //     this.maxPitch = Math.PI / 2 + offsetPitch
-    //     this.currentPitch = this.minPitch
-    //     this.hemisphericalRot(this.currentYaw, this.currentPitch)
-    //     this.syncHierarchyAndRender()
-    // }
     spin360(speed) {
         if (!modelEntity) return
         if (this._autoRotating || this._pitchRotating) return
