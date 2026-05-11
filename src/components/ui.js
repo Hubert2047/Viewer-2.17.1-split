@@ -46,7 +46,42 @@ const makeSectionGroup = (title, hint) => {
 
     return group
 }
+function makeCheckbox({ label, checked = false, disabled = false, onChange } = {}) {
+    const row = document.createElement('div')
+    row.classList.add('section-group-row')
 
+    const labelEl = document.createElement('label')
+
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.classList.add('checkbox-input')
+    input.checked = checked
+    input.disabled = disabled
+
+    input.onchange = () => {
+        checked = input.checked
+        onChange?.(checked)
+    }
+
+    const setDisabled = (on) => {
+        input.disabled = on
+        input.style.opacity = on ? '0.4' : '1'
+        row.style.pointerEvents = on ? 'none' : ''
+    }
+
+    const setChecked = (val) => {
+        checked = val
+        input.checked = val
+    }
+
+    if (disabled) setDisabled(true)
+
+    labelEl.appendChild(document.createTextNode(label))
+    row.appendChild(labelEl)
+    row.appendChild(input)
+
+    return { row, setDisabled, setChecked, getValue: () => checked }
+}
 function makeColorAlpha({ color, alpha, onChangeColor, onChangeAlpha, disabled = false, debounceMs = 150 }) {
     const block = document.createElement('div')
     block.classList.add('color-alpha-block')
@@ -511,6 +546,7 @@ function makeVec3Inputs({
                 x: parseFloat(inputEls.x.value) || 0,
                 y: parseFloat(inputEls.y.value) || 0,
                 z: parseFloat(inputEls.z.value) || 0,
+                changedAxis: axis,
             })
         })
 
@@ -547,10 +583,13 @@ function makeVec3Inputs({
         titleEl.classList.add('vec3-input-label')
         wrapper.appendChild(titleEl)
     }
-
+    const setValuesPartial = (partial) => {
+        if (partial.x !== undefined) inputEls.x.value = partial.x.toFixed(1)
+        if (partial.y !== undefined) inputEls.y.value = partial.y.toFixed(1)
+        if (partial.z !== undefined) inputEls.z.value = partial.z.toFixed(1)
+    }
     wrapper.appendChild(row)
-
-    return { row: wrapper, setDisabled, setValues }
+    return { row: wrapper, setDisabled, setValues, setValuesPartial }
 }
 function makeDownloadHelper(steps) {
     const container = document.createElement('div')
@@ -655,7 +694,7 @@ class ConfirmDialog {
         this._resolve = null
     }
 
-    ask({title, message, variant = 'default', position = 'center', confirmText = null}) {
+    ask({ title, message, variant = 'default', position = 'center', confirmText = null }) {
         this.titleEl.textContent = title
         this.msgEl.textContent = message
         this.overlay.style.display = 'flex'
