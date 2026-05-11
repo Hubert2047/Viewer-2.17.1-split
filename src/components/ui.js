@@ -655,7 +655,7 @@ class ConfirmDialog {
         this._resolve = null
     }
 
-    ask(title, message, variant = 'default', position = 'center', confirmText = null) {
+    ask({title, message, variant = 'default', position = 'center', confirmText = null}) {
         this.titleEl.textContent = title
         this.msgEl.textContent = message
         this.overlay.style.display = 'flex'

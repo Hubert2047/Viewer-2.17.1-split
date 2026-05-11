@@ -131,7 +131,26 @@ function makeOrientationGroup(global, editGroup) {
                     renderOrientBtns()
                 },
             })
+            const btnDelete = makeButton({
+                title: 'Reset',
+                icon: ICONS.reset,
+                className: 'reset-btn',
+                onClick: async () => {
+                    const ok = await global.confirmDialog.ask({
+                        title: 'Reset Transform',
+                        message: 'This will reset your current transform settings. Do you want to reset?',
+                        variant: 'delete',
+                        position: 'top',
+                        confirmText: 'Reset',
+                    })
+                    if(ok){
+                        events.fire('orientation:reset')
+                        renderOrientBtns()
+                    }
+                },
+            })
             orientBtnRow.appendChild(btnEdit)
+            if (settings.orientation.pose) orientBtnRow.appendChild(btnDelete)
         }
     }
 

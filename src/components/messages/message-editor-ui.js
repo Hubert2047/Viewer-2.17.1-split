@@ -136,7 +136,11 @@ class MessageEditorUI {
         this.setAddBtnCancel(false)
     }
     async onDelete(id) {
-        const ok = await this.confirmDialog.ask('Delete Messages', 'Are you sure? This cannot be undone.', 'delete')
+        const ok = await this.confirmDialog.ask({
+            title: 'Delete Messages',
+            message: 'Are you sure? This cannot be undone.',
+            variant: 'delete',
+        })
         if (ok) {
             this.events.fire('message:delete', id)
         }

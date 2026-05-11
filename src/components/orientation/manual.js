@@ -70,7 +70,7 @@ function makeManualPanel(events) {
     yawRow.appendChild(yawRight)
 
     // ── Y Position row
-    const yPosStepInput = makeInput('number', 1, { step: 0.5, min: 0, className: 'orientation-step-input' })
+    const yPosStepInput = makeInput('number', 0.5   , { step: 0.5, min: 0, className: 'orientation-step-input' })
     const getYPosStep = () => parseFloat(yPosStepInput.value) || 0.1
 
     const yPosRow = makeRow('Height')

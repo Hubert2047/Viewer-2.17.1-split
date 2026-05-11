@@ -886,9 +886,6 @@ function makeSidebar(global, dom) {
         title: 'Back',
         onClick: () => {
             if (global.settings.setupStep > minStep) {
-                if (isHemi && global.settings.setupStep === 2) {
-                    events.fire('pivot:delete')
-                }
                 global.settings.setupStep--
                 renderStep()
             }
@@ -908,31 +905,48 @@ function makeSidebar(global, dom) {
     })
     header.appendChild(nextBtn)
 
-    const resetBtn = makeButton({
+    const backToSetupModelBtn = makeButton({
         className: 'reset-setup-btn',
-        title: '↺ Reset Model Setup',
+        title: 'Back',
         onClick: async () => {
-            const ok = await global.confirmDialog.ask(
-                'Reset Model Setup',
-                'All your settings will be permanently cleared and you will start over from the beginning.',
-                'delete',
-                'top',
-                'Reset',
-            )
+            const ok = await global.confirmDialog.ask({
+                title: 'Back to Model Setup',
+                message: 'When you go back to model setup, your current settings will be lost. Do you want to go back?',
+                variant: 'delete',
+                position: 'top',
+                confirmText: 'Back',
+            })
             if (ok) {
-                Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                    setupStep: 1,
-                    contentUrl: global.settings.contentUrl,
-                    base64: global.settings.base64,
-                    model: global.settings.model,
-                    v: global.settings.v,
-                })
+                switch (global.settings.model) {
+                    case 'hemispherical':
+                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                            setupStep: 2,
+                            contentUrl: global.settings.contentUrl,
+                            base64: global.settings.base64,
+                            initview: global.settings.initview,
+                            pivot: global.settings.pivot,
+                            orientation: global.settings.orientation,
+                            model: global.settings.model,
+                            v: global.settings.v,
+                        })
+                        break
+                    default:
+                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                            setupStep: 1,
+                            contentUrl: global.settings.contentUrl,
+                            base64: global.settings.base64,
+                            pivot: global.settings.pivot,
+                            model: global.settings.model,
+                            v: global.settings.v,
+                        })
+                }
+
                 events.fire('setup-reset', global.settings)
                 renderStep()
             }
         },
     })
-    header.appendChild(resetBtn)
+    header.appendChild(backToSetupModelBtn)
 
     sidebar.appendChild(header)
 
@@ -1060,7 +1074,7 @@ function makeSidebar(global, dom) {
             backBtn.style.display = 'none'
             nextBtn.style.display = 'none'
             progressWrap.style.display = 'none'
-            resetBtn.style.display = 'inline-flex'
+            backToSetupModelBtn.style.display = 'inline-flex'
             renderFullStep()
         } else {
             stepBadge.textContent = `Step ${step} / ${totalSteps}`
@@ -1069,7 +1083,7 @@ function makeSidebar(global, dom) {
             nextBtn.textContent = 'Next'
             nextBtn.style.display = 'inline-flex'
             progressWrap.style.display = 'flex'
-            resetBtn.style.display = 'none'
+            backToSetupModelBtn.style.display = 'none'
             renderModelStep()
         }
     }

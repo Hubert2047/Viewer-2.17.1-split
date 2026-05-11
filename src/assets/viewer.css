@@ -1412,7 +1412,7 @@ button {
     color 0.12s;
 }
 
-.cancel-btn {
+.cancel-btn,.reset-btn {
   background: transparent;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   color: rgba(0, 0, 0, 0.4);
@@ -1420,7 +1420,7 @@ button {
   border-radius: 6px;
 }
 
-.cancel-btn:hover {
+.cancel-btn:hover,.reset-btn:hover {
   background: rgba(0, 0, 0, 0.05);
   color: rgba(0, 0, 0, 0.6);
 }
@@ -1837,10 +1837,14 @@ button {
   padding: 7px 10px !important;
 }
 
+
 .delete-btn:hover {
   background: rgba(229, 62, 62, 0.1) !important;
   color: #c53030 !important;
   filter: none !important;
+}
+.reset-btn {
+  flex: 0 !important;
 }
 .add-btn.cancel-mode {
   background: rgba(220, 60, 60, 0.15);
@@ -2174,13 +2178,15 @@ button {
   color: rgb(140, 159, 180);
   background: transparent;
   cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition:    background 0.15s,    color 0.15s;
   font-family: inherit;
   font-weight: 500;
   flex-shrink: 0;
   width: auto;
+  -webkit-transition:;
+  -moz-transition:;
+  -ms-transition:;
+  -o-transition:;
 }
 
 .reset-setup-btn:hover {

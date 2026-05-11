@@ -126,15 +126,10 @@ class OtherController {
             this.updateModelRotation()
             this.syncHierarchyAndRender()
         })
-        this.events.on('orientation:groundplane', (points) => {
-            this.applyGroundPlaneOrientation(points)
-        })
-        this.events.on('orientation:manual-apply', () => {
-            this.applyManualOrientation()
-        })
-        this.events.on('orientation:switch-method', (currentMethod) => {
-            this.editOrientation(currentMethod)
-        })
+        this.events.on('orientation:reset', () => this.resetOrientation())
+        this.events.on('orientation:groundplane', (points) => this.applyGroundPlaneOrientation(points))
+        this.events.on('orientation:manual-apply', () => this.applyManualOrientation())
+        this.events.on('orientation:switch-method', (currentMethod) => this.editOrientation(currentMethod))
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:eulerchange', ({ x, y, z }) => {
             const quat = new Quat()
@@ -217,7 +212,7 @@ class OtherController {
         this.pointerMoveHistory = []
         this.isFlick = false
     }
-    reset(pose) {
+    reset(pose, useInitview = true) {
         if (this.isResetting) return
         this.events.fire('ortery:reset')
         if (!pose) pose = this.resetPose
@@ -246,7 +241,7 @@ class OtherController {
         let targetPosition, targetRotation
 
         const initviewPose = this.settings.initview.pose
-        if (initviewPose) {
+        if (initviewPose && useInitview) {
             const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = initviewPose
             targetFocus = new Vec3(f.x, f.y, f.z)
             targetDistance = isMobile
@@ -343,35 +338,27 @@ class OtherController {
     }
     initView(isShowToast = true, defaultDistance = false, translateMinPitch = false) {
         if (translateMinPitch) {
-            const currentPosition = modelEntity.localPosition.clone()
-            const currentRotation = modelEntity.localRotation.clone()
             this.hemisphericalRot(this.currentYaw, this.minPitch)
             const targetPosition = modelEntity.localPosition.clone()
             const targetRotation = modelEntity.localRotation.clone()
-            const startPose = {
-                focus: this.focus.clone(),
-                position: currentPosition,
-                rotation: currentRotation,
-                distance: this.distance,
-            }
-            const targetPose = {
+            const pose = {
                 focus: this.centerPivot.clone(),
                 position: targetPosition,
                 rotation: targetRotation,
-                distance: this.distance,
+                distanceScale: defaultDistance ? 1 : this.getCurrentDistanceScale(),
                 yaw: this.currentYaw,
                 pitch: this.minPitch,
             }
-            this.setupTransition({
-                targetPose,
-                startPose,
-                lerpDuration: NORMAL_FADE_TIME,
-                onTransitionFinished: () => {
-                    this.initView(isShowToast, defaultDistance, false)
-                },
-            })
+            this.settings.initview = { pose }
+            this.hemisphericalRot(this.currentYaw, this.currentPitch)
+            if (isShowToast)
+                showToast('✓ Initial view updated', {
+                    duration: 1000,
+                    type: 'success',
+                })
             return
         }
+
         const pose = this.getEntityInfo()
         if (defaultDistance) {
             this.settings.initview = { pose: { ...pose, distanceScale: 1 } }
@@ -508,28 +495,42 @@ class OtherController {
             this._preEditBasePosition = this.basePosition.clone()
             this._preEditCenterPivot = this.centerPivot.clone()
             this._preEditFocus = this.focus.clone()
+            this._preEditBaseRotation = this.baseRotation.clone()
+            this._preEditEntityPosition = modelEntity.localPosition.clone()
+            this._preEditEntityRotation = modelEntity.localRotation.clone()
         }
 
         this.isEditingOrientation = true
         this.orientationEditMethod = currentMethod
 
+        if (prevMethod) {
+            if (prevMethod === 'manual') this.hideOrientationManualLine()
+            this.centerPivot = this._preEditCenterPivot.clone()
+            this.basePosition = this._preEditBasePosition.clone()
+            this.baseRotation = this._preEditBaseRotation.clone()
+            this.focus.copy(this._preEditFocus)
+        }
+
         if (currentMethod === 'manual') {
+            const currentPosition = modelEntity.localPosition.clone()
+            const currentRotation = modelEntity.localRotation.clone()
+            this.updateModelRotation()
+
+            this.centerPivot = this._preEditCenterPivot.clone()
+            this.basePosition = this._preEditBasePosition.clone()
+            this.baseRotation = this._preEditBaseRotation.clone()
+
             this.transitionToBasePose()
-            this.drawOrientationManualLine()
-        } else {
-            if (prevMethod === 'manual') {
-                this.hideOrientationManualLine()
-                if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
-                if (this._preEditBasePosition) this.basePosition = this._preEditBasePosition.clone()
-                if (this._preEditFocus) this.focus.copy(this._preEditFocus)
-
-                this._snapCameraToOrigin = true
-
-                this.lerpPositionY = undefined
-                this.lerpAnglesX = undefined
+            if (this.targetPose) {
+                this.startPose.position = currentPosition
+                this.startPose.rotation = currentRotation
             }
 
-            this.reset()
+        } else {
+            this._snapCameraToOrigin = true
+            this.lerpPositionY = undefined
+            this.lerpAnglesX = undefined
+            this.reset(this.resetPose, false)
         }
 
         this.updateModelRotation()
@@ -552,7 +553,7 @@ class OtherController {
         this.isEditingOrientation = false
         this.orientationEditMethod = undefined
         this.updateModelRotation()
-        this.reset()
+        this.reset(this.resetPose, false)
     }
     transitionToBasePose() {
         const startPose = {
@@ -625,13 +626,27 @@ class OtherController {
         }
         this._autoRotateTick = tick
     }
+    resetOrientation() {
+        this.settings.orientation.pose = null
+        this.settings.initview.pose = null
+        this.basePosition = this.initialModelPosition
+        this.baseRotation = this.initialModelRotation
+        const euler = this.baseRotation.getEulerAngles()
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
+        this.reset(this.resetPose, false)
+    }
     applyManualOrientation() {
         this.hideOrientationManualLine()
         this.baseRotation = modelEntity.localRotation.clone()
-        this.basePosition = modelEntity.localPosition.clone()
-        this.originEntityRotation = this.baseRotation
-        this.originEntityPos = this.basePosition
-        this.centerPivot = this.centerPivot.clone()
+
+        const offsetFromPivot = modelEntity.localPosition.clone().sub(this.centerPivot)
+        this.centerPivot = this.originBboxPivot.clone()
+        this.basePosition = this.originBboxPivot.clone().add(offsetFromPivot)
+
+        modelEntity.localPosition.copy(this.basePosition)
+
+        this.originEntityRotation = this.baseRotation.clone()
+        this.originEntityPos = this.basePosition.clone()
 
         const euler = this.baseRotation.getEulerAngles()
         this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
@@ -998,6 +1013,13 @@ class OtherController {
 
             pose.position.y = Math.abs(this.lerpPositionY) < 0.01 ? 0 : this.lerpPositionY
             pose.angles.x = Math.abs(this.lerpAnglesX) < 0.01 ? 0 : this.lerpAnglesX
+            if (
+                Math.abs(this.lerpPositionY) < 0.3 &&
+                Math.abs(this.lerpAnglesX) < 0.3 &&
+                !this.orientationLineEntity?.enabled
+            ) {
+                this.drawOrientationManualLine()
+            }
         } else if (this.lerpPositionY !== undefined || this.lerpAnglesX !== undefined) {
             const targetY = this.originCameraPosition?.y ?? pose.position.y
             const targetAnglesX = this.originCameraAnglesX ?? pose.angles.x
@@ -1059,6 +1081,7 @@ class OtherController {
         })
         this._orientationLineMesh = lineMesh
     }
+
     drawOrientationManualLine() {
         if (!this.orientationLineEntity) {
             this.initOrientationLine()
