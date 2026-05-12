@@ -3366,7 +3366,6 @@ const loadGsplat = async (app, config, events, progressCallback) => {
             material.setParameter('alphaClip', 1 / 255)
             app.root.addChild(entity)
             modelEntity = entity
-            events.fire('modelEntity:loaded')
             resolve(entity)
         })
         let watermark = 0

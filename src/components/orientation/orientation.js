@@ -15,22 +15,15 @@ function makeOrientationGroup(global, editGroup) {
         onChange: () => {},
     })
 
-    const syncValues = (val) => setReadonlyValues(val)
 
-    events.on('modelEntity:loaded', () => {
-        if (!settings.orientation.pose) {
-            syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
-        }
-    })
     if (settings.orientation.pose) {
         const { rotation: r } = settings.orientation.pose
-        syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
+        setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
+    } else if (modelEntity) {
+        console.log("run in")
+        setReadonlyValues(modelEntity.getLocalEulerAngles(new Vec3()))
     }
-    events.on('orientation:aligned-model', ({ x, y, z }) => syncValues({ x, y, z }))
-    events.on('ortery:rotate', () => {
-        if (!isEditing) return
-        syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
-    })
+    events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))
 
     const { panel: manualPanel } = makeManualPanel(events)
     const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
@@ -76,9 +69,9 @@ function makeOrientationGroup(global, editGroup) {
         methodBtns.setValue('ground')
         if (settings.orientation.pose) {
             const { rotation: r } = settings.orientation.pose
-            syncValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
+            setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
         } else {
-            syncValues(modelEntity.getLocalEulerAngles(new Vec3()))
+            setReadonlyValues(modelEntity.getLocalEulerAngles(new Vec3()))
         }
         renderOrientBtns()
         events.fire('orientation:cancel')
@@ -143,7 +136,7 @@ function makeOrientationGroup(global, editGroup) {
                         position: 'top',
                         confirmText: 'Reset',
                     })
-                    if(ok){
+                    if (ok) {
                         events.fire('orientation:reset')
                         renderOrientBtns()
                     }

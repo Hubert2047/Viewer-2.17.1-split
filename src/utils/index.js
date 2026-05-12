@@ -166,8 +166,8 @@ async function exportHtml(name, settings) {
     const STEP_REQUIREMENTS = {
         spherical: [{ step: 2, condition: () => copySettings.pivot?.position }],
         hemispherical: [
-            { step: 3, condition: () => copySettings.pivot?.position },
-            { step: 2, condition: () => copySettings.orientation?.pose },
+            { step: 2, condition: () => copySettings.pivot?.position },
+            { step: 3, condition: () => copySettings.orientation?.pose },
         ],
     }
 
@@ -620,7 +620,6 @@ function dimensionsSetup(app, camera, config) {
     let currentDim = null
     const layers = app.scene.layers
     const worldLayer = layers.getLayerByName('World')
-
     const layerBBox = new Layer({ name: 'BBox' })
     const worldIndex = layers.getOpaqueIndex(worldLayer)
     layers.insert(layerBBox, worldIndex)
@@ -948,6 +947,10 @@ function dimensionsSetup(app, camera, config) {
 
     const drawDimensionBox = (dim) => {
         if (!modelEntity) return
+          const renderComp = modelEntity.render
+        if (renderComp) {
+            renderComp.enabled = false
+        }
         currentDim = dim
         updateColor(dim)
         const corners = getCorners(dim)

@@ -60,6 +60,12 @@ function dimensionLocalToWorld(localPos, rotation) {
         z: x * right.z + y * up.z + z * forward.z,
     }
 }
+function localToWorld(pos) {
+    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+    const worldPos = new Vec3()
+    worldMatrix.transformPoint(pos, worldPos)
+    return worldPos
+}
 
 function getDimensionsRotation(localCenters) {
     const count = localCenters.length / 3
@@ -569,7 +575,7 @@ function mergeSettings(settings, defaultSettings) {
     }
     const maxStep = maxStepByModel[merged.model]
     if (maxStep != null) {
-        merged.setupStep = Math.min(merged.setupStep ?? 0, maxStep)
+        merged.setupStep = Math.max(Math.min(merged.setupStep, maxStep), MIN_STEP)
     }
     return merged
 }
