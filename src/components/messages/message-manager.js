@@ -256,7 +256,7 @@ class MessagesManager {
             focus: { position },
             dot: {
                 style: 'circle',
-                strokeColor: 'white',
+                strokeColor: '#D8D8D8',
                 stroke: 1,
                 size: 30,
                 topLeft: dotTL,

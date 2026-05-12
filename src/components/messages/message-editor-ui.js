@@ -270,8 +270,8 @@ class MessageEditorUI {
 
         const formatRow = document.createElement('div')
         formatRow.classList.add('message-label-row')
-        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.activeMessageData, this.applyDraft))
-        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.activeMessageData, this.applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<b>B</b>', 'bold', this.applyDraft))
+        formatRow.appendChild(this.makeFormatBtn('<i>I</i>', 'italic', this.applyDraft))
 
         const alignRow = makeSegmentRow({
             options: [
@@ -346,20 +346,20 @@ class MessageEditorUI {
                 },
             }),
         )
-        const fontFamilyField = this.makeField('Font')
-        fontFamilyField.appendChild(
-            makeSelect(
-                ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
-                this.activeMessageData.text.font,
-                (v) => {
-                    this.activeMessageData.text.font = v
-                    this.applyDraft()
-                },
-                { name: 'font-family' },
-            ),
-        )
+        // const fontFamilyField = this.makeField('Font')
+        // fontFamilyField.appendChild(
+        //     makeSelect(
+        //         ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
+        //         this.activeMessageData.text.font,
+        //         (v) => {
+        //             this.activeMessageData.text.font = v
+        //             this.applyDraft()
+        //         },
+        //         { name: 'font-family' },
+        //     ),
+        // )
         fontGrid.appendChild(fontSizeField)
-        fontGrid.appendChild(fontFamilyField)
+        // fontGrid.appendChild(fontFamilyField)
         textGroup.appendChild(fontGrid)
         panel.appendChild(textGroup)
 
@@ -749,14 +749,14 @@ class MessageEditorUI {
         return grid
     }
 
-    makeFormatBtn(char, key, draft, onChange) {
+    makeFormatBtn(char, key, onChange) {
         const btn = document.createElement('button')
         btn.classList.add('fmt-btn')
-        if (draft.text[key]) btn.classList.add('active')
+        if (this.activeMessageData.text[key]) btn.classList.add('active')
         btn.innerHTML = char
         btn.addEventListener('click', () => {
-            draft.text[key] = !draft.text[key]
-            btn.classList.toggle('active', draft.text[key])
+            this.activeMessageData.text[key] = !this.activeMessageData.text[key]
+            btn.classList.toggle('active', this.activeMessageData.text[key])
             onChange()
         })
         return btn

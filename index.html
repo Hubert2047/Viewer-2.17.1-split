@@ -1,61 +1,53 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
-        <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=35" />
-        <link
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=39">
+    <link
             href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
             rel="stylesheet" />
-        <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-        </div>
-        <div id="tooltip"></div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                v: 35,
-                contentUrl: 'hemi.ply',
-                model: 'hemispherical',
-            },
         }
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>
+        window.sse = { settings: {"v":39,"contentUrl":"hemi.ply","model":"hemispherical","messages":[{"id":"86a56214-b9af-4261-8653-4cc676b61a8d","autoPlay":{"time":3000},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1fffff\nfaaf\nfaefeafaf\nefaefawfaw\nfaefaef\nfaefafafafawffffffff\nfadâd\nadadad\ndadaddadadadddadadadadadadaddadada","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":318.9999656996447,"originHeight":196.99998307476662,"topLeft":{"x":-7.033961294983472,"y":-17.36795579230941,"z":-0.3991673125229589},"botRight":{"x":-16.323582009736953,"y":-11.839440392539304,"z":-4.549636671018693},"fontSize":16},"focus":{"position":{"x":-4.485938195730899,"y":-10.403691617934514,"z":3.5208008307638714}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-4.03991990165242,"y":-10.884545295139931,"z":3.7808705138497025},"botRight":{"x":-4.942403202414577,"y":-9.925998365517884,"z":3.2699848866549743}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"distanceScale":1,"focus":{"x":-1.9661900454555543,"y":5.015850568359486,"z":-2.9548889224142787},"pitch":0,"yaw":0}}],"setupStep":3}}
     </script>
-    <script src="./viewer.js?v=35"></script>
+<script src="./viewer.js?v=39"></script>
 </html>

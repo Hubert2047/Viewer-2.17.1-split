@@ -20,7 +20,6 @@ function makeOrientationGroup(global, editGroup) {
         const { rotation: r } = settings.orientation.pose
         setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
     } else if (modelEntity) {
-        console.log("run in")
         setReadonlyValues(modelEntity.getLocalEulerAngles(new Vec3()))
     }
     events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))

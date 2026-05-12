@@ -274,6 +274,7 @@ class Messages {
     }
 
     updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent) {
+        const contentChanged = this.textContentSpan.textContent !== this.data.text.content
         this.textContentSpan.textContent = this.data.text.content
         this.textContentSpan.style.textAlign = this.data.text.align
         this.textContentSpan.style.color = this.data.text.color
@@ -288,16 +289,27 @@ class Messages {
         this.textContentSpan.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
         this.textContentSpan.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
         this.div.style.backgroundColor = transparentColor(this.data.text.background, this.data.text.backgroundAlpha)
-        this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
+        // this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
         if (this.data.text.originHeight) {
-            let fontSize = this.data.text.fontSize || 16
+            let fontSize = this.data.text.fontSize || 14
             const fontScaleX = width / this.data.text.originWidth
             const fontScaleY = height / this.data.text.originHeight
             const fontScale = Math.min(fontScaleX, fontScaleY, this.messageMaxScale)
-            const minFontSize = Math.min(16, fontSize)
+            const minFontSize = Math.min(14, fontSize)
             fontSize = Math.max(minFontSize, Math.round(fontSize * fontScale))
             this.div.style.fontSize = fontSize + 'px'
         }
+        if (this.editable && contentChanged) {
+            this.autoResizeTextDiv()
+
+            const { topLeft, botRight, originWidth, originHeight } = this.getLocalContentPosByDiv()
+            this.data.text.topLeft = topLeft
+            this.data.text.botRight = botRight
+            this.data.text.originWidth = originWidth
+            this.data.text.originHeight = originHeight
+            this.events.fire('message:drag-changed', this.data)
+        }
+
         if (updateContent && this.isDisplay) {
             const dotRect = this.dot.getBoundingClientRect()
             const dotWidth = dotRect.width
@@ -324,8 +336,26 @@ class Messages {
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
             }
+
             let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.messageMaxScale))
             let scaleHeight = Math.max(32, Math.min(height, this.data.text.originHeight * this.messageMaxScale))
+
+            this.div.style.width = scaleWidth + 'px'
+            this.div.style.height = 'auto'
+            this.div.style.visibility = 'hidden'
+            this.div.style.display = 'flex'
+
+            const contentWidth = this.div.scrollWidth
+            const contentHeight = this.div.offsetHeight
+
+            const minContentWidth = contentWidth + 16
+            const minContentHeight = contentHeight + 8
+
+            scaleWidth = Math.max(scaleWidth, minContentWidth)
+            scaleHeight = Math.max(scaleHeight, minContentHeight)
+
+            this.div.style.visibility = 'hidden'
+
             let finalLeft = Math.min(Math.max(contentScreenTL.x, 0), containerRect.width - scaleWidth - 20)
             let finalTop = Math.min(Math.max(contentScreenTL.y, 0), containerRect.height - scaleHeight - 20)
             const dotCenterX = dotRect.left + dotRect.width / 2
@@ -337,6 +367,7 @@ class Messages {
                 t < dotRect.bottom &&
                 t + scaleHeight > dotRect.top
             const initiallyOverlap = willOverlap(finalLeft, finalTop)
+
             if (initiallyOverlap && !this.div.hasAdjusted) {
                 let divCenterY = finalTop + scaleHeight / 2
                 if (divCenterY < dotCenterY) {
@@ -375,20 +406,24 @@ class Messages {
                 delete this.initialDx
                 delete this.initialDy
             }
+
             finalLeft = Math.min(Math.max(finalLeft, 0), containerRect.width - scaleWidth)
             finalTop = Math.min(Math.max(finalTop, 0), containerRect.height - scaleHeight)
             this.div.style.left = finalLeft + 'px'
             this.div.style.top = finalTop + 'px'
             this.div.style.width = scaleWidth + 'px'
             this.div.style.height = scaleHeight + 'px'
+
             const _cw = this.dom.ui.offsetWidth || containerRect.width
             const _ch = this.dom.ui.offsetHeight || containerRect.height
             const actualW = this.div.offsetWidth
             const actualH = this.div.offsetHeight
+
             let adjLeft = parseFloat(this.div.style.left)
             let adjTop = parseFloat(this.div.style.top)
             adjLeft = Math.min(Math.max(adjLeft, 0), _cw - actualW - 4)
-            adjTop = Math.min(Math.max(adjTop, 0), (this.dom.ui.offsetHeight || containerRect.height) - actualH - 4)
+            adjTop = Math.min(Math.max(adjTop, 0), _ch - actualH - 4)
+
             const dotCX = focusScreenPos.x
             const dotCY = focusScreenPos.y
             const dotR = this.dot.offsetWidth / 2 + 8
@@ -407,6 +442,7 @@ class Messages {
                     adjTop = Math.min(Math.max(adjTop, 0), _ch - actualH - 4)
                 }
             }
+
             this.div.style.left = adjLeft + 'px'
             this.div.style.top = adjTop + 'px'
             this.div.style.visibility = 'visible'
@@ -552,6 +588,38 @@ class Messages {
             this.data.text.originHeight = originHeight
             this.events.fire('message:drag-changed', this.data)
         })
+    }
+    autoResizeTextDiv() {
+        const tempDiv = document.createElement('div')
+        tempDiv.style.position = 'absolute'
+        tempDiv.style.visibility = 'hidden'
+        tempDiv.style.whiteSpace = 'pre-wrap'
+        tempDiv.style.fontSize = this.div.style.fontSize
+        tempDiv.style.fontWeight = this.div.style.fontWeight
+        tempDiv.style.fontStyle = this.div.style.fontStyle
+        tempDiv.style.lineHeight = window.getComputedStyle(this.div).lineHeight
+        tempDiv.style.letterSpacing = window.getComputedStyle(this.div).letterSpacing
+        tempDiv.textContent = this.data.text.content
+        document.body.appendChild(tempDiv)
+
+        const naturalWidth = tempDiv.offsetWidth
+        const naturalHeight = tempDiv.offsetHeight
+        tempDiv.remove()
+
+        const minWidth = 100
+        const maxWidth = 600
+        const minHeight = 32
+
+        const hasNewline = this.data.text.content.includes('\n')
+        const padding = hasNewline ? 10 : 20
+
+        const newWidth = Math.min(Math.max(naturalWidth + padding, minWidth), maxWidth)
+
+        this.div.style.width = newWidth + 'px'
+        this.div.style.height = 'auto'
+
+        const actualHeight = Math.max(this.div.offsetHeight + 10, minHeight)
+        this.div.style.height = actualHeight + 'px'
     }
 
     // ── Show / Hide / Destroy ─────────────────
