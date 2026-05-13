@@ -54,7 +54,6 @@ class OtherController {
             this.originEntityPos = modelEntity.localPosition.clone()
         }
         this.originBboxPivot = this.bbox.center.clone()
-        console.log(modelEntity.localPosition)
         this.listenEvents()
     }
     listenEvents() {
@@ -391,8 +390,8 @@ class OtherController {
         this.pitchRad = (camera.angles.x * Math.PI) / 180
         const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
         if (this.model === 'cylindrical') {
-            this.minPitch = offsetPitch
-            this.maxPitch = offsetPitch
+            this.minPitch = 0
+            this.maxPitch = 0
         } else {
             this.minPitch = offsetPitch
             this.maxPitch = Math.PI / 2 + offsetPitch
@@ -974,63 +973,6 @@ class OtherController {
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
         pose.distance = this.distance
-        const variations = [
-            {
-                name: 'V9: (x, alt, y) + negate heading',
-                position: new Vec3(72.5745, 5.8929, 32.5415),
-                angles: new Vec3(83.0747, -83.4956, -162.3614),
-            },
-            {
-                name: 'V10: (x, alt, y) + negate roll',
-                position: new Vec3(72.5745, 5.8929, 32.5415),
-                angles: new Vec3(83.0747, 83.4956, 162.3614),
-            },
-            {
-                name: 'V11: (x, alt, y) + negate pitch & heading',
-                position: new Vec3(72.5745, 5.8929, 32.5415),
-                angles: new Vec3(-83.0747, -83.4956, -162.3614),
-            },
-            {
-                name: 'V12: (x, alt, y) + rotate angles (pitch, roll, heading)',
-                position: new Vec3(72.5745, 5.8929, 32.5415),
-                angles: new Vec3(83.0747, -162.3614, 83.4956),
-            },
-            {
-                name: 'V13: (x, alt, y) + rotate angles (heading, pitch, roll)',
-                position: new Vec3(72.5745, 5.8929, 32.5415),
-                angles: new Vec3(83.4956, 83.0747, -162.3614),
-            },
-            {
-                name: 'V14: (y, alt, x) + negate heading',
-                position: new Vec3(32.5415, 5.8929, 72.5745),
-                angles: new Vec3(83.0747, -83.4956, -162.3614),
-            },
-            {
-                name: 'V15: (y, alt, x) + negate pitch',
-                position: new Vec3(32.5415, 5.8929, 72.5745),
-                angles: new Vec3(-83.0747, 83.4956, -162.3614),
-            },
-            {
-                name: 'V16: (y, alt, x) + swap pitch/heading',
-                position: new Vec3(32.5415, 5.8929, 72.5745),
-                angles: new Vec3(83.4956, 83.0747, -162.3614),
-            },
-            {
-                name: 'V17: (-x, alt, y) + negate pitch',
-                position: new Vec3(-72.5745, 5.8929, 32.5415),
-                angles: new Vec3(-83.0747, 83.4956, -162.3614),
-            },
-            {
-                name: 'V18: (-x, alt, y) + negate roll',
-                position: new Vec3(-72.5745, 5.8929, 32.5415),
-                angles: new Vec3(83.0747, 83.4956, 162.3614),
-            },
-        ]
-
-        const test = 3 // thay từ 0-9
-        // pose.position = variations[test].position
-        // pose.angles = variations[test].angles
-        // pose.angles = new Vec3(0, 0, 0)
         if (this._snapCameraToOrigin) {
             this._snapCameraToOrigin = false
             pose.angles.x = this.originCameraAnglesX ?? pose.angles.x

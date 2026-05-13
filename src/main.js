@@ -2946,6 +2946,7 @@ class Viewer {
             const cameraEntity = global.camera
             cameraEntity.setPosition(camera.position)
             cameraEntity.setEulerAngles(camera.angles)
+            // console.log("🚀 ~ Viewer ~ applyCamera ~ camera.angles:", camera.angles)
             cameraEntity.camera.fov = camera.fov
             cameraEntity.camera.horizontalFov = graphicsDevice.width > graphicsDevice.height
             vec.sub2(sceneBound.center, camera.position)

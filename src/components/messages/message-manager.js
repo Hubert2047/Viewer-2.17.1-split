@@ -11,7 +11,7 @@ class MessagesManager {
 
         this.messages = []
         this.settings = global.settings
-        
+
         this.activeMessage = null
         this.activeData = null
         this.isShowActiveMessageBtns = !isMobile
@@ -337,6 +337,7 @@ class MessagesManager {
         )
     }
     startAutoPlay() {
+        if (!this.dom.stopMessage || !this.dom.startMessage) return
         this.events.fire('message:editor-selected', null)
         this.dom.stopMessage.classList.remove('hidden')
         this.dom.startMessage.classList.add('hidden')
@@ -354,6 +355,7 @@ class MessagesManager {
         this.isAutoPlay = false
     }
     showActiveMessageBtns(show) {
+        if (!this.dom.hideMessageButton || !this.dom.showMessageButton) return
         if (show) {
             this.dom.hideMessageButton.classList.remove('hidden')
             this.dom.showMessageButton.classList.add('hidden')
