@@ -15,12 +15,12 @@ function makeOrientationGroup(global, editGroup) {
         onChange: () => {},
     })
 
-
     if (settings.orientation.pose) {
         const { rotation: r } = settings.orientation.pose
         setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
     } else if (modelEntity) {
-        setReadonlyValues(modelEntity.getLocalEulerAngles(new Vec3()))
+        const r = global.cameraManager.controllers.ortery.initialModelRotation
+        setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
     }
     events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))
 
