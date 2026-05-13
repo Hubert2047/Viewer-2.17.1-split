@@ -232,10 +232,17 @@ class RotationGizmo {
         const dy = cy - prev.y
         if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
 
-        const SENSITIVITY = 0.4
         const { worldAxis, sign } = this._getDragAxis(this._activeAxis, dx, dy)
-        const rot = new Quat().setFromAxisAngle(worldAxis, sign * SENSITIVITY)
+        const distance = Math.sqrt(dx * dx + dy * dy)
+
+        const SENSITIVITY = 0.1
+
+        const angle = sign * distance * SENSITIVITY
+
+        const rot = new Quat().setFromAxisAngle(worldAxis, angle)
+
         this._target.applyRotation(rot)
+
         this._app.renderNextFrame = true
         this._prevMouse = { x: cx, y: cy }
     }

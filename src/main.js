@@ -3189,14 +3189,7 @@ class Viewer {
     configureCamera(settings) {
         const { global } = this
         const { app, config, camera } = global
-        settings.tonemapping = settings.tonemapping || 'none'
-        const postEffectSettings = settings.postEffectSettings || {
-            sharpness: { enabled: false, amount: 0 },
-            bloom: { enabled: false, intensity: 1, blurLevel: 2 },
-            grading: { enabled: false, brightness: 0, contrast: 1, saturation: 1, tint: [1, 1, 1] },
-            vignette: { enabled: false, intensity: 0.5, inner: 0.3, outer: 0.75, curvature: 1 },
-            fringing: { enabled: false, intensity: 0.5 },
-        }
+        const postEffectSettings = settings.postEffectSettings
         const { background } = settings
         // hpr override takes precedence over settings.highPrecisionRendering
         const highPrecisionRendering = config.hpr ?? settings.highPrecisionRendering

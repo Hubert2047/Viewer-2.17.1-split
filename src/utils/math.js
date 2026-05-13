@@ -569,9 +569,13 @@ function mergeSettings(settings, defaultSettings) {
         ...JSON.parse(JSON.stringify(defaultSettings)),
         ...settings,
     }
+    if (!['cylindrical', 'spherical', 'hemispherical'].includes(merged.model)) {
+        merged.model = 'spherical'
+    }
     const maxStepByModel = {
-        spherical: 2,
+        cylindrical: 3,
         hemispherical: 3,
+        spherical: 2,
     }
     const maxStep = maxStepByModel[merged.model]
     if (maxStep != null) {

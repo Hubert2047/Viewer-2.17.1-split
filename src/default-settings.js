@@ -14,13 +14,20 @@ const defaultSettings = Object.freeze({
     orientation: Object.freeze({ pose: null }),
     messages: Object.freeze([]),
     dimensions: null,
-    measurement: {
+    measurement: Object.freeze({
         enabled: false,
         lineColor: '#f95f4d',
         textColor: '#fff',
         background: { color: '#000000A6', alpha: 0.8 },
-    },
-    tonemapping: 'none',
+    }),
     setupStep: 1,
     ref: '',
+    tonemapping: 'none',
+    postEffectSettings: {
+        sharpness: { enabled: false, amount: 0 },
+        bloom: { enabled: false, intensity: 1, blurLevel: 2 },
+        grading: { enabled: false, brightness: 0, contrast: 1, saturation: 1, tint: [1, 1, 1] },
+        vignette: { enabled: false, intensity: 0.5, inner: 0.3, outer: 0.75, curvature: 1 },
+        fringing: { enabled: false, intensity: 0.5 },
+    },
 })

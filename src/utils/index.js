@@ -163,17 +163,24 @@ async function exportHtml(name, settings) {
         }),
     )
     delete copySettings.fileAudioStore
+
+    const hasPivot = copySettings.pivot?.position
+    const hasOrientation = copySettings.orientation?.pose
     const STEP_REQUIREMENTS = {
-        spherical: [{ step: 2, condition: () => copySettings.pivot?.position }],
+        spherical: [{ step: 2, condition: hasPivot }],
         hemispherical: [
-            { step: 2, condition: () => copySettings.pivot?.position },
-            { step: 3, condition: () => copySettings.orientation?.pose },
+            { step: 2, condition: hasPivot },
+            { step: 3, condition: hasOrientation },
+        ],
+        cylindrical: [
+            { step: 2, condition: hasPivot },
+            { step: 3, condition: hasOrientation },
         ],
     }
 
     const requirements = STEP_REQUIREMENTS[copySettings.model] ?? []
     const setupStep = requirements.reduce((currentStep, { step, condition }) => {
-        return condition() && currentStep < step ? step : currentStep
+        return condition && currentStep < step ? step : currentStep
     }, copySettings.setupStep)
     const newVersion = (copySettings.v ?? 0) + 1
     const injectedScript = `<script>
@@ -947,7 +954,7 @@ function dimensionsSetup(app, camera, config) {
 
     const drawDimensionBox = (dim) => {
         if (!modelEntity) return
-          const renderComp = modelEntity.render
+        const renderComp = modelEntity.render
         if (renderComp) {
             renderComp.enabled = false
         }

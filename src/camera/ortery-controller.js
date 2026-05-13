@@ -33,11 +33,7 @@ class OtherController {
         this.camera = global.camera.camera
         this.events = events
         this.settings = global.settings
-        if (['spherical', 'hemispherical', 'cylindrical'].includes(this.settings.model)) {
-            this.model = this.settings.model
-        } else {
-            this.model = 'spherical'
-        }
+        this.model = global.settings.model
         this.initialModelRotation = modelEntity.localRotation.clone()
         this.initialModelPosition = modelEntity.localPosition.clone()
         this.originModel = this.model

@@ -218,11 +218,11 @@ function makePivotGroup(global, editGroup) {
 function makeModelSection(el, global) {
     const { settings, events } = global
     const step = settings.setupStep
-    const isHemi = settings.model === 'hemispherical'
+    const isSherical = settings.model === 'spherical'
     const editGroup = makeEditGroup(events, ['sidebar:active', 'sidebar:clicked'])
     const container = makeSectionWrap()
 
-    const isOrientation = isHemi && step === 2
+    const isOrientation = !isSherical && step === 2
     if (isOrientation) {
         container.appendChild(makeOrientationGroup(global, editGroup))
         // container.appendChild(makeCameraLimitsGroup(global, editGroup))
@@ -890,8 +890,8 @@ function makeExportSection(el, global) {
 function makeSidebar(global, dom) {
     const { events } = global
     const SIDEBAR_WIDTH = '360px'
-    const isHemi = global.settings.model === 'hemispherical'
-    const totalSteps = isHemi ? 3 : 2
+    const isSherical = global.settings.model === 'spherical'
+    const totalSteps = isSherical ? 2 : 3
     const minStep = 1
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
@@ -954,7 +954,17 @@ function makeSidebar(global, dom) {
             })
             if (ok) {
                 switch (global.settings.model) {
-                    case 'hemispherical':
+                    case 'spherical':
+                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                            setupStep: 1,
+                            contentUrl: global.settings.contentUrl,
+                            base64: global.settings.base64,
+                            pivot: global.settings.pivot,
+                            model: global.settings.model,
+                            v: global.settings.v,
+                        })
+                        break
+                    default:
                         Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
                             setupStep: 2,
                             contentUrl: global.settings.contentUrl,
@@ -962,16 +972,6 @@ function makeSidebar(global, dom) {
                             initview: global.settings.initview,
                             pivot: global.settings.pivot,
                             orientation: global.settings.orientation,
-                            model: global.settings.model,
-                            v: global.settings.v,
-                        })
-                        break
-                    default:
-                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 1,
-                            contentUrl: global.settings.contentUrl,
-                            base64: global.settings.base64,
-                            pivot: global.settings.pivot,
                             model: global.settings.model,
                             v: global.settings.v,
                         })
