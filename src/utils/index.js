@@ -183,17 +183,22 @@ async function exportHtml(name, settings) {
         return condition && currentStep < step ? step : currentStep
     }, copySettings.setupStep)
     const newVersion = (copySettings.v ?? 0) + 1
-    const injectedScript = `<script>
-        window.sse = { settings: ${JSON.stringify(
-            stripDefaults({
-                ...copySettings,
-                v: newVersion,
-                messages,
-                setupStep,
-                base64: copySettings.base64,
-            }),
-        )}}
-    <\/script>`
+    const strippedSettings = stripDefaults({
+        ...copySettings,
+        v: newVersion,
+        messages,
+        setupStep,
+    })
+    delete strippedSettings.ref
+    const orderedSettings = {
+        ref: "",
+        model: strippedSettings.model,
+        contentUrl: strippedSettings.contentUrl,
+        ...strippedSettings,
+        base64: strippedSettings.base64,
+    }
+
+    const injectedScript = `<script>window.sse = { settings: ${JSON.stringify(orderedSettings)} }<\/script>`
     const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
     const blob = new Blob([html], { type: 'text/html' })
@@ -205,20 +210,18 @@ async function exportHtml(name, settings) {
     URL.revokeObjectURL(url)
 }
 function getHtmlTemplate(version) {
-    return `<!DOCTYPE html>
+    return `
+    <!DOCTYPE html>
 <html lang="en">
 <head>
     <title>3D Model Viewer</title>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">    
     <meta property="og:description" content=" " />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <base href>
     <link rel="icon" href="data:," >
     <link rel="stylesheet" href="viewer.css?v=${version}">
-    <link
-            href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
-            rel="stylesheet" />
     <script>
         const params = new URLSearchParams(window.location.search)
         const currentV = params.get('v')
@@ -249,13 +252,14 @@ function getHtmlTemplate(version) {
             <div id="fileSizeInfo"></div>
             <div id="loadingText"></div>
             <div id="loadingBar"></div>
-        </div>
+        </div>            
     </div>
     <div id="tooltip"></div>
 </body>
 <!-- INJECT_SCRIPT -->
 <script src="./viewer.js?v=${version}"><\/script>
-</html>`
+</html>
+    `
 }
 
 function makeControlItems(items) {

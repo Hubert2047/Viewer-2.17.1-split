@@ -10,10 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=43" />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Roboto&family=Chiron+Sung+HK&family=BBH+Sans+Bartle&family=Poppins&family=Lato&family=Montserrat&family=Open+Sans&family=Raleway&family=Playfair+Display&family=Merriweather&family=Nunito&family=Inter&display=swap"
-            rel="stylesheet" />
+        <link rel="stylesheet" href="viewer.css?v=46" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -49,14 +46,7 @@
         <div id="tooltip"></div>
     </body>
     <script>
-        window.sse = {
-            settings: {
-                v: 43,
-                contentUrl: '360.ply',
-                model: 'hemispherical',
-                setupStep: 3,
-            },
-        }
+        window.sse = { settings: { ref: '', model: 'hemispherical', contentUrl: '360.ply', v: 46, setupStep: 3 } }
     </script>
-    <script src="./viewer.js?v=43"></script>
+    <script src="./viewer.js?v=46"></script>
 </html>

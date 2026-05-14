@@ -6,7 +6,7 @@ const defaultSettings = Object.freeze({
     autoHideUI: false,
     background: Object.freeze({ color: 'white' }),
     startMode: 'default',
-    model: 'spherical',
+    model: '',
     lockZoomIn: Object.freeze({ value: 11, locked: false }),
     pivot: Object.freeze({ position: null }),
     initview: Object.freeze({ pose: null }),
