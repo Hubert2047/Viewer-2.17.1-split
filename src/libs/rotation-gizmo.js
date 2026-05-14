@@ -235,7 +235,7 @@ class RotationGizmo {
         const { worldAxis, sign } = this._getDragAxis(this._activeAxis, dx, dy)
         const distance = Math.sqrt(dx * dx + dy * dy)
 
-        const SENSITIVITY = 0.1
+        const SENSITIVITY = 0.03
 
         const angle = sign * distance * SENSITIVITY
 
