@@ -1029,7 +1029,7 @@ class OtherController {
     initHorizontalLine() {
         const layers = this.app.scene.layers
         const worldLayer = layers.getLayerByName('World')
-        const layerBBox = new Layer({ name: 'orientationLine' })
+        const layerBBox = new Layer({ name: 'horizontalLine' })
         const worldIndex = layers.getTransparentIndex(worldLayer)
         layers.insert(layerBBox, worldIndex + 1)
         this.camera.layers = [...this.camera.layers, layerBBox.id]
@@ -1043,19 +1043,19 @@ class OtherController {
         lineMat.depthTest = false
         lineMat.update()
 
-        this.orientationLineEntity = new Entity('orientationLine')
-        this.app.root.addChild(this.orientationLineEntity)
+        this.horizontalLineEntity = new Entity('horizontalLine')
+        this.app.root.addChild(this.horizontalLineEntity)
 
         const mi = new MeshInstance(lineMesh, lineMat)
         mi.cull = false
-        this.orientationLineEntity.addComponent('render', {
+        this.horizontalLineEntity.addComponent('render', {
             layers: [layerBBox.id],
             meshInstances: [mi],
         })
-        this._orientationLineMesh = lineMesh
+        this.horizontalLineMesh = lineMesh
     }
     drawHorizontalLine() {
-        if (!this.orientationLineEntity) {
+        if (!this.horizontalLineEntity) {
             this.initHorizontalLine()
         }
         if (this.lastLineDistance === this.distance) return
@@ -1078,16 +1078,16 @@ class OtherController {
 
         const positions = [offset1.x, offset1.y, offset1.z, offset2.x, offset2.y, offset2.z]
 
-        this._orientationLineMesh.setPositions(positions)
-        this._orientationLineMesh.update(PRIMITIVE_LINES)
+        this.horizontalLineMesh.setPositions(positions)
+        this.horizontalLineMesh.update(PRIMITIVE_LINES)
 
-        this.orientationLineEntity.localPosition.set(0, 0, 0)
-        this.orientationLineEntity.localRotation.set(0, 0, 0, 1)
-        this.orientationLineEntity.enabled = true
+        this.horizontalLineEntity.localPosition.set(0, 0, 0)
+        this.horizontalLineEntity.localRotation.set(0, 0, 0, 1)
+        this.horizontalLineEntity.enabled = true
     }
     hideHorizontalLine() {
-        if (this.orientationLineEntity) {
-            this.orientationLineEntity.enabled = false
+        if (this.horizontalLineEntity) {
+            this.horizontalLineEntity.enabled = false
         }
         this.lastLineDistance = undefined
     }
