@@ -989,8 +989,7 @@ class OtherController {
             pose.angles.x = Math.abs(this.lerpAnglesX) < 0.01 ? 0 : this.lerpAnglesX
             if (
                 Math.abs(this.lerpPositionY) < 0.3 &&
-                Math.abs(this.lerpAnglesX) < 0.3 &&
-                !this.orientationLineEntity?.enabled
+                Math.abs(this.lerpAnglesX) < 0.3 
             ) {
                 this.drawOrientationManualLine()
             }
@@ -1060,7 +1059,8 @@ class OtherController {
         if (!this.orientationLineEntity) {
             this.initOrientationLine()
         }
-
+        if (this.lastLineDistance === this.distance) return
+        this.lastLineDistance = this.distance
         const canvasWidth = this.app.graphicsDevice.width
         const canvasHeight = this.app.graphicsDevice.height
         const fovRad = (50 * Math.PI) / 180
@@ -1090,5 +1090,6 @@ class OtherController {
         if (this.orientationLineEntity) {
             this.orientationLineEntity.enabled = false
         }
+        this.lastLineDistance = undefined
     }
 }
