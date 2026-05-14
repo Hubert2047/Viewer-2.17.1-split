@@ -466,7 +466,7 @@ class OtherController {
         this.orientationEditMethod = currentMethod
 
         if (prevMethod) {
-            if (prevMethod === 'manual') this.hideOrientationManualLine()
+            if (prevMethod === 'manual') this.hideHorizontalLine()
             this.centerPivot = this._preEditCenterPivot.clone()
             this.basePosition = this._preEditBasePosition.clone()
             this.baseRotation = this._preEditBaseRotation.clone()
@@ -498,7 +498,7 @@ class OtherController {
     }
 
     cancelOrientation() {
-        this.hideOrientationManualLine()
+        this.hideHorizontalLine()
 
         if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
         if (this._preEditBasePosition) this.basePosition = this._preEditBasePosition.clone()
@@ -600,7 +600,7 @@ class OtherController {
         this.reset(this.resetPose, false)
     }
     applyManualOrientation() {
-        this.hideOrientationManualLine()
+        this.hideHorizontalLine()
         this.baseRotation = modelEntity.localRotation.clone()
 
         const offsetFromPivot = modelEntity.localPosition.clone().sub(this.centerPivot)
@@ -991,7 +991,7 @@ class OtherController {
                 Math.abs(this.lerpPositionY) < 0.3 &&
                 Math.abs(this.lerpAnglesX) < 0.3 
             ) {
-                this.drawOrientationManualLine()
+                this.drawHorizontalLine()
             }
         } else if (this.lerpPositionY !== undefined || this.lerpAnglesX !== undefined) {
             const targetY = this.originCameraPosition?.y ?? pose.position.y
@@ -1026,7 +1026,7 @@ class OtherController {
         modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
         this.modelRotation.copy(modelEntity.localRotation)
     }
-    initOrientationLine() {
+    initHorizontalLine() {
         const layers = this.app.scene.layers
         const worldLayer = layers.getLayerByName('World')
         const layerBBox = new Layer({ name: 'orientationLine' })
@@ -1054,10 +1054,9 @@ class OtherController {
         })
         this._orientationLineMesh = lineMesh
     }
-
-    drawOrientationManualLine() {
+    drawHorizontalLine() {
         if (!this.orientationLineEntity) {
-            this.initOrientationLine()
+            this.initHorizontalLine()
         }
         if (this.lastLineDistance === this.distance) return
         this.lastLineDistance = this.distance
@@ -1086,7 +1085,7 @@ class OtherController {
         this.orientationLineEntity.localRotation.set(0, 0, 0, 1)
         this.orientationLineEntity.enabled = true
     }
-    hideOrientationManualLine() {
+    hideHorizontalLine() {
         if (this.orientationLineEntity) {
             this.orientationLineEntity.enabled = false
         }
