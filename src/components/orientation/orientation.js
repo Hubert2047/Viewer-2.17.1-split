@@ -30,7 +30,7 @@ function makeOrientationGroup(global, editGroup) {
     const methodWrap = document.createElement('div')
     methodWrap.style.cssText = 'display:none; flex-direction:column; gap:12px;'
 
-    const methodRow = makeRow('Method')
+    const methodRow = makeRow({ title: 'Method' })
     const methodBtns = makeSegmentRow({
         options: [
             { label: 'Ground plane', value: 'ground' },
@@ -169,7 +169,7 @@ function makeCameraLimitsGroup(global, editGroup) {
     const pitchEditWrap = document.createElement('div')
     pitchEditWrap.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-bottom:8px;'
 
-    const pitchInputRow = makeRow('Pitch offset')
+    const pitchInputRow = makeRow({ title: 'Pitch offset' })
     const defaultValue =
         settings.orientation.pitchOffset !== undefined ? Math.round(radToDeg(settings.orientation.pitchOffset)) : 0
     const pitchInput = makeInput('number', defaultValue, {

@@ -14,8 +14,8 @@ class MessagesManager {
 
         this.activeMessage = null
         this.activeData = null
-        this.isShowActiveMessageBtns = !isMobile
-        this.isAutoPlay = false
+        this.global.isShowMessageNavigation = !isMobile
+        this.global.isAutoPlayMessages = false
         this.intervalID = null
         this.listenEvents()
         global.app.on('postrender', () => this.update())
@@ -51,13 +51,6 @@ class MessagesManager {
         this.settings.messages.forEach((h) => {
             this.messages.push(this.createMessage(h))
         })
-
-        if (this.messages.length > 0) {
-            this.dom.messageActionGroup?.classList.remove('hidden')
-        } else {
-            this.dom.messageActionGroup?.classList.add('hidden')
-        }
-
         this.updateUIPanel()
         this.events.fire('message:rebuild-info')
     }
@@ -75,16 +68,13 @@ class MessagesManager {
     listenEvents() {
         this.events.on('setup-reset', () => this.rebuild())
         this.events.on('message:add', ({ position }) => {
-            if (this.messages.length === 0) {
-                if (this.dom.messageActionGroup) this.dom.messageActionGroup.classList.remove('hidden')
-                else {
-                    this.dom.buttonsContainer.appendChild(makeMessageActionGroup(this.tooltip, this.events, this.dom))
-                }
-                this.events.fire('message:rebuild-info')
-            }
             const entityInfo = this.global.cameraManager.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
             this.settings.messages.push(data)
+            if (this.messages.length === 1) {
+                this.events.fire('re-render:control-wrap')
+                this.events.fire('message:rebuild-info')
+            }
             this.messages.push(this.createMessage(data))
             this.events.fire('message:editor-selected', data)
             this.events.fire('message:editing', false)
@@ -99,7 +89,7 @@ class MessagesManager {
                 this.events.fire('message:editing', false)
             } else {
                 const activeMessage = this.messages.find((h) => h.id === selectedData.id)
-                if (this.isAutoPlay) this.stopAutoPlay()
+                if (this.global.isAutoPlayMessages) this.stopAutoPlay()
                 if (activeMessage) {
                     this.setActive(activeMessage, NORMAL_FADE_TIME)
                 }
@@ -128,8 +118,8 @@ class MessagesManager {
         })
         this.events.on('message:start-auto', () => this.startAutoPlay())
         this.events.on('message:stop-auto', () => this.stopAutoPlay())
-        this.events.on('message:show-message-btns', () => this.showActiveMessageBtns(true))
-        this.events.on('message:hide-message-btns', () => this.showActiveMessageBtns(false))
+        this.events.on('message:show-message-navigation', () => this.showMessageNavigation(true))
+        this.events.on('message:hide-message-navigation', () => this.showMessageNavigation(false))
         this.events.on('message:editor-cancelled', () => this.editorCancelled())
         this.events.on('message:delete', (id) => {
             const idx = this.messages.findIndex((h) => h.id === id)
@@ -192,13 +182,17 @@ class MessagesManager {
             this.updateUIPanel()
         })
         this.events.on('message:toggle-play', () => {
-            if (this.isAutoPlay) this.stopAutoPlay()
+            if (this.global.isAutoPlayMessages) this.stopAutoPlay()
             else this.startAutoPlay()
         })
         this.events.on('message:message-btns', () => {
-            this.showActiveMessageBtns(!this.isShowActiveMessageBtns)
+            this.showMessageNavigation(!this.global.isShowMessageNavigation)
         })
         this.events.on('ortery:rotate', () => this.hideAllMessages())
+        this.events.on('inputEvent:spin-start', () => {
+            this.stopAutoPlay()
+            this.hideAllMessages()
+        })
         this.events.on('ortery:reset', () => this.hideAllMessages())
         this.events.on('ortery:interaction', () => this.stopAutoPlay())
     }
@@ -287,7 +281,7 @@ class MessagesManager {
         this.activeMessage = null
         this.updateUIPanel()
         this.events.fire('message:editing', false)
-        if (this.isAutoPlay) this.stopAutoPlay()
+        if (this.global.isAutoPlayMessages) this.stopAutoPlay()
     }
     setActive(message, lerpDuration = 1.5) {
         if (!message || !modelEntity) return
@@ -326,7 +320,6 @@ class MessagesManager {
     }
     autoPlay() {
         if (this.messages.length === 0) return
-        this.isAutoPlay = true
         const currentIdx = this.activeMessage ? this.messages.findIndex((h) => h.id === this.activeMessage.id) : -1
         const nextIdx = (currentIdx + 1) % this.messages.length
         const next = this.messages[nextIdx]
@@ -337,33 +330,24 @@ class MessagesManager {
         )
     }
     startAutoPlay() {
-        if (!this.dom.stopMessage || !this.dom.startMessage) return
         this.events.fire('message:editor-selected', null)
-        this.dom.stopMessage.classList.remove('hidden')
-        this.dom.startMessage.classList.add('hidden')
+        this.global.isAutoPlayMessages = true
+        this.events.fire('re-render:control-wrap')
         this.autoPlay()
     }
 
     stopAutoPlay() {
-        if (!this.isAutoPlay) return
+        if (!this.global.isAutoPlayMessages) return
         if (this.intervalID) {
             clearTimeout(this.intervalID)
             this.intervalID = null
         }
-        this.dom.stopMessage.classList.add('hidden')
-        this.dom.startMessage.classList.remove('hidden')
-        this.isAutoPlay = false
+        this.global.isAutoPlayMessages = false
+        this.events.fire('re-render:control-wrap')
     }
-    showActiveMessageBtns(show) {
-        if (!this.dom.hideMessageButton || !this.dom.showMessageButton) return
-        if (show) {
-            this.dom.hideMessageButton.classList.remove('hidden')
-            this.dom.showMessageButton.classList.add('hidden')
-        } else {
-            this.dom.hideMessageButton.classList.add('hidden')
-            this.dom.showMessageButton.classList.remove('hidden')
-        }
-        this.isShowActiveMessageBtns = show
+    showMessageNavigation(show) {
+        this.global.isShowMessageNavigation = show
+        this.events.fire('re-render:control-wrap')
         this.messages.forEach((h) => h.button.show(show))
     }
     updateMessageData() {

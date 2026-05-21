@@ -1062,7 +1062,7 @@ button {
   background: rgba(0, 0, 0, 0.1);
 }
 
-.volume-number {
+.slider-number {
   width: 46px !important;
   flex-shrink: 0;
   padding: 0 5px;
@@ -1440,6 +1440,9 @@ button {
 .message-action-btn {
   height: 30px;
   width: 30px;
+}
+.message-delete-btn {
+  background-color: #ef4444;
 }
 .active-message-btn {
   position: relative;
@@ -2241,7 +2244,7 @@ button {
 .ground-check-btn {
   height: 30px;
 }
-.pitch-slider {
+.slider {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
@@ -2252,7 +2255,7 @@ button {
   border: none;
 }
 
-.pitch-slider::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 13px;
   height: 13px;
@@ -2263,11 +2266,11 @@ button {
   transition: transform 0.1s ease;
 }
 
-.pitch-slider::-webkit-slider-thumb:hover {
+.slider::-webkit-slider-thumb:hover {
   transform: scale(1.2);
 }
 
-.pitch-slider::-moz-range-thumb {
+.slider::-moz-range-thumb {
   width: 13px;
   height: 13px;
   border-radius: 50%;
@@ -2277,7 +2280,7 @@ button {
   cursor: pointer;
 }
 
-.pitch-slider::-moz-range-track {
+.slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.12);
@@ -2382,30 +2385,46 @@ button {
   display: block;
 }
 .checkbox-input {
-    appearance: none;
-    width: 18px; height: 18px;
-    border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.2);
-    background: white;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s, border-color 0.15s;
-    position: relative;
-    margin: 0;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  position: relative;
+  margin: 0;
 }
 
 .checkbox-input:checked {
-    background: #f95f4d;
-    border-color: #f95f4d;
+  background: #f95f4d;
+  border-color: #f95f4d;
 }
 
 .checkbox-input:checked::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 1px;
-    width: 6px; height: 10px;
-    border: 2px solid white;
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg);
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+.spin-speed > .label {
+  margin-right: 42px;
+}
+.speed-slider {
+  width: 110px;
+}
+.spin-input {
+  width: max-content;
+  max-width: 80px;
+  text-align: center;
 }

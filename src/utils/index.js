@@ -191,7 +191,7 @@ async function exportHtml(name, settings) {
     })
     delete strippedSettings.ref
     const orderedSettings = {
-        ref: "",
+        ref: '',
         model: strippedSettings.model,
         contentUrl: strippedSettings.contentUrl,
         ...strippedSettings,
@@ -351,7 +351,11 @@ function makeControlBotGroup(global, tooltip, dom) {
     const hasDimension = !!settings.dimensions
     const isShowDimensions = !dimensionsBox?.show
     const hasMeasurement = hasDimension && settings.measurement?.enabled
+    const hasSpin = settings.spin.enabled
+    const showStartSpin = global.isSpin360 === undefined || global.isSpin360 === false
     const buttons = [
+        ['startSpin', 'startPlay', 'Start Spin', hasSpin, showStartSpin, 'inputEvent:spin-start'],
+        ['stopSpin', 'stopPlay', 'Stop Spin', hasSpin, !showStartSpin, 'inputEvent:spin-stop'],
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
         // ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
@@ -401,30 +405,20 @@ function makeControlBotGroup(global, tooltip, dom) {
     })
     return group
 }
-function makeMessageActionGroup(tooltip, events, dom) {
+function makeMessageActionGroup(global, tooltip, events, dom) {
     const group = document.createElement('div')
     group.id = 'messageActionGroup'
     dom['messageActionGroup'] = group
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
+    const showStopPlayMessages = global.isAutoPlayMessages
+    const hideMessages = global.isShowMessageNavigation 
     const buttons = [
-        ['stopMessage', 'stopMessage', 'Stop Auto Play', false, 'stop-auto', 'startMessage'],
-        ['startMessage', 'startMessage', 'Auto Play', true, 'start-auto', 'stopMessage'],
-        ['hideMessageButton', 'hideMessageButton', 'Message Disable', !isMobile, 'hide-message-btns'],
-        ['showMessageButton', 'showMessageButton', 'Message Enable', isMobile, 'show-message-btns'],
+        ['stopMessage', 'stopPlay', 'Stop Play Messages', showStopPlayMessages, 'stop-auto'],
+        ['startMessage', 'startPlay', 'Auto Play Messages', !showStopPlayMessages, 'start-auto' ],
+        ['hideMessageButton', 'hideMessageButton', 'Hide Message Navigation',hideMessages , 'hide-message-navigation'],
+        ['showMessageButton', 'showMessageButton', 'Show Message Navigation', !hideMessages, 'show-message-navigation'],
     ]
-    events.on('setup-reset', (settings) => {
-        dom.stopMessage?.classList.add('hidden')
-        dom.startMessage?.classList.remove('hidden')
-        dom.hideMessageButton?.classList.toggle('hidden', isMobile)
-        dom.showMessageButton?.classList.toggle('hidden', !isMobile)
-
-        if (settings.messages.length > 0) {
-            dom.messageActionGroup?.classList.remove('hidden')
-        } else {
-            dom.messageActionGroup?.classList.add('hidden')
-        }
-    })
     buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
         const el = makeButton({
             id,
@@ -432,13 +426,6 @@ function makeMessageActionGroup(tooltip, events, dom) {
             className: 'control-btn',
             onClick: (e) => {
                 events.fire(`message:${eventname}`)
-                if (toggleId) {
-                    const toggleBtn = group.querySelector(`#${toggleId}`)
-                    if (toggleBtn) {
-                        el.classList.add('hidden')
-                        toggleBtn.classList.remove('hidden')
-                    }
-                }
             },
         })
         dom[id] = el
@@ -449,7 +436,7 @@ function makeMessageActionGroup(tooltip, events, dom) {
     })
     return group
 }
-function makeControlsWrap(global, tooltip, dom) {
+function makeControlsWrap(global, tooltip, dom, events) {
     const wrap = document.createElement('div')
     wrap.id = 'controlsWrap'
     dom[wrap.id] = wrap
@@ -463,9 +450,12 @@ function makeControlsWrap(global, tooltip, dom) {
     const render = () => {
         container.innerHTML = ''
         container.appendChild(makeControlBotGroup(global, tooltip, dom))
+        if (global.settings.messages.length > 0) {
+            container.appendChild(makeMessageActionGroup(global, tooltip, events, dom))
+        }
     }
     render()
-    global.events.on('ui:re-render-control-wrap', render)
+    global.events.on('re-render:control-wrap', render)
     wrap.appendChild(container)
     const messageContainer = document.createElement('div')
     messageContainer.id = 'messageContainer'

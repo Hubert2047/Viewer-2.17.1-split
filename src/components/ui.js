@@ -1,11 +1,13 @@
-function makeRow(labelText, className) {
+function makeRow({ title, className, show = true }) {
     const row = document.createElement('div')
     row.classList.add('section-group-row')
+    if (!show) row.classList.add('hidden')
     if (className) {
         row.classList.add(className)
     }
     const label = document.createElement('span')
-    label.textContent = labelText
+    label.classList.add('label')
+    label.textContent = title
     row.appendChild(label)
     return row
 }
@@ -234,7 +236,7 @@ function makeToggle(initialValue, onChange) {
     return wrap
 }
 function makeColorPicker({ label, defaultValue, onChange, disabled = false, debounceMs = 300 }) {
-    const row = makeRow(label)
+    const row = makeRow({ title: label })
     const input = document.createElement('input')
     input.type = 'color'
     input.classList.add('color-input', 'background-input')
@@ -301,23 +303,23 @@ function makeSlider({ min, max, step = 0.1, value, className, variant = 'default
 
     let internalValue = value ?? 0
     slider.value = internalValue
-
+    slider.classList.add('slider')
     if (className) {
         slider.classList.add(...className.trim().split(/\s+/))
     }
 
     const updateProgress = (v) => {
         if (variant !== 'progress') return
-
+        const percent = (v - min) / (max - min)
         slider.style.background = `
-            linear-gradient(
-                to right,
-                #f95f4d 0%,
-                #f95f4d ${v * 100}%,
-                rgba(0,0,0,0.1) ${v * 100}%,
-                rgba(0,0,0,0.1) 100%
-            )
-        `
+        linear-gradient(
+            to right,
+            #f95f4d 0%,
+            #f95f4d ${percent * 100}%,
+            rgba(0,0,0,0.1) ${percent * 100}%,
+            rgba(0,0,0,0.1) 100%
+        )
+    `
     }
 
     updateProgress(internalValue)

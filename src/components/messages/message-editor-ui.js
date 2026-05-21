@@ -230,7 +230,7 @@ class MessageEditorUI {
         const delBtn = makeButton({
             icon: ICONS.messageDelete,
             title: 'Delete',
-            className: 'message-action-btn',
+            className: 'message-action-btn message-delete-btn',
             onClick: () => this.onDelete(h.id),
         })
 
@@ -565,7 +565,7 @@ class MessageEditorUI {
             makeColorAlpha({
                 color: this.activeMessageData.audio?.bgColor || '#000000',
                 alpha: this.activeMessageData.audio?.bgAlpha ?? 0.35,
-                onChangecolor: (v) => {
+                onChangeColor: (v) => {
                     this.activeMessageData.audio.bgColor = v
                     this.applyDraft()
                 },
@@ -686,7 +686,7 @@ class MessageEditorUI {
             min: 0,
             max: 1,
             step: 0.1,
-            className: 'volume-number',
+            className: 'slider-number',
             name: 'volume',
             onChange: (v) => {
                 const value = Math.min(1, Math.max(0, parseFloat(v) || 0))

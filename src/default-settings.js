@@ -7,6 +7,12 @@ const defaultSettings = Object.freeze({
     background: Object.freeze({ color: 'white' }),
     startMode: 'default',
     model: '',
+    spin: {
+        enabled: false,
+        continuous: false,
+        autoStart: false,
+        speed: 5,
+    },
     lockZoomIn: Object.freeze({ value: 11, locked: false }),
     pivot: Object.freeze({ position: null }),
     initview: Object.freeze({ pose: null }),

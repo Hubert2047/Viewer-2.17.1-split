@@ -10,7 +10,7 @@ function makeGroundPanel(events, global) {
     const hint = document.createElement('div')
     hint.style.cssText = 'font-size:13px; color:var(--text-main); height:28px;'
 
-    const pickRow = makeRow('Set ground plane')
+    const pickRow = makeRow({ title: 'Set ground plane' })
 
     const pickActionRow = document.createElement('div')
     pickActionRow.style.cssText = 'display:flex; gap:6px;'

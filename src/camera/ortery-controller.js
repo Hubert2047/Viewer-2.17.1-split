@@ -26,7 +26,10 @@ class OtherController {
     pointerMoveHistory = []
     isFlick = false
     inertiaFlickThreshold = 0.005
+    isSpin360Loop = false
+    spinSpeed = 5
     constructor({ global, bbox }) {
+        this.global = global
         const { app, events } = global
         this.app = app
         this.bbox = bbox
@@ -55,6 +58,10 @@ class OtherController {
     listenEvents() {
         this.events.on('message:editing', (isEdit) => {
             this.isEditMessage = isEdit
+            this.stopSpin360()
+        })
+        this.events.on('sidebar:active', () => {
+            this.stopSpin360()
         })
         this.events.on('inputEvent', (eventName, event) => {
             switch (eventName) {
@@ -69,6 +76,23 @@ class OtherController {
                     break
             }
         })
+        this.events.on('ortery:rotate', () => {
+            this.stopSpin360()
+        })
+
+        //spin
+        this.events.on('inputEvent:spin-start', () => {
+            this.global.isSpin360 = true
+            this.isSpin360Loop = this.settings.spin.continuous
+            this.spinSpeed = this.settings.spin.speed
+            this.spin360({ model: this.model })
+        })
+        this.events.on('inputEvent:spin-stop', () => {
+            this.stopSpin360()
+        })
+        this.events.on('spin:enabled', (v) => this.stopSpin360())
+        this.events.on('spin-speed', (v) => (this.spinSpeed = v))
+        this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
 
         this.events.on('setup-reset', () => this.reset())
 
@@ -98,7 +122,10 @@ class OtherController {
             this.updateModelRotation()
             this.syncHierarchyAndRender()
         })
-        this.events.on('orientation:spin', ({ speed }) => this.spin360(speed))
+        this.events.on('orientation:spin', ({ speed }) => {
+            this.spinSpeed = speed
+            this.spin360()
+        })
         this.events.on('orientation:yaw-step', ({ deg }) => {
             if (!this.isEditingOrientation) return
             const rad = degToRad(deg)
@@ -203,6 +230,9 @@ class OtherController {
         this.isFlick = false
     }
     reset(pose, useInitview = true) {
+        if (this._autoRotating) {
+            this.stopSpin360()
+        }
         if (this.isResetting) return
         this.events.fire('ortery:reset')
         if (!pose) pose = this.resetPose
@@ -255,6 +285,12 @@ class OtherController {
             startDistance = targetDistance
             startYaw = targetYaw
             startPitch = targetPitch
+            if (this.settings.spin.enabled && this.settings.spin.autoStart) {
+                this.global.isSpin360 = true
+                this.isSpin360Loop = this.settings.spin.continuous
+                this.spinSpeed = this.settings.spin.speed
+                this.spin360({ model: this.model })
+            }
         } else {
             startFocus = this.focus.clone()
             startDistance = this.distance
@@ -379,18 +415,17 @@ class OtherController {
     }
     onEnter(camera) {
         const distance = this.getDeafultDistance()
-        this.maxDistance = Math.max(distance, 200)
+        this.maxDistance = Math.max(distance, this.maxDistance)
 
         this.originCameraPosition = camera.position.clone()
         this.originCameraAnglesX = camera.angles.x
         this.pitchRad = (camera.angles.x * Math.PI) / 180
-        const offsetPitch = this.pitchRad - (this.settings.orientation.pitchOffset ?? 0)
         if (this.model === 'cylindrical') {
             this.minPitch = 0
             this.maxPitch = 0
         } else {
-            this.minPitch = offsetPitch
-            this.maxPitch = Math.PI / 2 + offsetPitch
+            this.minPitch = 0
+            this.maxPitch = Math.PI / 2
         }
         let forward
         if (camera.angles && typeof camera.angles.x === 'number' && typeof camera.angles.y === 'number') {
@@ -559,32 +594,69 @@ class OtherController {
             lerpDuration: NORMAL_FADE_TIME,
         })
     }
-    spin360(speed) {
+    stopSpin360() {
+        if (!this._autoRotating) return
+        this.global.isSpin360 = false
+        this._autoRotating = false
+        this._autoRotateTick = null
+        this.isSpin360Loop = false
+        this.spinSpeed = 5
+        this.events.fire('re-render:control-wrap')
+    }
+    spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity) return
         if (this._autoRotating || this._pitchRotating) return
+        this.events.fire('re-render:control-wrap')
         this.updateModelRotation()
         this._autoRotating = true
+
         const totalAngle = Math.PI * 2
-        const radPerSec = speed * 0.5
         let rotated = 0
 
-        const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
-        const spinSign = forward.x * 0 + forward.y * 0 + forward.z * 1 >= 0 ? 1 : -1
+        const initialYaw = this.currentYaw
+        const initialPitch = this.currentPitch
+        const initialRotation = this.cameraRotation.clone()
 
         const tick = (dt) => {
             if (!this._autoRotating) return
-            const delta = Math.min(radPerSec * dt, totalAngle - rotated)
+
+            const delta = this.isSpin360Loop
+                ? this.spinSpeed * 0.001
+                : Math.min(this.spinSpeed * 0.001, totalAngle - rotated)
             rotated += delta
-            const step = (delta / this.rotateSpeed) * spinSign
-            this.sphericalAxisRot(step, 0)
-            this.syncHierarchyAndRender()
-            if (rotated >= totalAngle) {
-                this._autoRotating = false
-                this._autoRotateTick = null
-                return
+
+            switch (model) {
+                case 'axis': {
+                    const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
+                    const spinSign = forward.z >= 0 ? 1 : -1
+                    const step = (delta / this.rotateSpeed) * spinSign
+                    this.sphericalAxisRot(step, 0)
+                    break
+                }
+                case 'spherical':
+                    const step = delta / this.rotateSpeed
+                    this.sphericalRot(-step, 0)
+                    break
+                case 'hemispherical':
+                case 'cylindrical':
+                    this.currentYaw = this.clampYaw(this.currentYaw - delta)
+                    this.hemisphericalRot(this.currentYaw, this.currentPitch)
+                    break
             }
-            this._autoRotateTick = tick
+
+            if (rotated >= totalAngle) {
+                if (this.isSpin360Loop) {
+                    rotated -= totalAngle
+                } else {
+                    this.stopSpin360()
+                    onStop?.()
+                    return
+                }
+            }
+
+            this.syncHierarchyAndRender()
         }
+
         this._autoRotateTick = tick
     }
     resetOrientation() {
@@ -987,10 +1059,7 @@ class OtherController {
 
             pose.position.y = Math.abs(this.lerpPositionY) < 0.01 ? 0 : this.lerpPositionY
             pose.angles.x = Math.abs(this.lerpAnglesX) < 0.01 ? 0 : this.lerpAnglesX
-            if (
-                Math.abs(this.lerpPositionY) < 0.3 &&
-                Math.abs(this.lerpAnglesX) < 0.3 
-            ) {
+            if (Math.abs(this.lerpPositionY) < 0.3 && Math.abs(this.lerpAnglesX) < 0.3) {
                 this.drawHorizontalLine()
             }
         } else if (this.lerpPositionY !== undefined || this.lerpAnglesX !== undefined) {
@@ -1064,7 +1133,7 @@ class OtherController {
         const canvasHeight = this.app.graphicsDevice.height
         const fovRad = (50 * Math.PI) / 180
 
-        const worldHeightAtDist = 2 * this.distance * Math.tan(fovRad / 2)
+        const worldHeightAtDist = 4 * this.distance * Math.tan(fovRad / 2)
         const worldWidthAtDist = worldHeightAtDist * (canvasWidth / canvasHeight)
         const size = worldWidthAtDist / 2
 

@@ -277,7 +277,7 @@ function makeInitViewGroup(events, settings) {
 function makeViewerSection(el, global) {
     const { settings, events } = global
     const container = makeSectionWrap()
-
+    //general
     const generalGroup = makeSectionGroup('General')
 
     const { row: backgroundColor } = makeColorPicker({
@@ -289,21 +289,21 @@ function makeViewerSection(el, global) {
         },
     })
 
-    const inertiaRow = makeRow('Inertia')
+    const inertiaRow = makeRow({ title: 'Inertia' })
     const inertiaToggleEl = makeToggle(settings.inertia, (value) => {
         settings.inertia = value
         events.fire('viewer:inertia', value)
     })
     inertiaRow.appendChild(inertiaToggleEl)
 
-    const autoHideUIRow = makeRow('Auto Hide UI')
+    const autoHideUIRow = makeRow({ title: 'Auto Hide UI' })
     const autoHideUIToggleEl = makeToggle(settings.autoHideUI, (value) => {
         settings.autoHideUI = value
         events.fire('viewer:auto-hide-ui', value)
     })
     autoHideUIRow.appendChild(autoHideUIToggleEl)
 
-    const lockZoomInRow = makeRow('Lock Zoom In')
+    const lockZoomInRow = makeRow({ title: 'Lock Zoom In' })
     const lockZoomInToggleEl = makeToggle(settings.lockZoomIn.locked, (value) => {
         events.fire('viewer:lock-zoom-in', value)
     })
@@ -313,14 +313,73 @@ function makeViewerSection(el, global) {
     generalGroup.appendChild(inertiaRow)
     generalGroup.appendChild(autoHideUIRow)
     generalGroup.appendChild(lockZoomInRow)
-
+    //iniview
     const initviewHint =
         'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
     const initviewGroup = makeSectionGroup('Initial View', initviewHint)
     initviewGroup.appendChild(makeInitViewGroup(events, settings))
 
+    //spin
+    const spinGroup = makeSectionGroup('Spin')
+
+    const spinEnabledRow = makeRow({ title: 'Enabled' })
+    const spinEnabledToggleEl = makeToggle(settings.spin.enabled, (value) => {
+        settings.spin.enabled = !settings.spin.enabled
+        if (settings.spin.enabled) {
+            spinContinuousRow.classList.remove('hidden')
+            spinOnStartRow.classList.remove('hidden')
+            speedRow.classList.remove('hidden')
+        } else {
+            spinContinuousRow.classList.add('hidden')
+            spinOnStartRow.classList.add('hidden')
+            speedRow.classList.add('hidden')
+            settings.spin = JSON.parse(JSON.stringify(defaultSettings.spin))
+            spinContinuousToggleEl.setValue(settings.spin.continuous)
+            spinOnStartToggleEl.setValue(settings.spin.autoStart)
+        }
+        events.fire('spin:enabled', value)
+        events.fire('re-render:control-wrap', value)
+    })
+    spinEnabledRow.appendChild(spinEnabledToggleEl)
+
+    const speedRow = makeRow({ title: 'Speed', show: settings.spin.enabled, className: 'spin-speed' })
+    const speedInput = makeInput('number', settings.spin.speed, {
+        min: 1,
+        name: 'slider-number',
+        className: 'spin-input',
+        onChange: (v) => {
+            let value = parseFloat(v)
+            if (isNaN(value) || value <= 0) {
+                value = 1
+                speedInput.value = value
+            }
+            settings.spin.speed = value
+            events.fire('spin-speed', value)
+        },
+    })
+    speedRow.appendChild(speedInput)
+
+    const spinContinuousRow = makeRow({ title: 'Continuous', show: settings.spin.enabled })
+    const spinContinuousToggleEl = makeToggle(settings.spin.continuous, (value) => {
+        settings.spin.continuous = !settings.spin.continuous
+        events.fire('spin-continuous', value)
+    })
+    spinContinuousRow.appendChild(spinContinuousToggleEl)
+
+    const spinOnStartRow = makeRow({ title: 'Auto Start', show: settings.spin.enabled })
+    const spinOnStartToggleEl = makeToggle(settings.spin.autoStart, (value) => {
+        settings.spin.autoStart = !settings.spin.autoStart
+    })
+    spinOnStartRow.appendChild(spinOnStartToggleEl)
+
+    spinGroup.appendChild(spinEnabledRow)
+    spinGroup.appendChild(speedRow)
+    spinGroup.appendChild(spinContinuousRow)
+    spinGroup.appendChild(spinOnStartRow)
+
     container.appendChild(generalGroup)
     container.appendChild(initviewGroup)
+    container.appendChild(spinGroup)
 
     el.appendChild(container)
 }
@@ -437,7 +496,7 @@ function makeDimensionSection(el, global) {
         },
     })
 
-    const backgroundRow = makeRow('Text Background', 'background-row')
+    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
     const backgroundColor = makeColorAlpha({
         color: currentDimensions?.background.color || '#000000',
         alpha: currentDimensions?.background.alpha ?? 0.8,
@@ -591,7 +650,7 @@ function makeDimensionSection(el, global) {
     // boxGroup.appendChild(sizeRow)
     // boxGroup.appendChild(autoFitRow)
     // ── Group 2: Real Dimensions ──
-    const realGroup = makeSectionGroup('Real dimensions')
+    const realGroup = makeSectionGroup('Dimensions')
 
     // ── Auto Calculate checkbox ──
     let autoCalc = false
@@ -608,7 +667,7 @@ function makeDimensionSection(el, global) {
         },
     })
 
-    const realUnitRow = makeRow('Unit')
+    const realUnitRow = makeRow({ title: 'Unit' })
     const realUnitSelect = makeSelect(
         ['mm', 'cm', 'm', 'inch'],
         settings.dimensions?.unit || 'cm',
@@ -790,12 +849,12 @@ function makeMeasurementSection(el, global) {
     } = global
     const measurementGroup = makeSectionGroup()
     // ── Measurement toggle ──
-    const measureToggleRow = makeRow('Enabled')
+    const measureToggleRow = makeRow({ title: 'Enabled' })
     const measureToggleEl = makeToggle(measurement?.enabled, (value) => {
         if (measureToggleEl.classList.contains('disabled')) return
         measureToggleEl.classList.toggle('active', value)
         measurement.enabled = value
-        events.fire('ui:re-render-control-wrap')
+        events.fire('re-render:control-wrap')
         if (!value && global.measureTool) global.measureTool.deactivate()
     })
     measureToggleRow.appendChild(measureToggleEl)
@@ -817,7 +876,7 @@ function makeMeasurementSection(el, global) {
             if (global.measureTool) global.measureTool.setConfig(measurement)
         },
     })
-    const backgroundRow = makeRow('Text Background', 'background-row')
+    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
     const backgroundColor = makeColorAlpha({
         color: measurement.background.color,
         alpha: measurement.background.alpha,
@@ -1001,6 +1060,7 @@ function makeSidebar(global, dom) {
                 }
 
                 events.fire('setup-reset', global.settings)
+                events.fire('re-render:control-wrap')
                 renderStep()
             }
         },

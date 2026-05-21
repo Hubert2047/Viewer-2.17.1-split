@@ -11,7 +11,7 @@ function makeManualPanel(events) {
     hint.textContent =
         'The red line marks the ground. Align the bottom of the model flat on it — spin it around to check every angle. You can drag with left click to rotate, right click to adjust the height, or use the Height and Lean buttons to fine-tune until it looks right.'
 
-    const spinRow = makeRow('Auto Spin 360°')
+    const spinRow = makeRow({ title: 'Auto Spin 360°' })
     const spinRight = document.createElement('div')
     spinRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
 
@@ -20,10 +20,10 @@ function makeManualPanel(events) {
     spinSlowLabel.textContent = 'slow'
 
     const spinSpeedSlider = makeSlider({
-        min: 4,
-        max: 15,
+        min: 1,
+        max: 10,
         step: 1,
-        value: 9,
+        value: 5,
         className: 'pitch-slider',
     })
     spinSpeedSlider.style.cssText = 'width:72px;'
@@ -47,7 +47,7 @@ function makeManualPanel(events) {
     const yawStepInput = makeInput('number', 5, { step: 1, min: 0, className: 'orientation-step-input' })
     const getYawStep = () => parseFloat(yawStepInput.value) || 5
     // ── Yaw row
-    const yawRow = makeRow('Spin')
+    const yawRow = makeRow({ title: 'Spin' })
     const yawRight = document.createElement('div')
     yawRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
     const btnYawLeft = makeButton({
@@ -70,10 +70,10 @@ function makeManualPanel(events) {
     yawRow.appendChild(yawRight)
 
     // ── Y Position row
-    const yPosStepInput = makeInput('number', 0.5   , { step: 0.5, min: 0, className: 'orientation-step-input' })
+    const yPosStepInput = makeInput('number', 0.5, { step: 0.5, min: 0, className: 'orientation-step-input' })
     const getYPosStep = () => parseFloat(yPosStepInput.value) || 0.1
 
-    const yPosRow = makeRow('Height')
+    const yPosRow = makeRow({ title: 'Height' })
     const yPosRight = document.createElement('div')
     yPosRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
 
@@ -127,7 +127,7 @@ function makeManualPanel(events) {
     const rollStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
     const getRollStep = () => parseFloat(rollStepInput.value) || 0.5
 
-    const rollRow = makeRow('Lean Left / Right')
+    const rollRow = makeRow({ title: 'Lean Left / Right' })
     const rollRight = document.createElement('div')
     rollRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
     const btnRollCCW = makeButton({

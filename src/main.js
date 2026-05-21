@@ -37,7 +37,7 @@ const initUI = async (global) => {
         acc[id] = document.getElementById(id)
         return acc
     }, {})
-    dom.ui.appendChild(makeControlsWrap(global, tooltip, dom))
+    dom.ui.appendChild(makeControlsWrap(global, tooltip, dom, events))
     if (window.location.protocol === 'https:' || isMobile) {
         global.config.editable = false
     } else if (url.searchParams.get('ref') === 'ortery') {
@@ -50,9 +50,6 @@ const initUI = async (global) => {
     let sidebar
     if (global.config.editable) {
         sidebar = makeSidebar(global, dom)
-    }
-    if (settings.messages.length > 0) {
-        dom.buttonsContainer.appendChild(makeMessageActionGroup(tooltip, events, dom))
     }
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
@@ -1066,7 +1063,7 @@ const createCamera = (position, target, fov) => {
 const createFrameCamera = (bbox, fov) => {
     const sceneSize = bbox.halfExtents.length()
     const distance = sceneSize / Math.sin((fov / 180) * Math.PI * 0.5)
-    return createCamera(new Vec3(2, 1, 2).normalize().mulScalar(distance).add(bbox.center), bbox.center, fov)
+    return createCamera(new Vec3(2, 0, 2).normalize().mulScalar(distance).add(bbox.center), bbox.center, fov)
 }
 class CameraManager {
     update
@@ -1153,7 +1150,6 @@ class CameraManager {
             } else {
                 this.camera.copy(target)
             }
-            // console.log(this.camera)
             // update animation timeline
             if (state.cameraMode === 'anim') {
                 state.animationTime = this.controllers.anim.animState.cursor.value
@@ -2946,7 +2942,6 @@ class Viewer {
             const cameraEntity = global.camera
             cameraEntity.setPosition(camera.position)
             cameraEntity.setEulerAngles(camera.angles)
-            // console.log("🚀 ~ Viewer ~ applyCamera ~ camera.angles:", camera.angles)
             cameraEntity.camera.fov = camera.fov
             cameraEntity.camera.horizontalFov = graphicsDevice.width > graphicsDevice.height
             vec.sub2(sceneBound.center, camera.position)
@@ -3048,7 +3043,7 @@ class Viewer {
                 else {
                     if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
                     global.dimensionsBox.draw(dim)
-                    events.fire('ui:re-render-control-wrap')
+                    events.fire('re-render:control-wrap')
                 }
             })
             events.on('dimensions:edit', (dim) => {
@@ -3058,7 +3053,7 @@ class Viewer {
                         events.fire('dimensions:eulersynced', { x, y, z })
                     })
                 rotationGizmo.enable(dimensionRotatable)
-                events.fire('ui:re-render-control-wrap')
+                events.fire('re-render:control-wrap')
             })
             events.on('dimensions:change', (dim) => {
                 if (dimensionRotatable) {
@@ -3077,7 +3072,7 @@ class Viewer {
             function hideDimensions() {
                 if (global.dimensionsBox && global.dimensionsBox.show) {
                     global.dimensionsBox.hide()
-                    events.fire('ui:re-render-control-wrap')
+                    events.fire('re-render:control-wrap')
                 }
             }
 
