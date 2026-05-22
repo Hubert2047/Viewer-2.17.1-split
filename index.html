@@ -1,50 +1,87 @@
-
-    <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=52">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=63" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+        </div>
+        <div id="tooltip"></div>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'hemispherical',
+                contentUrl: 'canon.ply',
+                v: 63,
+                pivot: { position: { x: 2.61406471034451, y: -6.6264504733083, z: -2.2538336323631665 } },
+                initview: {
+                    pose: {
+                        rotation: {
+                            x: 4.523642963569587e-17,
+                            y: -0.7387669598645297,
+                            z: 0.08616931418474731,
+                            w: -0.668429673417818,
+                        },
+                        position: { x: -0.16088413838397164, y: 15.39369969443041, z: -2.150363516222843 },
+                        distanceScale: 1,
+                        focus: { x: -2.614064710344509, y: 6.6264504733083, z: -2.2538336323631665 },
+                        pitch: 0,
+                        yaw: 0,
+                    },
+                },
+                orientation: {
+                    pose: {
+                        rotation: {
+                            x: 4.523642963569587e-17,
+                            y: -0.7387669598645297,
+                            z: 0.08616931418474731,
+                            w: -0.668429673417818,
+                        },
+                        position: { x: -0.16088413838397164, y: 15.39369969443041, z: -2.150363516222843 },
+                    },
+                },
+                setupStep: 1,
+            },
         }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<script>window.sse = { settings: {"ref":"","model":"cylindrical","contentUrl":"saw.ply","v":52,"spin":{"enabled":true,"continuous":true,"autoStart":true,"speed":5},"messages":[{"id":"1e4c3d6a-ae5a-44b7-9ced-63e3675e5b51","autoPlay":{"time":3000},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-6.762816969807507,"y":-20.257429302465205,"z":-6.282190245411362},"botRight":{"x":-8.165307238023289,"y":-17.883756580941863,"z":-12.515428138587334},"fontSize":16},"focus":{"position":{"x":-6.009744160932065,"y":-15.88866164772288,"z":-5.536089227556976}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-5.949837291395674,"y":-16.567404698500518,"z":-4.867161344955146},"botRight":{"x":-6.088276794174792,"y":-15.20947204562388,"z":-6.200158405168504}},"entityInfo":{"rotation":{"x":-0.36394511785333666,"y":-2.228521118221975e-17,"z":0.931420394446418,"w":5.703305023596855e-17},"position":{"x":1.0089658466126554,"y":0,"z":0.20832070671003589},"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":-0.7449999999998518}}],"setupStep":3} }</script>
-<script src="./viewer.js?v=52"></script>
+    </script>
+    <script src="./viewer.js?v=63"></script>
 </html>
-    

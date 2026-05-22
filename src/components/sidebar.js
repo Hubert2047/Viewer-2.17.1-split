@@ -85,7 +85,9 @@ function makePivotGroup(global, editGroup) {
             onCancel()
         },
     })
-    events.on('inputEvent:reset', () => onCancel())
+    events.on('inputEvent:reset', () => {
+        onCancel()
+    })
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
     let isEditing = false
@@ -149,6 +151,13 @@ function makePivotGroup(global, editGroup) {
         isEditing = false
         renderBtns()
     }
+    const onDelete = () => {
+        editPivotPos = null
+        currrentPivotPos = null
+        setPivotConfigured(false)
+        events.fire('pivot:delete')
+        renderBtns()
+    }
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
@@ -170,18 +179,19 @@ function makePivotGroup(global, editGroup) {
             btnRow.appendChild(btnCancel)
             btnRow.appendChild(btnSave)
         } else {
-            const btnEdit = makeButton({ title: 'Edit', className: 'edit-btn', onClick: () => onEdit(editPivotPos) })
+            const btnEdit = makeButton({
+                title: 'Edit',
+                className: 'edit-btn',
+                onClick: () => {
+                    onEdit(editPivotPos)
+                    events.fire('pivot:edit')
+                },
+            })
             const btnDelete = makeButton({
                 title: 'Delete',
                 icon: ICONS.trash,
                 className: 'delete-btn',
-                onClick: () => {
-                    editPivotPos = null
-                    currrentPivotPos = null
-                    setPivotConfigured(false)
-                    events.fire('pivot:delete')
-                    renderBtns()
-                },
+                onClick: onDelete,
             })
 
             btnRow.appendChild(btnEdit)
@@ -333,9 +343,6 @@ function makeViewerSection(el, global) {
             spinContinuousRow.classList.add('hidden')
             spinOnStartRow.classList.add('hidden')
             speedRow.classList.add('hidden')
-            settings.spin = JSON.parse(JSON.stringify(defaultSettings.spin))
-            spinContinuousToggleEl.setValue(settings.spin.continuous)
-            spinOnStartToggleEl.setValue(settings.spin.autoStart)
         }
         events.fire('spin:enabled', value)
         events.fire('re-render:control-wrap', value)
@@ -1019,6 +1026,7 @@ function makeSidebar(global, dom) {
                 global.settings.setupStep++
                 renderStep()
             }
+            events.fire('next-step')
         },
     })
     header.appendChild(nextBtn)

@@ -1690,10 +1690,6 @@ button {
   gap: 14px;
   width: 100%;
 }
-.orientation-btn > svg {
-  width: 16px;
-  height: 16px;
-}
 .orientation-method-btns > .btn {
   font-size: 12px;
 }
@@ -2429,6 +2425,6 @@ button {
 }
 .spin-input {
   width: max-content;
-  max-width: 64px;
+  max-width: 80px;
   text-align: center;
 }

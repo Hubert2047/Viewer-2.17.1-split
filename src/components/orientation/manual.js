@@ -20,10 +20,10 @@ function makeManualPanel(events) {
     spinSlowLabel.textContent = 'slow'
 
     const spinSpeedSlider = makeSlider({
-        min: 1,
-        max: 10,
+        min: 10,
+        max: 20,
         step: 1,
-        value: 5,
+        value: 15,
         className: 'pitch-slider',
     })
     spinSpeedSlider.style.cssText = 'width:72px;'
@@ -32,18 +32,39 @@ function makeManualPanel(events) {
     spinFastLabel.style.cssText = 'font-size:10px; color:var(--text-muted);'
     spinFastLabel.textContent = 'fast'
 
-    const btnSpin = makeButton({
-        icon: ICONS.spin,
+    const startSpin = makeButton({
+        icon: ICONS.startPlay,
         title: 'Auto Spin 360°',
         className: 'orientation-btn',
-        onClick: () => events.fire('orientation:spin', { speed: parseFloat(spinSpeedSlider.value) || 5 }),
+        onClick: () => {
+            updateSpinState(false)
+            events.fire('orientation:spin', { speed: parseFloat(spinSpeedSlider.value) })
+        },
+    })
+    const stopSpin = makeButton({
+        icon: ICONS.stopPlay,
+        title: 'Auto Spin 360°',
+        className: 'orientation-btn hidden',
+        onClick: () => {
+            updateSpinState(true)
+            events.fire('360spin-stop')
+        },
     })
     spinRight.appendChild(spinSlowLabel)
     spinRight.appendChild(spinSpeedSlider)
     spinRight.appendChild(spinFastLabel)
-    spinRight.appendChild(btnSpin)
+    spinRight.appendChild(startSpin)
+    spinRight.appendChild(stopSpin)
     spinRow.appendChild(spinRight)
-
+    function updateSpinState(spin) {
+        if (spin) {
+            startSpin.classList.remove('hidden')
+            stopSpin.classList.add('hidden')
+        } else {
+            stopSpin.classList.remove('hidden')
+            startSpin.classList.add('hidden')
+        }
+    }
     const yawStepInput = makeInput('number', 5, { step: 1, min: 0, className: 'orientation-step-input' })
     const getYawStep = () => parseFloat(yawStepInput.value) || 5
     // ── Yaw row
@@ -55,14 +76,20 @@ function makeManualPanel(events) {
         title: 'Spin left',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:yaw-step', { deg: -getYawStep() }),
+        onClick: () => {
+            events.fire('orientation:yaw-step', { deg: -getYawStep() })
+            updateSpinState(true)
+        },
     })
     const btnYawRight = makeButton({
         icon: ICONS.yawCW,
         title: 'Spin right',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:yaw-step', { deg: getYawStep() }),
+        onClick: () => {
+            events.fire('orientation:yaw-step', { deg: getYawStep() })
+            updateSpinState(true)
+        },
     })
     yawRight.appendChild(btnYawLeft)
     yawRight.appendChild(yawStepInput)
@@ -82,14 +109,20 @@ function makeManualPanel(events) {
         title: 'Move down',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:translate-y', { delta: -getYPosStep() }),
+        onClick: () => {
+            events.fire('orientation:translate-y', { delta: -getYPosStep() })
+            updateSpinState(true)
+        },
     })
     const btnYPosUp = makeButton({
         icon: ICONS.arrowUp,
         title: 'Move up',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:translate-y', { delta: getYPosStep() }),
+        onClick: () => {
+            events.fire('orientation:translate-y', { delta: getYPosStep() })
+            updateSpinState(true)
+        },
     })
 
     yPosRight.appendChild(btnYPosDown)
@@ -135,14 +168,20 @@ function makeManualPanel(events) {
         title: 'Lean Left',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:roll', { deg: -getRollStep() }),
+        onClick: () => {
+            events.fire('orientation:roll', { deg: -getRollStep() })
+            updateSpinState(true)
+        },
     })
     const btnRollCW = makeButton({
         icon: ICONS.rollCW,
         title: 'Lean Right',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:roll', { deg: getRollStep() }),
+        onClick: () => {
+            events.fire('orientation:roll', { deg: getRollStep() })
+            updateSpinState(true)
+        },
     })
     rollRight.appendChild(btnRollCCW)
     rollRight.appendChild(rollStepInput)

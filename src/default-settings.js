@@ -9,8 +9,8 @@ const defaultSettings = Object.freeze({
     model: '',
     spin: {
         enabled: false,
-        continuous: false,
-        autoStart: false,
+        continuous: true,
+        autoStart: true,
         speed: 5,
     },
     lockZoomIn: Object.freeze({ value: 11, locked: false }),

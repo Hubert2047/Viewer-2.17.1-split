@@ -142,7 +142,22 @@ class Messages {
         )
     }
 
-    refreshAudio() {
+    refreshAudio(rebuild) {
+        if (rebuild) {
+            if (this._audio) {
+                this._audio.pause()
+                this._audio = null
+            }
+            if (this._audioBtn) {
+                this._audioBtn.remove()
+                this._audioBtn = null
+            }
+            this._isPlaying = false
+            if (this.data.audio?.fileName && this.data.audio?.show) {
+                this.createAudioBtn()
+            }
+            return
+        }
         if (!this.data.audio || !this.data.audio?.fileName) {
             if (this._audio) {
                 this._audio.pause()

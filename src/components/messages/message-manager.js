@@ -189,11 +189,14 @@ class MessagesManager {
             this.showMessageNavigation(!this.global.isShowMessageNavigation)
         })
         this.events.on('ortery:rotate', () => this.hideAllMessages())
-        this.events.on('inputEvent:spin-start', () => {
+        this.events.on('360spin-start', () => {
             this.stopAutoPlay()
             this.hideAllMessages()
         })
-        this.events.on('ortery:reset', () => this.hideAllMessages())
+        this.events.on('ortery:reset', () => {
+            this.stopAutoPlay()
+            this.hideAllMessages()
+        })
         this.events.on('ortery:interaction', () => this.stopAutoPlay())
     }
     hideAllMessages() {
@@ -292,10 +295,11 @@ class MessagesManager {
         }
         this.events.fire('sidebar:active', 'message')
         this.activeMessage?.hide()
+        message.refreshAudio(true)
         const isSamePose = this.isSamePose(message)
         if (isSamePose && message.id === this.activeMessage?.id) {
             message.show()
-            message.update()
+            message.update()    
             return true
         }
         if (isSamePose) {

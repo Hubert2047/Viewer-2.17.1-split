@@ -23,7 +23,7 @@ function makeOrientationGroup(global, editGroup) {
         setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
     }
     events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))
-
+    events.on('next-step', () => onCancelOrientation())
     const { panel: manualPanel } = makeManualPanel(events)
     const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
 

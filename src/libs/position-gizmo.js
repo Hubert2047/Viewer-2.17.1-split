@@ -84,7 +84,7 @@ class PointGizmo {
             svg.appendChild(line)
             svg.appendChild(arrow)
             svg.appendChild(hit)
-            svg.appendChild(text)
+            // svg.appendChild(text)
 
             hit.addEventListener('pointerenter', () => {
                 if (this._dragging) return
