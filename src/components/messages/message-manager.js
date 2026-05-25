@@ -36,7 +36,7 @@ class MessagesManager {
                 const message = this.messages.find((message) => message.id === id)
                 if (message) {
                     const data = this.settings.messages.find((h) => h.id === message.id)
-                    this.events.fire('message:editor-selected', data)
+                    this.events.fire('message:editor-selected', JSON.parse(JSON.stringify(data)))
                 }
             },
         })
@@ -58,7 +58,7 @@ class MessagesManager {
         return new Messages({
             camera: this.camera,
             dom: this.dom,
-            data,
+            data: JSON.parse(JSON.stringify(data)),
             button: this.createMessageActiveBtn(data),
             editable: this.editable,
             events: this.events,
@@ -70,7 +70,7 @@ class MessagesManager {
         this.events.on('message:add', ({ position }) => {
             const entityInfo = this.global.cameraManager.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
-            this.settings.messages.push(data)
+            this.settings.messages.push(JSON.parse(JSON.stringify(data)))
             if (this.messages.length === 1) {
                 this.events.fire('re-render:control-wrap')
                 this.events.fire('message:rebuild-info')
@@ -83,6 +83,7 @@ class MessagesManager {
             this.stopAutoPlay()
             if (this.activeData && selectedData === null) this.resetActiveMessageBtnName()
             this.activeData = selectedData
+            if (this.editable) this.updateUIPanel()
             if (selectedData === null) {
                 this.activeMessage?.hide()
                 this.activeMessage = null
@@ -94,10 +95,9 @@ class MessagesManager {
                     this.setActive(activeMessage, NORMAL_FADE_TIME)
                 }
             }
-            if (this.editable) this.updateUIPanel()
         })
         this.events.on('message:editor-changed', ({ data, refreshUIPanel = false }) => {
-            if (data.dot.size !== this.activeData.dot.size) {
+            if (data.dot.size !== this.activeData?.dot.size) {
                 const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(data.focus.position)
                 const { topLeft, botRight } = this.getDotBounder(
                     focusWorldPos,
@@ -107,12 +107,16 @@ class MessagesManager {
                 )
                 data.dot.topLeft = topLeft
                 data.dot.botRight = botRight
+            } else if (this.activeData) {
+                data.dot.topLeft = this.activeData.dot.topLeft
+                data.dot.botRight = this.activeData.dot.botRight
             }
             this.activeData = data
             this.updateMessageData()
             if (refreshUIPanel) this.updateUIPanel()
         })
         this.events.on('message:drag-changed', (data) => {
+            if (!this.activeData) return
             this.activeData = data
             this.events.fire('message:update-ui-data', data)
         })
@@ -145,11 +149,22 @@ class MessagesManager {
         this.events.on('message:apply', (applyData) => {
             this.settings.messages = this.settings.messages.map((d) => {
                 if (d.id === applyData.id) {
+                    const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(
+                        applyData.focus.position,
+                    )
+                    const { topLeft, botRight } = this.getDotBounder(
+                        focusWorldPos,
+                        invWorldMatrix,
+                        focusScreenPos,
+                        applyData.dot.size,
+                    )
+                    applyData.dot.topLeft = topLeft
+                    applyData.dot.botRight = botRight
                     const newData = {
-                        ...applyData,
+                        ...JSON.parse(JSON.stringify(applyData)),
                         entityInfo: this.global.cameraManager.controllers.ortery.getEntityInfo(),
                     }
-                    if (this.activeMessage) this.activeMessage.data = newData
+                    if (this.activeMessage) this.activeMessage.data = JSON.parse(JSON.stringify(newData))
                     return newData
                 }
                 return d
@@ -295,11 +310,20 @@ class MessagesManager {
         }
         this.events.fire('sidebar:active', 'message')
         this.activeMessage?.hide()
-        message.refreshAudio(true)
+        message.resetTime()
         const isSamePose = this.isSamePose(message)
+        if (isMobile && this.dom.messageContainer) {
+            const btn = message.button.el
+            const container = this.dom.messageContainer
+            const btnLeft = btn.offsetLeft
+            const btnWidth = btn.offsetWidth
+            const containerWidth = container.offsetWidth
+            const scrollTarget = btnLeft - containerWidth / 2 + btnWidth / 2
+            container.scrollTo({ left: scrollTarget, behavior: 'smooth' })
+        }
         if (isSamePose && message.id === this.activeMessage?.id) {
             message.show()
-            message.update()    
+            message.update()
             return true
         }
         if (isSamePose) {

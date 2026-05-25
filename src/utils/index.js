@@ -414,8 +414,8 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
     const showStopPlayMessages = global.isAutoPlayMessages
     const hideMessages = global.isShowMessageNavigation 
     const buttons = [
-        ['stopMessage', 'stopPlay', 'Stop Play Messages', showStopPlayMessages, 'stop-auto'],
-        ['startMessage', 'startPlay', 'Auto Play Messages', !showStopPlayMessages, 'start-auto' ],
+        ['stopMessage', 'stopPlay', 'Story Stop Play', showStopPlayMessages, 'stop-auto'],
+        ['startMessage', 'startPlay', 'Story Auto Play', !showStopPlayMessages, 'start-auto' ],
         ['hideMessageButton', 'hideMessageButton', 'Hide Message Navigation',hideMessages , 'hide-message-navigation'],
         ['showMessageButton', 'showMessageButton', 'Show Message Navigation', !hideMessages, 'show-message-navigation'],
     ]

@@ -442,8 +442,17 @@ function makeInput(type, value, opts = {}) {
     if (opts.disabled) input.disabled = true
     if (opts.onChange)
         input.addEventListener('input', (e) => {
+            let value = parseFloat(input.value)
+            if (opts.min !== undefined && input.value < opts.min) {
+                value = opts.min
+                input.value = value
+            }
+            if (opts.max !==undefined && input.value > opts.max) {
+                value = opts.max
+                input.value = value
+            }
             e.stopPropagation()
-            opts.onChange(input.value)
+            opts.onChange(value)
         })
     return input
 }

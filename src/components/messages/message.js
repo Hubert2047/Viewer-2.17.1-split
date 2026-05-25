@@ -46,6 +46,9 @@ class Messages {
         this.dot.classList.add('message-dot')
         this.dot.style.cssText = 'position:absolute; border-radius:50%; cursor:grab;'
         this.dom.ui.appendChild(this.dot)
+        this.dot.addEventListener('contextmenu', (e) => {
+            e.preventDefault()
+        })
     }
 
     createLine() {
@@ -66,9 +69,18 @@ class Messages {
         this.textContentSpan = this.div.querySelector('span')
         this.div.style.color = this.data.textColor
         this.dom.ui.appendChild(this.div)
+        this._audioBtnWrapper = document.createElement('div')
+        this._audioBtnWrapper.style.cssText = 'position:absolute;display:none; pointer-events:auto; z-index:10;'
+        this.dom.ui.appendChild(this._audioBtnWrapper)
         this.createAudioBtn()
+        this.div.addEventListener('contextmenu', (e) => {
+            e.preventDefault()
+        })
+        this._audioBtnWrapper.addEventListener('contextmenu', (e) => {
+            e.preventDefault()
+        })
     }
-    createAudioBtn() {
+    createAudioBtn(checkAutoPlay = false) {
         if (this._audioBtn) this._audioBtn.remove()
         if (!this.data.audio?.fileName) return
         if (!this.data.audio?.show) return
@@ -127,7 +139,7 @@ class Messages {
                 })
 
                 this._audioBtn = btn
-                this.div.appendChild(btn)
+                this._audioBtnWrapper.appendChild(btn)
             },
             { once: true },
         )
@@ -140,6 +152,11 @@ class Messages {
             },
             { once: true },
         )
+    }
+    resetTime() {
+        if (!this._audio) return
+        this._audio.currentTime = 0
+        this.updateProgress()
     }
 
     refreshAudio(rebuild) {
@@ -154,7 +171,7 @@ class Messages {
             }
             this._isPlaying = false
             if (this.data.audio?.fileName && this.data.audio?.show) {
-                this.createAudioBtn()
+                this.createAudioBtn(true)
             }
             return
         }
@@ -215,6 +232,15 @@ class Messages {
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
         this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
+        if (this._audioBtnWrapper && this.div) {
+            const divLeft = parseFloat(this.div.style.left) || 0
+            const divTop = parseFloat(this.div.style.top) || 0
+            const divWidth = this.div.offsetWidth
+            const btnSize = this._audioBtn?.offsetWidth || 36
+
+            this._audioBtnWrapper.style.left = divLeft + divWidth + 'px'
+            this._audioBtnWrapper.style.top = divTop - 4 + 'px'
+        }
     }
 
     updateDot(worldMatrix, focusScreenPos) {
@@ -315,6 +341,9 @@ class Messages {
             this.div.style.fontSize = fontSize + 'px'
         }
         if (this.editable && contentChanged) {
+            this._userResized = false
+            this._lockedWidth = null
+            this._lockedHeight = null
             this.autoResizeTextDiv()
 
             const { topLeft, botRight, originWidth, originHeight } = this.getLocalContentPosByDiv()
@@ -341,6 +370,7 @@ class Messages {
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'none'
                 this.dot.style.display = 'none'
+                if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'none'
                 delete this.initialDx
                 delete this.initialDy
                 delete this.div.hasAdjusted
@@ -350,6 +380,7 @@ class Messages {
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
+                if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'block'
             }
 
             let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.messageMaxScale))
@@ -360,14 +391,17 @@ class Messages {
             this.div.style.visibility = 'hidden'
             this.div.style.display = 'flex'
 
-            const contentWidth = this.div.scrollWidth
-            const contentHeight = this.div.offsetHeight
-
-            const minContentWidth = contentWidth + 16
-            const minContentHeight = contentHeight + 8
-
-            scaleWidth = Math.max(scaleWidth, minContentWidth)
-            scaleHeight = Math.max(scaleHeight, minContentHeight)
+            if (this._userResized && this._lockedWidth) {
+                scaleWidth = this._lockedWidth
+                scaleHeight = this._lockedHeight
+            } else {
+                const contentWidth = this.div.scrollWidth
+                const contentHeight = this.div.offsetHeight
+                const minContentWidth = contentWidth + 16
+                const minContentHeight = contentHeight + 8
+                scaleWidth = Math.max(scaleWidth, minContentWidth)
+                scaleHeight = Math.max(scaleHeight, minContentHeight)
+            }
 
             this.div.style.visibility = 'hidden'
 
@@ -594,6 +628,9 @@ class Messages {
             this.dragging = false
             this.resizing = false
             this.resizeEdge = null
+            this._userResized = true
+            this._lockedWidth = this.div.offsetWidth
+            this._lockedHeight = this.div.offsetHeight
             this.div.releasePointerCapture(e.pointerId)
             this.div.style.cursor = 'default'
             const { topLeft, botRight, originWidth, originHeight } = this.getLocalContentPosByDiv()
@@ -643,6 +680,7 @@ class Messages {
         this.div.style.display = 'flex'
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
+        if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'block'
         if (this.button) this.button.setActiveColor()
         if (this.data.audio?.autoPlay && this._audio && !this._isPlaying) {
             this._audio.play().catch()
@@ -684,6 +722,10 @@ class Messages {
         this.div.style.display = 'none'
         this.lineSvg.style.display = 'none'
         this.dot.style.display = 'none'
+        this._userResized = false
+        this._lockedWidth = null
+        this._lockedHeight = null
+        if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'none'
         if (this.button) this.button.setUnactiveColor()
         if (this._audio && this._isPlaying) {
             this.pauseAudio()
@@ -694,6 +736,7 @@ class Messages {
         this.dot.remove()
         this.lineSvg.remove()
         this.button.remove()
+        this._audioBtnWrapper?.remove()
     }
     _iconMuted() {
         return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">

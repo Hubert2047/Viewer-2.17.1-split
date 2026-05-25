@@ -352,16 +352,12 @@ function makeViewerSection(el, global) {
     const speedRow = makeRow({ title: 'Speed', show: settings.spin.enabled, className: 'spin-speed' })
     const speedInput = makeInput('number', settings.spin.speed, {
         min: 1,
+        max: 999,
         name: 'slider-number',
         className: 'spin-input',
         onChange: (v) => {
-            let value = parseFloat(v)
-            if (isNaN(value) || value <= 0) {
-                value = 1
-                speedInput.value = value
-            }
-            settings.spin.speed = value
-            events.fire('spin-speed', value)
+            settings.spin.speed = v
+            events.fire('spin-speed', v)
         },
     })
     speedRow.appendChild(speedInput)
@@ -999,6 +995,7 @@ function makeSidebar(global, dom) {
 
     const headerTitle = document.createElement('span')
     headerTitle.textContent = 'Settings'
+    headerTitle.classList.add('header-title')
     headerTitle.style.flex = '1'
     header.appendChild(headerTitle)
 

@@ -307,14 +307,14 @@ class MessageEditorUI {
         textGroup.appendChild(labelField)
 
         const colorGrid = this.makeGrid(2)
-        const colorField = this.makeField('Color')
+        const colorField = this.makeField('Text Color')
         colorField.appendChild(
             makeColorSwatch(this.activeMessageData.text.color, (v) => {
                 this.activeMessageData.text.color = v
                 this.applyDraft()
             }),
         )
-        const bgField = this.makeField('Background')
+        const bgField = this.makeField('Background Color')
         bgField.appendChild(
             makeColorAlpha({
                 color: this.activeMessageData.text.background,
@@ -363,7 +363,7 @@ class MessageEditorUI {
         textGroup.appendChild(fontGrid)
         panel.appendChild(textGroup)
 
-        const messageGroup = makeSectionGroup('Messages')
+        const messageGroup = makeSectionGroup('Hotspot')
         const styleField = this.makeField('Style')
         const styleRow = makeSegmentRow({
             options: [
@@ -384,8 +384,8 @@ class MessageEditorUI {
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
             makeInput('number', this.activeMessageData.dot.size, {
-                min: 10,
-                max: 80,
+                min: 1,
+                max: 999,
                 name: 'dot-size',
                 onChange: (v) => {
                     this.activeMessageData.dot.size = parseInt(v)
@@ -397,7 +397,7 @@ class MessageEditorUI {
         strokeField.appendChild(
             makeInput('number', this.activeMessageData.dot.stroke, {
                 min: 0,
-                max: 10,
+                max: 99,
                 step: 0.5,
                 name: 'stroke-width',
                 onChange: (v) => {
@@ -426,7 +426,7 @@ class MessageEditorUI {
         autoplayGrid.classList.add('message-autoplay')
 
         const autoPlayGroup = makeSectionGroup('Auto Play')
-        const timeField = this.makeField('Time (ms)')
+        const timeField = this.makeField('Elapsed Time (ms)')
         timeField.appendChild(
             makeInput('number', this.activeMessageData.autoPlay.time, {
                 min: 0,
@@ -552,7 +552,7 @@ class MessageEditorUI {
         audioGroup.appendChild(audioFileFieldGroup)
 
         const audioGrid = this.makeGrid(2)
-        const iconColorField = this.makeField('Color')
+        const iconColorField = this.makeField('Icon Color')
         iconColorField.appendChild(
             makeColorSwatch(this.activeMessageData.audio?.iconColor || '#ffffff', (v) => {
                 this.activeMessageData.audio.iconColor = v
@@ -560,7 +560,7 @@ class MessageEditorUI {
             }),
         )
 
-        const iconBgField = this.makeField('Background', 'background-color')
+        const iconBgField = this.makeField('Icon Background Color', 'background-color')
         iconBgField.appendChild(
             makeColorAlpha({
                 color: this.activeMessageData.audio?.bgColor || '#000000',

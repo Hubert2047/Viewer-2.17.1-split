@@ -69,7 +69,22 @@ const initUI = async (global) => {
         'wheel',
         (event) => {
             event.preventDefault()
-            canvas.dispatchEvent(new WheelEvent(event.type, event))
+            canvas.dispatchEvent(
+                new WheelEvent(event.type, {
+                    deltaX: event.deltaX,
+                    deltaY: event.deltaY,
+                    deltaZ: event.deltaZ,
+                    deltaMode: event.deltaMode,
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    ctrlKey: event.ctrlKey,
+                    shiftKey: event.shiftKey,
+                    altKey: event.altKey,
+                    metaKey: event.metaKey,
+                    bubbles: true,
+                    cancelable: true,
+                }),
+            )
         },
         { passive: false },
     )

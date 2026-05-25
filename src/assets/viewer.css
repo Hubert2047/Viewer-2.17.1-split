@@ -19,7 +19,13 @@
 }
 body {
   overflow: hidden;
-  font-family: "Arial", sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   -moz-user-select: none;
   user-select: none;
   -webkit-user-select: none;
@@ -142,6 +148,7 @@ button {
   display: flex;
   gap: 12px;
 }
+
 #controlsWrap.faded-in {
   visibility: visible;
   opacity: 1;
@@ -535,7 +542,6 @@ button {
   cursor: pointer;
   font-size: 14px;
   gap: 4px;
-  font-weight: 500;
   color: #111;
   transition: background 0.12s;
   user-select: none;
@@ -548,6 +554,7 @@ button {
 .section-title {
   height: 20px;
   flex: 1;
+  font-size: 16px;
 }
 .section-icon-prefix {
   height: 20px;
@@ -678,8 +685,7 @@ button {
   padding: 8px 12px;
 }
 .message-header-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
   color: var(--text-main);
   max-width: 100%;
   flex: 1;
@@ -765,12 +771,12 @@ button {
   width: 100%;
 }
 .message-count {
-  font-size: 11px;
+  font-size: 12px;
   color: rgb(140, 159, 180);
   margin-top: 2px;
 }
 .message-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--text-main);
 }
@@ -800,7 +806,7 @@ button {
   -o-border-radius: 8px;
 }
 .section-group-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: rgb(140, 159, 180);
   text-transform: uppercase;
@@ -1355,7 +1361,7 @@ button {
   transition: background 0.15s;
 }
 .link-btn {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--primary);
 }
 .export-btn:hover {
@@ -2137,6 +2143,7 @@ button {
   align-items: center;
   gap: 8px;
   padding-right: 12px;
+  font-size: 16px;
 }
 
 .step-badge {
@@ -2180,7 +2187,7 @@ button {
   justify-content: center;
   padding: 2px 10px;
   height: 26px;
-  font-size: 11px;
+  font-size: 12px;
   border-radius: 6px;
   border: 0.5px solid rgba(0, 0, 0, 0.1);
   color: rgb(140, 159, 180);
@@ -2193,10 +2200,6 @@ button {
   font-weight: 500;
   flex-shrink: 0;
   width: auto;
-  -webkit-transition:;
-  -moz-transition:;
-  -ms-transition:;
-  -o-transition:;
 }
 
 .reset-setup-btn:hover {
@@ -2217,13 +2220,6 @@ button {
   height: 26px;
   flex-shrink: 0;
 }
-.reset-setup-btn {
-  font-size: 11px;
-  padding: 2px 10px;
-  height: 24px;
-  flex-shrink: 0;
-  width: auto;
-}
 .step-content-enter {
   animation: stepFadeIn 0.6s ease forwards;
   -webkit-animation: stepFadeIn 0.6s ease forwards;
@@ -2240,7 +2236,7 @@ button {
   }
 }
 .export-hint {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   line-height: 1.5;
   margin: 2px 0;
@@ -2431,4 +2427,28 @@ button {
   width: max-content;
   max-width: 64px;
   text-align: center;
+}
+@media (max-width: 768px) {
+  #controlsWrap {
+    flex-direction: column;
+  }
+  #messageContainer {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+  #messageContainer * {
+    touch-action: pan-x;
+  }
+  .active-message-btn {
+    font-size: 14px;
+    border: 1px solid var(--border);
+  }
 }
