@@ -109,7 +109,6 @@ class OtherController {
 
         this.events.on('pivot:positionsynced', (position) => this.syncPivotPoint(position))
         this.events.on('pivot:edit', () => (this.isEditPivot = true))
-        this.events.on('pivot:cancel', () => (this.isEditPivot = false))
         this.events.on('pivot:delete', () => {
             this.settings.pivot.position = null
             this.applyAabbPivot()
@@ -354,6 +353,7 @@ class OtherController {
             },
             onTransitionFinished: () => {
                 this.isResetting = false
+                this.isEditPivot = false
                 this.model = this.originModel
                 this.updateModelRotation()
                 if (this.settings.pivot.position) {
