@@ -198,7 +198,7 @@ async function exportHtml(name, settings) {
         base64: strippedSettings.base64,
     }
 
-    const injectedScript = `<script>window.sse = { settings: ${JSON.stringify(orderedSettings)} }<\/script>`
+    const injectedScript = `<script>window.sse = { "settings": ${JSON.stringify(orderedSettings)} }<\/script>`
     const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
     const blob = new Blob([html], { type: 'text/html' })
