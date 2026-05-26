@@ -354,8 +354,8 @@ function makeControlBotGroup(global, tooltip, dom) {
     const hasSpin = settings.spin.enabled
     const showStartSpin = global.isSpin360 === undefined || global.isSpin360 === false
     const buttons = [
-        ['startSpin', 'startPlay', 'Start Spin', hasSpin, showStartSpin, '360spin-start'],
-        ['stopSpin', 'stopPlay', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
+        ['startSpin', 'startSpin', 'Start Spin', hasSpin, showStartSpin, '360spin-start'],
+        ['stopSpin', 'stopSpin', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
         // ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
@@ -425,6 +425,7 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
             icon: ICONS[icon],
             className: 'control-btn',
             onClick: (e) => {
+                tooltip.hide() 
                 events.fire(`message:${eventname}`)
             },
         })

@@ -25075,6 +25075,13 @@ class Tooltip {
                 this.unregister(target)
             }
         }
+        this.hide = () => {
+    if (timer >= 0) {
+        clearTimeout(timer)
+        timer = -1
+    }
+    style.display = 'none'
+}
     }
 }
 // Initialize the annotation navigator for stepping between annotations
