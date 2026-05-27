@@ -2462,3 +2462,28 @@ button {
     justify-content: flex-end;
   }
 }
+#loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  flex-direction: column;
+  gap: 15px;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: all;
+}
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #f95744;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+}

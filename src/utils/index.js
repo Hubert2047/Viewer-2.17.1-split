@@ -252,6 +252,9 @@ function getHtmlTemplate(version) {
             <div id="fileSizeInfo"></div>
             <div id="loadingText"></div>
             <div id="loadingBar"></div>
+        </div>
+        <div id="loading-overlay">
+                <div class="spinner"></div>
         </div>            
     </div>
     <div id="tooltip"></div>
