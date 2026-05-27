@@ -86,6 +86,7 @@ class OtherController {
             this.isSpin360Loop = this.settings.spin.continuous
             this.spinSpeed = this.settings.spin.speed
             this.spin360({ model: this.model })
+            this.targetPose = null
         })
         this.events.on('360spin-stop', () => {
             this.stopSpin360()
