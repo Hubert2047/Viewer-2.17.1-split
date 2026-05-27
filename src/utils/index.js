@@ -412,11 +412,11 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
     const showStopPlayMessages = global.isAutoPlayMessages
-    const hideMessages = global.isShowMessageNavigation 
+    const hideMessages = global.isShowMessageNavigation
     const buttons = [
         ['stopMessage', 'stopPlay', 'Story Stop Play', showStopPlayMessages, 'stop-auto'],
-        ['startMessage', 'startPlay', 'Story Auto Play', !showStopPlayMessages, 'start-auto' ],
-        ['hideMessageButton', 'hideMessageButton', 'Hide Message Navigation',hideMessages , 'hide-message-navigation'],
+        ['startMessage', 'startPlay', 'Story Auto Play', !showStopPlayMessages, 'start-auto'],
+        ['hideMessageButton', 'hideMessageButton', 'Hide Message Navigation', hideMessages, 'hide-message-navigation'],
         ['showMessageButton', 'showMessageButton', 'Show Message Navigation', !hideMessages, 'show-message-navigation'],
     ]
     buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
@@ -425,7 +425,7 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
             icon: ICONS[icon],
             className: 'control-btn',
             onClick: (e) => {
-                tooltip.hide() 
+                tooltip.hide()
                 events.fire(`message:${eventname}`)
             },
         })
@@ -462,7 +462,13 @@ function makeControlsWrap(global, tooltip, dom, events) {
     messageContainer.id = 'messageContainer'
     dom.messageContainer = messageContainer
     wrap.appendChild(messageContainer)
+    const canvas = global.app.graphicsDevice.canvas
 
+    wrap.addEventListener('pointerdown', (e) => {
+        if (e.target === wrap || e.target === container || e.target === messageContainer) {
+            canvas.dispatchEvent(new PointerEvent('pointerdown', e))
+        }
+    })
     return wrap
 }
 function makeGroupWrapper(title) {

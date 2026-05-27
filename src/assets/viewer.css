@@ -142,10 +142,11 @@ button {
 /* controlsWrap */
 #controlsWrap {
   position: absolute;
-  left: max(16px, env(safe-area-inset-left));
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
+  width: max-content;
+  height: 0px;
   gap: 12px;
 }
 
@@ -2431,6 +2432,10 @@ button {
 @media (max-width: 768px) {
   #controlsWrap {
     flex-direction: column;
+    height: auto;
+    width: auto;
+    align-items: end;
+    left: max(16px, env(safe-area-inset-left));
   }
   #messageContainer {
     display: flex;
@@ -2449,6 +2454,11 @@ button {
   }
   .active-message-btn {
     font-size: 14px;
+    padding: 6px;
     border: 1px solid var(--border);
+  }
+  #buttonsContainer {
+    width: max-content;
+    justify-content: flex-end;
   }
 }
