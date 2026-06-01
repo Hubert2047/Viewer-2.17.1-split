@@ -194,10 +194,12 @@ function makeColorAlpha({ color, alpha, onChangeColor, onChangeAlpha, disabled =
 
     return block
 }
-function makeLink({ text, href = '#', className = 'export-link-btn', onClick } = {}) {
+function makeLink({ text, href = '#', className = 'export-link-btn', variant = 'primary', onClick } = {}) {
     const el = document.createElement('a')
     el.classList.add('link-btn')
     if (className) el.classList.add(className)
+    if (variant === 'primary') el.classList.add('primary')
+    if (variant === 'secondary') el.classList.add('secondary')
     el.textContent = text
     el.href = href
     if (onClick) {
@@ -447,7 +449,7 @@ function makeInput(type, value, opts = {}) {
                 value = opts.min
                 input.value = value
             }
-            if (opts.max !==undefined && input.value > opts.max) {
+            if (opts.max !== undefined && input.value > opts.max) {
                 value = opts.max
                 input.value = value
             }
@@ -470,13 +472,16 @@ function makeSelect(options, value, onChange, opts = {}) {
     select.addEventListener('change', () => onChange(select.value))
     return select
 }
-function makeTabs({ tabs, width = 100, height = 100, onTabChange }) {
+function makeTabs({ tabs, width = 100, height = 100, className, onTabChange }) {
     const container = document.createElement('div')
     container.className = 'tab-container'
     container.style.cssText = `width: ${width}px; height : ${height}px`
 
     const header = document.createElement('div')
     header.className = 'tab-header'
+    if (className) {
+        header.classList.add(...className.trim().split(/\s+/))
+    }
     container.setActiveTab = (index) => render(index)
     const content = document.createElement('div')
     content.className = 'tab-content'

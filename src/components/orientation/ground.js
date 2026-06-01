@@ -8,7 +8,7 @@ function makeGroundPanel(events, global) {
     const MAX_POINTS = 3
 
     const hint = document.createElement('div')
-    hint.style.cssText = 'font-size:13px; color:var(--text-main); height:28px;'
+    hint.style.cssText = 'font-size:13px; color:var(--text-main);'
 
     const pickRow = makeRow({ title: 'Set ground plane' })
 
@@ -97,7 +97,7 @@ function makeGroundPanel(events, global) {
         const remaining = MAX_POINTS - pickedPoints.length
         hint.innerHTML =
             remaining > 0
-                ? `Click <span class="highlight">${remaining}</span> point${remaining > 1 ? 's' : ''} on the <span class="highlight">ground surface</span> to auto-align the model.`
+                ? `Click <span class="highlight">${remaining}</span> point${remaining > 1 ? 's' : ''} on the bottom surface of the model to generate a reference plane for alignment. You can verify it against the ground and adjust it manually if needed.`
                 : `Click <span class="highlight">Apply</span> to auto-align the model, or click <span class="highlight cancel">✕</span> to cancel.`
     }
 

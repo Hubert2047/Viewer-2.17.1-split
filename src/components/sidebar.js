@@ -932,11 +932,13 @@ function makeExportSection(el, global) {
     }
     let tabs = null
     const helperBtn = makeLink({
+        variant: 'secondary',
         text: 'Export Location Change Helper',
         onClick: (e) => {
             e.preventDefault()
             if (!tabs) {
                 tabs = makeTabs({
+                    className: 'helper-tabs',
                     tabs: [
                         {
                             label: 'Chrome',

@@ -52,7 +52,8 @@ class MessagesManager {
             this.messages.push(this.createMessage(h))
         })
         this.updateUIPanel()
-        this.events.fire('message:rebuild-info')
+        this.events.fire('info-panel:rebuild')
+        this.events.fire('re-render:control-wrap')
     }
     createMessage(data) {
         return new Messages({
@@ -71,9 +72,9 @@ class MessagesManager {
             const entityInfo = this.global.cameraManager.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
             this.settings.messages.push(JSON.parse(JSON.stringify(data)))
-            if (this.messages.length === 1) {
+            if (this.settings.messages.length === 1) {
                 this.events.fire('re-render:control-wrap')
-                this.events.fire('message:rebuild-info')
+                this.events.fire('info-panel:rebuild')
             }
             this.messages.push(this.createMessage(data))
             this.events.fire('message:editor-selected', data)
@@ -140,9 +141,9 @@ class MessagesManager {
             this.settings.messages.splice(idx, 1)
             this.updateUIPanel()
             this.events.fire('message:editing', false)
-            if (this.messages.length === 0) {
-                this.dom?.messageActionGroup.classList.add('hidden')
-                this.events.fire('message:rebuild-info')
+            if (this.settings.messages.length === 0) {
+                this.events.fire('info-panel:rebuild')
+                this.events.fire('re-render:control-wrap')
             }
         })
 
@@ -281,11 +282,14 @@ class MessagesManager {
         const controller = this.global.cameraManager.controllers.ortery
         if (!controller) return false
         const { position: p, rotation: r, focus: f, distanceScale: d } = message.data.entityInfo
+        const isCylindrical = controller.originModel === 'cylindrical'
+        const actualDis = isCylindrical ? controller.getActualFov(d) : controller.getActualDistance(d)
+        const currentDis = isCylindrical ? controller.fov : controller.distance
         return (
             isSameVec3(p, modelEntity.localPosition) &&
             isSameQuat(r, modelEntity.localRotation) &&
             isSameVec3(f, controller.focus) &&
-            isSameFloat(controller.getActualDistance(d), controller.distance)
+            isSameFloat(actualDis, currentDis)
         )
     }
     editorCancelled() {

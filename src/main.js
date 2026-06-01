@@ -1169,6 +1169,7 @@ class CameraManager {
             if (state.cameraMode === 'anim') {
                 state.animationTime = this.controllers.anim.animState.cursor.value
             }
+            this.camera.rot = target.rot
         }
         events.on('inputEvent:reset', () => {
             this.controllers.ortery.reset()
@@ -3093,7 +3094,7 @@ class Viewer {
 
             events.on('setup-reset', () => hideDimensions())
 
-            applyCamera(this.cameraManager.camera)
+            if (global.settings.model !== 'cylindrical') applyCamera(this.cameraManager.camera)
             if (collider) {
                 this.walkCursor = new WalkCursor(app, camera, collider, events, state)
             }
@@ -3568,6 +3569,7 @@ const config = {
     contentUrl: settings.contentUrl,
     contents: settings.base64 ? base64ToBlobWithProgress(settings.base64) : createProgressFetch(settings.contentUrl),
     noui: url.searchParams.has('noui'),
+    test: url.searchParams.has('test'),
     noanim: true,
     nofx: url.searchParams.has('nofx'),
     hpr: url.searchParams.has('hpr') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('hpr')) : undefined,

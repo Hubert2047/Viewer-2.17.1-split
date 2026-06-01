@@ -130,31 +130,31 @@ function makeManualPanel(events) {
     yPosRight.appendChild(btnYPosUp)
     yPosRow.appendChild(yPosRight)
 
-    // // ── Pitch ──
-    // const pitchStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
-    // const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
+    // ── Pitch ──
+    const pitchStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
+    const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
 
-    // const pitchRow = makeRow('Tilt Up / Down')
-    // const pitchRight = document.createElement('div')
-    // pitchRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
-    // const btnPitchUp = makeButton({
-    //     icon: ICONS.arrowUp,
-    //     title: 'Tilt up',
-    //     className: 'orientation-btn',
-    //     onHold: true,
-    //     onClick: () => events.fire('orientation:pitch-step', { deg: -getPitchStep() }),
-    // })
-    // const btnPitchDown = makeButton({
-    //     icon: ICONS.arrowDown,
-    //     title: 'Tilt down',
-    //     onHold: true,
-    //     className: 'orientation-btn',
-    //     onClick: () => events.fire('orientation:pitch-step', { deg: getPitchStep() }),
-    // })
-    // pitchRight.appendChild(btnPitchDown)
-    // pitchRight.appendChild(pitchStepInput)
-    // pitchRight.appendChild(btnPitchUp)
-    // pitchRow.appendChild(pitchRight)
+    const pitchRow = makeRow({ title: 'Tilt Up / Down' })
+    const pitchRight = document.createElement('div')
+    pitchRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
+    const btnPitchUp = makeButton({
+        icon: ICONS.arrowUp,
+        title: 'Tilt up',
+        className: 'orientation-btn',
+        onHold: true,
+        onClick: () => events.fire('orientation:pitch-step', { deg: -getPitchStep() }),
+    })
+    const btnPitchDown = makeButton({
+        icon: ICONS.arrowDown,
+        title: 'Tilt down',
+        onHold: true,
+        className: 'orientation-btn',
+        onClick: () => events.fire('orientation:pitch-step', { deg: getPitchStep() }),
+    })
+    pitchRight.appendChild(btnPitchDown)
+    pitchRight.appendChild(pitchStepInput)
+    pitchRight.appendChild(btnPitchUp)
+    pitchRow.appendChild(pitchRight)
 
     // ── Roll ──
     const rollStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
@@ -192,7 +192,7 @@ function makeManualPanel(events) {
     panel.appendChild(spinRow)
     panel.appendChild(yawRow)
     panel.appendChild(yPosRow)
-    // panel.appendChild(pitchRow)
+    panel.appendChild(pitchRow)
     panel.appendChild(rollRow)
 
     return {

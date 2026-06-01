@@ -26,15 +26,21 @@ class OtherController {
     pointerMoveHistory = []
     isFlick = false
     inertiaFlickThreshold = 0.005
+    index = 0
     isSpin360Loop = false
     spinSpeed = 5
+    fov = 50
+    maxFov = 100
+    minFov = 5
+
     constructor({ global, bbox }) {
         this.global = global
         const { app, events } = global
         this.app = app
         this.bbox = bbox
-        this.camera = global.camera.camera
+        this.cameraEntity = global.camera
         this.events = events
+        this.global = global
         this.settings = global.settings
         this.model = global.settings.model
         this.initialModelRotation = modelEntity.localRotation.clone()
@@ -51,6 +57,11 @@ class OtherController {
             this.basePosition = modelEntity.localPosition.clone()
             this.originEntityRotation = modelEntity.localRotation.clone()
             this.originEntityPos = modelEntity.localPosition.clone()
+        }
+        if (this.model === 'cylindrical') {
+            const f = test_data2[0]
+            this.cylindricalCamPos = new Vec3(-f.x, f.alt, f.y)
+            this.cylindricalTarget = this.bbox.center.clone()
         }
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
@@ -103,7 +114,7 @@ class OtherController {
         this.events.on('viewer:lock-zoom-in', (value) => {
             const lockZoomIn = {
                 locked: value,
-                value: value ? this.getCurrentDistanceScale() : this.minDistance,
+                value: value ? this.getDistanceScale(this.originModel === 'cylindrical') : this.minDistance,
             }
             this.settings.lockZoomIn = lockZoomIn
         })
@@ -114,7 +125,9 @@ class OtherController {
             this.settings.pivot.position = null
             this.applyAabbPivot()
             this.isEditPivot = true
-            this.reset()
+            this.reset({onResetFinished:()=>{
+                this.saveInitview({ isShowToast: false, defaultDistance: true })
+            }})
         })
 
         this.events.on('orientation:translate-y', ({ delta }) => {
@@ -177,7 +190,7 @@ class OtherController {
         this.events.on('orientation:eulersynced', () => this.updateModelRotation())
 
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
-            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch } = entityInfo
+            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch, isFullyInView } = entityInfo
             const startPose = {
                 focus: this.focus.clone(),
                 position: new Vec3(
@@ -187,6 +200,7 @@ class OtherController {
                 ),
                 rotation: modelEntity.localRotation.clone(),
                 distance: this.distance,
+                fov: this.fov,
                 yaw: this.currentYaw,
                 pitch: this.currentPitch,
             }
@@ -194,7 +208,8 @@ class OtherController {
                 focus: new Vec3(f.x, f.y, f.z),
                 position: new Vec3(p.x, p.y, p.z),
                 rotation: new Quat(r.x, r.y, r.z, r.w),
-                distance: this.clampDistance(this.getActualDistance(d)),
+                distance: this.clampDistance(this.getActualDistance(d, isFullyInView)),
+                fov: this.clampFov(this.getActualFov(d, isFullyInView)),
                 yaw,
                 pitch,
             }
@@ -238,7 +253,7 @@ class OtherController {
         this.pointerMoveHistory = []
         this.isFlick = false
     }
-    reset({ pose, useInitview = true } = {}) {
+    reset({ pose, useInitview = true, onResetFinished } = {}) {
         if (this._autoRotating) {
             this.stopSpin360()
         }
@@ -256,6 +271,7 @@ class OtherController {
         v$2.copy(forward)
 
         if (!this.originDistance) this.originDistance = pose.distance
+        if (!this.originFov) this.originFov = pose.fov
         if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
 
         this.cameraRotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
@@ -265,17 +281,20 @@ class OtherController {
         const isFirstInit = !this.hasInitializedFocus
         if (isFirstInit) this.hasInitializedFocus = true
 
-        let startFocus, startDistance, startYaw, startPitch
-        let targetFocus, targetDistance, targetYaw, targetPitch
+        let startFocus, startDistance, startFov, startYaw, startPitch
+        let targetFocus, targetDistance, targetFov, targetYaw, targetPitch
         let targetPosition, targetRotation
 
         const initviewPose = this.settings.initview.pose
         if (initviewPose && useInitview) {
-            const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch } = initviewPose
+            const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch, isFullyInView } = initviewPose
             targetFocus = new Vec3(f.x, f.y, f.z)
             targetDistance = isMobile
-                ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d)))
-                : this.clampDistance(this.getActualDistance(d))
+                ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d, isFullyInView)))
+                : this.clampDistance(this.getActualDistance(d, isFullyInView))
+            targetFov = isMobile
+                ? Math.max(pose.fov, this.clampFov(this.getActualFov(d, isFullyInView)))
+                : this.clampFov(this.getActualFov(d, isFullyInView))
             targetYaw = yaw || 0
             targetPitch = pitch || 0
             targetPosition = new Vec3(p.x, p.y, p.z)
@@ -283,6 +302,7 @@ class OtherController {
         } else {
             targetFocus = pose.focus.clone()
             targetDistance = this.clampDistance(pose.distance)
+            targetFov = this.clampFov(pose.fov)
             targetYaw = 0
             targetPitch = 0
             targetPosition = this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone()
@@ -292,6 +312,7 @@ class OtherController {
         if (isFirstInit) {
             startFocus = targetFocus.clone()
             startDistance = targetDistance
+            startFov = targetFov
             startYaw = targetYaw
             startPitch = targetPitch
             if (this.settings.spin.enabled && this.settings.spin.autoStart) {
@@ -303,12 +324,14 @@ class OtherController {
         } else {
             startFocus = this.focus.clone()
             startDistance = this.distance
+            startFov = this.fov
             startYaw = this.currentYaw
             startPitch = this.currentPitch
         }
 
         this.focus.copy(targetFocus)
         this.distance = targetDistance
+        this.fov = targetFov
 
         if (isFirstInit) {
             modelEntity.localPosition.copy(targetPosition)
@@ -341,6 +364,7 @@ class OtherController {
                 rotation: modelEntity.localRotation.clone(),
                 position: modelEntity.localPosition.clone(),
                 distance: startDistance,
+                fov: startFov,
                 yaw: this.currentYaw,
                 pitch: this.currentPitch,
             },
@@ -349,6 +373,7 @@ class OtherController {
                 rotation: targetRotation,
                 position: targetPosition,
                 distance: targetDistance,
+                fov: targetFov,
                 yaw: targetYaw,
                 pitch: targetPitch,
             },
@@ -362,6 +387,7 @@ class OtherController {
                     this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
                 }
                 this.syncHierarchyAndRender()
+                onResetFinished?.()
             },
             lerpDuration: NORMAL_FADE_TIME,
         })
@@ -412,7 +438,6 @@ class OtherController {
         if (this._autoRotateTick) {
             this._autoRotateTick(dt)
         }
-
         this.getPose(camera)
     }
     getDeafultDistance() {
@@ -434,38 +459,31 @@ class OtherController {
     onEnter(camera) {
         const distance = this.getDeafultDistance()
         this.maxDistance = Math.max(distance, this.maxDistance)
-
         this.originCameraPosition = camera.position.clone()
         this.originCameraAnglesX = camera.angles.x
-        this.pitchRad = (camera.angles.x * Math.PI) / 180
-        if (this.model === 'cylindrical') {
+        this.pitchRad = degToRad(camera.angles.x)
+        let forward
+        const focusPoint = this.bbox.center.clone()
+
+        if (this.originModel === 'cylindrical' && this.cylindricalCamPos) {
             this.minPitch = 0
             this.maxPitch = 0
+            this.cameraEntity.setPosition(this.cylindricalCamPos)
+            this.fov = this.calFitFOV()
+            forward = focusPoint.clone().sub(this.cylindricalCamPos).normalize()
         } else {
             this.minPitch = 0
             this.maxPitch = Math.PI / 2
+            forward = focusPoint.clone().sub(camera.position).normalize()
         }
-        let forward
-        if (camera.angles && typeof camera.angles.x === 'number' && typeof camera.angles.y === 'number') {
-            const yawRad = (camera.angles.y * Math.PI) / 180
-            forward = new Vec33(
-                -Math.sin(yawRad) * Math.cos(this.pitchRad),
-                Math.sin(this.pitchRad),
-                -Math.cos(yawRad) * Math.cos(this.pitchRad),
-            ).normalize()
-        } else {
-            forward = new Vec33(0, 0, -1)
-        }
-
-        const focusPoint = this.bbox.center.clone()
 
         this.resetPose = {
             ...camera,
             distance,
             forward,
+            fov: this.fov,
             focus: focusPoint,
         }
-        this._groundLineY = this.bbox.center.y - this.bbox.halfExtents.y
         this.reset()
     }
     onExit() {}
@@ -535,7 +553,6 @@ class OtherController {
             this.basePosition = this._preEditBasePosition.clone()
             this.baseRotation = this._preEditBaseRotation.clone()
 
-            // this.transitionToBasePose()
             if (this.targetPose) {
                 this.startPose.position = currentPosition
                 this.startPose.rotation = currentRotation
@@ -568,49 +585,6 @@ class OtherController {
         this.orientationEditMethod = undefined
         this.updateModelRotation()
         this.reset({ useInitview: false })
-    }
-    transitionToBasePose() {
-        const startPose = {
-            position: modelEntity.localPosition.clone(),
-            rotation: modelEntity.localRotation.clone(),
-            focus: this.focus.clone(),
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.currentPitch,
-        }
-
-        const targetYaw = 0
-        const targetPitch = 0
-
-        const combinedQuat = this.buildCombinedQuat(targetYaw, targetPitch)
-
-        const offset = this.basePosition.clone().sub(this.centerPivot)
-        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedQuat)
-
-        const targetPosition = this.centerPivot.clone().add(rotatedOffset)
-        const targetRotation = combinedQuat.mul(this.baseRotation).normalize()
-
-        const targetPose = {
-            position: targetPosition,
-            rotation: targetRotation,
-            focus: this.centerPivot.clone(),
-            distance: this.distance,
-            yaw: targetYaw,
-            pitch: targetPitch,
-        }
-
-        if (
-            isSameVec3(startPose.position, targetPose.position) &&
-            isSameQuat(startPose.rotation, targetPose.rotation)
-        ) {
-            return
-        }
-
-        this.setupTransition({
-            startPose,
-            targetPose,
-            lerpDuration: NORMAL_FADE_TIME,
-        })
     }
     stopSpin360() {
         if (!this._autoRotating) return
@@ -817,6 +791,7 @@ class OtherController {
             distance: this.distance,
             yaw: this.currentYaw,
             pitch: this.currentPitch,
+            fov: this.fov,
         }
         const targetPose = {
             focus: this.centerPivot.clone(),
@@ -825,6 +800,7 @@ class OtherController {
             distance: this.distance,
             yaw: this.currentYaw,
             pitch: this.minPitch,
+            fov: this.fov,
         }
         this.model = 'spherical'
         this.setupTransition({
@@ -846,6 +822,7 @@ class OtherController {
         this.lerpTime += dt
         let t = Math.min(this.lerpTime / this.lerpDuration, 1)
         t = t * t * (3 - 2 * t)
+        this.fov = this.clampFov(this.lerp(this.startPose.fov, this.targetPose.fov, t))
         this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
         this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
         if (this.model === 'spherical') {
@@ -878,6 +855,7 @@ class OtherController {
         if (t >= 1) {
             this.focus.copy(this.targetPose.focus)
             this.distance = this.clampDistance(this.targetPose.distance)
+            this.fov = this.clampFov(this.targetPose.fov)
             if (this.model === 'spherical') {
                 modelEntity.localPosition.copy(this.targetPose.position)
                 modelEntity.localRotation.copy(this.targetPose.rotation)
@@ -910,34 +888,65 @@ class OtherController {
         this.inertiaVelY = 0
     }
     getEntityInfo() {
+        const isCylindrical = this.originModel === 'cylindrical'
         return {
             rotation: modelEntity.localRotation.clone(),
             position: modelEntity.localPosition.clone(),
-            distanceScale: this.getCurrentDistanceScale(),
+            isFullyInView: this.isFullyVisibleInCamera(isCylindrical),
+            distanceScale: this.getDistanceScale(isCylindrical),
             focus: this.focus.clone(),
             pitch: this.currentPitch,
             yaw: this.currentYaw,
         }
     }
+    getDistanceScale(isCylindrical) {
+        return isCylindrical ? this.getCurrentFovScale() : this.getCurrentDistanceScale()
+    }
     getCurrentDistanceScale() {
         return this.distance / this.originDistance
     }
-    getActualDistance(distanceScale) {
-        return this.originDistance * distanceScale
+    getActualDistance(distanceScale, isFullyInView = false) {
+        const actual = this.originDistance * distanceScale
+        if (isFullyInView) return Math.max(this.originDistance, actual)
+        return actual
     }
-
     clampDistance(distance) {
         if (!this.settings.lockZoomIn.locked) return Math.min(this.maxDistance, Math.max(this.minDistance, distance))
         return Math.min(this.maxDistance, Math.max(this.getActualDistance(this.settings.lockZoomIn.value), distance))
     }
+
+    getCurrentFovScale() {
+        return this.fov - this.originFov
+    }
+    getActualFov(fovOffset, isFullyInView = false) {
+        const actual = this.originFov + fovOffset
+        if (isFullyInView) return Math.max(this.originFov * 0.8, actual)
+        return actual
+    }
+
+    isFullyVisibleInCamera(isCylindrical) {
+        if (isCylindrical) {
+            return this.originFov * 0.8 <= this.fov
+        }
+        return this.originDistance <= this.distance
+    }
+    clampFov(fov) {
+        if (!this.settings.lockZoomIn.locked) return Math.min(this.maxFov, Math.max(this.minFov, fov))
+        return Math.min(this.maxFov, Math.max(this.getActualFov(this.settings.lockZoomIn.value), fov))
+    }
+
     move(move, rotate) {
         if (this.isEditMessage) return
         const [x, y, z] = move
-        this.distance = this.clampDistance(this.distance + this.distance * move[2])
+        if (this.model === 'cylindrical' && !this.isEditingOrientation) {
+            this.fov = this.clampFov(this.fov + this.fov * move[2] * 0.75)
+        } else {
+            this.distance = this.clampDistance(this.distance + this.distance * move[2])
+        }
         if (x !== 0 || y !== 0 || z !== 0) {
             if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
-                const deltaY = move[1] * this.distance * 0.01
-                const deltaX = move[0] * this.distance * 0.01
+                const deltaY = move[1] * 0.75
+                const deltaX = move[0] * 0.75
 
                 modelEntity.localPosition.y -= deltaY
                 this.basePosition.y -= deltaY
@@ -956,6 +965,16 @@ class OtherController {
 
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
+            } else if (this.model === 'cylindrical') {
+                const dir = new Vec3().sub2(this.cylindricalTarget, this.cylindricalCamPos).normalize()
+                const worldUp = new Vec3(0, 1, 0)
+                const right = new Vec3().cross(dir, worldUp).normalize()
+                const up = new Vec3().cross(right, dir).normalize()
+                const speed = 150
+                v$2.copy(right).mulScalar(move[0] * 2)
+                this.cylindricalTarget.add(v$2)
+                v$2.copy(up).mulScalar(move[1] * 2)
+                this.cylindricalTarget.add(v$2)
             } else {
                 v$2.copy(this.rightCam).mulScalar(move[0])
                 this.focus.add(v$2)
@@ -1117,11 +1136,25 @@ class OtherController {
         value[5] = q.z
         value[6] = q.w
     }
+
     getPose(pose, dt = 1 / 60) {
+        const isManualOrientation = this.isEditingOrientation && this.orientationEditMethod === 'manual'
+        pose.distance = this.distance
+        if (!isManualOrientation && this.originModel === 'cylindrical' && this.cylindricalCamPos) {
+            pose.position = this.cylindricalCamPos
+            const target = this.cylindricalTarget
+            const dir = new Vec3().sub2(target, pose.position).normalize()
+            const pitchRad = Math.asin(dir.y)
+            const yawRad = Math.atan2(-dir.x, -dir.z)
+            pose.angles = new Vec3(pitchRad * (180 / Math.PI), yawRad * (180 / Math.PI), 0)
+            pose.fov = this.fov
+            return
+        }
         const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
-        pose.distance = this.distance
+        pose.fov = 50
+
         if (this._snapCameraToOrigin) {
             this._snapCameraToOrigin = false
             pose.angles.x = this.originCameraAnglesX ?? pose.angles.x
@@ -1130,7 +1163,7 @@ class OtherController {
             return
         }
 
-        if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
+        if (isManualOrientation) {
             const speed = 1 - Math.pow(0.00001, dt)
             if (this.lerpPositionY === undefined) this.lerpPositionY = pose.position.y
             if (this.lerpAnglesX === undefined) this.lerpAnglesX = pose.angles.x
@@ -1182,7 +1215,7 @@ class OtherController {
         const layerBBox = new Layer({ name: 'horizontalLine' })
         const worldIndex = layers.getTransparentIndex(worldLayer)
         layers.insert(layerBBox, worldIndex + 1)
-        this.camera.layers = [...this.camera.layers, layerBBox.id]
+        this.cameraEntity.camera.layers = [...this.cameraEntity.camera.layers, layerBBox.id]
         const lineMesh = new Mesh(this.app.graphicsDevice)
         const lineMat = new StandardMaterial()
         const color = new Color()
@@ -1240,5 +1273,70 @@ class OtherController {
             this.horizontalLineEntity.enabled = false
         }
         this.lastLineDistance = undefined
+    }
+    calFitFOV() {
+        if (!this.bbox) return this.fov
+        const cameraPos = this.cameraEntity.getPosition()
+        const bboxCenter = this.bbox.center.clone()
+        const halfExtents = this.bbox.halfExtents
+
+        const forward = new Vec3().sub2(bboxCenter, cameraPos).normalize()
+        const worldUp = new Vec3(0, 1, 0)
+        const right = new Vec3().cross(forward, worldUp).normalize()
+        const up = new Vec3().cross(right, forward).normalize()
+
+        const width = this.app.graphicsDevice.width
+        const height = this.app.graphicsDevice.height
+        const aspect = width / height
+        const isHorizontalFov = width > height
+
+        const signs = [
+            [1, 1, 1],
+            [-1, 1, 1],
+            [1, -1, 1],
+            [-1, -1, 1],
+            [1, 1, -1],
+            [-1, 1, -1],
+            [1, -1, -1],
+            [-1, -1, -1],
+        ]
+
+        let maxUp = -Infinity,
+            maxDown = -Infinity
+        let maxLeft = -Infinity,
+            maxRight = -Infinity
+
+        for (const [sx, sy, sz] of signs) {
+            const corner = new Vec3(
+                bboxCenter.x + halfExtents.x * sx,
+                bboxCenter.y + halfExtents.y * sy,
+                bboxCenter.z + halfExtents.z * sz,
+            )
+            const toCorner = new Vec3().sub2(corner, cameraPos)
+            const depth = toCorner.dot(forward)
+            if (depth <= 0) continue
+
+            const projV = toCorner.dot(up)
+            const projH = toCorner.dot(right)
+
+            if (projV >= 0) maxUp = Math.max(maxUp, Math.atan(projV / depth))
+            else maxDown = Math.max(maxDown, Math.atan(-projV / depth))
+            if (projH >= 0) maxRight = Math.max(maxRight, Math.atan(projH / depth))
+            else maxLeft = Math.max(maxLeft, Math.atan(-projH / depth))
+        }
+
+        const vertSpan = radToDeg(maxUp + maxDown)
+        const horizSpan = radToDeg(maxLeft + maxRight)
+
+        let requiredFOV
+        if (isHorizontalFov) {
+            const vertAsHoriz = radToDeg(2 * Math.atan(Math.tan(degToRad(vertSpan / 2)) * aspect))
+            requiredFOV = Math.max(horizSpan, vertAsHoriz)
+        } else {
+            const horizAsVert = radToDeg(2 * Math.atan(Math.tan(degToRad(horizSpan / 2)) / aspect))
+            requiredFOV = Math.max(vertSpan, horizAsVert)
+        }
+
+        return this.clampFov(requiredFOV / 0.8)
     }
 }

@@ -1363,7 +1363,12 @@ button {
 }
 .link-btn {
   font-size: 14px;
+}
+.link-btn.primary {
   color: var(--primary);
+}
+.link-btn.secondary {
+  color: var(--text-main);
 }
 .export-btn:hover {
   background-color: #d83a29;
@@ -2486,4 +2491,7 @@ button {
   width: 60px;
   height: 60px;
   animation: spin 1s linear infinite;
+}
+.helper-tabs .tab-btn {
+  font-size: 14px;
 }

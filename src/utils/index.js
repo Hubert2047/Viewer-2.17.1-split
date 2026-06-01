@@ -254,7 +254,7 @@ function getHtmlTemplate(version) {
             <div id="loadingBar"></div>
         </div>
         <div id="loading-overlay">
-                <div class="spinner"></div>
+            <div class="spinner"></div>
         </div>            
     </div>
     <div id="tooltip"></div>
@@ -341,7 +341,7 @@ function makeInfoPanel(settings, events) {
     content.append(tabs, panels)
     wrapper.appendChild(content)
 
-    events.on('message:rebuild-info', rebuild)
+    events.on('info-panel:rebuild', rebuild)
 
     return wrapper
 }

@@ -1,322 +1,53 @@
-<!doctype html>
+
+    <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
-        <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=12" />
-        <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">    
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=66">
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loading-overlay">
-                <div class="spinner"></div>
-            </div>
-        </div>
-        <div id="tooltip"></div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'spherical',
-                contentUrl: 'saw.ply',
-                v: 12,
-                spin: { autoStart: true, continuous: true, enabled: true, speed: 5 },
-                messages: [
-                    {
-                        audio: {
-                            autoPlay: true,
-                            bgAlpha: 0.8,
-                            bgColor: '#000000',
-                            embed: false,
-                            fileName: '111.mp3',
-                            iconColor: '#ffffff',
-                            loop: false,
-                            show: true,
-                            src: '',
-                            volume: 1,
-                        },
-                        autoPlay: { time: 3000 },
-                        button: { title: '10" Blade' },
-                        dot: {
-                            botRight: { x: 1.7380635111333396, y: -10.604449832100618, z: -1.200120887426064 },
-                            size: 30,
-                            stroke: 1,
-                            strokeColor: '#f95744',
-                            style: 'circle',
-                            topLeft: { x: 2.4966961622558648, y: -11.606212256061772, z: -1.77925719878258 },
-                        },
-                        entityInfo: {
-                            distanceScale: 0.7289999999999999,
-                            focus: { x: 0.19690564135056973, y: 11.62744922355126, z: 1.6340747848332091 },
-                            pitch: 0,
-                            position: { x: -0.46392144458043716, y: -0.078368669949338, z: 2.3001698883966544 },
-                            rotation: {
-                                w: -0.015497291456221546,
-                                x: 0.7102354025632297,
-                                y: 0.04314049484927187,
-                                z: 0.7024702161711399,
-                            },
-                            yaw: 0,
-                        },
-                        focus: { position: { x: 2.1148516981482928, y: -11.105859743204013, z: -1.4928132955347735 } },
-                        id: '3740c51a-4232-4c49-b431-1b6e75524398',
-                        text: {
-                            align: 'center',
-                            background: '#f95744',
-                            backgroundAlpha: 0.8,
-                            bold: false,
-                            botRight: { x: -6.496071700656526, y: -15.109086159956203, z: 8.927515982607359 },
-                            color: 'black',
-                            content: '10" Blade',
-                            font: 'Lato',
-                            fontSize: 16,
-                            italic: false,
-                            originHeight: 53.99999950638488,
-                            originWidth: 155.99999370212117,
-                            topLeft: { x: -3.2563003783338074, y: -17.08045709458766, z: 5.197898940095449 },
-                        },
-                    },
-                    {
-                        audio: {
-                            autoPlay: true,
-                            bgAlpha: 0.8,
-                            bgColor: '#000000',
-                            embed: false,
-                            fileName: '222.mp3',
-                            iconColor: '#ffffff',
-                            loop: false,
-                            show: true,
-                            src: '',
-                            volume: 1,
-                        },
-                        autoPlay: { time: 3000 },
-                        button: { title: 'Safety Grip Power Control' },
-                        dot: {
-                            botRight: { x: -2.0975588260189295, y: -21.50254001848031, z: -4.291698905504108 },
-                            size: 40,
-                            stroke: 1,
-                            strokeColor: '#f95744',
-                            style: 'circle',
-                            topLeft: { x: -2.974557515689134, y: -22.283321061195437, z: -4.313061185325703 },
-                        },
-                        entityInfo: {
-                            distanceScale: 0.5729518565099998,
-                            focus: { x: -0.9701316999991512, y: 15.5950873347084, z: 2.8011121261829275 },
-                            pitch: 0,
-                            position: { x: -1.5317214526065361, y: 0.04355981895621319, z: 0.7785618904584378 },
-                            rotation: {
-                                w: -0.12097554468101651,
-                                x: 0.940794045082451,
-                                y: -0.08824565773055294,
-                                z: -0.3041121277065959,
-                            },
-                            yaw: 0,
-                        },
-                        focus: { position: { x: -2.5375995627530115, y: -21.892730780168865, z: -4.298021742254399 } },
-                        id: '3662e93d-6fc3-42a2-8c60-ef304bb70818',
-                        text: {
-                            align: 'center',
-                            background: '#f95744',
-                            backgroundAlpha: 0.8,
-                            bold: false,
-                            botRight: { x: -0.24412037075973547, y: -24.914756998462725, z: -3.597846282028633 },
-                            color: 'black',
-                            content: 'Safety Grip Power Control',
-                            font: 'Lato',
-                            fontSize: 16,
-                            italic: false,
-                            originHeight: 43.999999771453034,
-                            originWidth: 193.9999924415672,
-                            topLeft: { x: -4.200469097992522, y: -25.614930990804783, z: -4.249018829476395 },
-                        },
-                    },
-                    {
-                        audio: {
-                            autoPlay: true,
-                            bgAlpha: 0.8,
-                            bgColor: '#000000',
-                            embed: false,
-                            fileName: '333.mp3',
-                            iconColor: '#ffffff',
-                            loop: false,
-                            show: true,
-                            src: '',
-                            volume: 1,
-                        },
-                        autoPlay: { time: 3000 },
-                        button: { title: 'Bottom screw' },
-                        dot: {
-                            botRight: { x: 0.19443112072172752, y: -0.7331153779923785, z: 0.9240874641320396 },
-                            size: 40,
-                            stroke: 1,
-                            strokeColor: '#f95744',
-                            style: 'circle',
-                            topLeft: { x: -0.9019830254145624, y: -0.6593041944369027, z: 0.9038308664449151 },
-                        },
-                        entityInfo: {
-                            distanceScale: 0.5729518565099998,
-                            focus: { x: -0.8118157075505295, y: 12.98980521728037, z: 2.642796133734306 },
-                            pitch: 0,
-                            position: { x: 8.756046215637372, y: 13.379660639283138, z: 9.481202632936645 },
-                            rotation: {
-                                w: 0.7282457582808632,
-                                x: 0.5049438379455619,
-                                y: -0.01697894272906546,
-                                z: -0.46303515154957725,
-                            },
-                            yaw: 0,
-                        },
-                        focus: { position: { x: -0.353864080688318, y: -0.70050298945565, z: 0.913884513637013 } },
-                        id: 'd2900d41-df89-42be-9373-099cce73e584',
-                        text: {
-                            align: 'center',
-                            background: '#f95744',
-                            backgroundAlpha: 0.8,
-                            bold: false,
-                            botRight: { x: 8.16717795811067, y: -0.12630479289932595, z: -1.2545471203151042 },
-                            color: 'black',
-                            content: 'Bottom screw',
-                            font: 'Lato',
-                            fontSize: 16,
-                            italic: false,
-                            originHeight: 43.99999797757994,
-                            originWidth: 116.99999031285643,
-                            topLeft: { x: 6.0970337843635445, y: -0.49322604911003154, z: -0.3588818361845387 },
-                        },
-                    },
-                    {
-                        id: '18c000db-2af6-4bb4-b105-318b51fc169b',
-                        autoPlay: { time: 3000 },
-                        button: { title: 'message4' },
-                        text: {
-                            color: 'black',
-                            bold: false,
-                            italic: false,
-                            align: 'center',
-                            content: 'message4message4message4message4message4',
-                            font: 'Lato',
-                            background: '#ffffff',
-                            backgroundAlpha: 0.8,
-                            originWidth: 382.9999839022031,
-                            originHeight: 45.0000020369518,
-                            topLeft: { x: -7.178474069104501, y: -20.152382324312825, z: -5.830477929579266 },
-                            botRight: { x: -6.320282472831795, y: -17.720100191295938, z: -20.531827489539687 },
-                            fontSize: 16,
-                        },
-                        focus: { position: { x: -6.332398528529858, y: -16.010674528426676, z: -7.114764670363289 } },
-                        dot: {
-                            style: 'circle',
-                            strokeColor: '#D8D8D8',
-                            stroke: 1,
-                            size: 30,
-                            topLeft: { x: -6.506540443873742, y: -16.646092604006718, z: -6.508111422602379 },
-                            botRight: { x: -6.176144813409131, y: -15.374336302306936, z: -7.723642602969607 },
-                        },
-                        entityInfo: {
-                            rotation: {
-                                x: -0.5205542864488863,
-                                y: 3.187475703410318e-17,
-                                z: 0.8538285746329239,
-                                w: 5.228192154723788e-17,
-                            },
-                            position: { x: 1.3692143290498482, y: 0, z: 0.544673565808101 },
-                            distanceScale: 1,
-                            focus: { x: 0.23791229864773522, y: 11.74646714481207, z: 1.395249752187996 },
-                            pitch: 0,
-                            yaw: 0,
-                        },
-                    },
-                    {
-                        id: 'a9574b9a-4b74-4d16-a02a-a43d26f49010',
-                        autoPlay: { time: 3000 },
-                        button: { title: 'message5' },
-                        text: {
-                            color: 'black',
-                            bold: false,
-                            italic: false,
-                            align: 'center',
-                            content: 'message5message5message5',
-                            font: 'Lato',
-                            background: '#ffffff',
-                            backgroundAlpha: 0.8,
-                            originWidth: 237.99999017713174,
-                            originHeight: 45.00000129945397,
-                            topLeft: { x: -4.76996261829353, y: -5.426879104901381, z: -8.371039348372047 },
-                            botRight: { x: -4.70421520362307, y: -4.004588784411775, z: -17.94986489092101 },
-                            fontSize: 16,
-                        },
-                        focus: { position: { x: -5.6610302782335395, y: -1.2470255855462078, z: -7.643770651956847 } },
-                        dot: {
-                            style: 'circle',
-                            strokeColor: '#D8D8D8',
-                            stroke: 1,
-                            size: 30,
-                            topLeft: { x: -5.630444969566722, y: -1.836809687950255, z: -6.995737962107225 },
-                            botRight: { x: -5.707103176385247, y: -0.6671659714543908, z: -8.28746313121835 },
-                        },
-                        entityInfo: {
-                            rotation: {
-                                x: -0.5205542864488863,
-                                y: 3.187475703410318e-17,
-                                z: 0.8538285746329239,
-                                w: 5.228192154723788e-17,
-                            },
-                            position: { x: 1.3692143290498482, y: 0, z: 0.544673565808101 },
-                            distanceScale: 1,
-                            focus: { x: 0.23791229864773522, y: 11.74646714481207, z: 1.395249752187996 },
-                            pitch: 0,
-                            yaw: 0,
-                        },
-                    },
-                ],
-                dimensions: {
-                    background: { alpha: 0.8, color: 'white' },
-                    boxColor: '#f95f4d',
-                    foregroundColor: '#f95f4d',
-                    position: { x: -0.16820712717093222, y: -11.627814387314164, z: 2.5664670543604204 },
-                    realSize: { x: 54.5, y: 54.333234617410085, z: 54.40881857882563 },
-                    rotation: { x: -179.72694518633443, y: 44.66364035484728, z: 179.48709904507422 },
-                    size: { x: 23.186775721030433, y: 23.11582615178008, z: 23.147983002448875 },
-                    unit: 'cm',
-                },
-                setupStep: 2,
-            },
         }
-    </script>
-    <script src="./viewer.js?v=12"></script>
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+        </div>            
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/360/2.ply","v":66,"setupStep":3} }</script>
+<script src="./viewer.js?v=66"></script>
 </html>
+    
