@@ -962,7 +962,9 @@ function makeExportSection(el, global) {
             })
         },
     })
-    el.appendChild(helperBtn)
+    if (!window.showSaveFilePicker) {
+        el.appendChild(helperBtn)
+    }
     el.appendChild(hint)
     const btn = makeButton({
         className: 'export-btn',
@@ -972,6 +974,7 @@ function makeExportSection(el, global) {
             exportHtml(filename, global.settings)
         },
     })
+
     el.appendChild(btn)
 }
 function makeSidebar(global, dom) {
