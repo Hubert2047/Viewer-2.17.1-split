@@ -1,53 +1,75 @@
-
-    <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=66">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=73" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+            </div>
         </div>
-        <div id="loading-overlay">
-            <div class="spinner"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/360/2.ply","v":66,"setupStep":3} }</script>
-<script src="./viewer.js?v=66"></script>
+        <div id="tooltip"></div>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'cylindrical',
+                contentUrl: 'models/360/2.ply',
+                v: 73,
+                initview: {
+                    pose: {
+                        rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
+                        position: { x: 0, y: 0, z: 0 },
+                        isFullyInView: false,
+                        distanceScale: -24.255041459526666,
+                        focus: { x: -0.7748115769275578, y: 26.36359478365925, z: -1.4532377820610753 },
+                        pitch: 0,
+                        yaw: 0,
+                    },
+                },
+                setupStep: 3,
+                cameras: [{ x: -47.6024, y: -146.8633, alt: 1.1631 }],
+            },
+        }
+    </script>
+    <script src="./viewer.js?v=73"></script>
 </html>
-    

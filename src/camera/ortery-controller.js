@@ -58,10 +58,19 @@ class OtherController {
             this.originEntityRotation = modelEntity.localRotation.clone()
             this.originEntityPos = modelEntity.localPosition.clone()
         }
-        if (this.model === 'cylindrical') {
-            const f = test_data2[0]
-            this.cylindricalCamPos = new Vec3(-f.x, f.alt, f.y)
-            this.cylindricalTarget = this.bbox.center.clone()
+        if (this.model === 'cylindrical' && this.settings.cameras.length > 0) {
+            console.log(this.settings.cameras)
+            const f = this.settings.cameras[0]
+            if (
+                typeof f.x === 'number' &&
+                typeof f.alt === 'number' &&
+                typeof f.y === 'number' &&
+                !Number.isNaN(f.x) &&
+                !Number.isNaN(f.alt) &&
+                !Number.isNaN(f.y)
+            ) {
+                this.cylindricalCamPos = new Vec3(-f.x, f.alt, f.y)
+            }
         }
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
@@ -125,9 +134,11 @@ class OtherController {
             this.settings.pivot.position = null
             this.applyAabbPivot()
             this.isEditPivot = true
-            this.reset({onResetFinished:()=>{
-                this.saveInitview({ isShowToast: false, defaultDistance: true })
-            }})
+            this.reset({
+                onResetFinished: () => {
+                    this.saveInitview({ isShowToast: false, defaultDistance: true })
+                },
+            })
         })
 
         this.events.on('orientation:translate-y', ({ delta }) => {
@@ -273,7 +284,6 @@ class OtherController {
         if (!this.originDistance) this.originDistance = pose.distance
         if (!this.originFov) this.originFov = pose.fov
         if (!this.originFocus) this.originFocus = new Vec33().copy(v$2).mulScalar(pose.distance).add(pose.position)
-
         this.cameraRotation = Quat3.lookRotation(v$2.clone().mulScalar(-1), Vec33.UP)
         this.rightCam = Vec33.RIGHT.clone().transformQuat(this.cameraRotation).normalize()
         this.upCam = Vec33.UP.clone().transformQuat(this.cameraRotation).normalize()
@@ -358,6 +368,7 @@ class OtherController {
             this.basePosition = this.originEntityPos.clone()
             this.baseRotation = this.originEntityRotation.clone()
         }
+        const isCylindrical = this.originModel === 'cylindrical'
         this.setupTransition({
             startPose: {
                 focus: startFocus,
@@ -457,12 +468,11 @@ class OtherController {
         return radius / Math.sin(minFovRad / 2)
     }
     onEnter(camera) {
-        const distance = this.getDeafultDistance()
-        this.maxDistance = Math.max(distance, this.maxDistance)
         this.originCameraPosition = camera.position.clone()
         this.originCameraAnglesX = camera.angles.x
         this.pitchRad = degToRad(camera.angles.x)
         let forward
+        let distance
         const focusPoint = this.bbox.center.clone()
 
         if (this.originModel === 'cylindrical' && this.cylindricalCamPos) {
@@ -471,12 +481,14 @@ class OtherController {
             this.cameraEntity.setPosition(this.cylindricalCamPos)
             this.fov = this.calFitFOV()
             forward = focusPoint.clone().sub(this.cylindricalCamPos).normalize()
-        } else {
+            distance = this.cylindricalCamPos.distance(this.bbox.center)
+        } else {    
             this.minPitch = 0
             this.maxPitch = Math.PI / 2
             forward = focusPoint.clone().sub(camera.position).normalize()
+            distance = this.getDeafultDistance()
         }
-
+        this.maxDistance = Math.max(distance, this.maxDistance)
         this.resetPose = {
             ...camera,
             distance,
@@ -822,7 +834,9 @@ class OtherController {
         this.lerpTime += dt
         let t = Math.min(this.lerpTime / this.lerpDuration, 1)
         t = t * t * (3 - 2 * t)
-        this.fov = this.clampFov(this.lerp(this.startPose.fov, this.targetPose.fov, t))
+        if (this.originModel === 'cylindrical') {
+            this.fov = this.clampFov(this.lerp(this.startPose.fov, this.targetPose.fov, t))
+        }
         this.distance = this.clampDistance(this.lerp(this.startPose.distance, this.targetPose.distance, t))
         this.focus.copy(this.startPose.focus).lerp(this.targetPose.focus, t)
         if (this.model === 'spherical') {
@@ -938,10 +952,12 @@ class OtherController {
     move(move, rotate) {
         if (this.isEditMessage) return
         const [x, y, z] = move
-        if (this.model === 'cylindrical' && !this.isEditingOrientation) {
-            this.fov = this.clampFov(this.fov + this.fov * move[2] * 0.75)
-        } else {
-            this.distance = this.clampDistance(this.distance + this.distance * move[2])
+        if (move[2] !== 0) {
+            if (this.model === 'cylindrical' && !this.isEditingOrientation) {
+                this.fov = this.clampFov(this.fov + this.fov * move[2] * 0.75)
+            } else {
+                this.distance = this.clampDistance(this.distance + this.distance * move[2])
+            }
         }
         if (x !== 0 || y !== 0 || z !== 0) {
             if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
@@ -965,20 +981,11 @@ class OtherController {
 
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
-            } else if (this.model === 'cylindrical') {
-                const dir = new Vec3().sub2(this.cylindricalTarget, this.cylindricalCamPos).normalize()
-                const worldUp = new Vec3(0, 1, 0)
-                const right = new Vec3().cross(dir, worldUp).normalize()
-                const up = new Vec3().cross(right, dir).normalize()
-                const speed = 150
-                v$2.copy(right).mulScalar(move[0] * 2)
-                this.cylindricalTarget.add(v$2)
-                v$2.copy(up).mulScalar(move[1] * 2)
-                this.cylindricalTarget.add(v$2)
             } else {
-                v$2.copy(this.rightCam).mulScalar(move[0])
+                const speed = this.model === 'cylindrical' ? 2 : 1
+                v$2.copy(this.rightCam).mulScalar(move[0] * speed)
                 this.focus.add(v$2)
-                v$2.copy(this.upCam).mulScalar(move[1])
+                v$2.copy(this.upCam).mulScalar(move[1] * speed)
                 this.focus.add(v$2)
             }
         }
@@ -1142,12 +1149,12 @@ class OtherController {
         pose.distance = this.distance
         if (!isManualOrientation && this.originModel === 'cylindrical' && this.cylindricalCamPos) {
             pose.position = this.cylindricalCamPos
-            const target = this.cylindricalTarget
-            const dir = new Vec3().sub2(target, pose.position).normalize()
+            const dir = new Vec3().sub2(this.focus, pose.position).normalize()
             const pitchRad = Math.asin(dir.y)
             const yawRad = Math.atan2(-dir.x, -dir.z)
             pose.angles = new Vec3(pitchRad * (180 / Math.PI), yawRad * (180 / Math.PI), 0)
             pose.fov = this.fov
+            pose.distance = 100
             return
         }
         const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
@@ -1337,6 +1344,6 @@ class OtherController {
             requiredFOV = Math.max(vertSpan, horizAsVert)
         }
 
-        return this.clampFov(requiredFOV / 0.8)
+        return requiredFOV / 0.8
     }
 }
