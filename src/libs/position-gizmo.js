@@ -25,13 +25,15 @@ class PointGizmo {
         fontSize: 12,
     }
 
-    constructor(app, camEntity, modelEntity, { onMove, onEnd } = {}) {
+    constructor(app, camEntity, modelEntity, { onMove, onEnd, showAxes = true, dotFillOpacity = 1 } = {}) {
         this._app = app
         this._camEntity = camEntity
         this._modelEntity = modelEntity
         this._canvas = app.graphicsDevice.canvas
         this._onMove = onMove
         this._onEnd = onEnd
+        this._showAxes = showAxes
+        this.dotFillOpacity = dotFillOpacity
         this._buildSVG()
         this._svg.style.display = 'none'
     }
@@ -94,10 +96,9 @@ class PointGizmo {
             this._axes[axis] = { line, hit, arrow }
         }
 
-        // dot vẽ sau cùng để nằm trên các trục
         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         dot.setAttribute('r', cfg.dotRadius)
-        dot.setAttribute('fill', 'white')
+        dot.setAttribute('fill', `rgba(255, 255, 255, ${this.dotFillOpacity})`)
         dot.setAttribute('stroke', 'rgba(0,0,0,0.4)')
         dot.setAttribute('stroke-width', '1.5')
         dot.style.pointerEvents = 'all'
@@ -134,6 +135,13 @@ class PointGizmo {
             document.body.style.cursor = ''
             if (this._localPos) this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         })
+        if (!this._showAxes) {
+            for (const { line, hit, arrow } of Object.values(this._axes)) {
+                line.style.display = 'none'
+                hit.style.display = 'none'
+                arrow.style.display = 'none'
+            }
+        }
     }
 
     _w2s(v3) {
@@ -181,7 +189,7 @@ class PointGizmo {
         const center = this._w2s(worldPos)
         this._dot.setAttribute('cx', center.x.toFixed(1))
         this._dot.setAttribute('cy', center.y.toFixed(1))
-
+        if (!this._showAxes) return
         const len = this._axisLength()
 
         for (const axis of ['x', 'y', 'z']) {

@@ -39,8 +39,19 @@ const makeSectionGroup = (title, hint) => {
             const tooltip = document.createElement('div')
             tooltip.classList.add('hint-tooltip')
             tooltip.innerHTML = hint
+            document.body.appendChild(tooltip)
 
-            icon.appendChild(tooltip)
+            icon.addEventListener('mouseenter', () => {
+                const rect = icon.getBoundingClientRect()
+                tooltip.style.display = 'block'
+                tooltip.style.left = rect.left + rect.width / 2 + 'px'
+                tooltip.style.top = rect.top - 8 + 'px'
+                tooltip.style.transform = 'translate(-50%, -100%)'
+            })
+            icon.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none'
+            })
+
             titleText.appendChild(icon)
         }
         group.appendChild(titleRow)
@@ -194,13 +205,53 @@ function makeColorAlpha({ color, alpha, onChangeColor, onChangeAlpha, disabled =
 
     return block
 }
-function makeLink({ text, href = '#', className = 'export-link-btn', variant = 'primary', onClick } = {}) {
+function makeLink({
+    label,
+    href = '#',
+    size = 'medium',
+    className,
+    variant = 'primary',
+    display = true,
+    onClick,
+} = {}) {
     const el = document.createElement('a')
     el.classList.add('link-btn')
-    if (className) el.classList.add(className)
-    if (variant === 'primary') el.classList.add('primary')
-    if (variant === 'secondary') el.classList.add('secondary')
-    el.textContent = text
+    if (className) {
+        el.classList.add(...className.trim().split(/\s+/))
+    }
+    switch (size) {
+        case 'small':
+            el.classList.add('small')
+            break
+        case 'medium':
+            el.classList.add('medium')
+            break
+        case 'large':
+            el.classList.add('large')
+            break
+    }
+    switch (variant) {
+        case 'primary':
+            el.classList.add('primary')
+            break
+        case 'secondary':
+            el.classList.add('secondary')
+            break
+        case 'subtle':
+            el.classList.add('subtle')
+            break
+        case 'delete':
+            el.classList.add('delete')
+            break
+    }
+    if (!display) {
+        el.classList.add('hidden')
+    }
+    el.textContent = label
+    el.setDisplay = (display) => {
+        if (display) el.classList.remove('hidden')
+        else el.classList.add('hidden')
+    }
     el.href = href
     if (onClick) {
         el.addEventListener('click', (e) => {
@@ -210,30 +261,29 @@ function makeLink({ text, href = '#', className = 'export-link-btn', variant = '
     }
     return el
 }
-function makeToggle(initialValue, onChange) {
+function makeToggle({ initialValue, onChange }) {
     let value = initialValue
-
     const wrap = document.createElement('div')
     wrap.classList.add('audio-toggle-wrap')
-
     const toggle = document.createElement('div')
     toggle.classList.add('toggle')
     if (value) toggle.classList.add('active')
-
     const knob = document.createElement('div')
     knob.classList.add('toggle-knob')
     toggle.appendChild(knob)
-
     toggle.addEventListener('click', () => {
+        if (toggle.classList.contains('disabled')) return
         value = !value
         toggle.classList.toggle('active', value)
         onChange(value)
     })
-
     wrap.appendChild(toggle)
     wrap.setValue = (newVal) => {
         value = newVal
         toggle.classList.toggle('active', value)
+    }
+    wrap.setDisabled = (disabled) => {
+        toggle.classList.toggle('disabled', disabled)
     }
     return wrap
 }
@@ -713,11 +763,11 @@ class ConfirmDialog {
         this._resolve = null
     }
 
-    ask({ title, message, variant = 'default', position = 'center', confirmText = null }) {
+    ask({ title, message, cancelText = 'Cancel', variant = 'default', position = 'center', confirmText = null }) {
         this.titleEl.textContent = title
         this.msgEl.textContent = message
         this.overlay.style.display = 'flex'
-
+        this.cancelBtn.textContent = cancelText
         this.overlay.style.alignItems = position === 'top' ? 'flex-start' : 'center'
         this.overlay.style.paddingTop = position === 'top' ? '80px' : '0'
 

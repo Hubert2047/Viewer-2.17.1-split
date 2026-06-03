@@ -13,6 +13,8 @@ const initPoster = (events) => {
 
 const initUI = async (global) => {
     const { config, events, state, settings } = global
+    global.isEditMeasurement = false
+    global.isSpin360 = false
     const loading = new LoadingOverlay()
     global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
@@ -124,7 +126,6 @@ const initUI = async (global) => {
     events.on('inputEvent:toggle-measure', () => {
         if (!global.measureTool) {
             global.measureTool = new MeasureTool(global)
-            global.measureTool._buildGizmos()
         }
         const tool = global.measureTool
         tool.activate()
@@ -2996,9 +2997,9 @@ class Viewer {
             if (gsplatBbox) {
                 sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform())
             }
-            // if (!config.noui) {
-            //     this.annotations = new Annotations(global, this.cameraFrame != null)
-            // }
+            if (settings.measurement?.calibration.points) {
+                global.measureTool = new MeasureTool(global)
+            }
             this.inputController = new InputController(global)
             this.inputController.collider = collider ?? null
             state.hasCollision = !!collider

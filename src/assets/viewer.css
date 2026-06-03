@@ -6,7 +6,7 @@
 
   --text-main: #2d3748;
   --text-muted: #8c9fb4;
-
+  --delete: #ef4444;;
   --border: rgba(0, 0, 0, 0.08);
   --bg-hover: rgba(0, 0, 0, 0.04);
 }
@@ -293,7 +293,7 @@ button {
   z-index: 999;
   transform: translate(-50%, 0);
   min-height: 180px;
-  min-width: 300px;
+  min-width: 320px;
   padding: 8px;
   border-radius: 24px;
   color: black;
@@ -717,10 +717,12 @@ button {
   border-radius: 6px;
   color: var(--primary);
   font-size: 12px;
-  cursor: pointer;
   transition: background 0.12s;
 }
-.add-btn:hover {
+.add-btn:not(:disabled) {
+  cursor: pointer;
+}
+.add-btn:not(:disabled):hover {
   background-color: rgba(249, 87, 68, 0.18);
 }
 .message-label {
@@ -1375,6 +1377,21 @@ button {
 }
 .link-btn.secondary {
   color: var(--text-main);
+}
+.link-btn.subtle {
+  color: var(--text-muted);
+}
+.link-btn.delete {
+  color: var(--delete);
+}
+.link-btn.small {
+  font-size: 12px;
+}
+.link-btn.medium {
+  font-size: 14px;
+}
+.link-btn.large {
+  font-size: 16px;
 }
 .export-btn:hover {
   background-color: #d83a29;
@@ -2379,11 +2396,8 @@ button {
 
 .hint-tooltip {
   display: none;
-  position: absolute;
-  bottom: 14px;
-  font-weight: 500;
-  left: 50%;
-  text-transform: none;
+  position: fixed;
+  z-index: 9999;
   background: var(--panel-bg, #1e1e1e);
   border: 1px solid var(--border, #333);
   color: var(--text, #eee);
@@ -2393,7 +2407,8 @@ button {
   border-radius: 6px;
   width: 200px;
   pointer-events: none;
-  z-index: 9999;
+  font-weight: 500;
+  text-transform: none;
 }
 
 .hint-icon:hover .hint-tooltip {
@@ -2537,4 +2552,10 @@ button {
 }
 .helper-tabs .tab-btn {
   font-size: 14px;
+}
+.calib-input {
+  max-width: auto;
+}
+.real-distance > .label {
+  min-width: 90px;
 }

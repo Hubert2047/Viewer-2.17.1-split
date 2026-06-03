@@ -258,7 +258,7 @@ class MessageEditorUI {
                 name: 'button-title',
                 onChange: (v) => {
                     this.activeMessageData.button.title = v
-                    headerTitle.textContent = v 
+                    headerTitle.textContent = v
                     this.applyDraft()
                 },
             }),
@@ -587,17 +587,23 @@ class MessageEditorUI {
 
         const loopField = this.makeField('Loop')
         loopField.appendChild(
-            makeToggle(this.activeMessageData.audio?.loop, (value) => {
-                this.activeMessageData.audio.loop = value
-                this.applyDraft()
+            makeToggle({
+                value: this.activeMessageData.audio?.loop,
+                onChange: (value) => {
+                    this.activeMessageData.audio.loop = value
+                    this.applyDraft()
+                },
             }),
         )
 
         const showField = this.makeField('Show')
         showField.appendChild(
-            makeToggle(this.activeMessageData.audio?.show, (value) => {
-                this.activeMessageData.audio.show = value
-                this.applyDraft()
+            makeToggle({
+                value: this.activeMessageData.audio?.show,
+                onChange: (value) => {
+                    this.activeMessageData.audio.show = value
+                    this.applyDraft()
+                },
             }),
         )
         // const persistField = this.makeField('Persist')
@@ -609,9 +615,12 @@ class MessageEditorUI {
         // )
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
-            makeToggle(this.activeMessageData.audio?.autoPlay, (value) => {
-                this.activeMessageData.audio.autoPlay = value
-                this.applyDraft()
+            makeToggle({
+                value: this.activeMessageData.audio?.autoPlay,
+                onChange: (value) => {
+                    this.activeMessageData.audio.autoPlay = value
+                    this.applyDraft()
+                },
             }),
         )
 

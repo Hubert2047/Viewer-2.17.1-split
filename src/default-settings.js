@@ -20,12 +20,7 @@ const defaultSettings = Object.freeze({
     orientation: Object.freeze({ pose: null }),
     messages: Object.freeze([]),
     dimensions: null,
-    measurement: Object.freeze({
-        enabled: false,
-        lineColor: '#f95f4d',
-        textColor: '#fff',
-        background: { color: '#000000A6', alpha: 0.8 },
-    }),
+    measurement: null,
     setupStep: 1,
     ref: '',
     tonemapping: 'none',

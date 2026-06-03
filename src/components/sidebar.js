@@ -300,22 +300,31 @@ function makeViewerSection(el, global) {
     })
 
     const inertiaRow = makeRow({ title: 'Inertia' })
-    const inertiaToggleEl = makeToggle(settings.inertia, (value) => {
-        settings.inertia = value
-        events.fire('viewer:inertia', value)
+    const inertiaToggleEl = makeToggle({
+        value: settings.inertia,
+        onChange: (value) => {
+            settings.inertia = value
+            events.fire('viewer:inertia', value)
+        },
     })
     inertiaRow.appendChild(inertiaToggleEl)
 
     const autoHideUIRow = makeRow({ title: 'Auto Hide UI' })
-    const autoHideUIToggleEl = makeToggle(settings.autoHideUI, (value) => {
-        settings.autoHideUI = value
-        events.fire('viewer:auto-hide-ui', value)
+    const autoHideUIToggleEl = makeToggle({
+        value: settings.autoHideUI,
+        onChange: (value) => {
+            settings.autoHideUI = value
+            events.fire('viewer:auto-hide-ui', value)
+        },
     })
     autoHideUIRow.appendChild(autoHideUIToggleEl)
 
     const lockZoomInRow = makeRow({ title: 'Lock Zoom In' })
-    const lockZoomInToggleEl = makeToggle(settings.lockZoomIn.locked, (value) => {
-        events.fire('viewer:lock-zoom-in', value)
+    const lockZoomInToggleEl = makeToggle({
+        value: settings.lockZoomIn.locked,
+        onChange: (value) => {
+            events.fire('viewer:lock-zoom-in', value)
+        },
     })
     lockZoomInRow.appendChild(lockZoomInToggleEl)
 
@@ -333,19 +342,22 @@ function makeViewerSection(el, global) {
     const spinGroup = makeSectionGroup('Spin')
 
     const spinEnabledRow = makeRow({ title: 'Enabled' })
-    const spinEnabledToggleEl = makeToggle(settings.spin.enabled, (value) => {
-        settings.spin.enabled = !settings.spin.enabled
-        if (settings.spin.enabled) {
-            spinContinuousRow.classList.remove('hidden')
-            spinOnStartRow.classList.remove('hidden')
-            speedRow.classList.remove('hidden')
-        } else {
-            spinContinuousRow.classList.add('hidden')
-            spinOnStartRow.classList.add('hidden')
-            speedRow.classList.add('hidden')
-        }
-        events.fire('spin:enabled', value)
-        events.fire('re-render:control-wrap', value)
+    const spinEnabledToggleEl = makeToggle({
+        value: settings.spin.enabled,
+        onChange: (value) => {
+            settings.spin.enabled = !settings.spin.enabled
+            if (settings.spin.enabled) {
+                spinContinuousRow.classList.remove('hidden')
+                spinOnStartRow.classList.remove('hidden')
+                speedRow.classList.remove('hidden')
+            } else {
+                spinContinuousRow.classList.add('hidden')
+                spinOnStartRow.classList.add('hidden')
+                speedRow.classList.add('hidden')
+            }
+            events.fire('spin:enabled', value)
+            events.fire('re-render:control-wrap', value)
+        },
     })
     spinEnabledRow.appendChild(spinEnabledToggleEl)
 
@@ -365,15 +377,21 @@ function makeViewerSection(el, global) {
     speedRow.appendChild(speedInput)
 
     const spinContinuousRow = makeRow({ title: 'Continuous', show: settings.spin.enabled })
-    const spinContinuousToggleEl = makeToggle(settings.spin.continuous, (value) => {
-        settings.spin.continuous = !settings.spin.continuous
-        events.fire('spin-continuous', value)
+    const spinContinuousToggleEl = makeToggle({
+        value: settings.spin.continuous,
+        onChange: (value) => {
+            settings.spin.continuous = !settings.spin.continuous
+            events.fire('spin-continuous', value)
+        },
     })
     spinContinuousRow.appendChild(spinContinuousToggleEl)
 
     const spinOnStartRow = makeRow({ title: 'Auto Start', show: settings.spin.enabled })
-    const spinOnStartToggleEl = makeToggle(settings.spin.autoStart, (value) => {
-        settings.spin.autoStart = !settings.spin.autoStart
+    const spinOnStartToggleEl = makeToggle({
+        value: settings.spin.autoStart,
+        onChange: (value) => {
+            settings.spin.autoStart = !settings.spin.autoStart
+        },
     })
     spinOnStartRow.appendChild(spinOnStartToggleEl)
 
@@ -388,521 +406,7 @@ function makeViewerSection(el, global) {
 
     el.appendChild(container)
 }
-function makeDimensionSection(el, global) {
-    const { events, settings } = global
-    events.on('sidebar:active', () => onCancel())
-    events.on('sidebar:clicked', () => onCancel())
-    let isEditing = false
-    let editDimension = settings.dimensions ?? null
-    let currentDimensions = settings.dimensions ?? null
-    // let currentBoxLocalPos = { x: 0, y: 0, z: 0 }
-    // let prevRotation = { x: 0, y: 0, z: 0 }
 
-    const container = document.createElement('div')
-    container.classList.add('dimensions-wrap')
-
-    // ── No dimension row ──
-    const noDimRow = document.createElement('div')
-    noDimRow.classList.add('no-dimensions-row')
-    const noDimText = document.createElement('span')
-    noDimText.textContent = 'No dimensions configured'
-    noDimText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
-    const addBtn = document.createElement('button')
-    addBtn.classList.add('add-btn')
-    addBtn.textContent = '+ Add'
-    events.on('gizmo-rotation:drag-end', async () => {
-        if (!isEditing) return
-        const result = await getUpdateBoxSize(currentDimensions.rotation)
-        currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-        events.fire('dimensions:change', currentDimensions)
-    })
-    addBtn.onclick = async () => {
-        await global.loading.show()
-
-        const orientPose = settings.orientation.pose
-        const orientQuat = orientPose
-            ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
-            : new Quat(0, 0, 0, 1)
-        const localPoints = getVisiblePoints(modelEntity, orientQuat)
-        const count = localPoints.length / 3
-
-        const result = await snapToFitOBBAsync(localPoints, getDimensionsRotation(localPoints))
-
-        const invOrientQuat = orientQuat.clone().invert()
-
-        const posInOriented = new Vec3(result.position.x, result.position.y, result.position.z)
-        const posInLocal = new Vec3()
-        invOrientQuat.transformVector(posInOriented, posInLocal)
-
-        const snapQuat = new Quat().setFromEulerAngles(result.rotation.x, result.rotation.y, result.rotation.z)
-        const finalQuat = new Quat().mul2(invOrientQuat, snapQuat)
-        const finalEuler = finalQuat.getEulerAngles()
-
-        global.loading.hide()
-
-        currentDimensions = {
-            boxColor: '#f95f4d',
-            background: { color: 'white', alpha: 0.8 },
-            foregroundColor: '#f95f4d',
-            realSize: { x: 0, y: 0, z: 0 },
-            unit: 'cm',
-        }
-
-        const finalDimension = {
-            ...currentDimensions,
-            position: { x: posInLocal.x, y: posInLocal.y, z: posInLocal.z },
-            size: result.size,
-            rotation: { x: finalEuler.x, y: finalEuler.y, z: finalEuler.z },
-        }
-
-        editDimension = { ...finalDimension }
-        currentDimensions = { ...finalDimension }
-        settings.dimensions = finalDimension
-        setDimConfigured(true)
-        setValues(currentDimensions)
-        events.fire('dimensions:configured', currentDimensions)
-    }
-
-    async function getUpdateBoxSize(rotation) {
-        const points = getVisiblePoints(modelEntity)
-        const result = await getBoxSize(points, rotation)
-        return result
-    }
-    noDimRow.appendChild(noDimText)
-    noDimRow.appendChild(addBtn)
-
-    // ── Has dimension ──
-    const hasDimWrap = makeSectionWrap()
-    const displayGroup = makeSectionGroup('display')
-
-    // Color picker
-    const {
-        setDisabled: setBoxColorDisabled,
-        row: boxColorGroup,
-        input: boxColorInput,
-    } = makeColorPicker({
-        label: 'Box Color',
-        defaultValue: currentDimensions?.boxColor || '#ffffff',
-        onChange: (color) => {
-            currentDimensions = { ...currentDimensions, boxColor: color }
-            events.fire('dimensions:change', currentDimensions)
-        },
-    })
-    const {
-        setDisabled: setTextColorDisabled,
-        row: textColor,
-        input: textColorInput,
-    } = makeColorPicker({
-        label: 'Text Color',
-        defaultValue: currentDimensions?.foregroundColor || '#ffffff',
-        onChange: (color) => {
-            currentDimensions = { ...currentDimensions, foregroundColor: color }
-            events.fire('dimensions:change', currentDimensions)
-        },
-    })
-
-    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
-    const backgroundColor = makeColorAlpha({
-        color: currentDimensions?.background.color || '#000000',
-        alpha: currentDimensions?.background.alpha ?? 0.8,
-        onChangeColor: (color) => {
-            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, color } }
-            events.fire('dimensions:change', currentDimensions)
-        },
-        onChangeAlpha: (alpha) => {
-            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, alpha } }
-            events.fire('dimensions:change', currentDimensions)
-        },
-    })
-    backgroundRow.appendChild(backgroundColor)
-
-    displayGroup.appendChild(boxColorGroup)
-    displayGroup.appendChild(textColor)
-    displayGroup.appendChild(backgroundRow)
-
-    // ── Group 1: Box Transform ──
-    // const boxGroup = makeSectionGroup('Box transform')
-    // const {
-    //     row: positionRow,
-    //     setDisabled: setPosDisabled,
-    //     setValues: setPosValues,
-    // } = makeVec3Inputs({
-    //     title: 'Position',
-    //     step: 0.5,
-    //     onFocus: () => {
-    //         if (!currentDimensions) return
-    //         currentBoxLocalPos = dimensionWorldToLocal(currentDimensions.position, currentDimensions.rotation)
-    //         setPosValues(currentBoxLocalPos)
-    //     },
-    //     onChange: ({ x, y, z }) => {
-    //         if (!isEditing) return
-    //         currentBoxLocalPos = { x, y, z }
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             position: dimensionLocalToWorld({ x, y, z }, currentDimensions.rotation),
-    //         }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // events.on('dimensions:position-synced', ({ x, y, z }) => {
-    //     currentBoxLocalPos = dimensionWorldToLocal({ x, y, z }, currentDimensions.rotation)
-    //     setPosValues(currentBoxLocalPos)
-    //     currentDimensions = { ...currentDimensions, position: { x, y, z } }
-    //     events.fire('dimensions:change', currentDimensions)
-    // })
-
-    // const {
-    //     row: rotationRow,
-    //     setDisabled: setRotDisabled,
-    //     setValues: setRotValues,
-    // } = makeVec3Inputs({
-    //     title: 'Rotation',
-    //     step: 0.1,
-    //     onFocus: () => {
-    //         if (currentDimensions?.rotation) {
-    //             prevRotation = { ...currentDimensions.rotation }
-    //         }
-    //     },
-    //     onChange: async ({ x, y, z }) => {
-    //         if (!isEditing) return
-
-    //         const dx = x - prevRotation.x
-    //         const dy = y - prevRotation.y
-    //         const dz = z - prevRotation.z
-    //         prevRotation = { x, y, z }
-
-    //         const currRot = currentDimensions.rotation
-    //         const qCurr = new Quat().setFromEulerAngles(currRot.x, currRot.y, currRot.z)
-    //         const wx = new Vec3(1, 0, 0)
-    //         qCurr.transformVector(wx, wx)
-    //         const wy = new Vec3(0, 1, 0)
-    //         qCurr.transformVector(wy, wy)
-    //         const wz = new Vec3(0, 0, 1)
-    //         qCurr.transformVector(wz, wz)
-
-    //         const qx = new Quat().setFromAxisAngle(wx, dx)
-    //         const qy = new Quat().setFromAxisAngle(wy, dy)
-    //         const qz = new Quat().setFromAxisAngle(wz, dz)
-    //         const qDelta = qy.mul(qx).mul(qz)
-
-    //         const qNew = qDelta.mul(qCurr)
-
-    //         const newEuler = qNew.getEulerAngles()
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             rotation: { x: newEuler.x, y: newEuler.y, z: newEuler.z },
-    //         }
-
-    //         prevRotation = { ...newEuler }
-    //         setRotValues(newEuler)
-
-    //         const result = await getUpdateBoxSize(currentDimensions.rotation)
-    //         currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // events.on('dimensions:eulersynced', ({ x, y, z }) => {
-    //     setRotValues({ x, y, z })
-    //     prevRotation = { x, y, z }
-    //     currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
-    //     events.fire('dimensions:change', currentDimensions)
-    // })
-
-    // const {
-    //     row: sizeRow,
-    //     setDisabled: setSizeDisabled,
-    //     setValues: setSizeValues,
-    // } = makeVec3Inputs({
-    //     title: 'Size',
-    //     step: 0.1,
-    //     onChange: ({ x, y, z }) => {
-    //         if (!isEditing) return
-    //         currentDimensions = { ...currentDimensions, size: { x, y, z } }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // // ── Auto Fit row ──
-    // const autoFitRow = makeRow('Auto Fit')
-    // const autoFitBtn = makeButton({
-    //     icon: ICONS.autoFit,
-    //     title: 'Auto Fit',
-    //     onClick: async () => {
-    //         if (!currentDimensions || !isEditing) return
-    //         await global.loading.show()
-    //         const points = getVisiblePoints(modelEntity)
-    //         const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
-    //             maxIterations: 300,
-    //             learningRate: 1,
-    //             chunkSize: 50,
-    //         })
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             ...result,
-    //             ...result,
-    //             ...result,
-    //         }
-    //         setValues(currentDimensions)
-    //         events.fire('dimensions:change', currentDimensions)
-    //         global.loading.hide()
-    //     },
-    // })
-    // autoFitBtn.style.cssText = 'height:32px;'
-
-    // autoFitRow.appendChild(autoFitBtn)
-
-    // boxGroup.appendChild(positionRow)
-    // boxGroup.appendChild(rotationRow)
-    // boxGroup.appendChild(sizeRow)
-    // boxGroup.appendChild(autoFitRow)
-    // ── Group 2: Real Dimensions ──
-    const realGroup = makeSectionGroup('Dimensions')
-
-    // ── Auto Calculate checkbox ──
-    let autoCalc = false
-    const {
-        row: autoCalcRow,
-        getValue: getAutoCalc,
-        setDisabled: setAutoCalcDisabled,
-    } = makeCheckbox({
-        label: 'Auto Calculate',
-        checked: false,
-        disabled: true,
-        onChange: (val) => {
-            autoCalc = val
-        },
-    })
-
-    const realUnitRow = makeRow({ title: 'Unit' })
-    const realUnitSelect = makeSelect(
-        ['mm', 'cm', 'm', 'inch'],
-        settings.dimensions?.unit || 'cm',
-        (v) => {
-            currentDimensions = { ...currentDimensions, unit: v }
-            events.fire('dimensions:change', currentDimensions)
-        },
-        { name: 'unit', className: 'unit-select' },
-    )
-    const setRealUnitDisabled = (val) => {
-        realUnitSelect.disabled = val
-        realUnitSelect.classList.toggle('unit-select-disabled', val)
-    }
-    realUnitRow.appendChild(realUnitSelect)
-
-    const {
-        row: realSizeRow,
-        setDisabled: setRealDisabled,
-        setValues: setRealValues,
-        setValuesPartial: setRealValuesPartial,
-    } = makeVec3Inputs({
-        title: 'Size',
-        step: 0.1,
-        onChange: ({ x, y, z, changedAxis }) => {
-            if (!isEditing) return
-            if (autoCalc && currentDimensions?.size && changedAxis) {
-                const boxSize = currentDimensions.size
-                const inputVal = { x, y, z }[changedAxis]
-                const boxVal = boxSize[changedAxis]
-                if (boxVal && boxVal !== 0) {
-                    const ratio = inputVal / boxVal
-                    const newReal = {
-                        x: changedAxis === 'x' ? x : boxSize.x * ratio,
-                        y: changedAxis === 'y' ? y : boxSize.y * ratio,
-                        z: changedAxis === 'z' ? z : boxSize.z * ratio,
-                    }
-                    currentDimensions = { ...currentDimensions, realSize: newReal }
-
-                    const others = { x: newReal.x, y: newReal.y, z: newReal.z }
-                    delete others[changedAxis]
-                    setRealValuesPartial(others)
-                }
-            } else {
-                currentDimensions = { ...currentDimensions, realSize: { x, y, z } }
-            }
-            events.fire('dimensions:change', currentDimensions)
-        },
-    })
-    if (settings.dimensions) setRealValues(settings.dimensions.realSize)
-    realGroup.appendChild(autoCalcRow)
-    realGroup.appendChild(realSizeRow)
-    realGroup.appendChild(realUnitRow)
-
-    // ── Shared helpers ──
-    const setValues = (dim) => {
-        if (!dim) return
-        // prevRotation = { ...dim.rotation }
-        // currentBoxLocalPos = dimensionWorldToLocal(dim.position, dim.rotation)
-        // setPosValues(currentBoxLocalPos)
-        // setRotValues(dim.rotation)
-        // setSizeValues(dim.size)
-        setRealValues(dim.realSize)
-        boxColorInput.value = dim.boxColor
-        textColorInput.value = dim.foregroundColor
-        realUnitSelect.value = dim.unit
-        backgroundColor.setColor(dim.background.color)
-        backgroundColor.setAlpha(dim.background.alpha)
-    }
-
-    const setDisabled = (on) => {
-        // setPosDisabled(!on)
-        // setRotDisabled(!on)
-        // setSizeDisabled(!on)
-        setRealDisabled(!on)
-        setRealUnitDisabled(!on)
-        setBoxColorDisabled(!on)
-        setTextColorDisabled(!on)
-        backgroundColor.setDisabled(!on)
-        setAutoCalcDisabled(!on)
-        // autoFitBtn.disabled = !on
-    }
-
-    // ── Buttons ──
-    const btnRow = document.createElement('div')
-    btnRow.classList.add('btn-row')
-
-    const onEdit = () => {
-        isEditing = true
-        setDisabled(true)
-        renderBtns()
-        events.fire('dimensions:edit', currentDimensions)
-    }
-
-    const onCancel = () => {
-        if (!isEditing) return
-        isEditing = false
-        setDisabled(false)
-        if (editDimension) setValues(editDimension)
-        currentDimensions = { ...editDimension }
-        renderBtns()
-        events.fire('dimensions:cancel')
-    }
-
-    const renderBtns = () => {
-        btnRow.innerHTML = ''
-        if (isEditing) {
-            const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancel })
-            const btnApply = makeButton({
-                title: 'Apply',
-                className: 'confirm-btn',
-                onClick: () => {
-                    editDimension = { ...currentDimensions }
-                    settings.dimensions = { ...currentDimensions }
-                    isEditing = false
-                    setDisabled(false)
-                    renderBtns()
-                    events.fire('dimensions:save', currentDimensions)
-                },
-            })
-            btnRow.appendChild(btnCancel)
-            btnRow.appendChild(btnApply)
-        } else {
-            const btnEdit = makeButton({ title: 'Edit', className: 'edit-btn', onClick: onEdit })
-            const btnDelete = makeButton({
-                title: 'Delete',
-                icon: ICONS.trash,
-                className: 'delete-btn',
-                onClick: () => {
-                    settings.dimensions = null
-                    settings.measurement = JSON.parse(JSON.stringify(defaultSettings.measurement))
-                    editDimension = null
-                    currentDimensions = null
-                    setDimConfigured(false)
-                    events.fire('dimensions:configured', null)
-                },
-            })
-
-            btnRow.appendChild(btnEdit)
-            btnRow.appendChild(btnDelete)
-        }
-    }
-
-    hasDimWrap.appendChild(displayGroup)
-    // hasDimWrap.appendChild(boxGroup)
-    hasDimWrap.appendChild(realGroup)
-    hasDimWrap.appendChild(btnRow)
-
-    // ── Toggle configured state ──
-    const setDimConfigured = (has) => {
-        noDimRow.style.display = has ? 'none' : 'flex'
-        hasDimWrap.style.display = has ? 'flex' : 'none'
-    }
-
-    // ── Assemble ──
-    container.appendChild(noDimRow)
-    container.appendChild(hasDimWrap)
-    el.appendChild(container)
-
-    renderBtns()
-    setDisabled(false)
-    setDimConfigured(!!settings.dimensions)
-    if (settings.dimensions) setValues(settings.dimensions)
-}
-function makeMeasurementSection(el, global) {
-    if (!global.settings.measurement) {
-        global.settings.measurement = {
-            enabled: false,
-            lineColor: '#f95f4d',
-            textColor: '#fff',
-            background: {
-                color: '#000000A6',
-                alpha: 0.8,
-            },
-        }
-    }
-    const {
-        settings: { measurement },
-        events,
-    } = global
-    const measurementGroup = makeSectionGroup()
-    // ── Measurement toggle ──
-    const measureToggleRow = makeRow({ title: 'Enabled' })
-    const measureToggleEl = makeToggle(measurement?.enabled, (value) => {
-        if (measureToggleEl.classList.contains('disabled')) return
-        measureToggleEl.classList.toggle('active', value)
-        measurement.enabled = value
-        events.fire('re-render:control-wrap')
-        if (!value && global.measureTool) global.measureTool.deactivate()
-    })
-    measureToggleRow.appendChild(measureToggleEl)
-
-    // ── Measurement color row ──
-    const { row: lineColor } = makeColorPicker({
-        label: 'Line Color',
-        defaultValue: measurement.lineColor,
-        onChange: (color) => {
-            measurement.lineColor = color
-            if (global.measureTool) global.measureTool.setConfig(measurement)
-        },
-    })
-    const { row: textColor } = makeColorPicker({
-        label: 'Text Color',
-        defaultValue: measurement.textColor,
-        onChange: (color) => {
-            measurement.textColor = color
-            if (global.measureTool) global.measureTool.setConfig(measurement)
-        },
-    })
-    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
-    const backgroundColor = makeColorAlpha({
-        color: measurement.background.color,
-        alpha: measurement.background.alpha,
-        onChangeColor: (color) => {
-            measurement.background.color = color
-            if (global.measureTool) global.measureTool.setConfig(measurement)
-        },
-        onChangeAlpha: (alpha) => {
-            measurement.background.alpha = alpha
-            if (global.measureTool) global.measureTool.setConfig(measurement)
-        },
-    })
-    backgroundRow.appendChild(backgroundColor)
-
-    measurementGroup.appendChild(measureToggleRow)
-    measurementGroup.appendChild(lineColor)
-    measurementGroup.appendChild(textColor)
-    measurementGroup.appendChild(backgroundRow)
-
-    el.appendChild(measurementGroup)
-}
 function makeExportSection(el, global) {
     const hint = document.createElement('p')
     hint.textContent = 'Please put the exported HTML file in the current folder.'
@@ -935,7 +439,7 @@ function makeExportSection(el, global) {
     let tabs = null
     const helperBtn = makeLink({
         variant: 'secondary',
-        text: 'Export Location Change Helper',
+        label: 'Export Location Change Helper',
         onClick: (e) => {
             e.preventDefault()
             if (!tabs) {
@@ -1053,6 +557,7 @@ function makeSidebar(global, dom) {
                             base64: global.settings.base64,
                             pivot: global.settings.pivot,
                             model: global.settings.model,
+                            cameras: global.settings.cameras,
                             v: global.settings.v,
                         })
                         break
@@ -1065,6 +570,7 @@ function makeSidebar(global, dom) {
                             pivot: global.settings.pivot,
                             orientation: global.settings.orientation,
                             model: global.settings.model,
+                            cameras: global.settings.cameras,
                             v: global.settings.v,
                         })
                 }
@@ -1156,28 +662,16 @@ function makeSidebar(global, dom) {
                 events,
             }),
         )
-        const measurementContainer = document.createElement('div')
-        contentArea.appendChild(measurementContainer)
 
-        // const renderMeasurementSection = () => {
-        //     measurementContainer.innerHTML = ''
-        //     if (global.settings.dimensions) {
-        //         measurementContainer.appendChild(
-        //             makeSection({
-        //                 id: 'measurement',
-        //                 title: 'Measurement',
-        //                 classname: 'measurement-section',
-        //                 body: (el) => makeMeasurementSection(el, global),
-        //                 events,
-        //             }),
-        //         )
-        //     }
-        // }
-
-        // if (global.settings.measurement) renderMeasurementSection()
-        // events.on('dimensions:configured', () => {
-        //     renderMeasurementSection()
-        // })
+        contentArea.appendChild(
+            makeSection({
+                id: 'measurement',
+                title: 'Measurement',
+                classname: 'measurement-section',
+                body: (el) => makeMeasurementSection(el, global),
+                events,
+            }),
+        )
 
         contentArea.appendChild(
             makeSection({

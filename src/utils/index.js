@@ -303,11 +303,11 @@ function makeInfoPanel(settings, events) {
     ]
     const messageDesktop = [
         { action: 'Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
-        { action: 'Messages Disable', key: 'T / Text Icon', cls: 'messages-info' },
+        { action: 'Message Navigation', key: 'T / Text Icon', cls: 'messages-info' },
     ]
     const messageTouch = [
         { action: 'Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
-        { action: 'Messages Disable', key: 'Text Icon', cls: 'messages-info' },
+        { action: 'Message Navigation', key: 'Text Icon', cls: 'messages-info' },
     ]
 
     const getControls = () => ({
@@ -350,20 +350,28 @@ function makeInfoPanel(settings, events) {
 }
 
 function makeControlBotGroup(global, tooltip, dom) {
-    const { settings, events, dimensionsBox } = global
+    const { settings, events, dimensionsBox, isEditMeasurement, isSpin360 } = global
     const group = document.createElement('div')
     group.className = 'buttonGroup'
     // buttons: [id, iconKey,label,create, show, event, toggle]
-    const hasDimension = !!settings.dimensions
+    const {
+        dimensions,
+        measurement,
+        spin: { enabled: hasSpin },
+    } = settings
+    const hasDimension = !!dimensions
     const isShowDimensions = !dimensionsBox?.show
-    const hasMeasurement = hasDimension && settings.measurement?.enabled
-    const hasSpin = settings.spin.enabled
-    const showStartSpin = global.isSpin360 === undefined || global.isSpin360 === false
+    const hasMeasurement =
+        measurement &&
+        !isEditMeasurement &&
+        ((!measurement.calibration.useDimensionData && hasCalibrationData(measurement.calibration)) ||
+            (measurement.calibration.useDimensionData && hasDimensionsData(dimensions)))
+    const showStartSpin = !isSpin360
     const buttons = [
         ['startSpin', 'startSpin', 'Start Spin', hasSpin, showStartSpin, '360spin-start'],
         ['stopSpin', 'stopSpin', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
         ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
-        // ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
+        ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
             'showDimension',

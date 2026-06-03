@@ -1,3 +1,17 @@
+function hasDimensionsData(dimensions) {
+    return (
+        dimensions &&
+        dimensions.size &&
+        (dimensions.size.x > 0 || dimensions.size.y > 0 || dimensions.size.z > 0) &&
+        dimensions.realSize &&
+        (dimensions.realSize.x > 0 || dimensions.realSize.y > 0 || dimensions.realSize.z > 0)
+    )
+}
+function hasCalibrationData(calibration) {
+    if (!calibration) return false
+    const { distance, points } = calibration
+    return distance > 0 && points.length >= 2
+}
 async function ecb(encryptedBase64) {
     try {
         const p1 = 'SU?p!;zJ'
