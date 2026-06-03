@@ -962,9 +962,7 @@ function makeExportSection(el, global) {
             })
         },
     })
-    if (!window.showSaveFilePicker) {
-        el.appendChild(helperBtn)
-    }
+    el.appendChild(helperBtn)
     el.appendChild(hint)
     const btn = makeButton({
         className: 'export-btn',

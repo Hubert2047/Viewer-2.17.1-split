@@ -201,32 +201,16 @@ async function exportHtml(name, settings) {
     const injectedScript = `<script>window.sse = { "settings": ${JSON.stringify(orderedSettings)} }<\/script>`
     const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
-    if (window.showSaveFilePicker) {
-        const handle = await window.showSaveFilePicker({
-            id: 'html-export',
-            suggestedName: name,
-            types: [
-                {
-                    description: 'HTML file',
-                    accept: { 'text/html': ['.html'] },
-                },
-            ],
-        })
 
-        const writable = await handle.createWritable()
-        await writable.write(html)
-        await writable.close()
-    } else {
-        const blob = new Blob([html], { type: 'text/html' })
-        const url = URL.createObjectURL(blob)
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
 
-        const a = document.createElement('a')
-        a.href = url
-        a.download = name
-        a.click()
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
 
-        URL.revokeObjectURL(url)
-    }
+    URL.revokeObjectURL(url)
 }
 function getHtmlTemplate(version) {
     return `
