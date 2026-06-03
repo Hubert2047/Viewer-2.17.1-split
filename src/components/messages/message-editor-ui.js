@@ -162,7 +162,6 @@ class MessageEditorUI {
             item.classList.add('message-item')
             item.dataset.id = h.id
             if (isExpanded) item.classList.add('expanded')
-
             const { row, headerTitle } = this.renderItemHeader(h, isExpanded)
             item.appendChild(row)
             if (isExpanded) item.appendChild(this.renderEditPanel(headerTitle))
@@ -252,12 +251,14 @@ class MessageEditorUI {
         const buttonGroup = makeSectionGroup('Button')
         const btnTitleField = this.makeField('Title')
         btnTitleField.appendChild(
-            makeInput('text', this.activeMessageData.button.title, {
+            makeInput({
+                type: 'text',
+                value: this.activeMessageData.button.title,
                 placeholder: 'Title...',
                 name: 'button-title',
                 onChange: (v) => {
                     this.activeMessageData.button.title = v
-                    headerTitle.textContent = v
+                    headerTitle.textContent = v 
                     this.applyDraft()
                 },
             }),
@@ -336,7 +337,9 @@ class MessageEditorUI {
         const fontGrid = this.makeGrid(2)
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
-            makeInput('number', this.activeMessageData.text.fontSize, {
+            makeInput({
+                type: 'number',
+                value: this.activeMessageData.text.fontSize,
                 min: 8,
                 max: 72,
                 name: 'font-size',
@@ -383,7 +386,9 @@ class MessageEditorUI {
         const dotGrid = this.makeGrid(3)
         const sizeField = this.makeField('Size (px)')
         sizeField.appendChild(
-            makeInput('number', this.activeMessageData.dot.size, {
+            makeInput({
+                type: 'number',
+                value: this.activeMessageData.dot.size,
                 min: 1,
                 max: 999,
                 name: 'dot-size',
@@ -395,7 +400,9 @@ class MessageEditorUI {
         )
         const strokeField = this.makeField('Stroke width')
         strokeField.appendChild(
-            makeInput('number', this.activeMessageData.dot.stroke, {
+            makeInput({
+                type: 'number',
+                value: this.activeMessageData.dot.stroke,
                 min: 0,
                 max: 99,
                 step: 0.5,
@@ -428,7 +435,9 @@ class MessageEditorUI {
         const autoPlayGroup = makeSectionGroup('Auto Play')
         const timeField = this.makeField('Elapsed Time (ms)')
         timeField.appendChild(
-            makeInput('number', this.activeMessageData.autoPlay.time, {
+            makeInput({
+                type: 'number',
+                value: this.activeMessageData.autoPlay.time,
                 min: 0,
                 step: 500,
                 name: 'play-time',
@@ -682,7 +691,9 @@ class MessageEditorUI {
             },
         })
 
-        const volumeInput = makeInput('number', this.activeMessageData.audio?.volume ?? 1, {
+        const volumeInput = makeInput({
+            type: 'number',
+            value: this.activeMessageData.audio?.volume ?? 1,
             min: 0,
             max: 1,
             step: 0.1,

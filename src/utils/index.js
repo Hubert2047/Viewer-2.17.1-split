@@ -418,7 +418,7 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
     group.className = 'buttonGroup'
     // buttons: [id, iconKey, label, defaultShow, event]
     const showStopPlayMessages = global.isAutoPlayMessages
-    const hideMessages = global.isShowMessageNavigation
+    const hideMessages = global.isShowMessageNavigation || (global.isShowMessageNavigation === undefined && !isMobile)
     const buttons = [
         ['stopMessage', 'stopPlay', 'Story Stop Play', showStopPlayMessages, 'stop-auto'],
         ['startMessage', 'startPlay', 'Story Auto Play', !showStopPlayMessages, 'start-auto'],
@@ -451,30 +451,73 @@ function makeControlsWrap(global, tooltip, dom, events) {
     wrap.addEventListener('contextmenu', (e) => {
         e.preventDefault()
     })
+
     const container = document.createElement('div')
     container.id = 'buttonsContainer'
     dom[container.id] = container
+
+    const messageContainer = document.createElement('div')
+    messageContainer.id = 'messageContainer'
+    dom.messageContainer = messageContainer
+    messageContainer.addEventListener('wheel', (e) => {
+        e.stopPropagation()
+    })
+    let mobileNav = null
+
+    if (isMobile) {
+        mobileNav = document.createElement('div')
+        mobileNav.id = 'mobileMessageNav'
+
+        const makeNavBtn = (dir) => {
+            const btn = document.createElement('button')
+            btn.innerHTML =
+                dir === 'prev'
+                    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`
+                    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`
+            btn.style.cssText = `
+    width: 30px; height: 30px; border-radius: 50%; border: none;
+    display: flex; align-items: center;
+    justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0;
+    transition: background 0.15s;
+    visibility: ${global.settings.messages.length > 1 ? 'visible' : 'hidden'};
+`
+            btn.addEventListener('click', () => {
+                events.fire('message:mobile-navigation', dir)
+            })
+            return btn
+        }
+
+        mobileNav.appendChild(makeNavBtn('prev'))
+        mobileNav.appendChild(messageContainer)
+        mobileNav.appendChild(makeNavBtn('next'))
+        wrap.appendChild(mobileNav)
+    } else {
+        wrap.appendChild(messageContainer)
+    }
+
     const render = () => {
         container.innerHTML = ''
         container.appendChild(makeControlBotGroup(global, tooltip, dom))
         if (global.settings.messages.length > 0) {
             container.appendChild(makeMessageActionGroup(global, tooltip, events, dom))
         }
+        if (mobileNav) {
+            const isVisible = global.isShowMessageNavigation
+            mobileNav.style.display = isVisible ? 'flex' : 'none'
+        }
     }
+
     render()
     global.events.on('re-render:control-wrap', render)
     wrap.appendChild(container)
-    const messageContainer = document.createElement('div')
-    messageContainer.id = 'messageContainer'
-    dom.messageContainer = messageContainer
-    wrap.appendChild(messageContainer)
-    const canvas = global.app.graphicsDevice.canvas
 
+    const canvas = global.app.graphicsDevice.canvas
     wrap.addEventListener('pointerdown', (e) => {
         if (e.target === wrap || e.target === container || e.target === messageContainer) {
             canvas.dispatchEvent(new PointerEvent('pointerdown', e))
         }
     })
+
     return wrap
 }
 function makeGroupWrapper(title) {

@@ -172,7 +172,9 @@ function makeCameraLimitsGroup(global, editGroup) {
     const pitchInputRow = makeRow({ title: 'Pitch offset' })
     const defaultValue =
         settings.orientation.pitchOffset !== undefined ? Math.round(radToDeg(settings.orientation.pitchOffset)) : 0
-    const pitchInput = makeInput('number', defaultValue, {
+    const pitchInput = makeInput({
+        type: 'number',
+        value: defaultValue,
         step: 1,
         disabled: true,
         min: PITCH_MIN_DEG,

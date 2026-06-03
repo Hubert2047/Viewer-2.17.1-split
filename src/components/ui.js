@@ -428,33 +428,36 @@ function makeButton({ icon, title, className, id, onClick, onHold = false }) {
     return btn
 }
 
-function makeInput(type, value, opts = {}) {
+function makeInput({ type, value, min, max, step, placeholder, onChange, disabled = false, name, className } = {}) {
     const input = document.createElement('input')
     input.type = type
     input.value = value
     input.classList.add('input-field')
-    if (opts.className) {
-        input.classList.add(...opts.className.trim().split(/\s+/))
+    if (className) {
+        input.classList.add(...className.trim().split(/\s+/))
     }
-    if (opts.min !== undefined) input.min = opts.min
-    if (opts.name) input.name = opts.name
-    if (opts.max !== undefined) input.max = opts.max
-    if (opts.step !== undefined) input.step = opts.step
-    if (opts.placeholder) input.placeholder = opts.placeholder
-    if (opts.disabled) input.disabled = true
-    if (opts.onChange)
+    if (min !== undefined) input.min = min
+    if (name) input.name = name
+    if (max !== undefined) input.max = max
+    if (step !== undefined) input.step = step
+    if (placeholder) input.placeholder = placeholder
+    if (disabled) input.disabled = true
+    if (onChange)
         input.addEventListener('input', (e) => {
-            let value = parseFloat(input.value)
-            if (opts.min !== undefined && input.value < opts.min) {
-                value = opts.min
-                input.value = value
-            }
-            if (opts.max !== undefined && input.value > opts.max) {
-                value = opts.max
-                input.value = value
+            let value = input.value
+            if (type === 'number') {
+                value = parseFloat(input.value)
+                if (min !== undefined && input.value < min) {
+                    value = min
+                    input.value = value
+                }
+                if (max !== undefined && input.value > max) {
+                    value = max
+                    input.value = value
+                }
             }
             e.stopPropagation()
-            opts.onChange(value)
+            onChange(value)
         })
     return input
 }

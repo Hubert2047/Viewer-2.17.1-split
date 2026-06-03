@@ -14,7 +14,7 @@ class MessagesManager {
 
         this.activeMessage = null
         this.activeData = null
-        this.global.isShowMessageNavigation = !isMobile
+        global.isShowMessageNavigation = !isMobile
         this.global.isAutoPlayMessages = false
         this.intervalID = null
         this.listenEvents()
@@ -214,6 +214,19 @@ class MessagesManager {
             this.hideAllMessages()
         })
         this.events.on('ortery:interaction', () => this.stopAutoPlay())
+        this.events.on('message:mobile-navigation', (dir) => {
+            if (this.messages.length === 0) return
+            const activeId = this.activeMessage?.id
+            const currentIdx = activeId ? this.messages.findIndex((m) => m.id === activeId) : -1
+            const nextIdx =
+                dir === 'prev'
+                    ? currentIdx <= 0
+                        ? this.messages.length - 1
+                        : currentIdx - 1
+                    : (currentIdx + 1) % this.messages.length
+            const nextData = this.settings.messages[nextIdx]
+            this.events.fire('message:editor-selected', JSON.parse(JSON.stringify(nextData)))
+        })
     }
     hideAllMessages() {
         if (this.activeData) this.events.fire('message:editor-cancelled')

@@ -65,7 +65,7 @@ function makeManualPanel(events) {
             startSpin.classList.add('hidden')
         }
     }
-    const yawStepInput = makeInput('number', 5, { step: 1, min: 0, className: 'orientation-step-input' })
+    const yawStepInput = makeInput({ type: 'number', value: 5, step: 1, min: 0, className: 'orientation-step-input' })
     const getYawStep = () => parseFloat(yawStepInput.value) || 5
     // ── Yaw row
     const yawRow = makeRow({ title: 'Spin' })
@@ -97,7 +97,7 @@ function makeManualPanel(events) {
     yawRow.appendChild(yawRight)
 
     // ── Y Position row
-    const yPosStepInput = makeInput('number', 0.5, { step: 0.5, min: 0, className: 'orientation-step-input' })
+    const yPosStepInput = makeInput({ type: 'number', value: 0.5, step: 0.5, min: 0, className: 'orientation-step-input' })
     const getYPosStep = () => parseFloat(yPosStepInput.value) || 0.1
 
     const yPosRow = makeRow({ title: 'Height' })
@@ -131,7 +131,7 @@ function makeManualPanel(events) {
     yPosRow.appendChild(yPosRight)
 
     // ── Pitch ──
-    const pitchStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
+    const pitchStepInput = makeInput({ type: 'number', value: 0.5, step: 0.1, min: 0, className: 'orientation-step-input' })
     const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
 
     const pitchRow = makeRow({ title: 'Tilt Up / Down' })
@@ -157,7 +157,7 @@ function makeManualPanel(events) {
     pitchRow.appendChild(pitchRight)
 
     // ── Roll ──
-    const rollStepInput = makeInput('number', 0.5, { step: 0.1, min: 0, className: 'orientation-step-input' })
+    const rollStepInput = makeInput({ type: 'number', value: 0.5, step: 0.1, min: 0, className: 'orientation-step-input' })
     const getRollStep = () => parseFloat(rollStepInput.value) || 0.5
 
     const rollRow = makeRow({ title: 'Lean Left / Right' })

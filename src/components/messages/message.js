@@ -223,8 +223,8 @@ class Messages {
     }
 
     // ── Update loop ──────────────────────────
-    update(updateContent = true, buttonTitle = '') {
-        if (buttonTitle) this.button.updateTitle(buttonTitle)
+    update(updateContent = true, buttonTitle = undefined) {
+        if (buttonTitle!== undefined) this.button.updateTitle(buttonTitle)
         const containerRect = this.dom.ui.getBoundingClientRect()
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const focusWorldPos = new Vec3()

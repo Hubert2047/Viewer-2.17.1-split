@@ -350,7 +350,9 @@ function makeViewerSection(el, global) {
     spinEnabledRow.appendChild(spinEnabledToggleEl)
 
     const speedRow = makeRow({ title: 'Speed', show: settings.spin.enabled, className: 'spin-speed' })
-    const speedInput = makeInput('number', settings.spin.speed, {
+    const speedInput = makeInput({
+        type: 'number',
+        value: settings.spin.speed,
         min: 1,
         max: 999,
         name: 'slider-number',

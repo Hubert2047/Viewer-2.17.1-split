@@ -145,8 +145,9 @@ button {
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
+  flex-direction: row-reverse;
   width: max-content;
-  height: 0px;
+  align-items: flex-end;
   gap: 12px;
 }
 
@@ -586,8 +587,13 @@ button {
 #messageContainer {
   display: flex;
   flex-direction: column;
-  justify-content: end;
+  justify-content: flex-start;
   gap: 8px;
+  height: 100%;
+  padding: 2px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  scrollbar-width: auto;
 }
 .message {
   display: none;
@@ -1460,6 +1466,9 @@ button {
   position: relative;
   width: 100%;
   min-width: max-content;
+  min-width: 48px;
+  height: fit-content;
+  min-height: 36px;
   padding: 8px;
   font-size: 16px;
   border: none;
@@ -2436,23 +2445,56 @@ button {
 }
 @media (max-width: 768px) {
   #controlsWrap {
-    flex-direction: column;
+    flex-direction: column-reverse;
     height: auto;
     width: auto;
     align-items: end;
     left: max(16px, env(safe-area-inset-left));
   }
+
+  #messageContainer::-webkit-scrollbar {
+    display: none;
+  }
+  #mobileMessageNav {
+    max-width: calc(100vw - 32px);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #dddd;
+    border-radius: 24px;
+    padding: 4px 6px;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 0.5px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  #mobileMessageNav > button {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+  }
+
+  #mobileMessageNav > button:active {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  #mobileMessageNav > button svg {
+    stroke: #555;
+  }
   #messageContainer {
     display: flex;
     flex-direction: row;
-    overflow-x: auto;
+    overflow: auto;
     flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 8px;
     width: 100%;
-    min-width: 0;
     touch-action: pan-x;
     -webkit-overflow-scrolling: touch;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    scrollbar-width: none;
   }
   #messageContainer * {
     touch-action: pan-x;
@@ -2460,7 +2502,8 @@ button {
   .active-message-btn {
     font-size: 14px;
     padding: 6px;
-    border: 1px solid var(--border);
+    min-width: max-content;
+    box-shadow: none;
   }
   #buttonsContainer {
     width: max-content;
