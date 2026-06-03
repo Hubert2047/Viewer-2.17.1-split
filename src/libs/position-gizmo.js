@@ -1,6 +1,7 @@
 class PointGizmo {
     _enabled = false
     _dragging = false
+    _dotDragging = false
     _activeAxis = null
     _svg = null
     _axes = {}
@@ -11,17 +12,17 @@ class PointGizmo {
     _dragAxisWorld = null
 
     static CONFIG = {
-        colors: { x: '#e85555', y: '#55cc55', z: '#5588ff' }, // Axis colors for X, Y, Z
-        axisLength: 90, // Axis line length in screen pixels
-        lineWidth: 4, // Default stroke width of axis line
-        lineOpacity: 0.9, // Default opacity of axis line
-        hitWidth: 16, // Invisible hit area width for pointer events
-        arrowSizeNormal: 11, // Arrowhead size in default state
-        arrowSizeActive: 15, // Arrowhead size when hovered or dragging
-        dotRadius: 5, // Radius of the center origin dot
-        lineWidthActive: 4, // Stroke width when axis is active/hovered
-        lineOpacityInactive: 0.25, // Opacity of inactive axes during hover/drag
-        fontSize: 12, // Font size of axis labels (X, Y, Z)
+        colors: { x: '#e85555', y: '#55cc55', z: '#5588ff' },
+        axisLength: 90,
+        lineWidth: 4,
+        lineOpacity: 0.9,
+        hitWidth: 16,
+        arrowSizeNormal: 11,
+        arrowSizeActive: 15,
+        dotRadius: 7,
+        lineWidthActive: 4,
+        lineOpacityInactive: 0.25,
+        fontSize: 12,
     }
 
     constructor(app, camEntity, modelEntity, { onMove, onEnd } = {}) {
@@ -42,15 +43,6 @@ class PointGizmo {
         this._canvas.parentElement.appendChild(svg)
         this._svg = svg
 
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        dot.setAttribute('r', cfg.dotRadius)
-        dot.setAttribute('fill', 'white')
-        dot.setAttribute('stroke', 'rgba(0,0,0,0.4)')
-        dot.setAttribute('stroke-width', '1.5')
-        dot.style.pointerEvents = 'none'
-        svg.appendChild(dot)
-        this._dot = dot
-
         for (const axis of ['x', 'y', 'z']) {
             const color = PointGizmo.CONFIG.colors[axis]
 
@@ -70,28 +62,16 @@ class PointGizmo {
             arrow.setAttribute('fill', color)
             arrow.style.pointerEvents = 'none'
 
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
-            text.textContent = axis.toUpperCase()
-            text.setAttribute('fill', color)
-            text.setAttribute('font-size', cfg.fontSize)
-            text.setAttribute('font-family', 'system-ui, sans-serif')
-            text.setAttribute('font-weight', '600')
-            text.setAttribute('text-anchor', 'middle')
-            text.setAttribute('dominant-baseline', 'central')
-            text.style.pointerEvents = 'none'
-            text.style.userSelect = 'none'
-
             svg.appendChild(line)
             svg.appendChild(arrow)
             svg.appendChild(hit)
-            // svg.appendChild(text)
 
             hit.addEventListener('pointerenter', () => {
-                if (this._dragging) return
+                if (this._dragging || this._dotDragging) return
                 this._highlightOnly(axis)
             })
             hit.addEventListener('pointerleave', () => {
-                if (this._dragging) return
+                if (this._dragging || this._dotDragging) return
                 this._resetStyle()
             })
             hit.addEventListener('pointerdown', (e) => {
@@ -111,8 +91,49 @@ class PointGizmo {
                 this._endDrag()
             })
 
-            this._axes[axis] = { line, hit, arrow, text }
+            this._axes[axis] = { line, hit, arrow }
         }
+
+        // dot vẽ sau cùng để nằm trên các trục
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        dot.setAttribute('r', cfg.dotRadius)
+        dot.setAttribute('fill', 'white')
+        dot.setAttribute('stroke', 'rgba(0,0,0,0.4)')
+        dot.setAttribute('stroke-width', '1.5')
+        dot.style.pointerEvents = 'all'
+        dot.style.cursor = 'move'
+        svg.appendChild(dot)
+        this._dot = dot
+
+        dot.addEventListener('pointerenter', () => {
+            if (this._dragging || this._dotDragging) return
+            dot.setAttribute('r', cfg.dotRadius + 2)
+        })
+        dot.addEventListener('pointerleave', () => {
+            if (this._dotDragging) return
+            dot.setAttribute('r', cfg.dotRadius)
+        })
+        dot.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return
+            e.preventDefault()
+            e.stopPropagation()
+            dot.setPointerCapture(e.pointerId)
+            this._dotDragging = true
+            this._prevMouse = { x: e.clientX, y: e.clientY }
+            document.body.style.cursor = 'grabbing'
+        })
+        dot.addEventListener('pointermove', (e) => {
+            if (!this._dotDragging) return
+            e.preventDefault()
+            this._onDotDrag(e.clientX, e.clientY)
+        })
+        dot.addEventListener('pointerup', () => {
+            if (!this._dotDragging) return
+            this._dotDragging = false
+            dot.setAttribute('r', cfg.dotRadius)
+            document.body.style.cursor = ''
+            if (this._localPos) this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
+        })
     }
 
     _w2s(v3) {
@@ -122,8 +143,12 @@ class PointGizmo {
     }
 
     _worldAxisDir(axis) {
-        const dirs = { x: new Vec3(-1, 0, 0), y: new Vec3(0, -1, 0), z: new Vec3(0, 0, -1) }
-        const dir = dirs[axis]
+        const localDirs = {
+            x: new Vec3(1, 0, 0),
+            y: new Vec3(0, -1, 0),
+            z: new Vec3(0, 0, 1),
+        }
+        const dir = localDirs[axis].clone()
         this._modelEntity.getRotation().transformVector(dir, dir)
         return dir.normalize()
     }
@@ -135,14 +160,17 @@ class PointGizmo {
         return worldPos
     }
 
-    _axisLength() {
+    _unitsPerPixel() {
         const worldPos = this._getWorldPos()
         if (!worldPos) return 1
         const camPos = this._camEntity.getPosition()
-        const dist = new Vec3().copy(worldPos).sub(camPos).length()
+        const dist = new Vec3().sub2(worldPos, camPos).length()
         const fovRad = (this._camEntity.camera.fov * Math.PI) / 180
-        const ppu = this._canvas.clientHeight / 2 / Math.tan(fovRad / 2) / dist
-        return PointGizmo.CONFIG.axisLength / ppu
+        return (2 * Math.tan(fovRad / 2) * dist) / this._canvas.clientHeight
+    }
+
+    _axisLength() {
+        return PointGizmo.CONFIG.axisLength * this._unitsPerPixel()
     }
 
     _update() {
@@ -157,7 +185,7 @@ class PointGizmo {
         const len = this._axisLength()
 
         for (const axis of ['x', 'y', 'z']) {
-            const { line, hit, arrow, text } = this._axes[axis]
+            const { line, hit, arrow } = this._axes[axis]
             const dir = this._worldAxisDir(axis)
             const tipWorld = new Vec3(worldPos.x + dir.x * len, worldPos.y + dir.y * len, worldPos.z + dir.z * len)
             const tip = this._w2s(tipWorld)
@@ -217,19 +245,48 @@ class PointGizmo {
         const tipScr = this._w2s(new Vec3(worldPos.x + axisDir.x, worldPos.y + axisDir.y, worldPos.z + axisDir.z))
         const axScr = { x: tipScr.x - center.x, y: tipScr.y - center.y }
         const axLen = Math.sqrt(axScr.x ** 2 + axScr.y ** 2) || 1
-        
         const axNorm = { x: axScr.x / axLen, y: axScr.y / axLen }
         const dot = dx * axNorm.x + dy * axNorm.y
+
         const invWorld = new Mat4().copy(this._modelEntity.getWorldTransform()).invert()
         const axisLocal = new Vec3()
         invWorld.transformVector(axisDir, axisLocal)
-        const localScale = axisLocal.length()   
+        const localScale = axisLocal.length()
         axisLocal.normalize()
 
         const delta = dot / axLen / localScale
         this._localPos.x += axisLocal.x * delta
         this._localPos.y += axisLocal.y * delta
         this._localPos.z += axisLocal.z * delta
+
+        this._prevMouse = { x: cx, y: cy }
+        this._onMove?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
+        this._app.renderNextFrame = true
+    }
+
+    _onDotDrag(cx, cy) {
+        if (!this._dotDragging || !this._localPos) return
+        const dx = cx - this._prevMouse.x
+        const dy = cy - this._prevMouse.y
+        if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
+
+        const upp = this._unitsPerPixel()
+        const right = this._camEntity.right.clone().normalize()
+        const up = this._camEntity.up.clone().normalize()
+
+        const worldDelta = new Vec3(
+            right.x * dx * upp + up.x * -dy * upp,
+            right.y * dx * upp + up.y * -dy * upp,
+            right.z * dx * upp + up.z * -dy * upp,
+        )
+
+        const invWorld = new Mat4().copy(this._modelEntity.getWorldTransform()).invert()
+        const localDelta = new Vec3()
+        invWorld.transformVector(worldDelta, localDelta)
+
+        this._localPos.x += localDelta.x
+        this._localPos.y += localDelta.y
+        this._localPos.z += localDelta.z
 
         this._prevMouse = { x: cx, y: cy }
         this._onMove?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
@@ -243,9 +300,7 @@ class PointGizmo {
         this._dragAxisWorld = null
         this._resetStyle()
         document.body.style.cursor = ''
-        if (this._localPos) {
-            this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
-        }
+        if (this._localPos) this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
     }
 
     _highlightOnly(activeAxis) {
@@ -270,7 +325,7 @@ class PointGizmo {
     }
 
     get isDragging() {
-        return this._dragging
+        return this._dragging || this._dotDragging
     }
 
     get position() {
@@ -291,6 +346,7 @@ class PointGizmo {
     disable() {
         this._enabled = false
         this._dragging = false
+        this._dotDragging = false
         this._svg.style.display = 'none'
         if (this._updateFn) this._app.off('update', this._updateFn)
         document.body.style.cursor = ''

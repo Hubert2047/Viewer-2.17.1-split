@@ -1,53 +1,84 @@
-
-    <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=75">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=75" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+            </div>
         </div>
-        <div id="loading-overlay">
-            <div class="spinner"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/360/2.ply","v":75,"dimensions":{"boxColor":"#f95f4d","background":{"color":"white","alpha":0.8},"foregroundColor":"#f95f4d","realSize":{"x":0,"y":0,"z":0},"unit":"cm","position":{"x":-0.18404837589066933,"y":-24.839159712195396,"z":-1.0335958397094724},"size":{"x":15.25131013975448,"y":49.490854769945145,"z":14.916886743644266},"rotation":{"x":0,"y":17.45,"z":0}},"setupStep":3,"cameras":[{"x":-47.6024,"y":-146.8633,"alt":1.1631}]} }</script>
-<script src="./viewer.js?v=75"></script>
+        <div id="tooltip"></div>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'cylindrical',
+                contentUrl: 'models/360/6.ply',
+                v: 75,
+                dimensions: {
+                    boxColor: '#f95f4d',
+                    background: { color: 'white', alpha: 0.8 },
+                    foregroundColor: '#f95f4d',
+                    realSize: { x: 0, y: 0, z: 0 },
+                    unit: 'cm',
+                    position: { x: -0.18404837589066933, y: -24.839159712195396, z: -1.0335958397094724 },
+                    size: { x: 15.25131013975448, y: 49.490854769945145, z: 14.916886743644266 },
+                    rotation: { x: 0, y: 17.45, z: 0 },
+                },
+                setupStep: 1,
+                cameras: [
+                    {
+                        x: 124.421939158606,
+                        y: -129.057264761077,
+                        alt: 38.2532365570135,
+                        heading: -41.0158157512737,
+                        pitch: 85.2622720631447,
+                        roll: 4.34256883095864,
+                        f: 63.510523477968,
+                    },
+                ],
+            },
+        }
+    </script>
+    <script src="./viewer.js?v=75"></script>
 </html>
-    
