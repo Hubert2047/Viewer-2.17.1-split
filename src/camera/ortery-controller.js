@@ -59,8 +59,7 @@ class OtherController {
             this.originEntityPos = modelEntity.localPosition.clone()
         }
         if (this.model === 'cylindrical' && this.settings.cameras.length > 0) {
-            // const f = this.settings.cameras[0]
-            const f = test_data6[0]
+            const f = this.settings.cameras[0]
             if (
                 typeof f.x === 'number' &&
                 typeof f.alt === 'number' &&
@@ -368,7 +367,6 @@ class OtherController {
             this.basePosition = this.originEntityPos.clone()
             this.baseRotation = this.originEntityRotation.clone()
         }
-        const isCylindrical = this.originModel === 'cylindrical'
         this.setupTransition({
             startPose: {
                 focus: startFocus,
@@ -475,16 +473,17 @@ class OtherController {
         let distance
         const focusPoint = this.bbox.center.clone()
 
-        if (this.originModel === 'cylindrical' && this.cylindricalCamPos) {
-            this.minPitch = 0
-            this.maxPitch = 0
+        const isCylindrical = this.originModel === 'cylindrical'
+
+        this.minPitch = 0
+        this.maxPitch = isCylindrical ? 0 : Math.PI / 2
+
+        if (isCylindrical && this.cylindricalCamPos) {
             this.cameraEntity.setPosition(this.cylindricalCamPos)
             this.fov = this.calFitFOV()
             forward = focusPoint.clone().sub(this.cylindricalCamPos).normalize()
             distance = this.cylindricalCamPos.distance(this.bbox.center)
-        } else {    
-            this.minPitch = 0
-            this.maxPitch = Math.PI / 2
+        } else {
             forward = focusPoint.clone().sub(camera.position).normalize()
             distance = this.getDeafultDistance()
         }
@@ -690,6 +689,7 @@ class OtherController {
                 focus: this.focus.clone(),
                 rotation: modelEntity.localRotation.clone(),
                 position: modelEntity.localPosition.clone(),
+                fov: this.fov,
                 distance: this.distance,
             },
             targetPose: {
@@ -697,6 +697,7 @@ class OtherController {
                 rotation: this.initialModelRotation.clone(),
                 position: this.initialModelPosition.clone(),
                 distance: this.resetPose.distance,
+                fov: this.resetPose.fov,
                 yaw: 0,
                 pitch: 0,
             },
