@@ -1,5 +1,6 @@
 class Messages {
-    dragging = false
+    contentDragging = false
+    dotDragging = false
     resizing = false
     resizeEdge = null
     messageMaxScale = 1.5
@@ -244,6 +245,7 @@ class Messages {
     }
 
     updateDot(worldMatrix, focusScreenPos) {
+        if (this.dotDragging) return
         const dotWorldTL = new Vec3()
         const dotWorldBR = new Vec3()
         worldMatrix.transformPoint(this.data.dot.topLeft, dotWorldTL)
@@ -267,7 +269,8 @@ class Messages {
         this.dot.style.top = focusScreenPos.y - this.dot.offsetHeight / 2 + 'px'
     }
 
-    updateLine(focusScreenPos) {
+    updateLine(focusScreenPos, forceUpdate = false) {
+        if (this.dotDragging && !forceUpdate) return
         const divRect = this.div.getBoundingClientRect()
         const cx = divRect.left + divRect.width / 2
         const cy = divRect.top + divRect.height / 2
@@ -353,8 +356,7 @@ class Messages {
             this.data.text.originHeight = originHeight
             this.events.fire('message:drag-changed', this.data)
         }
-
-        if (updateContent && this.isDisplay) {
+        if (updateContent && this.isDisplay && !this.contentDragging && !this.resizing) {
             const dotRect = this.dot.getBoundingClientRect()
             const dotWidth = dotRect.width
             const dotHeight = dotRect.height
@@ -500,13 +502,12 @@ class Messages {
 
     // ── Drag events ──────────────────────────
     addDotDragEvents() {
-        let dragging = false
         let startX = 0,
             startY = 0
 
         this.dot.addEventListener('pointerdown', (e) => {
             e.stopPropagation()
-            dragging = true
+            this.dotDragging = true
             this.dot.setPointerCapture(e.pointerId)
             startX = e.clientX
             startY = e.clientY
@@ -514,7 +515,7 @@ class Messages {
         })
 
         this.dot.addEventListener('pointermove', (e) => {
-            if (!dragging) return
+            if (!this.dotDragging) return
             const newLeft = parseFloat(this.dot.style.left) + (e.clientX - startX)
             const newTop = parseFloat(this.dot.style.top) + (e.clientY - startY)
             this.dot.style.left = newLeft + 'px'
@@ -522,12 +523,12 @@ class Messages {
             startX = e.clientX
             startY = e.clientY
             const r = this.dot.getBoundingClientRect()
-            this.updateLine({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+            this.updateLine({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, true)
         })
 
         this.dot.addEventListener('pointerup', (e) => {
-            if (!dragging) return
-            dragging = false
+            if (!this.dotDragging) return
+            this.dotDragging = false
             this.dot.releasePointerCapture(e.pointerId)
             this.dot.style.cursor = 'grab'
             const screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
@@ -545,7 +546,7 @@ class Messages {
             minSize = 20
 
         this.div.addEventListener('pointermove', (e) => {
-            if (this.dragging || this.resizing) return
+            if (this.contentDragging || this.resizing) return
             const rect = this.div.getBoundingClientRect()
             const onL = e.clientX < rect.left + edgeSize
             const onR = e.clientX > rect.right - edgeSize
@@ -583,7 +584,7 @@ class Messages {
                 this.startLeft = this.div.offsetLeft
                 this.startTop = this.div.offsetTop
             } else {
-                this.dragging = true
+                this.contentDragging = true
                 this.startX = e.clientX - this.div.offsetLeft
                 this.startY = e.clientY - this.div.offsetTop
             }
@@ -591,8 +592,8 @@ class Messages {
         })
 
         this.div.addEventListener('pointermove', (e) => {
-            if (!this.dragging && !this.resizing) return
-            if (this.dragging) {
+            if (!this.contentDragging && !this.resizing) return
+            if (this.contentDragging) {
                 this.div.style.left = e.clientX - this.startX + 'px'
                 this.div.style.top = e.clientY - this.startY + 'px'
             } else {
@@ -625,7 +626,7 @@ class Messages {
         })
 
         this.div.addEventListener('pointerup', (e) => {
-            this.dragging = false
+            this.contentDragging = false
             this.resizing = false
             this.resizeEdge = null
             this._userResized = true

@@ -203,18 +203,28 @@ async function exportHtml(name, settings) {
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
     if (window.showSaveFilePicker) {
         const handle = await window.showSaveFilePicker({
-            suggestedName: 'index.html',
+            id: 'html-export',
+            suggestedName: name,
+            types: [
+                {
+                    description: 'HTML file',
+                    accept: { 'text/html': ['.html'] },
+                },
+            ],
         })
+
         const writable = await handle.createWritable()
         await writable.write(html)
         await writable.close()
     } else {
         const blob = new Blob([html], { type: 'text/html' })
         const url = URL.createObjectURL(blob)
+
         const a = document.createElement('a')
         a.href = url
         a.download = name
         a.click()
+
         URL.revokeObjectURL(url)
     }
 }

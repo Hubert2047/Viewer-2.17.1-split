@@ -59,7 +59,6 @@ class OtherController {
             this.originEntityPos = modelEntity.localPosition.clone()
         }
         if (this.model === 'cylindrical' && this.settings.cameras.length > 0) {
-            console.log(this.settings.cameras)
             const f = this.settings.cameras[0]
             if (
                 typeof f.x === 'number' &&
