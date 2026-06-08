@@ -23463,8 +23463,10 @@ class KeyboardMouseSource extends InputSource {
             return
         }
         if (!this._pointerLock) {
-            this._element?.releasePointerCapture(event.pointerId)
-        }
+    try {
+        this._element?.releasePointerCapture(event.pointerId)
+    } catch (_) {}
+}
         this._clearButtons()
         this.deltas.button.append(this._button)
         if (this._pointerId !== event.pointerId) {

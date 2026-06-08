@@ -102,6 +102,7 @@ function makePivotGroup(global, editGroup) {
         disabled: true,
         onChange: ({ x, y, z }) => {
             if (!isEditing) return
+            global.dataDirty = true
             events.fire('pivot:positionsynced', { x, y, z })
         },
     })
@@ -121,6 +122,7 @@ function makePivotGroup(global, editGroup) {
         settings.pivot.position = { x: localCenter.x, y: localCenter.y, z: localCenter.z }
         setPivotConfigured(true)
         editPivotPos = localCenter
+        global.dataDirty = true
         events.fire('pivot:positionsynced', localCenter)
     }
     noPivotRow.appendChild(noPivotText)
@@ -163,6 +165,7 @@ function makePivotGroup(global, editGroup) {
         editPivotPos = null
         currrentPivotPos = null
         setPivotConfigured(false)
+        global.dataDirty = true
         events.fire('pivot:delete')
         renderBtns()
     }
@@ -274,6 +277,7 @@ function makeInitViewGroup(events, settings) {
     btnSave.onclick = () => {
         events.fire('viewer:save-initview')
         updateState(true)
+        global.dataDirty = true
     }
 
     const btnDefault = document.createElement('button')
@@ -283,6 +287,7 @@ function makeInitViewGroup(events, settings) {
         updateState(false)
         if (!settings.initview.pose) return
         events.fire('viewer:remove-saved-view')
+        global.dataDirty = true
     }
 
     btnRow.appendChild(btnSave)
@@ -304,6 +309,7 @@ function makeViewerSection(el, global) {
         onChange: (color) => {
             settings.background.color = color
             events.fire('viewer:background-changed', color)
+            global.dataDirty = true
         },
     })
 
@@ -313,6 +319,7 @@ function makeViewerSection(el, global) {
         onChange: (value) => {
             settings.inertia = value
             events.fire('viewer:inertia', value)
+            global.dataDirty = true
         },
     })
     inertiaRow.appendChild(inertiaToggleEl)
@@ -323,6 +330,7 @@ function makeViewerSection(el, global) {
         onChange: (value) => {
             settings.autoHideUI = value
             events.fire('viewer:auto-hide-ui', value)
+            global.dataDirty = true
         },
     })
     autoHideUIRow.appendChild(autoHideUIToggleEl)
@@ -332,6 +340,7 @@ function makeViewerSection(el, global) {
         value: settings.lockZoomIn.locked,
         onChange: (value) => {
             events.fire('viewer:lock-zoom-in', value)
+            global.dataDirty = true
         },
     })
     lockZoomInRow.appendChild(lockZoomInToggleEl)
@@ -363,6 +372,7 @@ function makeViewerSection(el, global) {
                 spinOnStartRow.classList.add('hidden')
                 speedRow.classList.add('hidden')
             }
+            global.dataDirty = true
             events.fire('spin:enabled', value)
             events.fire('re-render:control-wrap', value)
         },
@@ -380,6 +390,7 @@ function makeViewerSection(el, global) {
         onChange: (v) => {
             settings.spin.speed = v
             events.fire('spin-speed', v)
+            global.dataDirty = true
         },
     })
     speedRow.appendChild(speedInput)
@@ -390,6 +401,7 @@ function makeViewerSection(el, global) {
         onChange: (value) => {
             settings.spin.continuous = !settings.spin.continuous
             events.fire('spin-continuous', value)
+            global.dataDirty = true
         },
     })
     spinContinuousRow.appendChild(spinContinuousToggleEl)
@@ -399,6 +411,7 @@ function makeViewerSection(el, global) {
         value: settings.spin.autoStart,
         onChange: (value) => {
             settings.spin.autoStart = !settings.spin.autoStart
+            global.dataDirty = true
         },
     })
     spinOnStartRow.appendChild(spinOnStartToggleEl)
@@ -483,7 +496,7 @@ function makeExportSection(el, global) {
         title: 'Export HTML',
         onClick: () => {
             const filename = 'index.html'
-            exportHtml(filename, global.settings)
+            exportHtml(filename, global)
         },
     })
 

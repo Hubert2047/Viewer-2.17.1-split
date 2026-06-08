@@ -24,7 +24,7 @@ function makeOrientationGroup(global, editGroup) {
     }
     events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))
     events.on('next-step', () => onCancelOrientation())
-    const { panel: manualPanel } = makeManualPanel(events)
+    const { panel: manualPanel } = makeManualPanel(events, global)
     const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
 
     const methodWrap = document.createElement('div')

@@ -130,7 +130,8 @@ function stripDefaults(settings, defaults = defaultSettings) {
     }
     return result
 }
-async function exportHtml(name, settings) {
+async function exportHtml(name, global) {
+    const settings = global.settings
     const copySettings = JSON.parse(JSON.stringify(settings))
     const messages = await Promise.all(
         (copySettings.messages ?? []).map(async (h) => {
@@ -211,6 +212,7 @@ async function exportHtml(name, settings) {
     a.click()
 
     URL.revokeObjectURL(url)
+    global.dataDirty = false
 }
 function getHtmlTemplate(version) {
     return `

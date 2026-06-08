@@ -116,6 +116,7 @@ function makeGroundPanel(events, global) {
         groundPicker.enable()
         groundPicker.reset()
         updatePickState()
+        global.dataDirty = true
     }
     btnCancelGround.onclick = () => stopPicking()
 

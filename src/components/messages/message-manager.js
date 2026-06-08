@@ -69,6 +69,7 @@ class MessagesManager {
     listenEvents() {
         this.events.on('setup-reset', () => this.rebuild())
         this.events.on('message:add', ({ position }) => {
+            this.global.dataDirty = true
             const entityInfo = this.global.cameraManager.controllers.ortery.getEntityInfo()
             const data = this.createDefault(position, entityInfo)
             this.settings.messages.push(JSON.parse(JSON.stringify(data)))
@@ -98,6 +99,7 @@ class MessagesManager {
             }
         })
         this.events.on('message:editor-changed', ({ data, refreshUIPanel = false }) => {
+            this.global.dataDirty = true
             if (data.dot.size !== this.activeData?.dot.size) {
                 const { focusWorldPos, invWorldMatrix, focusScreenPos } = this.getFocusInfo(data.focus.position)
                 const { topLeft, botRight } = this.getDotBounder(
@@ -118,6 +120,7 @@ class MessagesManager {
         })
         this.events.on('message:drag-changed', (data) => {
             if (!this.activeData) return
+            this.global.dataDirty = true
             this.activeData = data
             this.events.fire('message:update-ui-data', data)
         })

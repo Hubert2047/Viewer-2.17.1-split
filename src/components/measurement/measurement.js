@@ -37,6 +37,7 @@ function makeMeasurementSection(el, global) {
         if (!global.measureTool) {
             global.measureTool = new MeasureTool(global)
         }
+        global.dataDirty = true
         events.fire('re-render:control-wrap')
         onEdit()
     }
@@ -65,6 +66,7 @@ function makeMeasurementSection(el, global) {
             calibState = 'picking'
             renderCalib()
             events.fire('measurement:calibration-pick-start')
+            global.dataDirty = true
         },
     })
     pickBtn.style.cssText = 'justify-content:center; width:100%;'
@@ -88,6 +90,7 @@ function makeMeasurementSection(el, global) {
             setPointBValues({ x: 0, y: 0, z: 0 })
             renderCalib()
             events.fire('measurement:calibration-pick-start')
+            global.dataDirty = true
         },
     })
     const deleteCalibrationBtn = makeLink({
@@ -113,6 +116,7 @@ function makeMeasurementSection(el, global) {
             calibPoints = []
             setValues(currentMeasurement)
             events.fire('measurement:calibration-cancel')
+            global.dataDirty = true
             renderCalib()
         },
     })
@@ -133,6 +137,7 @@ function makeMeasurementSection(el, global) {
             if (!isEditing) return
             events.fire('measurement:calibration-set-input-point', { idx: 0, pos: { x, y, z } })
             if (calibPoints.length >= 1) calibPoints[0] = { x, y, z }
+            global.dataDirty = true
         },
     })
 
@@ -147,6 +152,7 @@ function makeMeasurementSection(el, global) {
             if (!isEditing) return
             events.fire('measurement:calibration-set-input-point', { idx: 1, pos: { x, y, z } })
             if (calibPoints.length >= 2) calibPoints[1] = { x, y, z }
+            global.dataDirty = true
         },
     })
 
@@ -165,6 +171,7 @@ function makeMeasurementSection(el, global) {
         className: 'calib-input',
         onChange: (v) => {
             currentMeasurement.calibration.distance = v
+            global.dataDirty = true
         },
     })
     const calibUnitSelect = makeSelect(
@@ -172,6 +179,7 @@ function makeMeasurementSection(el, global) {
         settings.measurement?.calibration?.unit || 'cm',
         (v) => {
             currentMeasurement.calibration.unit = v
+            global.dataDirty = true
         },
         { name: 'unit', className: 'unit-select' },
     )
@@ -193,6 +201,7 @@ function makeMeasurementSection(el, global) {
             } else {
                 events.fire('measurement:calibration-reset')
             }
+            global.dataDirty = true
             renderCalib()
         },
     })
@@ -257,6 +266,7 @@ function makeMeasurementSection(el, global) {
         onChange: (color) => {
             currentMeasurement = { ...currentMeasurement, lineColor: color }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
+            global.dataDirty = true
         },
     })
 
@@ -270,6 +280,7 @@ function makeMeasurementSection(el, global) {
         onChange: (color) => {
             currentMeasurement = { ...currentMeasurement, textColor: color }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
+            global.dataDirty = true
         },
     })
 
@@ -278,12 +289,20 @@ function makeMeasurementSection(el, global) {
         color: currentMeasurement?.textBackground.color ?? '#000000',
         alpha: currentMeasurement?.textBackground.alpha ?? 0.8,
         onChangeColor: (color) => {
-            currentMeasurement = { ...currentMeasurement, textBackground: { ...currentMeasurement.textBackground, color } }
+            currentMeasurement = {
+                ...currentMeasurement,
+                textBackground: { ...currentMeasurement.textBackground, color },
+            }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
+            global.dataDirty = true
         },
         onChangeAlpha: (alpha) => {
-            currentMeasurement = { ...currentMeasurement, textBackground: { ...currentMeasurement.textBackground, alpha } }
+            currentMeasurement = {
+                ...currentMeasurement,
+                textBackground: { ...currentMeasurement.textBackground, alpha },
+            }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
+            global.dataDirty = true
         },
     })
     backgroundRow.appendChild(backgroundColorEl)

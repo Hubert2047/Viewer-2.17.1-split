@@ -66,6 +66,7 @@ function makeDimensionSection(el, global) {
             finalDimension.useMeasurementData = true
             setUseMeasurementChecked(true)
         }
+        global.dataDirty = true
         editDimension = { ...finalDimension }
         currentDimensions = { ...finalDimension }
         settings.dimensions = finalDimension
@@ -99,6 +100,7 @@ function makeDimensionSection(el, global) {
         onChange: (color) => {
             currentDimensions = { ...currentDimensions, boxColor: color }
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
         },
     })
     const {
@@ -111,6 +113,7 @@ function makeDimensionSection(el, global) {
         onChange: (color) => {
             currentDimensions = { ...currentDimensions, foregroundColor: color }
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
         },
     })
 
@@ -121,10 +124,12 @@ function makeDimensionSection(el, global) {
         onChangeColor: (color) => {
             currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, color } }
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
         },
         onChangeAlpha: (alpha) => {
             currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, alpha } }
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
         },
     })
     backgroundRow.appendChild(backgroundColor)
@@ -292,6 +297,7 @@ function makeDimensionSection(el, global) {
             realUnitSelect.value = currentDimensions.unit
             setValues(currentDimensions)
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
             renderRealGroup()
         },
     })
@@ -318,6 +324,7 @@ function makeDimensionSection(el, global) {
         (v) => {
             currentDimensions = { ...currentDimensions, unit: v }
             events.fire('dimensions:change', currentDimensions)
+            global.dataDirty = true
         },
         { name: 'unit', className: 'unit-select' },
     )
@@ -357,6 +364,7 @@ function makeDimensionSection(el, global) {
             } else {
                 currentDimensions = { ...currentDimensions, realSize: { x, y, z } }
             }
+            global.dataDirty = true
             events.fire('dimensions:change', currentDimensions)
         },
     })

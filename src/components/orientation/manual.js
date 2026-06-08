@@ -1,4 +1,4 @@
-function makeManualPanel(events) {
+function makeManualPanel(events, global) {
     const panel = document.createElement('div')
     panel.style.cssText = 'display:none; flex-direction:column; gap:10px;'
 
@@ -39,6 +39,7 @@ function makeManualPanel(events) {
         onClick: () => {
             updateSpinState(false)
             events.fire('orientation:spin', { speed: parseFloat(spinSpeedSlider.value) })
+            global.dataDirty = true
         },
     })
     const stopSpin = makeButton({
@@ -48,6 +49,7 @@ function makeManualPanel(events) {
         onClick: () => {
             updateSpinState(true)
             events.fire('360spin-stop')
+            global.dataDirty = true
         },
     })
     spinRight.appendChild(spinSlowLabel)
@@ -79,6 +81,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:yaw-step', { deg: -getYawStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
     const btnYawRight = makeButton({
@@ -89,6 +92,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:yaw-step', { deg: getYawStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
     yawRight.appendChild(btnYawLeft)
@@ -97,7 +101,13 @@ function makeManualPanel(events) {
     yawRow.appendChild(yawRight)
 
     // ── Y Position row
-    const yPosStepInput = makeInput({ type: 'number', value: 0.5, step: 0.5, min: 0, className: 'orientation-step-input' })
+    const yPosStepInput = makeInput({
+        type: 'number',
+        value: 0.5,
+        step: 0.5,
+        min: 0,
+        className: 'orientation-step-input',
+    })
     const getYPosStep = () => parseFloat(yPosStepInput.value) || 0.1
 
     const yPosRow = makeRow({ title: 'Height' })
@@ -112,6 +122,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:translate-y', { delta: -getYPosStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
     const btnYPosUp = makeButton({
@@ -122,6 +133,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:translate-y', { delta: getYPosStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
 
@@ -131,7 +143,13 @@ function makeManualPanel(events) {
     yPosRow.appendChild(yPosRight)
 
     // ── Pitch ──
-    const pitchStepInput = makeInput({ type: 'number', value: 0.5, step: 0.1, min: 0, className: 'orientation-step-input' })
+    const pitchStepInput = makeInput({
+        type: 'number',
+        value: 0.5,
+        step: 0.1,
+        min: 0,
+        className: 'orientation-step-input',
+    })
     const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
 
     const pitchRow = makeRow({ title: 'Tilt Up / Down' })
@@ -142,14 +160,20 @@ function makeManualPanel(events) {
         title: 'Tilt up',
         className: 'orientation-btn',
         onHold: true,
-        onClick: () => events.fire('orientation:pitch-step', { deg: -getPitchStep() }),
+        onClick: () => {
+            events.fire('orientation:pitch-step', { deg: -getPitchStep() })
+            global.dataDirty = true
+        },
     })
     const btnPitchDown = makeButton({
         icon: ICONS.arrowDown,
         title: 'Tilt down',
         onHold: true,
         className: 'orientation-btn',
-        onClick: () => events.fire('orientation:pitch-step', { deg: getPitchStep() }),
+        onClick: () => {
+            events.fire('orientation:pitch-step', { deg: getPitchStep() })
+            global.dataDirty = true
+        },
     })
     pitchRight.appendChild(btnPitchDown)
     pitchRight.appendChild(pitchStepInput)
@@ -157,7 +181,13 @@ function makeManualPanel(events) {
     pitchRow.appendChild(pitchRight)
 
     // ── Roll ──
-    const rollStepInput = makeInput({ type: 'number', value: 0.5, step: 0.1, min: 0, className: 'orientation-step-input' })
+    const rollStepInput = makeInput({
+        type: 'number',
+        value: 0.5,
+        step: 0.1,
+        min: 0,
+        className: 'orientation-step-input',
+    })
     const getRollStep = () => parseFloat(rollStepInput.value) || 0.5
 
     const rollRow = makeRow({ title: 'Lean Left / Right' })
@@ -171,6 +201,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:roll', { deg: -getRollStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
     const btnRollCW = makeButton({
@@ -181,6 +212,7 @@ function makeManualPanel(events) {
         onClick: () => {
             events.fire('orientation:roll', { deg: getRollStep() })
             updateSpinState(true)
+            global.dataDirty = true
         },
     })
     rollRight.appendChild(btnRollCCW)

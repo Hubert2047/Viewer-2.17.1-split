@@ -225,8 +225,9 @@ const initUI = async (global) => {
     if (config.noui) {
         dom.ui.classList.add('hidden')
     }
-    if(global.config.editable){
+    if (global.config.editable) {
         window.addEventListener('beforeunload', (e) => {
+            if (!global.dataDirty) return
             e.preventDefault()
             e.returnValue = ''
         })
