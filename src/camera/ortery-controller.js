@@ -75,6 +75,13 @@ class OtherController {
         this.listenEvents()
     }
     listenEvents() {
+        this.events.on('measurement:drag', (isDrag) => {
+            this.isMeasurementDrag = isDrag
+        })
+        this.events.on('message:editing', (isEdit) => {
+            this.isEditMessage = isEdit
+            this.stopSpin360()
+        })
         this.events.on('message:editing', (isEdit) => {
             this.isEditMessage = isEdit
             this.stopSpin360()
@@ -951,7 +958,7 @@ class OtherController {
     }
 
     move(move, rotate) {
-        if (this.isEditMessage) return
+        if (this.isEditMessage || this.isMeasurementDrag) return
         const [x, y, z] = move
         if (move[2] !== 0) {
             if (this.model === 'cylindrical' && !this.isEditingOrientation) {

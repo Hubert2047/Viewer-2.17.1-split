@@ -25,7 +25,12 @@ class PointGizmo {
         fontSize: 12,
     }
 
-    constructor(app, camEntity, modelEntity, { onMove, onEnd, showAxes = true, dotFillOpacity = 1 } = {}) {
+    constructor(
+        app,
+        camEntity,
+        modelEntity,
+        { onMove, onEnd, showAxes = true, dotFillOpacity = 1, onDragStart, onDragEnd } = {},
+    ) {
         this._app = app
         this._camEntity = camEntity
         this._modelEntity = modelEntity
@@ -33,6 +38,8 @@ class PointGizmo {
         this._onMove = onMove
         this._onEnd = onEnd
         this._showAxes = showAxes
+        this._onDragStart = onDragStart
+        this._onDragEnd = onDragEnd
         this.dotFillOpacity = dotFillOpacity
         this._buildSVG()
         this._svg.style.display = 'none'
@@ -122,6 +129,7 @@ class PointGizmo {
             this._dotDragging = true
             this._prevMouse = { x: e.clientX, y: e.clientY }
             document.body.style.cursor = 'grabbing'
+            this._onDragStart?.() 
         })
         dot.addEventListener('pointermove', (e) => {
             if (!this._dotDragging) return
@@ -133,6 +141,7 @@ class PointGizmo {
             this._dotDragging = false
             dot.setAttribute('r', cfg.dotRadius)
             document.body.style.cursor = ''
+            this._onDragEnd?.()   
             if (this._localPos) this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         })
         if (!this._showAxes) {
@@ -174,7 +183,8 @@ class PointGizmo {
         const camPos = this._camEntity.getPosition()
         const dist = new Vec3().sub2(worldPos, camPos).length()
         const fovRad = (this._camEntity.camera.fov * Math.PI) / 180
-        return (2 * Math.tan(fovRad / 2) * dist) / this._canvas.clientHeight
+        const rect = this._canvas.getBoundingClientRect()
+        return (2 * Math.tan(fovRad / 2) * dist) / rect.height
     }
 
     _axisLength() {
@@ -278,15 +288,27 @@ class PointGizmo {
         const dy = cy - this._prevMouse.y
         if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
 
-        const upp = this._unitsPerPixel()
-        const right = this._camEntity.right.clone().normalize()
-        const up = this._camEntity.up.clone().normalize()
+        const worldPos = this._getWorldPos()
+        if (!worldPos) return
 
-        const worldDelta = new Vec3(
-            right.x * dx * upp + up.x * -dy * upp,
-            right.y * dx * upp + up.y * -dy * upp,
-            right.z * dx * upp + up.z * -dy * upp,
-        )
+        const rect = this._canvas.getBoundingClientRect()
+        const dpr = this._canvas.width / rect.width
+
+        const cam = this._camEntity.camera
+        const camPos = this._camEntity.getPosition()
+
+        const depth = new Vec3().sub2(worldPos, camPos).length()
+
+        const tmp = new Vec3()
+        cam.worldToScreen(worldPos, tmp)
+
+        const tx = tmp.x + dx * dpr
+        const ty = tmp.y + dy * dpr
+
+        const newWorld = new Vec3()
+        cam.screenToWorld(tx, ty, depth, newWorld)
+
+        const worldDelta = new Vec3().sub2(newWorld, worldPos)
 
         const invWorld = new Mat4().copy(this._modelEntity.getWorldTransform()).invert()
         const localDelta = new Vec3()
@@ -300,7 +322,6 @@ class PointGizmo {
         this._onMove?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         this._app.renderNextFrame = true
     }
-
     _endDrag() {
         this._dragging = false
         this._activeAxis = null
@@ -359,5 +380,4 @@ class PointGizmo {
         if (this._updateFn) this._app.off('update', this._updateFn)
         document.body.style.cursor = ''
     }
-   
 }

@@ -120,6 +120,12 @@ class MeasureTool {
             const gizmo = new PointGizmo(this._app, this._cam, modelEntity, {
                 showAxes: false,
                 dotFillOpacity: 0,
+                onDragStart: () => {
+                    this._events.fire('measurement:drag', true)
+                },
+                onDragEnd: () => {
+                    this._events.fire('measurement:drag', false)
+                },
                 onMove: (localPos) => {
                     if (this._calibMode) {
                         this._calibPoints[idx] = new Vec3(localPos.x, localPos.y, localPos.z)
@@ -339,8 +345,8 @@ class MeasureTool {
         this._frameHandle = this._app.on('update', () => {
             if (!this._active) return
             this._gizmos.forEach((g, i) => {
-                if (g._enabled && g._pivotLocal && this._points[i]) {
-                    this._points[i].copy(g._pivotLocal)
+                if (g._enabled && g._localPos && this._points[i]) {
+                    this._points[i].copy(g._localPos)
                 }
             })
             this._render()
@@ -357,7 +363,7 @@ class MeasureTool {
         this._label.style.display = 'none'
         this._svg.innerHTML = ''
         this._gizmos.forEach((g) => g.disable())
-        this._gizmos.forEach((_, i) => this._setGizmoSelected(i, false))
+
         const canvas = this._app.graphicsDevice.canvas
         if (this._pointerDownHandler) {
             canvas.removeEventListener('pointerdown', this._pointerDownHandler)
@@ -383,48 +389,23 @@ class MeasureTool {
 
     _onCanvasClick(e) {
         if (this._gizmos.some((g) => g.isDragging)) return
+        if (this._points.length >= 2) return
 
-        if (this._points.length < 2) {
-            const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, true)
-            if (!localPt) {
-                showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
-                return
-            }
-            this._points.push(localPt)
-            if (this._points.length === 2) {
-                this._gizmos.forEach((g) => g.disable())
-                this._activeGizmoIdx = -1
-            }
-            this._render()
+        const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, true)
+        if (!localPt) {
+            showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
             return
         }
-
-        const idx = this._nearestPointIdx(e.offsetX, e.offsetY)
-
-        if (idx === -1) {
-            if (this._activeGizmoIdx !== -1) {
-                this._setGizmoSelected(this._activeGizmoIdx, false)
-                this._gizmos[this._activeGizmoIdx].disable()
-                this._activeGizmoIdx = -1
-            }
-            return
-        }
-
-        if (this._activeGizmoIdx === idx) {
-            this._setGizmoSelected(idx, false)
-            this._gizmos[idx].disable()
+        this._points.push(localPt)
+        if (this._points.length === 2) {
+            this._gizmos.forEach((g, i) => {
+                g.setPosition(this._points[i])
+                g.enable()
+            })
             this._activeGizmoIdx = -1
-            return
+            document.body.style.cursor = 'default'
         }
-
-        if (this._activeGizmoIdx !== -1) {
-            this._setGizmoSelected(this._activeGizmoIdx, false)
-            this._gizmos[this._activeGizmoIdx].disable()
-        }
-        this._setGizmoSelected(idx, true)
-        this._gizmos[idx].setPosition(this._points[idx])
-        this._gizmos[idx].enable()
-        this._activeGizmoIdx = idx
+        this._render()
     }
 
     // ─── Calibration mode ─────────────────────────────────────────────────────
