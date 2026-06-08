@@ -273,6 +273,10 @@ button {
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right {
   border-radius: 0px 4px 4px 0px;
+  -webkit-border-radius: 0px 4px 4px 0px;
+  -moz-border-radius: 0px 4px 4px 0px;
+  -ms-border-radius: 0px 4px 4px 0px;
+  -o-border-radius: 0px 4px 4px 0px;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right:not(.active) {
   background-position: 200% 0%;
@@ -282,6 +286,7 @@ button {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 999;
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.3);

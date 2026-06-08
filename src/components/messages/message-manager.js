@@ -329,14 +329,22 @@ class MessagesManager {
         this.activeMessage?.hide()
         message.resetTime()
         const isSamePose = this.isSamePose(message)
-        if (isMobile && this.dom.messageContainer) {
+        if (this.dom.messageContainer) {
             const btn = message.button.el
             const container = this.dom.messageContainer
-            const btnLeft = btn.offsetLeft
-            const btnWidth = btn.offsetWidth
-            const containerWidth = container.offsetWidth
-            const scrollTarget = btnLeft - containerWidth / 2 + btnWidth / 2
-            container.scrollTo({ left: scrollTarget, behavior: 'smooth' })
+            if (isMobile) {
+                const btnLeft = btn.offsetLeft
+                const btnWidth = btn.offsetWidth
+                const containerWidth = container.offsetWidth
+                const scrollTarget = btnLeft - containerWidth / 2 + btnWidth / 2
+                container.scrollTo({ left: scrollTarget, behavior: 'smooth' })
+            } else {
+                const btnTop = btn.offsetTop
+                const btnHeight = btn.offsetHeight
+                const containerHeight = container.offsetHeight
+                const scrollTarget = btnTop - containerHeight / 2 + btnHeight / 2
+                container.scrollTo({ top: scrollTarget, behavior: 'smooth' })
+            }
         }
         if (isSamePose && message.id === this.activeMessage?.id) {
             message.show()
