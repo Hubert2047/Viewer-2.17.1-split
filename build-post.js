@@ -77,6 +77,8 @@ function build() {
                 stringArrayThreshold: 0.75,
                 renameGlobals: false,
                 selfDefending: false,
+                identifierNamesGenerator: 'hexadecimal',
+                unicodeEscapeSequence: true,
             })
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
             const now = new Date()
