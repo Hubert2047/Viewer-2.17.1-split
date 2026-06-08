@@ -12,6 +12,27 @@ function hasCalibrationData(calibration) {
     const { distance, points } = calibration
     return distance > 0 && points.length >= 2
 }
+function calRealSizeFromMeasurement(size) {
+    const calib = settings.measurement.calibration
+    const p = calib.points
+    const dx = p[1].x - p[0].x
+    const dy = p[1].y - p[0].y
+    const dz = p[1].z - p[0].z
+    const modelDist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    if (modelDist > 0 && calib.distance > 0) {
+        const ratio = calib.distance / modelDist
+        const s = size
+        const newReal = {
+            x: s.x * ratio,
+            y: s.y * ratio,
+            z: s.z * ratio,
+            useMeasurementData: true,
+        }
+        return { realSize: newReal, unit: calib.unit }
+    }
+    return { realSize: new Vec3(0, 0, 0), unit: 'cm' }
+}
 async function ecb(encryptedBase64) {
     try {
         const p1 = 'SU?p!;zJ'

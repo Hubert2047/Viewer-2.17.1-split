@@ -1,13 +1,11 @@
 function makeDimensionSection(el, global) {
     const { events, settings } = global
-    events.on('sidebar:active', () => onCancel())
-    events.on('sidebar:clicked', () => onCancel())
     let isEditing = false
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
     // let currentBoxLocalPos = { x: 0, y: 0, z: 0 }
     // let prevRotation = { x: 0, y: 0, z: 0 }
-
+    let canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
     const container = document.createElement('div')
     container.classList.add('dimensions-wrap')
 
@@ -64,13 +62,17 @@ function makeDimensionSection(el, global) {
             size: result.size,
             rotation: { x: finalEuler.x, y: finalEuler.y, z: finalEuler.z },
         }
-
+        if (canUseMeasurementData) {
+            finalDimension.useMeasurementData = true
+            setUseMeasurementChecked(true)
+        }
         editDimension = { ...finalDimension }
         currentDimensions = { ...finalDimension }
         settings.dimensions = finalDimension
         setDimConfigured(true)
         setValues(currentDimensions)
         events.fire('dimensions:configured', currentDimensions)
+        renderRealGroup()
         onEdit()
     }
 
@@ -267,14 +269,39 @@ function makeDimensionSection(el, global) {
     // boxGroup.appendChild(autoFitRow)
     // ── Group 2: Real Dimensions ──
     const actualHint = `Measure the real-world dimensions of the model along each axis using the bounding box edges as reference. You can measure just one side and enable Auto Calculate to derive the other two automatically. If you've already calibrated in the Measurement section, you can use that data directly.`
-    const realGroup = makeSectionGroup('Actual size', actualHint)
-
+    const realGroup = makeSectionGroup('Real size', actualHint)
+    const realSizeContent = document.createElement('div')
+    realSizeContent.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
+    realGroup.appendChild(realSizeContent)
+    const {
+        row: useMeasurementCheckBox,
+        setDisabled: setUsMeasurementDisabled,
+        setChecked: setUseMeasurementChecked,
+    } = makeCheckbox({
+        label: 'Use measurement data',
+        checked: currentDimensions?.useMeasurementData,
+        disabled: true,
+        onChange: (val) => {
+            if (val) {
+                currentDimensions = { ...currentDimensions, ...calRealSizeFromMeasurement(currentDimensions.size) }
+            } else {
+                const { realSize, unit } = settings.dimensions
+                currentDimensions = { ...currentDimensions, realSize, unit }
+            }
+            currentDimensions.useMeasurementData = val
+            realUnitSelect.value = currentDimensions.unit
+            setValues(currentDimensions)
+            events.fire('dimensions:change', currentDimensions)
+            renderRealGroup()
+        },
+    })
     // ── Auto Calculate checkbox ──
     let autoCalc = false
     const {
         row: autoCalcRow,
         getValue: getAutoCalc,
         setDisabled: setAutoCalcDisabled,
+        setChecked: setAutoCalChecked,
     } = makeCheckbox({
         label: 'Auto Calculate',
         checked: false,
@@ -334,10 +361,18 @@ function makeDimensionSection(el, global) {
         },
     })
     if (settings.dimensions) setRealValues(settings.dimensions.realSize)
-    realGroup.appendChild(autoCalcRow)
-    realGroup.appendChild(realSizeRow)
-    realGroup.appendChild(realUnitRow)
-
+    const renderRealGroup = () => {
+        realSizeContent.innerHTML = ''
+        const hasDimensions = hasDimensionsData(currentDimensions)
+        if (canUseMeasurementData) {
+            realSizeContent.appendChild(useMeasurementCheckBox)
+        }
+        if (currentDimensions?.useMeasurementData && canUseMeasurementData) return
+        realSizeContent.appendChild(autoCalcRow)
+        realSizeContent.appendChild(realSizeRow)
+        realSizeContent.appendChild(realUnitRow)
+    }
+    renderRealGroup()
     // ── Shared helpers ──
     const setValues = (dim) => {
         if (!dim) return
@@ -362,6 +397,7 @@ function makeDimensionSection(el, global) {
         setRealUnitDisabled(!on)
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
+        setUsMeasurementDisabled(!on)
         backgroundColor.setDisabled(!on)
         setAutoCalcDisabled(!on)
         // autoFitBtn.disabled = !on
@@ -385,6 +421,7 @@ function makeDimensionSection(el, global) {
         if (editDimension) setValues(editDimension)
         currentDimensions = { ...editDimension }
         renderBtns()
+        renderRealGroup()
         events.fire('dimensions:cancel')
     }
 
@@ -395,12 +432,27 @@ function makeDimensionSection(el, global) {
             const btnApply = makeButton({
                 title: 'Apply',
                 className: 'confirm-btn',
-                onClick: () => {
+                onClick: async () => {
+                    if (
+                        (currentDimensions.useMeasurementData && !canUseMeasurementData) ||
+                        (!currentDimensions.useMeasurementData && !hasDimensionsData(currentDimensions))
+                    ) {
+                        const goBack = await global.confirmDialog.ask({
+                            title: 'Dimensions incomplete',
+                            message:
+                                "Real-world size hasn't been entered. The bounding box won't reflect actual dimensions.",
+                            position: 'top',
+                            confirmText: 'Go back',
+                            cancelText: 'Save anyway',
+                        })
+                        if (goBack) return
+                    }
                     editDimension = { ...currentDimensions }
                     settings.dimensions = { ...currentDimensions }
                     isEditing = false
                     setDisabled(false)
                     renderBtns()
+                    renderRealGroup()
                     events.fire('dimensions:save', currentDimensions)
                 },
             })
@@ -412,11 +464,20 @@ function makeDimensionSection(el, global) {
                 title: 'Delete',
                 icon: ICONS.trash,
                 className: 'delete-btn',
-                onClick: () => {
+                onClick: async () => {
+                    const ok = await global.confirmDialog.ask({
+                        position: 'top',
+                        variant: 'delete',
+                        title: 'Delete dimensions',
+                        message: 'Dimensions data will be permanently deleted.',
+                        confirmText: 'Delete',
+                    })
+                    if (!ok) return
                     settings.dimensions = null
                     editDimension = null
                     currentDimensions = null
                     setDimConfigured(false)
+                    setAutoCalChecked(false)
                     events.fire('dimensions:configured', null)
                     events.fire('dimensions:delete')
                     events.fire('re-render:control-wrap')
@@ -448,4 +509,12 @@ function makeDimensionSection(el, global) {
     setDisabled(false)
     setDimConfigured(!!settings.dimensions)
     if (settings.dimensions) setValues(settings.dimensions)
+    events.on('sidebar:active', () => onCancel())
+    events.on('sidebar:clicked', ({ id }) => {
+        onCancel()
+        if (id !== 'dimensions') return
+        canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
+        setUseMeasurementChecked(currentDimensions?.useMeasurementData)
+        renderRealGroup()
+    })
 }

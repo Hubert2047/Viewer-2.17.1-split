@@ -871,7 +871,15 @@ function dimensionsSetup(app, camera, config) {
     }
 
     const updateLabels = (corners, dim) => {
-        if (!dim?.realSize) return
+        if (!dim || !dim.size) return
+        const { useMeasurementData } = dim
+        function getRealSize() {
+            if (useMeasurementData && hasCalibrationData(settings.measurement?.calibration)) {
+                return calRealSizeFromMeasurement(dim.size)
+            }
+            return { realSize: dim.realSize, unit: dim.unit }
+        }
+        const { realSize, unit } = getRealSize()
         const cameraDir = new Vec3(0, 0, -1)
         camera.getRotation().transformVector(cameraDir, cameraDir)
         const screenCorners = corners.map((c) => worldToScreen(c.x, c.y, c.z))
@@ -894,8 +902,7 @@ function dimensionsSetup(app, camera, config) {
 
             const { line, dot, label } = elements[axis]
 
-            const value = dim.realSize[axis]
-            const unit = dim.unit || 'cm'
+            const value = realSize[axis]
             const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
             const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
             label.textContent = config.editable ? `${axis}: ${mainText}` : mainText

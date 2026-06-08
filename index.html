@@ -1,53 +1,182 @@
-
-    <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=106">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=108" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+            </div>
         </div>
-        <div id="loading-overlay">
-            <div class="spinner"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<script>window.sse = { "settings": {"ref":"","model":"spherical","contentUrl":"models/tai.ply","v":106,"messages":[{"id":"b9d0b9c8-8edd-442a-a028-ef1f5ac49512","autoPlay":{"time":3000},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":7.090258463461669,"y":-28.67587663075569,"z":4.070963117243167},"botRight":{"x":14.112185984334136,"y":-25.71318779921082,"z":9.709012328337508},"fontSize":16},"focus":{"position":{"x":6.484344960308633,"y":-22.682378383672102,"z":2.964879039646661}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":5.760961499838248,"y":-23.579597468061827,"z":2.4183257617241622},"botRight":{"x":7.213756856805378,"y":-21.786022959742215,"z":3.504596564168679}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"isFullyInView":true,"distanceScale":0,"focus":{"x":-1.1943148971655202,"y":19.86303366212296,"z":3.443698297067095},"pitch":0,"yaw":0}},{"id":"bc03ac8e-fb3b-4c65-81bf-a32d79f5d977","autoPlay":{"time":3000},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":149.99999999999994,"originHeight":50,"topLeft":{"x":5.7427836317520375,"y":-33.90376840558482,"z":-1.3606526372600456},"botRight":{"x":12.426579717849197,"y":-30.97752250432204,"z":4.412536982853851},"fontSize":16},"focus":{"position":{"x":5.049099955037974,"y":-28.02873387914081,"z":-2.346296765885839}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":4.373449700877618,"y":-28.911255583333926,"z":-2.9177698432265657},"botRight":{"x":5.731222282806431,"y":-27.146302285362104,"z":-1.7810519777587643}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"isFullyInView":true,"distanceScale":0,"focus":{"x":-1.1943148971655202,"y":19.86303366212296,"z":3.443698297067095},"pitch":0,"yaw":0}}],"dimensions":{"boxColor":"#f95f4d","background":{"color":"white","alpha":0.8},"foregroundColor":"#f95f4d","realSize":{"x":12,"y":27.309675511900476,"z":23.279268475642183},"unit":"cm","position":{"x":1.6794818460490244,"y":-20.06920114159584,"z":2.1830931968092218},"size":{"x":18.021960355556217,"y":41.01449078321457,"z":34.96150446453109},"rotation":{"x":0,"y":42.95000000000001,"z":0}},"measurement":{"lineColor":"#f95f4d","textColor":"#ffffff","background":{"color":"#000000","alpha":0.8},"calibration":{"useDimensionData":false,"unit":"cm","distance":3.1,"points":[{"x":-10.780961815292184,"y":-8.621426601352216,"z":-7.5032433389166675},{"x":-7.473060004202507,"y":-8.837864083395226,"z":-10.89064177327325}]}},"setupStep":2,"cameras":[{"x":124.421939158606,"y":-129.057264761077,"alt":38.2532365570135,"heading":-41.0158157512737,"pitch":85.2622720631447,"roll":4.34256883095864,"f":63.510523477968}]} }</script>
-<script src="./viewer.js?v=106"></script>
+        <div id="tooltip"></div>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'spherical',
+                contentUrl: 'models/tai.ply',
+                v: 108,
+                messages: [
+                    {
+                        id: 'b9d0b9c8-8edd-442a-a028-ef1f5ac49512',
+                        autoPlay: { time: 3000 },
+                        button: { title: 'message1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 7.090258463461669, y: -28.67587663075569, z: 4.070963117243167 },
+                            botRight: { x: 14.112185984334136, y: -25.71318779921082, z: 9.709012328337508 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 6.484344960308633, y: -22.682378383672102, z: 2.964879039646661 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 5.760961499838248, y: -23.579597468061827, z: 2.4183257617241622 },
+                            botRight: { x: 7.213756856805378, y: -21.786022959742215, z: 3.504596564168679 },
+                        },
+                        entityInfo: {
+                            rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
+                            position: { x: 0, y: 0, z: 0 },
+                            isFullyInView: true,
+                            distanceScale: 0,
+                            focus: { x: -1.1943148971655202, y: 19.86303366212296, z: 3.443698297067095 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                    {
+                        id: 'bc03ac8e-fb3b-4c65-81bf-a32d79f5d977',
+                        autoPlay: { time: 3000 },
+                        button: { title: 'message2' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message2',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 149.99999999999994,
+                            originHeight: 50,
+                            topLeft: { x: 5.7427836317520375, y: -33.90376840558482, z: -1.3606526372600456 },
+                            botRight: { x: 12.426579717849197, y: -30.97752250432204, z: 4.412536982853851 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 5.049099955037974, y: -28.02873387914081, z: -2.346296765885839 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 4.373449700877618, y: -28.911255583333926, z: -2.9177698432265657 },
+                            botRight: { x: 5.731222282806431, y: -27.146302285362104, z: -1.7810519777587643 },
+                        },
+                        entityInfo: {
+                            rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
+                            position: { x: 0, y: 0, z: 0 },
+                            isFullyInView: true,
+                            distanceScale: 0,
+                            focus: { x: -1.1943148971655202, y: 19.86303366212296, z: 3.443698297067095 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                ],
+                dimensions: {
+                    boxColor: '#f95f4d',
+                    background: { color: 'white', alpha: 0.8 },
+                    foregroundColor: '#f95f4d',
+                    realSize: {
+                        x: 4.943599146543422,
+                        y: 16.178254672343975,
+                        z: 8.301265953872495,
+                        useMeasurementData: true,
+                    },
+                    unit: 'cm',
+                    position: { x: -0.4469888941766582, y: -12.380215391051024, z: -1.2870584672233418 },
+                    size: { x: 7.558237504412196, y: 24.734831363894045, z: 12.691753074382904 },
+                    rotation: { x: 0, y: 67.90000000000002, z: 0 },
+                    useMeasurementData: true,
+                },
+                measurement: {
+                    lineColor: '#f95f4d',
+                    textColor: '#ffffff',
+                    background: { color: '#000000', alpha: 0.8 },
+                    calibration: {
+                        useDimensionData: false,
+                        unit: 'cm',
+                        distance: 3.1,
+                        points: [
+                            { x: -10.780961815292184, y: -8.621426601352216, z: -7.5032433389166675 },
+                            { x: -7.473060004202507, y: -8.837864083395226, z: -10.89064177327325 },
+                        ],
+                    },
+                },
+                setupStep: 2,
+                cameras: [
+                    {
+                        x: 124.421939158606,
+                        y: -129.057264761077,
+                        alt: 38.2532365570135,
+                        heading: -41.0158157512737,
+                        pitch: 85.2622720631447,
+                        roll: 4.34256883095864,
+                        f: 63.510523477968,
+                    },
+                ],
+            },
+        }
+    </script>
+    <script src="./viewer.js?v=108"></script>
 </html>
-    

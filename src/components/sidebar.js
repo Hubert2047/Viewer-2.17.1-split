@@ -151,7 +151,15 @@ function makePivotGroup(global, editGroup) {
         isEditing = false
         renderBtns()
     }
-    const onDelete = () => {
+    const onDelete = async () => {
+        const ok = await global.confirmDialog.ask({
+            position: 'top',
+            variant: 'delete',
+            title: 'Delete pivot point',
+            message: 'Pivot point data will be permanently deleted.',
+            confirmText: 'Delete',
+        })
+        if (!ok) return
         editPivotPos = null
         currrentPivotPos = null
         setPivotConfigured(false)
@@ -655,7 +663,7 @@ function makeSidebar(global, dom) {
         )
         contentArea.appendChild(
             makeSection({
-                id: 'dimension',
+                id: 'dimensions',
                 title: 'Dimensions',
                 classname: 'dimension-section',
                 body: (el) => makeDimensionSection(el, global, dom),

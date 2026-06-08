@@ -90,7 +90,7 @@ function makeMeasurementSection(el, global) {
             events.fire('measurement:calibration-pick-start')
         },
     })
-    const deleteBtn = makeLink({
+    const deleteCalibrationBtn = makeLink({
         label: 'Delete',
         variant: 'delete',
         size: 'small',
@@ -119,7 +119,7 @@ function makeMeasurementSection(el, global) {
     rePick.style.cssText = 'margin-left:auto; margin-right:0.25rem'
     pickedBadge.innerHTML = `<span>✓</span> 2 points selected`
     pickedBadge.appendChild(rePick)
-    pickedBadge.appendChild(deleteBtn)
+    pickedBadge.appendChild(deleteCalibrationBtn)
 
     // ── Point A / B Vec3 inputs ──
     const {
@@ -178,7 +178,7 @@ function makeMeasurementSection(el, global) {
     distanceRow.appendChild(calibDistanceInput)
     distanceRow.appendChild(calibUnitSelect)
     const {
-        row: useDimCheckbox,
+        row: useDimCheckBox,
         setDisabled: setUseDimCheckboxDisabled,
         setChecked: setUseDimChecked,
     } = makeCheckbox({
@@ -202,7 +202,7 @@ function makeMeasurementSection(el, global) {
         const hasCalibration = hasCalibrationData(currentMeasurement?.calibration)
         if (canUseDimensionData && !hasCalibration) {
             setUseDimCheckboxDisabled(!isEditing)
-            calibContent.appendChild(useDimCheckbox)
+            calibContent.appendChild(useDimCheckBox)
         }
         if (currentMeasurement?.calibration.useDimensionData && canUseDimensionData) return
         if (calibState === 'idle') {
@@ -325,7 +325,7 @@ function makeMeasurementSection(el, global) {
         setTextColorDisabled(!enabled)
         backgroundColorEl.setDisabled(!enabled)
         rePick.setDisplay(enabled)
-        deleteBtn.setDisplay(enabled)
+        deleteCalibrationBtn.setDisplay(enabled)
         renderCalib()
         setUseDimCheckboxDisabled(!enabled)
     }
@@ -415,7 +415,15 @@ function makeMeasurementSection(el, global) {
                 title: 'Delete',
                 icon: ICONS.trash,
                 className: 'delete-btn',
-                onClick: () => {
+                onClick: async () => {
+                    const ok = await global.confirmDialog.ask({
+                        position: 'top',
+                        variant: 'delete',
+                        title: 'Delete measurement',
+                        message: 'Measurement data will be permanently deleted.',
+                        confirmText: 'Delete',
+                    })
+                    if (!ok) return
                     settings.measurement = JSON.parse(JSON.stringify(defaultSettings.measurement))
                     editMeasurement = null
                     currentMeasurement = null
@@ -443,12 +451,11 @@ function makeMeasurementSection(el, global) {
     el.appendChild(container)
 
     events.on('sidebar:active', ({ id }) => {
-        if (id !== 'measurement') return
         onCancel()
     })
     events.on('sidebar:clicked', ({ id }) => {
-        if (id !== 'measurement') return
         onCancel()
+        if (id !== 'measurement') return
         canUseDimensionData = hasDimensionsData(settings.dimensions)
         renderCalib()
     })
