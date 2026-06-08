@@ -5,7 +5,7 @@ const NORMAL_FADE_TIME = 0.5
 const revision = 'b60756b'
 let modelEntity = null
 const isMobile =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    new RegExp('Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', 'i').test(navigator.userAgent) ||
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0
 const LARGE_AUDIO_THRESHOLD_MB = 2

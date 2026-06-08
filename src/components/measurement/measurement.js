@@ -21,7 +21,7 @@ function makeMeasurementSection(el, global) {
         currentMeasurement = {
             lineColor: '#f95f4d',
             textColor: '#ffffff',
-            background: { color: '#000000', alpha: 0.8 },
+            textBackground: { color: '#000000', alpha: 0.8 },
             calibration: {
                 useDimensionData: hasDimensionsData(settings.dimensions),
                 unit: 'cm',
@@ -275,14 +275,14 @@ function makeMeasurementSection(el, global) {
 
     const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
     const backgroundColorEl = makeColorAlpha({
-        color: currentMeasurement?.background.color ?? '#000000',
-        alpha: currentMeasurement?.background.alpha ?? 0.8,
+        color: currentMeasurement?.textBackground.color ?? '#000000',
+        alpha: currentMeasurement?.textBackground.alpha ?? 0.8,
         onChangeColor: (color) => {
-            currentMeasurement = { ...currentMeasurement, background: { ...currentMeasurement.background, color } }
+            currentMeasurement = { ...currentMeasurement, textBackground: { ...currentMeasurement.textBackground, color } }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
         },
         onChangeAlpha: (alpha) => {
-            currentMeasurement = { ...currentMeasurement, background: { ...currentMeasurement.background, alpha } }
+            currentMeasurement = { ...currentMeasurement, textBackground: { ...currentMeasurement.textBackground, alpha } }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
         },
     })
@@ -303,8 +303,8 @@ function makeMeasurementSection(el, global) {
         if (!m) return
         lineColorInput.value = m.lineColor
         textColorInput.value = m.textColor
-        backgroundColorEl.setColor(m.background.color)
-        backgroundColorEl.setAlpha(m.background.alpha)
+        backgroundColorEl.setColor(m.textBackground.color)
+        backgroundColorEl.setAlpha(m.textBackground.alpha)
         if (m.calibration) {
             calibDistanceInput.value = m.calibration.distance
             calibUnitSelect.value = m.calibration.unit

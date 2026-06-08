@@ -12,6 +12,7 @@ function hasCalibrationData(calibration) {
     const { distance, points } = calibration
     return distance > 0 && points.length >= 2
 }
+
 function calRealSizeFromMeasurement(size) {
     const calib = settings.measurement.calibration
     const p = calib.points

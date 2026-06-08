@@ -14,9 +14,9 @@ class MeasureTool {
         this._config = {
             lineColor: settings.measurement.lineColor ?? 'f95f4d',
             textColor: settings.measurement.textColor ?? '#ffffff',
-            background: {
-                color: settings.measurement.background.color ?? 'rgba(0,0,0,0.65)',
-                alpha: settings.measurement.background.alpha ?? 0.8,
+            textBackground: {
+                color: settings.measurement.textBackground.color ?? 'rgba(0,0,0,0.65)',
+                alpha: settings.measurement.textBackground.alpha ?? 0.8,
             },
         }
         this._dimensions = settings.dimensions
@@ -90,7 +90,7 @@ class MeasureTool {
     _applyLabelStyle() {
         const {
             textColor,
-            background: { color, alpha },
+            textBackground: { color, alpha },
         } = this._config
         this._label.style.background = transparentColor(color, alpha)
         this._label.style.color = textColor
