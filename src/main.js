@@ -225,10 +225,12 @@ const initUI = async (global) => {
     if (config.noui) {
         dom.ui.classList.add('hidden')
     }
-    window.addEventListener('beforeunload', (e) => {
-        e.preventDefault()
-        e.returnValue = ''
-    })
+    if(global.config.editable){
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault()
+            e.returnValue = ''
+        })
+    }
     const isThirdPartyEmbedded = () => {
         try {
             return window.location.hostname !== window.parent.location.hostname

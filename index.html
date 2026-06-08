@@ -1,74 +1,53 @@
-<!doctype html>
+
+    <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
-        <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=109" />
-        <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">    
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=111">
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loading-overlay">
-                <div class="spinner"></div>
-            </div>
-        </div>
-        <div id="tooltip"></div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'spherical',
-                contentUrl: 'models/360/6.ply',
-                v: 109,
-                setupStep: 2,
-                cameras: [
-                    {
-                        x: 124.421939158606,
-                        y: -129.057264761077,
-                        alt: 38.2532365570135,
-                        heading: -41.0158157512737,
-                        pitch: 85.2622720631447,
-                        roll: 4.34256883095864,
-                        f: 63.510523477968,
-                    },
-                ],
-            },
         }
-    </script>
-    <script src="./viewer.js?v=109"></script>
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+        </div>            
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/360/6.ply","v":111,"dimensions":{"boxColor":"#f95f4d","background":{"color":"white","alpha":0.8},"foregroundColor":"#f95f4d","realSize":{"x":0,"y":0,"z":0},"unit":"cm","position":{"x":1.6794818460490244,"y":-20.06920114159584,"z":2.1830931968092218},"size":{"x":18.021960355556217,"y":41.01449078321457,"z":34.96150446453109},"rotation":{"x":0,"y":42.95000000000001,"z":0},"useMeasurementData":true},"measurement":{"lineColor":"#f95f4d","textColor":"#ffffff","textBackground":{"color":"#000000","alpha":0.8},"calibration":{"useDimensionData":null,"unit":"cm","distance":3.1,"points":[{"x":-2.3555865877689115,"y":-22.73026332646336,"z":10.15050379263134},{"x":-10.630918097137723,"y":-22.708124486096075,"z":0.10348418812598936}]}},"setupStep":3,"cameras":[{"x":124.421939158606,"y":-129.057264761077,"alt":38.2532365570135,"heading":-41.0158157512737,"pitch":85.2622720631447,"roll":4.34256883095864,"f":63.510523477968}]} }</script>
+<script src="./viewer.js?v=111"></script>
 </html>
+    

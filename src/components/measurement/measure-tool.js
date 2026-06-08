@@ -357,7 +357,7 @@ class MeasureTool {
         this._label.style.display = 'none'
         this._svg.innerHTML = ''
         this._gizmos.forEach((g) => g.disable())
-
+        this._gizmos.forEach((_, i) => this._setGizmoSelected(i, false))
         const canvas = this._app.graphicsDevice.canvas
         if (this._pointerDownHandler) {
             canvas.removeEventListener('pointerdown', this._pointerDownHandler)
@@ -403,6 +403,7 @@ class MeasureTool {
 
         if (idx === -1) {
             if (this._activeGizmoIdx !== -1) {
+                this._setGizmoSelected(this._activeGizmoIdx, false)
                 this._gizmos[this._activeGizmoIdx].disable()
                 this._activeGizmoIdx = -1
             }
@@ -410,14 +411,17 @@ class MeasureTool {
         }
 
         if (this._activeGizmoIdx === idx) {
+            this._setGizmoSelected(idx, false)
             this._gizmos[idx].disable()
             this._activeGizmoIdx = -1
             return
         }
 
         if (this._activeGizmoIdx !== -1) {
+            this._setGizmoSelected(this._activeGizmoIdx, false)
             this._gizmos[this._activeGizmoIdx].disable()
         }
+        this._setGizmoSelected(idx, true)
         this._gizmos[idx].setPosition(this._points[idx])
         this._gizmos[idx].enable()
         this._activeGizmoIdx = idx
@@ -559,5 +563,17 @@ class MeasureTool {
             this._calibFrameHandle = null
         }
         this.deactivate()
+    }
+    _setGizmoSelected(idx, selected) {
+        const dot = this._gizmos[idx]._dot
+        if (selected) {
+            dot.setAttribute('fill', 'rgba(255, 210, 0, 0.9)')
+            dot.setAttribute('stroke', '#ff9900')
+            dot.setAttribute('stroke-width', '2.5')
+        } else {
+            dot.setAttribute('fill', `rgba(255, 255, 255, ${this._gizmos[idx].dotFillOpacity})`)
+            dot.setAttribute('stroke', 'rgba(0,0,0,0.4)')
+            dot.setAttribute('stroke-width', '1.5')
+        }
     }
 }

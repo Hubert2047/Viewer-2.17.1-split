@@ -359,4 +359,5 @@ class PointGizmo {
         if (this._updateFn) this._app.off('update', this._updateFn)
         document.body.style.cursor = ''
     }
+   
 }
