@@ -92,7 +92,7 @@ function makePivotGroup(global, editGroup) {
     let currrentPivotPos = null
     let isEditing = false
     const container = document.createElement('div')
-    container.classList.add('pivot-wrap')
+    container.classList.add('section-wrap')
     const {
         row: positionRow,
         setDisabled: setInputsDisabled,
@@ -110,10 +110,9 @@ function makePivotGroup(global, editGroup) {
         setInputValues(settings.pivot.position)
     }
     const noPivotRow = document.createElement('div')
-    noPivotRow.classList.add('no-pivot-row')
+    noPivotRow.classList.add('no-configured-row')
     const noPivotText = document.createElement('span')
     noPivotText.textContent = 'No pivot configured'
-    noPivotText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
     const addBtn = document.createElement('button')
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'

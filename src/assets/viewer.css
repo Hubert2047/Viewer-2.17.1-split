@@ -48,16 +48,16 @@ button {
 }
 .btn {
   font-family: inherit;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   border: none;
   cursor: pointer;
   outline: none;
-  padding: 8px;
+  padding: 0.5rem;
   background-color: #91a3b7;
   color: white;
   font-weight: 500;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem;
   -webkit-transition: background 0.12s;
   -moz-transition: background 0.12s;
   -ms-transition: background 0.12s;
@@ -107,10 +107,10 @@ button {
   background-repeat: no-repeat;
 }
 #fileSizeInfo {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #f95744;
   text-align: center;
-  margin-bottom: 4px;
+  margin-bottom: 0.25rem;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0);
   font-weight: 500;
 }
@@ -123,10 +123,10 @@ button {
   width: min(380px, 100vw - 32px);
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 1rem;
 }
 #loadingWrap > #loadingText {
-  font-size: 18px;
+  font-size: 1.125rem;
   color: #f95744;
   text-align: center;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
@@ -134,8 +134,8 @@ button {
 #loadingWrap > #loadingBar {
   width: 100%;
   height: 10px;
-  margin-top: 8px;
-  border-radius: 4px;
+  margin-top: 0.5rem;
+  border-radius: 0.25rem;
   overflow: hidden;
 }
 
@@ -148,7 +148,7 @@ button {
   flex-direction: row-reverse;
   width: max-content;
   align-items: flex-end;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 #controlsWrap.faded-in {
@@ -185,10 +185,10 @@ button {
 #controlsWrap > #timelineContainer > #time {
   position: absolute;
   top: 0;
-  padding: 2px 4px;
+  padding: 0.125rem 0.25rem;
   transform: translate(-50%, -100%);
-  font-size: 12px;
-  border-radius: 4px;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
   color: #fff;
   background-color: rgba(40, 40, 40, 0.5);
 }
@@ -197,13 +197,13 @@ button {
   flex: 1;
   justify-content: end;
   flex-direction: column-reverse;
-  gap: 8px;
+  gap: 0.5rem;
   align-items: end;
 }
 #controlsWrap > #buttonsContainer .buttonGroup {
   display: flex;
-  border-radius: 6px;
-  gap: 8px;
+  border-radius: 0.375rem;
+  gap: 0.5rem;
 }
 #controlsWrap > #buttonsContainer .buttonGroup:not(:has(> :not(.hidden))) {
   display: none;
@@ -218,7 +218,7 @@ button {
   margin: 0;
   border: 0;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   color: black;
   background-color: #dddd;
 }
@@ -260,7 +260,7 @@ button {
   transition: background-position 0.1s ease-in-out;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.left {
-  border-radius: 4px 0px 0px 4px;
+  border-radius: 0.25rem 0px 0px 0.25rem;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.left:not(.active) {
   background-position: 0% 0%;
@@ -272,11 +272,11 @@ button {
   background-position: 0% 0%;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right {
-  border-radius: 0px 4px 4px 0px;
-  -webkit-border-radius: 0px 4px 4px 0px;
-  -moz-border-radius: 0px 4px 4px 0px;
-  -ms-border-radius: 0px 4px 4px 0px;
-  -o-border-radius: 0px 4px 4px 0px;
+  border-radius: 0px 0.25rem 0.25rem 0px;
+  -webkit-border-radius: 0px 0.25rem 0.25rem 0px;
+  -moz-border-radius: 0px 0.25rem 0.25rem 0px;
+  -ms-border-radius: 0px 0.25rem 0.25rem 0px;
+  -o-border-radius: 0px 0.25rem 0.25rem 0px;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right:not(.active) {
   background-position: 200% 0%;
@@ -293,14 +293,14 @@ button {
 }
 #infoPanel > #infoPanelContent {
   position: absolute;
-  top: 40px;
+  top: 2.5rem;
   left: 50%;
   z-index: 999;
   transform: translate(-50%, 0);
   min-height: 180px;
   min-width: 320px;
-  padding: 8px;
-  border-radius: 24px;
+  padding: 0.5rem;
+  border-radius: 1.5rem;
   color: black;
   background-color: #eeed;
   display: flex;
@@ -308,19 +308,19 @@ button {
 }
 #infoPanel > #infoPanelContent > #tabs {
   display: flex;
-  gap: 16px;
+  gap: 1rem;
   background-color: #666;
-  padding: 8px;
-  border-radius: 22px;
+  padding: 0.5rem;
+  border-radius: 1.375rem;
 }
 #infoPanel > #infoPanelContent > #tabs > .tab {
-  padding: 8px;
-  border-radius: 16px;
+  padding: 0.5rem;
+  border-radius: 1rem;
   cursor: pointer;
   flex-grow: 1;
   text-align: center;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #222;
   transition: background-color 250ms ease;
 }
@@ -331,25 +331,25 @@ button {
   background-color: #eee;
 }
 #infoPanel > #infoPanelContent > #infoPanels {
-  padding: 16px;
+  padding: 1rem;
 }
 #infoPanel > #infoPanelContent > #infoPanels h1 {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 4px 0 8px 0;
+  padding: 0.25rem 0 0.5rem 0;
   color: #f60;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 32px;
-  padding: 5px 8px;
-  margin: 0 -8px;
-  border-radius: 6px;
-  font-size: 16px;
+  gap: 2rem;
+  padding: 0.3125rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 0.375rem;
+  font-size: 1rem;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item > .control-action {
   text-align: left;
@@ -357,13 +357,13 @@ button {
 #infoPanel > #infoPanelContent > #infoPanels .control-item > .control-key {
   text-align: right;
   color: #666;
-  font-size: 16px;
+  font-size: 1rem;
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-item:nth-child(odd) {
   background-color: rgba(255, 255, 255, 0.03);
 }
 #infoPanel > #infoPanelContent > #infoPanels .control-spacer {
-  margin: 14px 0;
+  margin: 0.875rem 0;
 }
 #settingsPanel {
   z-index: 999;
@@ -371,9 +371,9 @@ button {
 #tooltip {
   display: none;
   position: absolute;
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 13px;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
   z-index: 1001;
   color: #e0dcdd;
   width: max-content;
@@ -455,7 +455,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   overflow: hidden;
   background-color: rgba(0, 0, 0, 0.6);
 }
@@ -472,12 +472,12 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 0.75rem;
   white-space: nowrap;
   width: 240px;
 }
 #annotationNav.desktop > #annotationInfo > #annotationNavTitle {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -505,11 +505,11 @@ button {
 }
 #annotationNav.touch > #annotationPrev {
   left: max(0px, env(safe-area-inset-left));
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 0.375rem 0.375rem 0;
 }
 #annotationNav.touch > #annotationNext {
   right: max(0px, env(safe-area-inset-right));
-  border-radius: 6px 0 0 6px;
+  border-radius: 0.375rem 0 0 0.375rem;
 }
 .sidebar {
   position: absolute;
@@ -525,8 +525,8 @@ button {
   border-left: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 .sidebar-header {
-  padding: 14px 16px;
-  font-size: 14px;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -535,8 +535,8 @@ button {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-right: 12px;
+  gap: 0.5rem;
+  padding-right: 0.75rem;
 }
 .section {
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
@@ -545,10 +545,10 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  font-size: 14px;
-  gap: 4px;
+  font-size: 0.875rem;
+  gap: 0.25rem;
   color: #111;
   transition: background 0.12s;
   user-select: none;
@@ -561,7 +561,7 @@ button {
 .section-title {
   height: 20px;
   flex: 1;
-  font-size: 16px;
+  font-size: 1rem;
 }
 .section-icon-prefix {
   height: 20px;
@@ -575,7 +575,7 @@ button {
 }
 .section-icon::before {
   content: "›";
-  font-size: 18px;
+  font-size: 1.125rem;
   color: rgba(0, 0, 0, 0.3);
   transition: transform 0.2s;
   line-height: 1;
@@ -584,7 +584,7 @@ button {
   display: none;
   flex-direction: column;
   background: rgba(0, 0, 0, 0.03);
-  padding: 12px 16px;
+  padding: 0.75rem 1rem;
   max-height: calc(100vh - 265px);
   overflow-y: auto;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
@@ -593,9 +593,9 @@ button {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 0.5rem;
   height: 100%;
-  padding: 2px;
+  padding: 0.125rem;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   scrollbar-width: auto;
@@ -603,10 +603,10 @@ button {
 .message {
   display: none;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   align-items: center;
   position: absolute;
-  padding: 8px;
+  padding: 0.5rem;
   min-width: max-content;
   min-height: max-content;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -633,10 +633,10 @@ button {
   -o-transition:
     opacity 1.5s ease,
     visibility 1.5s;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  -ms-border-radius: 3px;
-  -o-border-radius: 3px;
+  -webkit-border-radius: 0.1875rem;
+  -moz-border-radius: 0.1875rem;
+  -ms-border-radius: 0.1875rem;
+  -o-border-radius: 0.1875rem;
 }
 .message-align-btns > .btn {
   width: 26px;
@@ -645,7 +645,7 @@ button {
 }
 .message-drag-handle {
   cursor: grab;
-  padding: 0 4px;
+  padding: 0 0.25rem;
   color: #aaa;
   display: flex;
   align-items: center;
@@ -667,10 +667,10 @@ button {
 .textarea-field {
   background: #e8f0fe;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   color: var(--text-main);
-  font-size: 12px;
-  padding: 8px;
+  font-size: 0.75rem;
+  padding: 0.5rem;
   outline: none;
   width: 100%;
   box-sizing: border-box;
@@ -685,19 +685,19 @@ button {
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 0 0 4px;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0 0 0.25rem;
 }
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
 }
 .message-header-name {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text-main);
   max-width: 100%;
   flex: 1;
@@ -706,22 +706,22 @@ button {
 .message-header-actions {
   display: flex;
   align-self: flex-start;
-  gap: 4px;
+  gap: 0.25rem;
 }
 .message-edit-panel {
-  padding: 10px 12px 14px;
+  padding: 0.625rem 0.75rem 0.875rem;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
 }
 .add-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
+  gap: 0.3125rem;
+  padding: 0.3125rem 0.75rem;
   background-color: rgba(249, 87, 68, 0.1);
   border: 0.5px solid rgba(249, 87, 68, 0.4);
-  border-radius: 6px;
+  border-radius: 0.375rem;
   color: var(--primary);
-  font-size: 12px;
+  font-size: 0.75rem;
   transition: background 0.12s;
 }
 .add-btn:not(:disabled) {
@@ -731,16 +731,16 @@ button {
   background-color: rgba(249, 87, 68, 0.18);
 }
 .message-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: rgb(140, 159, 180);
 }
 .input-field {
   background: #e8f0fe;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   color: var(--text-main);
-  font-size: 12px;
-  padding: 0 7px;
+  font-size: 0.75rem;
+  padding: 0 0.4375rem;
   outline: none;
   width: 100%;
   box-sizing: border-box;
@@ -753,7 +753,7 @@ button {
 .orientation-step-input {
   width: 56px;
   height: 28px;
-  padding: 0 6px;
+  padding: 0 0.375rem;
   text-align: center;
   font-family: inherit;
 }
@@ -763,7 +763,7 @@ button {
 .color-swatch {
   width: 100%;
   height: 30px;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   display: block;
   border: 0.5px solid rgba(0, 0, 0, 0.15);
   cursor: pointer;
@@ -781,21 +781,21 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0 6px;
+  padding: 0.25rem 0 0.375rem;
   width: 100%;
 }
 .message-count {
-  font-size: 12px;
+  font-size: 0.85rem;
   color: rgb(140, 159, 180);
-  margin-top: 2px;
+  margin-top: 0.125rem;
 }
 .message-title {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 400;
   color: var(--text-main);
 }
 .message-item {
-  border-radius: 8px;
+  border-radius: 0.5rem;
   overflow: hidden;
   transition: border-color 0.15s;
   background: rgba(0, 0, 0, 0.04);
@@ -808,19 +808,19 @@ button {
 .section-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.625rem;
   background: rgba(0, 0, 0, 0.03);
   border: 0.5px solid rgba(0, 0, 0, 0.07);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 0.5rem;
+  padding: 0.625rem;
   flex: 1;
-  -webkit-border-radius: 8px;
-  -moz-border-radius: 8px;
-  -ms-border-radius: 8px;
-  -o-border-radius: 8px;
+  -webkit-border-radius: 0.5rem;
+  -moz-border-radius: 0.5rem;
+  -ms-border-radius: 0.5rem;
+  -o-border-radius: 0.5rem;
 }
 .section-group-title {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: rgb(140, 159, 180);
   text-transform: uppercase;
@@ -829,20 +829,20 @@ button {
 .message-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.25rem;
 }
 .message-field.embed {
   gap: 0px;
 }
 .info-icon {
-  top: -9px;
+  top: -0.5625rem;
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 0.875rem;
+  height: 0.875rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-style: normal;
   font-weight: 700;
   color: var(--text-muted, #888);
@@ -863,9 +863,9 @@ button {
   width: 220px;
   background: var(--panel-bg, #1e1e1e);
   border: 1px solid var(--border, #333);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
   color: var(--text, #eee);
   line-height: 1.5;
   z-index: 9999;
@@ -878,8 +878,8 @@ button {
 
 .embed-tip-row {
   display: flex;
-  gap: 6px;
-  margin-bottom: 5px;
+  gap: 0.375rem;
+  margin-bottom: 0.3125rem;
 }
 .embed-tip-row:last-child {
   margin-bottom: 0;
@@ -889,7 +889,7 @@ button {
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: 0.25rem;
 }
 .embed-tip-dot.green {
   background: #4caf50;
@@ -901,18 +901,18 @@ button {
 .message-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 0.5rem;
   align-items: flex-end;
 }
 .message-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 0.5rem;
   align-items: flex-end;
 }
 .message-label-row {
   display: flex;
-  gap: 5px;
+  gap: 0.3125rem;
   align-items: center;
 }
 .message-label-row .input-field {
@@ -922,9 +922,9 @@ button {
 .fmt-btn {
   width: 26px;
   height: 26px;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.75rem;
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   transition: all 0.12s;
   flex-shrink: 0;
@@ -942,7 +942,7 @@ button {
 /* Style toggle */
 .segment-row {
   display: flex;
-  gap: 4px;
+  gap: 0.25rem;
 }
 .segment-btn {
   flex: 1;
@@ -951,9 +951,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   transition: all 0.12s;
   background: rgba(0, 0, 0, 0.04);
   border: 0.5px solid rgba(0, 0, 0, 0.1);
@@ -968,14 +968,14 @@ button {
 /* Bottom grid Auto Play + Button */
 .message-autoplay {
   display: flex;
-  gap: 7px;
+  gap: 0.4375rem;
 }
 /* Apply button */
 .message-apply-btn,
 .message-cancel-btn {
   flex: 1;
-  padding: 7px 0;
-  font-size: 12px;
+  padding: 0.4375rem 0;
+  font-size: 0.75rem;
   -webkit-transition: background 0.12s;
   -moz-transition: background 0.12s;
   -ms-transition: background 0.12s;
@@ -990,7 +990,7 @@ button {
 .audio-settings {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 .audio-clear-btn {
   width: 32px;
@@ -998,7 +998,7 @@ button {
 .audio-file-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   cursor: pointer;
 }
 
@@ -1006,11 +1006,11 @@ button {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 0 10px;
+  padding: 0 0.625rem;
   height: 28px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   border: 0.5px solid rgba(249, 87, 68, 0.4);
   background: rgba(249, 87, 68, 0.08);
   color: var(--primary);
@@ -1023,7 +1023,7 @@ button {
 }
 
 .audio-file-name {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: rgb(140, 159, 180);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1033,10 +1033,10 @@ button {
 .volume-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
 }
 .volume > .message-label {
-  margin-bottom: -8px;
+  margin-bottom: -0.5rem;
 }
 
 .volume-slider {
@@ -1044,7 +1044,7 @@ button {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   outline: none;
   cursor: pointer;
   border: none;
@@ -1078,21 +1078,21 @@ button {
 
 .volume-slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   background: rgba(0, 0, 0, 0.1);
 }
 
 .slider-number {
   width: 46px !important;
   flex-shrink: 0;
-  padding: 0 5px;
+  padding: 0 0.3125rem;
   text-align: center;
 }
 .message-audio-btn {
   overflow: visible;
   position: absolute;
-  top: -12px;
-  right: -12px;
+  top: -0.75rem;
+  right: -0.75rem;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -1118,8 +1118,8 @@ button {
 
 .audio-ring-svg {
   position: absolute;
-  top: -4px;
-  left: -4px;
+  top: -0.25rem;
+  left: -0.25rem;
   width: 36px;
   height: 36px;
 }
@@ -1128,8 +1128,8 @@ button {
   .message-audio-btn {
     width: 24px;
     height: 24px;
-    top: -12px;
-    right: -12px;
+    top: -0.75rem;
+    right: -0.75rem;
   }
 
   .message-audio-btn svg:not(.audio-ring-svg) {
@@ -1138,8 +1138,8 @@ button {
   }
 
   .audio-ring-svg {
-    top: -3px;
-    left: -3px;
+    top: -0.1875rem;
+    left: -0.1875rem;
     width: 30px;
     height: 30px;
   }
@@ -1199,7 +1199,7 @@ button {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   outline: none;
   cursor: pointer;
   border: none;
@@ -1233,18 +1233,18 @@ button {
 
 .alpha-slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
 }
 .color-alpha-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0.1875rem;
 }
 
 .color-alpha-bg-row {
   display: flex;
   height: 30px;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   overflow: hidden;
   border: 0.5px solid var(--color-border-tertiary, rgba(0, 0, 0, 0.13));
 }
@@ -1276,8 +1276,8 @@ button {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 8px;
+  gap: 0.3125rem;
+  padding: 0 0.5rem;
   background: var(--color-background-primary, #e8f0fe);
   border-left: 0.5px solid var(--color-border-tertiary, rgba(0, 0, 0, 0.13));
 }
@@ -1287,7 +1287,7 @@ button {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   outline: none;
   cursor: pointer;
   border: none;
@@ -1321,7 +1321,7 @@ button {
 }
 
 .alpha-value {
-  font-size: 10px;
+  font-size: 0.625rem;
   color: rgb(140, 159, 180);
   flex-shrink: 0;
   width: 26px;
@@ -1337,15 +1337,15 @@ button {
 .export-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 0.625rem;
+  padding: 0.625rem 1rem;
 }
 .export-input-wrap {
   display: flex;
   border: 1px solid #ddd;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   overflow: hidden;
-  margin-top: 4px;
+  margin-top: 0.25rem;
 }
 .export-input-wrap .input-field {
   flex: 1;
@@ -1355,8 +1355,8 @@ button {
 }
 
 .export-ext {
-  padding: 0 10px;
-  font-size: 12px;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
   color: #999;
   background: #f5f5f5;
   border-left: 1px solid #ddd;
@@ -1365,9 +1365,9 @@ button {
 }
 .export-btn {
   width: 100%;
-  padding: 8px;
-  font-size: 13px;
-  border-radius: 5px;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+  border-radius: 0.3125rem;
   border: 1px solid #ddd;
   color: white;
   background-color: var(--primary);
@@ -1375,7 +1375,7 @@ button {
   transition: background 0.15s;
 }
 .link-btn {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .link-btn.primary {
   color: var(--primary);
@@ -1390,13 +1390,13 @@ button {
   color: var(--delete);
 }
 .link-btn.small {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .link-btn.medium {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .link-btn.large {
-  font-size: 16px;
+  font-size: 1rem;
 }
 .export-btn:hover {
   background-color: #d83a29;
@@ -1415,38 +1415,38 @@ button {
 .confirm-dialog-box {
   background: #fff;
   border: 0.5px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  padding: 20px 24px;
+  border-radius: 0.625rem;
+  padding: 1.25rem 1.5rem;
   min-width: 280px;
   max-width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .confirm-title {
   color: #1a202c;
-  padding-bottom: 4px;
-  font-size: 18px;
+  padding-bottom: 0.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 .confirm-msg {
   color: rgb(140, 159, 180);
-  font-size: 14px;
-  padding: 8px 0px 14px 0;
+  font-size: 0.875rem;
+  padding: 0.5rem 0px 0.875rem 0;
   line-height: 1.5;
-  margin-bottom: 6px;
+  margin-bottom: 0.375rem;
 }
 .confirm-btn-row {
   display: flex;
-  gap: 6px;
+  gap: 0.375rem;
   justify-content: flex-end;
 }
 .confirm-cancel-btn,
 .confirm-accept-btn {
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
   transition:
     background 0.12s,
     color 0.12s;
@@ -1458,7 +1458,7 @@ button {
   border: 0.5px solid rgba(0, 0, 0, 0.12);
   color: rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 0.375rem;
 }
 
 .cancel-btn:hover,
@@ -1491,23 +1491,23 @@ button {
   min-width: 48px;
   height: fit-content;
   min-height: 36px;
-  padding: 8px;
-  font-size: 16px;
+  padding: 0.5rem;
+  font-size: 1rem;
   border: none;
   color: #333;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  -webkit-border-radius: 4px;
-  -moz-border-radius: 4px;
-  -ms-border-radius: 4px;
-  -o-border-radius: 4px;
-  border-radius: 4px;
+  -webkit-border-radius: 0.25rem;
+  -moz-border-radius: 0.25rem;
+  -ms-border-radius: 0.25rem;
+  -o-border-radius: 0.25rem;
+  border-radius: 0.25rem;
 }
 .apply-row {
   display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
 }
 .ative-message-btn:hover {
   background-color: #f0f0f0;
@@ -1537,21 +1537,21 @@ button {
     -3px 0px;
   background-color: #fff;
   border: 0.5px solid rgba(0, 0, 0, 0.15) !important;
-  border-radius: 2px !important;
-  padding: 2px;
-  -webkit-border-radius: 2px !important;
-  -moz-border-radius: 2px !important;
-  -ms-border-radius: 2px !important;
-  -o-border-radius: 2px !important;
+  border-radius: 0.125rem !important;
+  padding: 0.125rem;
+  -webkit-border-radius: 0.125rem !important;
+  -moz-border-radius: 0.125rem !important;
+  -ms-border-radius: 0.125rem !important;
+  -o-border-radius: 0.125rem !important;
 }
 .section-group-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: rgb(140, 159, 180);
-  font-size: 14px;
+  font-size: 0.875rem;
   height: 32px;
-  gap: 8px;
+  gap: 0.5rem;
 }
 .section-group-row.clickable:hover span {
   color: var(--primary);
@@ -1568,7 +1568,7 @@ button {
 .toggle {
   width: 36px;
   height: 18px;
-  border-radius: 20px;
+  border-radius: 1.25rem;
   position: relative;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1576,7 +1576,7 @@ button {
   border: 0.5px solid rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
-  padding: 0 2px;
+  padding: 0 0.125rem;
 }
 .toggle:hover {
   background: rgba(0, 0, 0, 0.15);
@@ -1605,12 +1605,12 @@ button {
   height: 32px;
   padding: 0;
   background: none;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   cursor: pointer;
-  -webkit-border-radius: 8px;
-  -moz-border-radius: 8px;
-  -ms-border-radius: 8px;
-  -o-border-radius: 8px;
+  -webkit-border-radius: 0.5rem;
+  -moz-border-radius: 0.5rem;
+  -ms-border-radius: 0.5rem;
+  -o-border-radius: 0.5rem;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -1625,15 +1625,15 @@ button {
 #toast {
   position: fixed;
   left: 50%;
-  transform: translateX(-50%) translateY(-12px);
+  transform: translateX(-50%) translateY(-0.75rem);
   top: 20px;
   min-width: 40px;
   max-width: min(420px, 90vw);
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
   background: #1a1a1a;
   color: #f5f5f5;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 450;
   text-align: center;
   line-height: 1.5;
@@ -1663,7 +1663,7 @@ button {
   width: 44px;
   height: 44px;
   padding: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1699,7 +1699,7 @@ button {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  gap: 12px;
+  gap: 0.75rem;
   font-family: sans-serif;
   text-align: center;
   margin: 0;
@@ -1708,18 +1708,18 @@ button {
 }
 .webgl-error h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   color: #111111;
 }
 .webgl-error p {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   max-width: 320px;
   line-height: 1.6;
   color: #333333;
 }
 .webgl-error p.hint {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: #666666;
   max-width: 360px;
 }
@@ -1730,15 +1730,15 @@ button {
 .orientation-btn-wrap {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0.875rem;
   width: 100%;
 }
 .orientation-btn > svg {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
 }
 .orientation-method-btns > .btn {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .orientation-btn,
 .edit-btn {
@@ -1753,21 +1753,21 @@ button {
 
 .vec-inputs {
   display: flex;
-  gap: 6px;
+  gap: 0.375rem;
 }
 .vec-row {
-  margin: 4px 0 8px 0;
+  margin: 0.25rem 0 0.5rem 0;
 }
 
 .vec-inputs .axis-col {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0.1875rem;
 }
 
 .vec-inputs .axis-label {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.04em;
@@ -1775,12 +1775,12 @@ button {
 
 .vec-inputs input[type="number"] {
   width: 100%;
-  padding: 5px 0;
-  border-radius: 5px;
+  padding: 0.3125rem 0;
+  border-radius: 0.3125rem;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
   background: rgba(0, 0, 0, 0.04);
   color: var(--text-main);
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: center;
   outline: none;
   font-family: inherit;
@@ -1797,18 +1797,18 @@ button {
 
 .btn-row {
   display: flex;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .btn-row .btn {
   flex: 1;
-  padding: 7px;
-  font-size: 13px;
+  padding: 0.4375rem;
+  font-size: 0.8125rem;
 }
 
 .reset-btn {
   flex: 0 !important;
-  padding: 7px 10px !important;
+  padding: 0.4375rem 0.625rem !important;
   background-color: rgba(0, 0, 0, 0.05) !important;
   color: rgba(0, 0, 0, 0.4) !important;
   display: flex;
@@ -1825,7 +1825,7 @@ button {
 .orientation-toggle-track {
   width: 32px;
   height: 18px;
-  border-radius: 18px;
+  border-radius: 1.125rem;
   background: rgba(0, 0, 0, 0.1);
   border: 0.5px solid rgba(0, 0, 0, 0.15);
   position: relative;
@@ -1860,33 +1860,27 @@ button {
   background: var(--primary);
 }
 .vec3-input-label {
-  margin-top: 16px;
+  margin-top: 1rem;
   min-width: 52px;
 }
-.no-pivot-row,
-.no-dimensions-row {
+.no-configured-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 0.875rem;
+  color:var(--text-muted)
 }
 .pivot-row {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-.pivot-wrap,
-.dimensions-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
+  gap: 1.125rem;
 }
 .delete-btn {
   color: var(--primary);
   border-color: rgba(229, 62, 62, 0.3);
   background-color: rgba(0, 0, 0, 0.05) !important;
   flex: 0 !important;
-  padding: 7px 10px !important;
+  padding: 0.4375rem 0.625rem !important;
 }
 
 .delete-btn:hover {
@@ -1922,39 +1916,39 @@ button {
   position: absolute;
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 0.875rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .view-option-header {
-  padding: 12px 14px;
+  padding: 0.75rem 0.875rem;
   font-weight: 600;
   color: var(--primary);
   border-bottom: 1px solid var(--border);
   background: var(--primary-soft);
 }
 .view-option-content {
-  padding: 12px;
+  padding: 0.75rem;
   width: max-content;
 }
 .option-title {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   text-transform: uppercase;
 }
 .quality-options {
   display: flex;
-  gap: 6px;
+  gap: 0.375rem;
 }
 .option-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px;
-  border-radius: 8px;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   color: var(--text-main);
   transition: all 0.15s ease;
@@ -1988,7 +1982,7 @@ button {
 .md-modal {
   min-width: max-content;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   opacity: 0;
@@ -2000,32 +1994,32 @@ button {
 }
 .md-modal.top {
   align-self: flex-start;
-  margin-top: 80px;
+  margin-top: 5rem;
 }
 .md-modal.bottom {
   align-self: flex-end;
-  margin-bottom: 40px;
+  margin-bottom: 2.5rem;
 }
 .md-overlay.show .md-modal {
   transform: scale(1);
   opacity: 1;
 }
 .md-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   text-align: center;
-  padding: 16px 16px 8px;
+  padding: 1rem 1rem 0.5rem;
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   min-width: max-content;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 .md-message {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #666;
   text-align: center;
-  padding: 4px 16px 16px;
+  padding: 0.25rem 1rem 1rem;
   overflow: auto;
   max-width: 85vw;
   width: max-content;
@@ -2033,24 +2027,24 @@ button {
 .md-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 10px;
+  gap: 0.5rem;
+  padding: 0.625rem;
   border-top: 1px solid #eee;
 }
 .md-btn {
   height: 34px;
-  padding: 0 12px;
-  min-width: 112px;
-  border-radius: 5px;
-  font-size: 13px;
+  padding: 0 0.75rem;
+  min-width: 7rem;
+  border-radius: 0.3125rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   border: none;
   cursor: pointer;
   transition: all 0.15s ease;
-  -webkit-border-radius: 5px;
-  -moz-border-radius: 5px;
-  -ms-border-radius: 5px;
-  -o-border-radius: 5px;
+  -webkit-border-radius: 0.3125rem;
+  -moz-border-radius: 0.3125rem;
+  -ms-border-radius: 0.3125rem;
+  -o-border-radius: 0.3125rem;
 }
 
 .md-btn.cancel {
@@ -2073,10 +2067,10 @@ button {
 .unit-select {
   background: #e8f0fe;
   border: 0.5px solid rgba(0, 0, 0, 0.13);
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   color: var(--text-main);
-  font-size: 12px;
-  padding: 0 7px;
+  font-size: 0.75rem;
+  padding: 0 0.4375rem;
   outline: none;
   height: 30px;
   width: max-content;
@@ -2094,7 +2088,7 @@ button {
 .section-wrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.625rem;
   flex: 1;
 }
 .color-alpha-disabled,
@@ -2106,11 +2100,11 @@ button {
 }
 .dimension-label {
   position: fixed;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-family: monospace;
   font-weight: bold;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
   white-space: nowrap;
   pointer-events: none;
   display: none;
@@ -2119,8 +2113,8 @@ button {
 }
 @media (max-width: 768px) {
   .dimension-label {
-    padding: 6px;
-    font-size: 12px;
+    padding: 0.375rem;
+    font-size: 0.75rem;
   }
 }
 .tab-container {
@@ -2131,20 +2125,20 @@ button {
 
 .tab-header {
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  gap: 0.5rem;
+  padding: 0.5rem;
   background: rgba(0, 0, 0, 0.04);
-  border-radius: 22px;
+  border-radius: 1.375rem;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 8px;
+  padding: 0.5rem;
   min-width: max-content;
-  border-radius: 16px;
+  border-radius: 1rem;
   cursor: pointer;
   text-align: center;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-main);
   transition: all 0.2s ease;
@@ -2161,7 +2155,7 @@ button {
 }
 
 .tab-content {
-  padding: 12px;
+  padding: 0.75rem;
 }
 .pick-ground-btn {
   height: 30px;
@@ -2178,17 +2172,17 @@ button {
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-right: 12px;
-  font-size: 16px;
+  gap: 0.5rem;
+  padding-right: 0.75rem;
+  font-size: 1rem;
 }
 
 .step-badge {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 20px;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1.25rem;
   background: rgba(0, 0, 0, 0.06);
   color: rgb(140, 159, 180);
   border: 0.5px solid rgba(0, 0, 0, 0.08);
@@ -2201,15 +2195,15 @@ button {
 
 .step-progress {
   display: flex;
-  gap: 4px;
-  padding: 8px 16px 0;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem 0;
   flex-shrink: 0;
 }
 
 .step-progress-seg {
   flex: 1;
   height: 3px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   background: rgba(0, 0, 0, 0.08);
   transition: background 0.25s;
 }
@@ -2222,10 +2216,10 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 10px;
+  padding: 0.125rem 0.625rem;
   height: 26px;
-  font-size: 12px;
-  border-radius: 6px;
+  font-size: 0.75rem;
+  border-radius: 0.375rem;
   border: 0.5px solid rgba(0, 0, 0, 0.1);
   color: rgb(140, 159, 180);
   background: transparent;
@@ -2252,8 +2246,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  padding: 3px 12px;
+  font-size: 0.75rem;
+  padding: 0.1875rem 0.75rem;
   height: 26px;
   flex-shrink: 0;
 }
@@ -2265,7 +2259,7 @@ button {
 @keyframes stepFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(0.375rem);
   }
   to {
     opacity: 1;
@@ -2273,10 +2267,10 @@ button {
   }
 }
 .export-hint {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text-muted);
   line-height: 1.5;
-  margin: 2px 0;
+  margin: 0.125rem 0;
 }
 .ground-check-btn {
   height: 30px;
@@ -2285,7 +2279,7 @@ button {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   background: rgba(0, 0, 0, 0.12);
   outline: none;
   cursor: pointer;
@@ -2319,7 +2313,7 @@ button {
 
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   background: rgba(0, 0, 0, 0.12);
 }
 .loading-overlay {
@@ -2338,12 +2332,12 @@ button {
 
 .loading-box {
   background: #fff;
-  border-radius: 16px;
-  padding: 28px 36px;
+  border-radius: 1rem;
+  padding: 1.75rem 2.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 0.875rem;
   min-width: 240px;
 }
 .loading-spinner {
@@ -2363,25 +2357,25 @@ button {
 .loading-progress-bar {
   width: 100%;
   height: 6px;
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   background: rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 .loading-progress-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   background: var(--primary);
   width: 0%;
   transition: width 0.3s ease;
 }
 .loading-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--text-main);
   text-align: center;
 }
 .loading-message {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-muted);
   text-align: center;
 }
@@ -2396,7 +2390,7 @@ button {
 
 .hint-icon {
   position: absolute;
-  right: -16px;
+  right: -1rem;
 }
 
 .hint-tooltip {
@@ -2406,10 +2400,10 @@ button {
   background: var(--panel-bg, #1e1e1e);
   border: 1px solid var(--border, #333);
   color: var(--text, #eee);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
   width: 200px;
   pointer-events: none;
   font-weight: 500;
@@ -2423,7 +2417,7 @@ button {
   appearance: none;
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   background: white;
   cursor: pointer;
@@ -2443,17 +2437,17 @@ button {
 .checkbox-input:checked::after {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 6px;
-  height: 10px;
+  left: 0.25rem;
+  top: 0.0625rem;
+  width: 0.375rem;
+  height: 0.625rem;
   border: 2px solid white;
   border-top: none;
   border-left: none;
   transform: rotate(45deg);
 }
 .spin-speed > .label {
-  margin-right: 42px;
+  margin-right: 2.625rem;
 }
 .speed-slider {
   width: 110px;
@@ -2479,10 +2473,10 @@ button {
     max-width: calc(100vw - 32px);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 0.25rem;
     background: #dddd;
-    border-radius: 24px;
-    padding: 4px 6px;
+    border-radius: 1.5rem;
+    padding: 0.25rem 0.375rem;
     width: 100%;
     overflow: hidden;
     box-sizing: border-box;
@@ -2507,21 +2501,21 @@ button {
     overflow: auto;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    gap: 8px;
+    gap: 0.5rem;
     width: 100%;
     touch-action: pan-x;
     -webkit-overflow-scrolling: touch;
     flex: 1;
     align-items: center;
-    gap: 6px;
+    gap: 0.375rem;
     scrollbar-width: none;
   }
   #messageContainer * {
     touch-action: pan-x;
   }
   .active-message-btn {
-    font-size: 14px;
-    padding: 6px;
+    font-size: 0.875rem;
+    padding: 0.375rem;
     min-width: max-content;
     box-shadow: none;
   }
@@ -2542,7 +2536,7 @@ button {
   align-items: center;
   z-index: 20;
   flex-direction: column;
-  gap: 15px;
+  gap: 0.9375rem;
   opacity: 1;
   transition: opacity 0.3s ease-in-out;
   pointer-events: all;
@@ -2556,7 +2550,7 @@ button {
   animation: spin 1s linear infinite;
 }
 .helper-tabs .tab-btn {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .calib-input {
   max-width: auto;

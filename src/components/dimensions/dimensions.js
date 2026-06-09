@@ -7,14 +7,13 @@ function makeDimensionSection(el, global) {
     // let prevRotation = { x: 0, y: 0, z: 0 }
     let canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
     const container = document.createElement('div')
-    container.classList.add('dimensions-wrap')
+    container.classList.add('section-wrap')
 
     // ── No dimension row ──
     const noDimRow = document.createElement('div')
-    noDimRow.classList.add('no-dimensions-row')
+    noDimRow.classList.add('no-configured-row')
     const noDimText = document.createElement('span')
     noDimText.textContent = 'No dimensions configured'
-    noDimText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
     const addBtn = document.createElement('button')
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'

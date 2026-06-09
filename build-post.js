@@ -29,6 +29,7 @@ function copyDir(src, dest) {
 }
 
 const files = [
+    'src/libs/custome-engine.js',
     'src/libs/engine-1.js',
     'src/libs/engine-2.js',
     'src/libs/engine-3.js',
@@ -36,7 +37,6 @@ const files = [
     'src/default-settings.js',
     'src/utils/math.js',
     'src/libs/engine-4.js',
-    'src/libs/custome-engine.js',
     'src/components/rotation-gizmo.js',
     'src/components/entity-rotatable.js',
     'src/components/dimensions/dimension-rotatable.js',

@@ -7,13 +7,12 @@ function makeMeasurementSection(el, global) {
     let calibPoints = currentMeasurement?.calibration.points ?? []
     let canUseDimensionData = hasDimensionsData(settings.dimensions)
     const container = document.createElement('div')
-    container.classList.add('dimensions-wrap')
+    container.classList.add('section-wrap')
 
     const noMeasureRow = document.createElement('div')
-    noMeasureRow.classList.add('no-dimensions-row')
+    noMeasureRow.classList.add('no-configured-row')
     const noMeasureText = document.createElement('span')
     noMeasureText.textContent = 'No measurement configured'
-    noMeasureText.style.cssText = 'font-size:13px; color:rgb(140,159,180);'
     const addBtn = document.createElement('button')
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'

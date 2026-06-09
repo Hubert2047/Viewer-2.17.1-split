@@ -484,7 +484,6 @@ class OtherController {
 
         this.minPitch = 0
         this.maxPitch = isCylindrical ? 0 : Math.PI / 2
-
         if (isCylindrical && this.cylindricalCamPos) {
             this.cameraEntity.setPosition(this.cylindricalCamPos)
             this.fov = this.calFitFOV()
