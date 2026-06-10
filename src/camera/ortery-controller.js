@@ -191,19 +191,6 @@ class OtherController {
         this.events.on('orientation:manual-apply', () => this.applyManualOrientation())
         this.events.on('orientation:switch-method', (currentMethod) => this.editOrientation(currentMethod))
         this.events.on('orientation:cancel', () => this.cancelOrientation())
-        this.events.on('orientation:eulerchange', ({ x, y, z }) => {
-            const quat = new Quat()
-            quat.setFromEulerAngles(x, y, z)
-            const currentRot = modelEntity.localRotation.clone()
-            const invCurrent = currentRot.clone().invert()
-            const deltaQuat = quat.clone().mul(invCurrent)
-            const offset = modelEntity.localPosition.clone().sub(this.centerPivot)
-            const rotatedOffset = this.rotateOffsetByQuat(offset, deltaQuat)
-            modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
-            modelEntity.localRotation.copy(quat)
-            this.updateModelRotation()
-            this.syncHierarchyAndRender()
-        })
         this.events.on('orientation:eulersynced', () => this.updateModelRotation())
 
         this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
@@ -412,8 +399,8 @@ class OtherController {
         if (!centerPivot) return this.basePosition.clone()
         const combinedQuat = this.buildCombinedQuat(this.currentYaw || 0, this.currentPitch || 0)
         const invQuat = new Quat3(-combinedQuat.x, -combinedQuat.y, -combinedQuat.z, combinedQuat.w)
-        const currentOffset = modelEntity.localPosition.clone().sub(centerPivot)
-        const baseOffset = this.rotateOffsetByQuat(currentOffset, invQuat)
+        const { x, y, z } = modelEntity.localPosition.clone().sub(centerPivot)
+        const baseOffset = new Vec33(x, y, z).transformQuat(invQuat)
         return centerPivot.clone().add(baseOffset)
     }
     saveInitview({ isShowToast = true, defaultDistance = false } = {}) {
@@ -777,11 +764,11 @@ class OtherController {
 
         const currentPosition = modelEntity.localPosition.clone()
         const pivot = this.centerPivot.clone()
-        const offsetToPivot = pivot.clone().sub(currentPosition)
+        const { x, y, z } = pivot.clone().sub(currentPosition)
         const currentRotation = modelEntity.localRotation.clone()
         const invCurrentRot = currentRotation.clone().invert()
         const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
-        const rotatedOffsetToPivot = this.rotateOffsetByQuat(offsetToPivot, deltaQuat)
+        const rotatedOffsetToPivot = new Vec33(x, y, z).transformQuat(deltaQuat)
         const newPosition = pivot.clone().sub(rotatedOffsetToPivot)
 
         this.baseRotation = newBaseRotation
@@ -1071,9 +1058,9 @@ class OtherController {
         }
     }
     sphericalRot(deltaX, deltaY) {
-        const yawQuat = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
-        const pitchQuat = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
-        const rotateQuat = pitchQuat.mul(yawQuat).normalize()
+        const quatYaw = new Quat3().setFromAxisAngle(this.upCam, deltaX * this.rotateSpeed)
+        const quatpitch = new Quat3().setFromAxisAngle(this.rightCam, deltaY * this.rotateSpeed)
+        const rotateQuat = quatpitch.mul(quatYaw).normalize()
         v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
         v$2.transformQuat(rotateQuat)
         modelEntity.localPosition.copy(this.centerPivot).add(v$2)
@@ -1084,12 +1071,13 @@ class OtherController {
 
     hemisphericalRot(yaw, pitch) {
         const combinedRotateQuat = this.buildCombinedQuat(yaw, pitch)
-        const offset = this.basePosition.clone().sub(this.centerPivot)
-        const rotatedOffset = this.rotateOffsetByQuat(offset, combinedRotateQuat)
+        const { x, y, z } = this.basePosition.clone().sub(this.centerPivot)
+        const rotatedOffset = new Vec33(x, y, z).transformQuat(combinedRotateQuat)
         modelEntity.localPosition.copy(this.centerPivot.clone().add(rotatedOffset))
         const result = combinedRotateQuat.mul(this.baseRotation).normalize()
         modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
     }
+
     sphericalAxisRot(deltaX, deltaY) {
         const worldUp = new Vec33(0, 1, 0)
         const quatYaw = new Quat3().setFromAxisAngle(worldUp, deltaX * this.rotateSpeed)
@@ -1098,11 +1086,9 @@ class OtherController {
         const quatPitch = new Quat3().setFromAxisAngle(rightAxis, deltaY * this.rotateSpeed)
 
         const rotateQuat = quatPitch.mul(quatYaw).normalize()
-
         v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
         v$2.transformQuat(rotateQuat)
         modelEntity.localPosition.copy(this.centerPivot).add(v$2)
-
         const result = rotateQuat.mul(this.modelRotation).normalize()
         modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
         this.modelRotation.copy(modelEntity.localRotation)
@@ -1113,25 +1099,6 @@ class OtherController {
         const rightAxis = this.rightCam ? this.rightCam.clone() : Vec33.RIGHT.clone()
         const quatPitch = new Quat3().setFromAxisAngle(rightAxis, pitch)
         return quatPitch.mul(quatYaw).normalize()
-    }
-
-    rotateOffsetByQuat(offset, q) {
-        const vx = offset.x,
-            vy = offset.y,
-            vz = offset.z
-        const qx = q.x,
-            qy = q.y,
-            qz = q.z,
-            qw = q.w
-        const ix = qw * vx + qy * vz - qz * vy
-        const iy = qw * vy + qz * vx - qx * vz
-        const iz = qw * vz + qx * vy - qy * vx
-        const iw = -qx * vx - qy * vy - qz * vz
-        return new Vec3(
-            ix * qw + iw * -qx + iy * -qz - iz * -qy,
-            iy * qw + iw * -qy + iz * -qx - ix * -qz,
-            iz * qw + iw * -qz + ix * -qy - iy * -qx,
-        )
     }
     smooth(dt) {
         const { focus, cameraRotation: r, smoothDamp } = this
@@ -1258,28 +1225,21 @@ class OtherController {
         }
         if (this.lastLineDistance === this.distance) return
         this.lastLineDistance = this.distance
+
         const canvasWidth = this.app.graphicsDevice.width
         const canvasHeight = this.app.graphicsDevice.height
         const fovRad = (50 * Math.PI) / 180
 
         const worldHeightAtDist = 4 * this.distance * Math.tan(fovRad / 2)
         const worldWidthAtDist = worldHeightAtDist * (canvasWidth / canvasHeight)
-        const size = worldWidthAtDist / 2
+        const size = worldWidthAtDist
 
-        const right = Vec33.RIGHT.clone().transformQuat(this.cameraRotation).normalize()
-
-        const offset1 = right.clone().mulScalar(-size)
-        const offset2 = right.clone().mulScalar(size)
-
-        offset1.y = 0
-        offset2.y = 0
-
-        const positions = [offset1.x, offset1.y, offset1.z, offset2.x, offset2.y, offset2.z]
+        const positions = [-size, 0, 0, size, 0, 0]
 
         this.horizontalLineMesh.setPositions(positions)
         this.horizontalLineMesh.update(PRIMITIVE_LINES)
 
-        this.horizontalLineEntity.localPosition.set(0, 0, 0)
+        this.horizontalLineEntity.localPosition.set(modelEntity.localPosition.x, 0, modelEntity.localPosition.z)
         this.horizontalLineEntity.localRotation.set(0, 0, 0, 1)
         this.horizontalLineEntity.enabled = true
     }

@@ -1,74 +1,53 @@
-<!doctype html>
+
+    <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>3D Model Viewer</title>
-        <meta charset="UTF-8" />
-        <meta property="og:description" content=" " />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <base href />
-        <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=116" />
-        <script>
-            const params = new URLSearchParams(window.location.search)
-            const currentV = params.get('v')
-            if (!currentV) {
-                const now = Date.now()
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">    
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=121">
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
-            } else {
-                const stored = sessionStorage.getItem('page-v')
-                const now = Date.now()
-                if (!stored) {
-                    sessionStorage.setItem('page-v', currentV)
-                } else if (now - parseInt(currentV) > 60000) {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('v', now)
-                    sessionStorage.setItem('page-v', now)
-                    window.location.replace(url.toString())
-                }
             }
-        </script>
-    </head>
-    <body>
-        <canvas id="application-canvas"></canvas>
-        <div id="ui">
-            <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loading-overlay">
-                <div class="spinner"></div>
-            </div>
-        </div>
-        <div id="tooltip"></div>
-    </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'hemispherical',
-                contentUrl: 'models/huaping.ply',
-                v: 116,
-                setupStep: 3,
-                cameras: [
-                    {
-                        x: -48.95663774,
-                        y: -79.3808431,
-                        alt: 56.17058562,
-                        heading: -41.0158157512737,
-                        pitch: 85.2622720631447,
-                        roll: 4.34256883095864,
-                        f: 63.510523477968,
-                    },
-                ],
-            },
         }
-    </script>
-    <script src="./viewer.js?v=116"></script>
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+        </div>            
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>window.sse = { "settings": {"ref":"","model":"hemispherical","contentUrl":"models/huaping.ply","v":121,"pivot":{"position":{"x":0.029021957876339675,"y":-18.974896035968648,"z":0.10177389566109132}},"initview":{"pose":{"rotation":{"x":0.9914128227926171,"y":-0.007615505993518067,"z":0.13052179873216696,"w":-0.002584361924634188},"position":{"x":-2.5816454313890764,"y":0.0294162653754384,"z":-3.677165472147278},"isFullyInView":false,"distanceScale":1,"focus":{"x":-1.4057383258572231,"y":16.56598082332582,"z":-1.625497957678638},"pitch":0,"yaw":0}},"orientation":{"pose":{"rotation":{"x":0.9914128227926169,"y":-0.007615505993518065,"z":0.13052179873216693,"w":-0.0025843619246341877},"position":{"x":-2.5816454313890764,"y":0.0294162653754384,"z":-3.677165472147278}}},"setupStep":3} }</script>
+<script src="./viewer.js?v=121"></script>
 </html>
+    
