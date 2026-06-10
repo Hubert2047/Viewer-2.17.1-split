@@ -356,7 +356,7 @@ function makeViewerSection(el, global) {
 
     const inertiaRow = makeRow({ title: 'Inertia' })
     const inertiaToggleEl = makeToggle({
-        value: settings.inertia,
+        initialValue: settings.inertia,
         onChange: (value) => {
             settings.inertia = value
             events.fire('viewer:inertia', value)
@@ -367,7 +367,7 @@ function makeViewerSection(el, global) {
 
     const autoHideUIRow = makeRow({ title: 'Auto Hide UI' })
     const autoHideUIToggleEl = makeToggle({
-        value: settings.autoHideUI,
+        initialValue: settings.autoHideUI,
         onChange: (value) => {
             settings.autoHideUI = value
             events.fire('viewer:auto-hide-ui', value)
@@ -378,7 +378,7 @@ function makeViewerSection(el, global) {
 
     const lockZoomInRow = makeRow({ title: 'Lock Zoom In' })
     const lockZoomInToggleEl = makeToggle({
-        value: settings.lockZoomIn.locked,
+        initialValue: settings.lockZoomIn.locked,
         onChange: (value) => {
             events.fire('viewer:lock-zoom-in', value)
             global.dataDirty = true
@@ -398,12 +398,11 @@ function makeViewerSection(el, global) {
 
     //spin
     const spinGroup = makeSectionGroup('Spin')
-
     const spinEnabledRow = makeRow({ title: 'Enabled' })
     const spinEnabledToggleEl = makeToggle({
-        value: settings.spin.enabled,
+        initialValue: settings.spin.enabled,
         onChange: (value) => {
-            settings.spin.enabled = !settings.spin.enabled
+            settings.spin.enabled = value
             if (settings.spin.enabled) {
                 spinContinuousRow.classList.remove('hidden')
                 spinOnStartRow.classList.remove('hidden')
@@ -438,9 +437,9 @@ function makeViewerSection(el, global) {
 
     const spinContinuousRow = makeRow({ title: 'Continuous', show: settings.spin.enabled })
     const spinContinuousToggleEl = makeToggle({
-        value: settings.spin.continuous,
+        initialValue: settings.spin.continuous,
         onChange: (value) => {
-            settings.spin.continuous = !settings.spin.continuous
+            settings.spin.continuous = value
             events.fire('spin-continuous', value)
             global.dataDirty = true
         },
@@ -449,9 +448,9 @@ function makeViewerSection(el, global) {
 
     const spinOnStartRow = makeRow({ title: 'Auto Start', show: settings.spin.enabled })
     const spinOnStartToggleEl = makeToggle({
-        value: settings.spin.autoStart,
+        initialValue: settings.spin.autoStart,
         onChange: (value) => {
-            settings.spin.autoStart = !settings.spin.autoStart
+            settings.spin.autoStart = value
             global.dataDirty = true
         },
     })
@@ -725,24 +724,24 @@ function makeSidebar(global, dom) {
             }),
         )
 
-        contentArea.appendChild(
-            makeSection({
-                id: 'measurement',
-                title: 'Measurement',
-                classname: 'measurement-section',
-                body: (el) => makeMeasurementSection(el, global),
-                events,
-            }),
-        )
-        contentArea.appendChild(
-            makeSection({
-                id: 'poster',
-                title: 'Poster',
-                classname: 'poster-section',
-                body: (el) => makePoster(el, global),
-                events,
-            }),
-        )
+        // contentArea.appendChild(
+        //     makeSection({
+        //         id: 'measurement',
+        //         title: 'Measurement',
+        //         classname: 'measurement-section',
+        //         body: (el) => makeMeasurementSection(el, global),
+        //         events,
+        //     }),
+        // )
+        // contentArea.appendChild(
+        //     makeSection({
+        //         id: 'poster',
+        //         title: 'Poster',
+        //         classname: 'poster-section',
+        //         body: (el) => makePoster(el, global),
+        //         events,
+        //     }),
+        // )
 
         contentArea.appendChild(
             makeSection({

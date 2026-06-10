@@ -393,7 +393,7 @@ function makeControlBotGroup(global, tooltip, dom) {
             'showDimension',
         ],
         ['info', 'info', 'Controls Guide', true, true, 'inputEvent:toggle-help'],
-        ['settings', 'settings', 'Settings', true, true, 'inputEvent:setting-panel'],
+        // ['settings', 'settings', 'Settings', true, true, 'inputEvent:setting-panel'],
     ]
 
     buttons.forEach(([id, icon, label, create, show, eventName, toggleId]) => {

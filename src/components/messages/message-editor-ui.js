@@ -588,7 +588,7 @@ class MessageEditorUI {
         const loopField = this.makeField('Loop')
         loopField.appendChild(
             makeToggle({
-                value: this.activeMessageData.audio?.loop,
+                initialValue: this.activeMessageData.audio?.loop,
                 onChange: (value) => {
                     this.activeMessageData.audio.loop = value
                     this.applyDraft()
@@ -599,7 +599,7 @@ class MessageEditorUI {
         const showField = this.makeField('Show')
         showField.appendChild(
             makeToggle({
-                value: this.activeMessageData.audio?.show,
+                initialValue: this.activeMessageData.audio?.show,
                 onChange: (value) => {
                     this.activeMessageData.audio.show = value
                     this.applyDraft()
@@ -616,7 +616,7 @@ class MessageEditorUI {
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
             makeToggle({
-                value: this.activeMessageData.audio?.autoPlay,
+                initialValue: this.activeMessageData.audio?.autoPlay,
                 onChange: (value) => {
                     this.activeMessageData.audio.autoPlay = value
                     this.applyDraft()

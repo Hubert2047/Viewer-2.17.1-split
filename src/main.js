@@ -3591,7 +3591,7 @@ const config = {
 
 const main = async (canvas, settingsJson, config) => {
     const loadingOverlay = document.getElementById('loading-overlay')
-    if(loadingOverlay)loadingOverlay.classList.add('hidden')
+    if (loadingOverlay) loadingOverlay.classList.add('hidden')
     const { app, camera } = await createApp(canvas, config)
     // create events
     const events = new EventHandler()
