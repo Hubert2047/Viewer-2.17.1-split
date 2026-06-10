@@ -235,6 +235,48 @@ function makePivotGroup(global, editGroup) {
     setPivotConfigured(!!settings.pivot.position)
     return group
 }
+function makePoster(el, global) {
+    const { events, settings } = global
+    let editPoster = settings.poster ? { ...settings.poster } : { name: 'poster'}
+    const container = makeSectionWrap()
+    
+    const capturePictureHint =
+        'Please copy the image into the <b style="color:var(--primary)">images/</b> folder and ensure it is included when sharing.'
+    const capturePicture = makeSectionGroup('Capture Poster', capturePictureHint)
+    
+    const hintText = document.createElement('p')
+    hintText.style.cssText = 'font-size:0.8125rem; color:rgb(140,159,180); margin:0; line-height:1.6;'
+    hintText.textContent = 'Capture a snapshot of the current scene view. This poster image will be displayed while the 3D model is loading, progressively refining as data arrives.'
+    
+    const filenameRow = makeRow({ title: 'Filename' })
+    const filenameInput = makeInput({
+        type: 'text',
+        placeholder: 'capture',
+        value: editPoster.name,
+        onChange: (value) => {
+            editPoster.name = value
+            global.dataDirty = true
+        },
+    })
+    filenameRow.appendChild(filenameInput)
+    
+    const captureBtn = makeButton({
+        title: 'Capture',
+        className: 'add-btn',
+        onClick: () => {
+            handleCapturePicture({ app: global.app, name: editPoster.name })
+            global.dataDirty = true
+        },
+    })
+    captureBtn.style.cssText = 'justify-content:center; width:100%; font-size:0.8125rem'
+    
+    capturePicture.appendChild(hintText)
+    capturePicture.appendChild(filenameRow)
+    capturePicture.appendChild(captureBtn)
+    
+    container.appendChild(capturePicture)
+    el.appendChild(container)
+}
 function makeModelSection(el, global) {
     const { settings, events } = global
     const step = settings.setupStep
@@ -689,6 +731,15 @@ function makeSidebar(global, dom) {
                 title: 'Measurement',
                 classname: 'measurement-section',
                 body: (el) => makeMeasurementSection(el, global),
+                events,
+            }),
+        )
+        contentArea.appendChild(
+            makeSection({
+                id: 'poster',
+                title: 'Poster',
+                classname: 'poster-section',
+                body: (el) => makePoster(el, global),
                 events,
             }),
         )

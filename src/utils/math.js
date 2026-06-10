@@ -12,7 +12,58 @@ function hasCalibrationData(calibration) {
     const { distance, points } = calibration
     return distance > 0 && points.length >= 2
 }
-
+function handleCapturePicture({ app, captureSize = 960, name = 'picture', format = 'png' }) {
+    const device = app.graphicsDevice
+    const gl = device.gl
+    const canvas = device.canvas
+    const originalWidth = canvas.width
+    const originalHeight = canvas.height
+    
+    device.setResolution(captureSize, captureSize)
+    app.render()
+    
+    const pixels = new Uint8Array(captureSize * captureSize * 4)
+    gl.readPixels(0, 0, captureSize, captureSize, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    
+    const offscreen = document.createElement('canvas')
+    offscreen.width = captureSize
+    offscreen.height = captureSize
+    const ctx = offscreen.getContext('2d')
+    const imageData = ctx.createImageData(captureSize, captureSize)
+    
+    for (let y = 0; y < captureSize; y++) {
+        for (let x = 0; x < captureSize; x++) {
+            const src = ((captureSize - 1 - y) * captureSize + x) * 4
+            const dst = (y * captureSize + x) * 4
+            imageData.data[dst] = pixels[src]
+            imageData.data[dst + 1] = pixels[src + 1]
+            imageData.data[dst + 2] = pixels[src + 2]
+            imageData.data[dst + 3] = pixels[src + 3]
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0)
+    
+    let dataUrl
+    switch(format) {
+        case 'jpg':
+            dataUrl = offscreen.toDataURL('image/jpeg', 0.95)
+            break
+        case 'webp':
+            dataUrl = offscreen.toDataURL('image/webp', 0.95)
+            break
+        default:
+            dataUrl = offscreen.toDataURL('image/png')
+    }
+    
+    const link = document.createElement('a')
+    link.href = dataUrl
+    link.download = `${name}.${format}`  
+    link.click()
+    
+    device.setResolution(originalWidth, originalHeight)
+    app.render()
+}
 function calRealSizeFromMeasurement(size) {
     const calib = settings.measurement.calibration
     const p = calib.points
