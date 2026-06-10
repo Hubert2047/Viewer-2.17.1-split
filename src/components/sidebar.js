@@ -237,17 +237,18 @@ function makePivotGroup(global, editGroup) {
 }
 function makePoster(el, global) {
     const { events, settings } = global
-    let editPoster = settings.poster ? { ...settings.poster } : { name: 'poster'}
+    let editPoster = settings.poster ? { ...settings.poster } : { name: 'poster' }
     const container = makeSectionWrap()
-    
+
     const capturePictureHint =
         'Please copy the image into the <b style="color:var(--primary)">images/</b> folder and ensure it is included when sharing.'
     const capturePicture = makeSectionGroup('Capture Poster', capturePictureHint)
-    
+
     const hintText = document.createElement('p')
     hintText.style.cssText = 'font-size:0.8125rem; color:rgb(140,159,180); margin:0; line-height:1.6;'
-    hintText.textContent = 'Capture a snapshot of the current scene view. This poster image will be displayed while the 3D model is loading, progressively refining as data arrives.'
-    
+    hintText.textContent =
+        'Capture a snapshot of the current scene view. This poster image will be displayed while the 3D model is loading, progressively refining as data arrives.'
+
     const filenameRow = makeRow({ title: 'Filename' })
     const filenameInput = makeInput({
         type: 'text',
@@ -259,7 +260,7 @@ function makePoster(el, global) {
         },
     })
     filenameRow.appendChild(filenameInput)
-    
+
     const captureBtn = makeButton({
         title: 'Capture',
         className: 'add-btn',
@@ -269,11 +270,11 @@ function makePoster(el, global) {
         },
     })
     captureBtn.style.cssText = 'justify-content:center; width:100%; font-size:0.8125rem'
-    
+
     capturePicture.appendChild(hintText)
     capturePicture.appendChild(filenameRow)
     capturePicture.appendChild(captureBtn)
-    
+
     container.appendChild(capturePicture)
     el.appendChild(container)
 }
@@ -295,7 +296,7 @@ function makeModelSection(el, global) {
 
     el.appendChild(container)
 }
-function makeInitViewGroup(events, settings) {
+function makeInitViewGroup(events, settings, global) {
     const wrap = document.createElement('div')
     wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
 
@@ -394,7 +395,7 @@ function makeViewerSection(el, global) {
     const initviewHint =
         'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
     const initviewGroup = makeSectionGroup('Initial View', initviewHint)
-    initviewGroup.appendChild(makeInitViewGroup(events, settings))
+    initviewGroup.appendChild(makeInitViewGroup(events, settings, global))
 
     //spin
     const spinGroup = makeSectionGroup('Spin')
@@ -618,7 +619,17 @@ function makeSidebar(global, dom) {
                             base64: global.settings.base64,
                             pivot: global.settings.pivot,
                             model: global.settings.model,
-                            cameras: global.settings.cameras,
+                            v: global.settings.v,
+                        })
+                        break
+                    case 'hemispherical':
+                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
+                            setupStep: 2,
+                            contentUrl: global.settings.contentUrl,
+                            base64: global.settings.base64,
+                            pivot: global.settings.pivot,
+                            orientation: global.settings.orientation,
+                            model: global.settings.model,
                             v: global.settings.v,
                         })
                         break
@@ -627,7 +638,6 @@ function makeSidebar(global, dom) {
                             setupStep: 2,
                             contentUrl: global.settings.contentUrl,
                             base64: global.settings.base64,
-                            initview: global.settings.initview,
                             pivot: global.settings.pivot,
                             orientation: global.settings.orientation,
                             model: global.settings.model,

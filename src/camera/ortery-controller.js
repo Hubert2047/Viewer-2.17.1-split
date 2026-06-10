@@ -156,9 +156,9 @@ class OtherController {
             this.updateModelRotation()
             this.syncHierarchyAndRender()
         })
-        this.events.on('orientation:spin', ({ speed }) => {
+        this.events.on('orientation:spin', ({ speed, onStop }) => {
             this.spinSpeed = speed
-            this.spin360()
+            this.spin360({ onStop })
         })
         this.events.on('orientation:yaw-step', ({ deg }) => {
             if (!this.isEditingOrientation) return
@@ -610,6 +610,7 @@ class OtherController {
         this._autoRotateTick = null
         this.isSpin360Loop = false
         this.spinSpeed = 5
+        this.events.fire('ortery:stop-spin')
         this.events.fire('re-render:control-wrap')
     }
     spin360({ onStop, model = 'axis' } = {}) {
