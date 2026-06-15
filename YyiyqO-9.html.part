@@ -1,0 +1,53 @@
+
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>3D Model Viewer</title>
+    <meta charset="UTF-8">    
+    <meta property="og:description" content=" " />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <base href>
+    <link rel="icon" href="data:," >
+    <link rel="stylesheet" href="viewer.css?v=128">
+    <script>
+        const params = new URLSearchParams(window.location.search)
+        const currentV = params.get('v')
+        if (!currentV) {
+            const now = Date.now()  
+            const url = new URL(window.location.href)
+            url.searchParams.set('v', now)
+            window.location.replace(url.toString())
+        } else {
+            const stored = sessionStorage.getItem('page-v')
+            const now = Date.now()
+            if (!stored) {
+                sessionStorage.setItem('page-v', currentV)
+            } else if (now - parseInt(currentV) > 60000) {
+                const url = new URL(window.location.href)
+                url.searchParams.set('v', now)
+                sessionStorage.setItem('page-v', now)
+                window.location.replace(url.toString())
+            }
+        }
+    </script>     
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+    <div id="ui">
+        <div id="poster"></div>
+        <div id="loadingWrap">
+            <div id="fileSizeInfo"></div>
+            <div id="loadingText"></div>
+            <div id="loadingBar"></div>
+        </div>
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+        </div>            
+    </div>
+    <div id="tooltip"></div>
+</body>
+<script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"saw.ply","v":128,"messages":[{"id":"c6a22929-0917-4d69-8f5f-caf2ff009fb3","autoPlay":{"time":3000},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1message1message1message1message1message1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":498.9999553700474,"originHeight":308.9999944673236,"topLeft":{"x":11.998534328560115,"y":-25.204042698925345,"z":17.54803118351601},"botRight":{"x":-0.11841504240938011,"y":-11.298014820737547,"z":-2.353326754038598},"fontSize":16},"focus":{"position":{"x":-4.548614624131282,"y":-20.7065365925965,"z":-5.078261707095763}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-4.048113175577929,"y":-21.432838440155077,"z":-4.54002283379144},"botRight":{"x":-5.0609110530425,"y":-19.976634214687607,"z":-5.601592528786824}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"isFullyInView":true,"distanceScale":0,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}},{"id":"2dc948b1-00b8-4650-8184-87ebeb396931","autoPlay":{"time":3000},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":116.99998870690854,"originHeight":94.99999661584957,"topLeft":{"x":-7.196374367864724,"y":1.6617633854329545,"z":-1.8590982887072869},"botRight":{"x":-11.999403455654665,"y":5.212724399041617,"z":-3.7784692714332593},"fontSize":16},"focus":{"position":{"x":-2.7389344514301186,"y":-5.358411585346388,"z":0.038655551368258045}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-2.1680665186735117,"y":-6.045463028547441,"z":0.45068208352950023},"botRight":{"x":-3.319368395274999,"y":-4.676838700780282,"z":-0.3578366603585508}},"entityInfo":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"isFullyInView":true,"distanceScale":0,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0},"audio":{"show":true,"src":"","fileName":"111.mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":false,"embed":false,"autoPlay":false}}],"setupStep":3} }</script>
+<script src="./viewer.js?v=128"></script>
+</html>
+    

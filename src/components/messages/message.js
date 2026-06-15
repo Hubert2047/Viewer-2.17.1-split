@@ -155,6 +155,9 @@ class Messages {
         )
     }
     resetTime() {
+        if (!this._audioBtn && this.data.audio?.fileName && this.data.audio?.show) {
+            this.createAudioBtn()
+        }
         if (!this._audio) return
         this._audio.currentTime = 0
         this.updateProgress()
@@ -224,7 +227,7 @@ class Messages {
 
     // ── Update loop ──────────────────────────
     update(updateContent = true, buttonTitle = undefined) {
-        if (buttonTitle!== undefined) this.button.updateTitle(buttonTitle)
+        if (buttonTitle !== undefined) this.button.updateTitle(buttonTitle)
         const containerRect = this.dom.ui.getBoundingClientRect()
         const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
         const focusWorldPos = new Vec3()
@@ -233,11 +236,10 @@ class Messages {
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
         this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
-        if (this._audioBtnWrapper && this.div) {
+        if (this._audioBtnWrapper && this.div && !this.resizing && !this.contentDragging) {
             const divLeft = parseFloat(this.div.style.left) || 0
             const divTop = parseFloat(this.div.style.top) || 0
             const divWidth = this.div.offsetWidth
-            const btnSize = this._audioBtn?.offsetWidth || 36
 
             this._audioBtnWrapper.style.left = divLeft + divWidth + 'px'
             this._audioBtnWrapper.style.top = divTop - 4 + 'px'
@@ -347,14 +349,12 @@ class Messages {
             this._userResized = false
             this._lockedWidth = null
             this._lockedHeight = null
+            delete this.div.hasAdjusted
+            delete this.initialDx
+            delete this.initialDy
             this.autoResizeTextDiv()
-
-            const { topLeft, botRight, originWidth, originHeight } = this.getLocalContentPosByDiv()
-            this.data.text.topLeft = topLeft
-            this.data.text.botRight = botRight
-            this.data.text.originWidth = originWidth
-            this.data.text.originHeight = originHeight
-            this.events.fire('message:drag-changed', this.data)
+            this._autoResizedWidth = this.div.offsetWidth
+            this._autoResizedHeight = this.div.offsetHeight
         }
         if (updateContent && this.isDisplay && !this.contentDragging && !this.resizing) {
             const dotRect = this.dot.getBoundingClientRect()
@@ -562,6 +562,7 @@ class Messages {
         this.div.addEventListener('pointerdown', (e) => {
             e.stopPropagation()
             const rect = this.div.getBoundingClientRect()
+            const containerRect = this.dom.ui.getBoundingClientRect()
             const onL = e.clientX < rect.left + edgeSize
             const onR = e.clientX > rect.right - edgeSize
             const onT = e.clientY < rect.top + edgeSize
@@ -579,10 +580,15 @@ class Messages {
                 this.resizing = true
                 this.startX = e.clientX
                 this.startY = e.clientY
-                this.startWidth = this.div.offsetWidth
-                this.startHeight = this.div.offsetHeight
-                this.startLeft = this.div.offsetLeft
-                this.startTop = this.div.offsetTop
+                this.startWidth = rect.width
+                this.startHeight = rect.height
+                this.startLeft = rect.left - containerRect.left
+                this.startTop = rect.top - containerRect.top
+                const range = document.createRange()
+                range.selectNodeContents(this.textContentSpan)
+                const textRect = range.getBoundingClientRect()
+                this.resizeMinW = Math.max(minSize, Math.ceil(textRect.width) + 44)
+                this.resizeMinH = Math.max(minSize, Math.ceil(textRect.height) + 24)
             } else {
                 this.contentDragging = true
                 this.startX = e.clientX - this.div.offsetLeft
@@ -599,28 +605,44 @@ class Messages {
             } else {
                 const dx = e.clientX - this.startX
                 const dy = e.clientY - this.startY
-                let newL = this.startLeft,
-                    newT = this.startTop
-                let newW = this.startWidth,
-                    newH = this.startHeight
-                if (this.resizeEdge.includes('left')) {
-                    newL = this.startLeft + dx
-                    newW = this.startWidth - dx
-                }
-                if (this.resizeEdge.includes('right')) newW = this.startWidth + dx
-                if (this.resizeEdge.includes('top')) {
-                    newT = this.startTop + dy
-                    newH = this.startHeight - dy
+                let newL = this.startLeft
+                let newT = this.startTop
+                let newW = this.startWidth
+                let newH = this.startHeight
+
+                if (this.resizeEdge.includes('right')) {
+                    newW = this.startWidth + dx
                 }
                 if (this.resizeEdge.includes('bottom')) newH = this.startHeight + dy
-                if (newW >= minSize) {
-                    this.div.style.left = newL + 'px'
-                    this.div.style.width = newW + 'px'
+
+                if (this.resizeEdge.includes('left')) {
+                    const rawW = this.startWidth - dx
+                    if (rawW <= this.resizeMinW) {
+                        newW = this.resizeMinW
+                        newL = this.startLeft + this.startWidth - this.resizeMinW
+                    } else {
+                        newW = rawW
+                        newL = this.startLeft + (this.startWidth - rawW)
+                    }
                 }
-                if (newH >= minSize) {
-                    this.div.style.top = newT + 'px'
-                    this.div.style.height = newH + 'px'
+                if (this.resizeEdge.includes('top')) {
+                    const rawH = this.startHeight - dy
+                    if (rawH <= this.resizeMinH) {
+                        newH = this.resizeMinH
+                        newT = this.startTop + this.startHeight - this.resizeMinH
+                    } else {
+                        newH = rawH
+                        newT = this.startTop + (this.startHeight - rawH)
+                    }
                 }
+
+                newW = Math.max(newW, this.resizeMinW)
+                newH = Math.max(newH, this.resizeMinH)
+
+                this.div.style.left = newL + 'px'
+                this.div.style.top = newT + 'px'
+                this.div.style.width = newW + 'px'
+                this.div.style.height = newH + 'px'
             }
             this.update(false)
         })
@@ -655,8 +677,11 @@ class Messages {
         tempDiv.textContent = this.data.text.content
         document.body.appendChild(tempDiv)
 
-        const naturalWidth = tempDiv.offsetWidth
-        const naturalHeight = tempDiv.offsetHeight
+        const range = document.createRange()
+        range.selectNodeContents(tempDiv)
+        const textRect = range.getBoundingClientRect()
+        const naturalWidth = textRect.width
+        const naturalHeight = textRect.height
         tempDiv.remove()
 
         const minWidth = 100

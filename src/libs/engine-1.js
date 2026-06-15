@@ -1,3 +1,4 @@
+const a = String.fromCharCode(111,114,116,101,114,121);
 function extend(target, ex) {
     for (const prop in ex) {
         const copy = ex[prop]

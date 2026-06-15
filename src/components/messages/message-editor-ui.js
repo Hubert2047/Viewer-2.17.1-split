@@ -485,6 +485,23 @@ class MessageEditorUI {
             icon: ICONS.trash,
             title: 'Remove audio',
             className: 'delete-btn audio-clear-btn',
+            onClick: () => {
+                const audio = this.activeMessageData.audio
+                // const store = this.settings.fileAudioStore
+                if (audio?.src?.startsWith('blob:')) {
+                    URL.revokeObjectURL(audio.src)
+                }
+                // if (audio?.fileId && store instanceof Map) {
+                //     store.delete(audio.fileId)
+                // }
+                delete this.activeMessageData.audio
+                fileInput.value = ''
+                fileNameSpan.textContent = 'No file chosen'
+                clearAudioBtn.style.display = 'none'
+                audioSettings.style.display = 'none'
+
+                this.applyDraft(true)
+            },
         })
         if (!hasAudio) clearAudioBtn.style.display = 'none'
 
@@ -506,7 +523,7 @@ class MessageEditorUI {
                     iconColor: '#ffffff',
                     volume: 1,
                     loop: false,
-                    embed: false,
+                    // embed: false,
                     // persist: false,
                     autoPlay: false,
                 }
@@ -530,24 +547,6 @@ class MessageEditorUI {
 
             // this.activeMessageData.audio.fileId = fileId
             // store.set(fileId, file)
-
-            this.applyDraft(true)
-        })
-
-        clearAudioBtn.addEventListener('click', () => {
-            const audio = this.activeMessageData.audio
-            const store = this.settings.fileAudioStore
-            if (audio?.src?.startsWith('blob:')) {
-                URL.revokeObjectURL(audio.src)
-            }
-            // if (audio?.fileId && store instanceof Map) {
-            //     store.delete(audio.fileId)
-            // }
-            delete this.activeMessageData.audio
-            fileInput.value = ''
-            fileNameSpan.textContent = 'No file chosen'
-            clearAudioBtn.style.display = 'none'
-            audioSettings.style.display = 'none'
 
             this.applyDraft(true)
         })

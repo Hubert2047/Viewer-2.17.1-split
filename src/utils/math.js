@@ -18,19 +18,19 @@ function handleCapturePicture({ app, captureSize = 960, name = 'picture', format
     const canvas = device.canvas
     const originalWidth = canvas.width
     const originalHeight = canvas.height
-    
+
     device.setResolution(captureSize, captureSize)
     app.render()
-    
+
     const pixels = new Uint8Array(captureSize * captureSize * 4)
     gl.readPixels(0, 0, captureSize, captureSize, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-    
+
     const offscreen = document.createElement('canvas')
     offscreen.width = captureSize
     offscreen.height = captureSize
     const ctx = offscreen.getContext('2d')
     const imageData = ctx.createImageData(captureSize, captureSize)
-    
+
     for (let y = 0; y < captureSize; y++) {
         for (let x = 0; x < captureSize; x++) {
             const src = ((captureSize - 1 - y) * captureSize + x) * 4
@@ -41,11 +41,11 @@ function handleCapturePicture({ app, captureSize = 960, name = 'picture', format
             imageData.data[dst + 3] = pixels[src + 3]
         }
     }
-    
+
     ctx.putImageData(imageData, 0, 0)
-    
+
     let dataUrl
-    switch(format) {
+    switch (format) {
         case 'jpg':
             dataUrl = offscreen.toDataURL('image/jpeg', 0.95)
             break
@@ -55,12 +55,12 @@ function handleCapturePicture({ app, captureSize = 960, name = 'picture', format
         default:
             dataUrl = offscreen.toDataURL('image/png')
     }
-    
+
     const link = document.createElement('a')
     link.href = dataUrl
-    link.download = `${name}.${format}`  
+    link.download = `${name}.${format}`
     link.click()
-    
+
     device.setResolution(originalWidth, originalHeight)
     app.render()
 }
@@ -85,6 +85,7 @@ function calRealSizeFromMeasurement(size) {
     }
     return { realSize: new Vec3(0, 0, 0), unit: 'cm' }
 }
+
 async function ecb(encryptedBase64) {
     try {
         const p1 = 'SU?p!;zJ'

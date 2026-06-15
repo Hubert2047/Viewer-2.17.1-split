@@ -67,24 +67,49 @@ function build() {
         fs.mkdirSync('dist', { recursive: true })
 
         if (isProduction) {
+            const playcanvasLicense = `/**\n * ${[
+                'Copyright (c) 2011-2026 PlayCanvas Ltd.',
+                '',
+                'Permission is hereby granted, free of charge, to any person obtaining a copy',
+                'of this software and associated documentation files (the "Software"), to deal',
+                'in the Software without restriction, including without limitation the rights',
+                'to use, copy, modify, merge, publish, distribute, sublicense, and/or sell',
+                'copies of the Software, and to permit persons to whom the Software is',
+                'furnished to do so, subject to the following conditions:',
+                '',
+                'The above copyright notice and this permission notice shall be included in all',
+                'copies or substantial portions of the Software.',
+                '',
+                'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+                'IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,',
+                'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE',
+                'AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER',
+                'LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,',
+                'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE',
+                'SOFTWARE.',
+            ].join('\n * ')}\n */\n`
+
             // obfuscate JS
             const obfuscated = JavaScriptObfuscator.obfuscate(js, {
                 compact: true,
-                controlFlowFlattening: false,
+                controlFlowFlattening: true,
                 deadCodeInjection: false,
                 stringArray: false,
-                stringArrayEncoding: ['base64'],
+                stringArrayEncoding: ['rc4'],
+                stringArrayRotate: true,
+                stringArrayShuffle: true,
                 stringArrayThreshold: 0.75,
-                renameGlobals: false,
-                selfDefending: false,
-                // identifierNamesGenerator: 'hexadecimal',
-                // unicodeEscapeSequence: true,
+                numbersToExpressions: true,
+                simplify: false,
+                renameGlobals: true,
+                selfDefending: true,
+                transformObjectKeys: true,
             })
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
             const now = new Date()
             const built = now.toDateString() + ' ' + now.toTimeString().split(' ')[0]
             const header = `/**\n * @Software: 3D Model Viewer\n * @PackageVersion: ${pkg.version}\n * @Built: ${built}\n * @Copyright (c) 2025-${new Date().getFullYear()} Ortery Technologies Inc.\n * @All rights reserved.\n */\n`
-            fs.writeFileSync('dist/viewer.js', header + obfuscated.getObfuscatedCode())
+            fs.writeFileSync('dist/viewer.js', header + obfuscated.getObfuscatedCode() + '\n\n' + playcanvasLicense)
 
             // minify CSS
             const css = fs.readFileSync('src/assets/viewer.css', 'utf8')

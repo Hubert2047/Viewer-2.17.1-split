@@ -1,4 +1,4 @@
-console.log('ortery')
+console.log(a)
 const initPoster = (events) => {
     const poster = document.getElementById('poster')
     events.on('loaded:changed', () => {
@@ -3065,16 +3065,22 @@ class Viewer {
                 if (dim === null) hideDimensions()
                 else {
                     if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
+                    if (dimensionRotatable) {
+                        dimensionRotatable.syncFromExternal(dim)
+                    }
                     global.dimensionsBox.draw(dim)
                     events.fire('re-render:control-wrap')
                 }
             })
             events.on('dimensions:edit', (dim) => {
                 global.dimensionsBox.draw(dim)
-                if (!dimensionRotatable)
+                if (!dimensionRotatable) {
                     dimensionRotatable = new DimensionRotatable(app, dim, ({ x, y, z }) => {
                         events.fire('dimensions:eulersynced', { x, y, z })
                     })
+                } else {
+                    dimensionRotatable.syncFromExternal(dim)
+                }
                 rotationGizmo.enable(dimensionRotatable)
                 events.fire('re-render:control-wrap')
             })

@@ -45,7 +45,6 @@ class OtherController {
         this.model = global.settings.model
         this.initialModelRotation = modelEntity.localRotation.clone()
         this.initialModelPosition = modelEntity.localPosition.clone()
-        this.originModel = this.model
         if (this.settings.orientation.pose) {
             const { rotation: r, position: p } = this.settings.orientation.pose
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
@@ -58,7 +57,7 @@ class OtherController {
             this.originEntityRotation = modelEntity.localRotation.clone()
             this.originEntityPos = modelEntity.localPosition.clone()
         }
-        if (this.model === 'cylindrical' && this.settings.cameras.length > 0) {
+        if (this.model === 'cylindrical' && Array.isArray(this.settings.cameras) && this.settings.cameras.length > 0) {
             const f = this.settings.cameras[0]
             if (
                 typeof f.x === 'number' &&
@@ -71,6 +70,7 @@ class OtherController {
                 this.cylindricalCamPos = new Vec3(-f.x, f.alt, f.y)
             }
         }
+        this.originModel = this.model
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
     }
@@ -948,7 +948,12 @@ class OtherController {
         if (this.isEditMessage || this.isMeasurementDrag) return
         const [x, y, z] = move
         if (move[2] !== 0) {
-            if (this.model === 'cylindrical' && !this.isEditingOrientation) {
+            if (
+                this.model === 'cylindrical' &&
+                Array.isArray(this.settings.cameras) &&
+                this.settings.cameras.length > 0 &&
+                !this.isEditingOrientation
+            ) {
                 this.fov = this.clampFov(this.fov + this.fov * move[2] * 0.75)
             } else {
                 this.distance = this.clampDistance(this.distance + this.distance * move[2])
