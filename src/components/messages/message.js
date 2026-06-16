@@ -156,6 +156,7 @@ class Messages {
     }
     resetTime() {
         if (!this._audioBtn && this.data.audio?.fileName && this.data.audio?.show) {
+            console.log('run in')
             this.createAudioBtn()
         }
         if (!this._audio) return
@@ -236,13 +237,21 @@ class Messages {
         this.updateTextContent(focusScreenPos, worldMatrix, containerRect, updateContent)
         this.updateDot(worldMatrix, focusScreenPos)
         this.updateLine(focusScreenPos)
-        if (this._audioBtnWrapper && this.div && !this.resizing && !this.contentDragging) {
+        if (this._audioBtnWrapper && this.div) {
             const divLeft = parseFloat(this.div.style.left) || 0
             const divTop = parseFloat(this.div.style.top) || 0
             const divWidth = this.div.offsetWidth
 
-            this._audioBtnWrapper.style.left = divLeft + divWidth + 'px'
-            this._audioBtnWrapper.style.top = divTop - 4 + 'px'
+            if (!this.resizing) {
+                this._audioBtnWrapper.style.left = divLeft + divWidth + 'px'
+                this._audioBtnWrapper.style.top = divTop - 4 + 'px'
+            } else {
+                const divRight = divLeft + divWidth
+                if (!this.resizeEdge?.includes('left')) {
+                    this._audioBtnWrapper.style.left = divRight + 'px'
+                }
+                this._audioBtnWrapper.style.top = divTop - 4 + 'px'
+            }
         }
     }
 
@@ -382,7 +391,7 @@ class Messages {
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
-                if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'block'
+                if (this._audioBtnWrapper && this.data.audio?.show) this._audioBtnWrapper.style.display = 'block'
             }
 
             let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.messageMaxScale))
@@ -706,9 +715,10 @@ class Messages {
         this.div.style.display = 'flex'
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
-        if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'block'
+        if (this._audioBtnWrapper && this.data.audio?.show) this._audioBtnWrapper.style.display = 'block'
+        else this._audioBtnWrapper.style.display = 'none'
         if (this.button) this.button.setActiveColor()
-        if (this.data.audio?.autoPlay && this._audio && !this._isPlaying) {
+        if (this.data.audio?.autoPlay && this._audio && !this._isPlaying && this.data.audio?.show) {
             this._audio.play().catch()
             this._isPlaying = true
             if (this._audioBtn) {
