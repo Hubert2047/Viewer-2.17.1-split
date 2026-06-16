@@ -1,43 +1,41 @@
 function makePointEraser(global) {
-    const { events, settings } = global
+    const { events, settings, camera, app } = global
     const container = makeSectionWrap()
     let brushRadius = 24
     let isPointerDown = false
     let isShowSplatMode = false
-    let isShowSplat = false
+    let isShowSplatRing = false
     let deletedSet = new Set(settings.removedSplats)
     let currentControl = null
-    events.on('model:loaded', () => {
-        currentControl = new SelectionController({
-            canvas: global.app.graphicsDevice.canvas,
-            camera: global.camera,
-            gsplatComp: modelEntity.gsplat,
-            events,
-            app: global.app,
-            settings,
-        })
-        updateUndoRedoButtons()
-    })
+    let backgroundColor = settings.background.color
+    let selectedColorHex = '#FFD900'
+    let selectedAlpha = 255
+    let unselectedColorHex = '#F95F4D'
+    let unselectedAlpha = 255
     if (modelEntity && !currentControl) {
         currentControl = new SelectionController({
-            canvas: global.app.graphicsDevice.canvas,
-            camera: global.camera,
+            canvas: app.graphicsDevice.canvas,
+            camera: camera,
             gsplatComp: modelEntity.gsplat,
             events,
-            app: global.app,
+            app: app,
             settings,
         })
+        applyShaderModes()
     }
-    events.on('point-selection', (selectedSet) => {
-        if (!selectedSet) return
-        applyBtn.disabled = selectedSet.size === 0
-        global.dataDirty = true
-        deletedSet = new Set([...settings.removedSplats, ...selectedSet])
-    })
-    // ── Point view toggle ────────────────────────────────────────
+
+    // ── Remove noise ────────────────────────────────────────
+    const desGroup = makeSectionGroup('Remove Noise')
+
+    const hint = document.createElement('p')
+    hint.textContent = 'Select and delete unwanted points such as floating artifacts or background clutter.'
+    hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
+
+    desGroup.appendChild(hint)
+    // ── Point view ────────────────────────────────────────
     const viewGroup = makeSectionGroup('Point view')
 
-    const splatModeRow = makeRow({ title: 'Point Cloud' })
+    const splatModeRow = makeRow({ title: 'Point Cloud Mode' })
     const spatModeToggle = makeToggle({
         initialValue: isShowSplatMode,
         onChange: (value) => {
@@ -47,17 +45,17 @@ function makePointEraser(global) {
     })
     splatModeRow.appendChild(spatModeToggle)
 
-    const showSplatRow = makeRow({ title: 'Splat Outline' })
-    const showSplatToggle = makeToggle({
-        initialValue: isShowSplat,
-        onChange: (value) => {
-            isShowSplat = value
-            applyShaderModes()
-        },
-    })
-    showSplatRow.appendChild(showSplatToggle)
+    // const showSplatRow = makeRow({ title: 'Splat Outline' })
+    // const showSplatToggle = makeToggle({
+    //     initialValue: isShowSplatRing,
+    //     onChange: (value) => {
+    //         isShowSplatRing = value
+    //         applyShaderModes()
+    //     },
+    // })
+    // showSplatRow.appendChild(showSplatToggle)
 
-    const pointSizeRow = makeRow({ title: 'Point size' })
+    const pointSizeRow = makeRow({ title: 'Point Size' })
     const pointSizeInput = makeInput({
         type: 'number',
         value: 4,
@@ -67,14 +65,57 @@ function makePointEraser(global) {
         className: 'small-input',
         onChange: (v) => {
             modelEntity.gsplat.material.setParameter('splat_point_size', v)
-            global.app.renderNextFrame = true
+            app.renderNextFrame = true
         },
     })
     pointSizeRow.appendChild(pointSizeInput)
 
+    const { row: backgroundRow } = makeColorPickerDropdown({
+        label: 'Background Color',
+        color: backgroundColor,
+        debounceMs: 0,
+        onChange: ({ r, g, b }) => {
+            backgroundColor = `rgb(${r},${g},${b})`
+            camera.camera.clearColor = new Color(normalizeColor(backgroundColor))
+            app.render()
+        },
+    })
+    const { row: selectedColorRow } = makeColorPickerDropdown({
+        label: 'Selected Color',
+        color: selectedColorHex,
+        alpha: selectedAlpha,
+        hasAlpha: true,
+        debounceMs: 0,
+        onChange: ({ hex, r, g, b, alpha }) => {
+            selectedColorHex = hex
+            selectedAlpha = alpha
+            if (!modelEntity?.gsplat?.material) return
+            modelEntity.gsplat.material.setParameter('splat_selected_color', [r / 255, g / 255, b / 255, alpha / 255])
+            app.renderNextFrame = true
+        },
+    })
+
+    const { row: unselectedColorRow } = makeColorPickerDropdown({
+        label: 'Unselected Color',
+        color: unselectedColorHex,
+        alpha: unselectedAlpha,
+        hasAlpha: true,
+        debounceMs: 0,
+        onChange: ({ hex, r, g, b, alpha }) => {
+            unselectedColorHex = hex
+            unselectedAlpha = alpha
+            if (!modelEntity?.gsplat?.material) return
+            modelEntity.gsplat.material.setParameter('splat_unselected_color', [r / 255, g / 255, b / 255, alpha / 255])
+            app.renderNextFrame = true
+        },
+    })
+
     viewGroup.appendChild(splatModeRow)
-    viewGroup.appendChild(showSplatRow)
+    // viewGroup.appendChild(showSplatRow)
     viewGroup.appendChild(pointSizeRow)
+    viewGroup.appendChild(backgroundRow)
+    viewGroup.appendChild(selectedColorRow)
+    viewGroup.appendChild(unselectedColorRow)
 
     // ── Selection mode ───────────────────────────────────────────
     const modeGroup = makeSectionGroup('Selection mode')
@@ -153,7 +194,7 @@ function makePointEraser(global) {
     brushSizeRow.appendChild(brushInput)
     modeGroup.appendChild(brushSizeRow)
 
-    // // ── Stats ────────────────────────────────────────────────────
+    // ── Stats ────────────────────────────────────────────────────
     // const statsGroup = makeSectionGroup('Statistics')
 
     // const erasedRow = makeRow({ title: 'Erased' })
@@ -164,10 +205,6 @@ function makePointEraser(global) {
     // erasedRow.appendChild(erasedVal)
 
     // statsGroup.appendChild(erasedRow)
-
-    // events.on('point-eraser:stats', ({ total, erased }) => {
-    //     erasedVal.textContent = erased.toLocaleString()
-    // })
 
     // ── Actions ──────────────────────────────────────────────────
     const actionsGroup = makeSectionGroup('')
@@ -187,46 +224,54 @@ function makePointEraser(global) {
         className: 'icon-circle-btn',
         onClick: () => events.fire('point-eraser:redo'),
     })
-    function updateUndoRedoButtons() {
-        if (!currentControl) return
-        undoBtn.disabled = currentControl._historyIndex <= 0
-        redoBtn.disabled = currentControl._historyIndex >= currentControl._history.length - 1
-    }
 
-    events.on('point-selection', updateUndoRedoButtons)
-    events.on('point-eraser:deleted-changed', updateUndoRedoButtons)
     const spacer = document.createElement('div')
     spacer.classList.add('spacer')
-
-    // const deleteBtn = makeButton({
-    //     title: 'Delete',
-    //     className: 'delete-btn',
-    //     icon: ICONS.delete,
-    //     onClick: () => events.fire('point-eraser:cancel'),
-    // })
+    const resetBtn = makeButton({
+        title: 'Reset',
+        disabled: settings.removedSplats.length === 0,
+        className: 'reset-btn',
+        icon: ICONS.reset,
+        onClick: async () => {
+            const ok = await global.confirmDialog.ask({
+                position: 'top',
+                variant: 'delete',
+                title: 'Reset All Points',
+                message: 'All deleted points will be restored. This action cannot be undone.',
+                confirmText: 'Reset',
+            })
+            if (!ok) return
+            currentControl.resetHistory()
+            settings.removedSplats = []
+            applyPointMapping({ modelEntity, deletedSet: new Set() })
+            currentControl.clearSelectionStateOnly()
+            deletedSet = new Set()
+            applyBtn.disabled = true
+            resetBtn.disabled = true
+            if (currentControl._activeStrategy) {
+                currentControl._activeStrategy._projDirty = true
+            }
+            events.fire('point-eraser:reset')
+            updateUndoRedoButtons()
+            resetSelection()
+        },
+    })
 
     const applyBtn = makeButton({
         title: 'Apply',
         disabled: true,
         className: 'confirm-btn',
-        onClick: () => {
-            if (deletedSet.size > 0) {
-                applyPointMapping({ modelEntity, deletedSet })
-                settings.removedSplats = [...deletedSet]
-                currentControl._clearSelectionStateOnly()
-                events.fire('point-eraser:commit-delete', settings.removedSplats)
-                applyBtn.disabled = true
-            }
-        },
+        onClick: applyDeleteSelectedPoints,
     })
 
     btnRow.appendChild(undoBtn)
     btnRow.appendChild(redoBtn)
     btnRow.appendChild(spacer)
     btnRow.appendChild(applyBtn)
-    // btnRow.appendChild(deleteBtn)
+    btnRow.appendChild(resetBtn)
     actionsGroup.appendChild(btnRow)
 
+    container.appendChild(desGroup)
     container.appendChild(viewGroup)
     container.appendChild(modeGroup)
     // container.appendChild(statsGroup)
@@ -234,40 +279,94 @@ function makePointEraser(global) {
     if (currentControl) updateUndoRedoButtons()
     function applyShaderModes() {
         const mat = modelEntity.gsplat.material
+
         if (isShowSplatMode) {
             mat.shaderChunks.glsl.set('gsplatCornerVS', CHUNK_CORNER_POINT)
             mat.shaderChunks.glsl.set('gsplatModifyVS', CHUNK_MODIFY_POINT)
             mat.setParameter('splat_point_size', 4.0)
+            mat.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
+            mat.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
+
+            if (currentControl) {
+                currentControl._upload()
+            }
         } else {
             mat.shaderChunks.glsl.delete('gsplatCornerVS')
-            mat.shaderChunks.glsl.delete('gsplatModifyVS')
+            mat.shaderChunks.glsl.set('gsplatModifyVS', CHUNK_MODIFY_SELECT_ONLY)
+            mat.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
         }
 
-        if (isShowSplat) {
+        if (isShowSplatRing) {
             mat.shaderChunks.glsl.set('gsplatPS', CHUNK_PS_RING)
         } else {
             mat.shaderChunks.glsl.delete('gsplatPS')
         }
 
         mat.clearVariants()
-        global.app.renderNextFrame = true
+        app.renderNextFrame = true
     }
-    let activeSection = ''
-    events.on('inputEvent:redo', () => {
-        if (global.activeSidebarId !== 'point-eraser') return
-        events.fire('point-eraser:redo')
-    })
-    events.on('inputEvent:undo', () => {
-        if (global.activeSidebarId !== 'point-eraser') return
-        events.fire('point-eraser:undo')
-    })
-    events.on('sidebar:clicked', ({ id }) => {
-        const showSplatMode = id === 'point-eraser'
-        if (isShowSplatMode === showSplatMode) return
-        isShowSplatMode = showSplatMode
-        spatModeToggle.setValue(isShowSplatMode)
-        resetSelection()
+    const handles = [
+        events.on('inputEvent:redo', onRedo),
+        events.on('inputEvent:undo', onUndo),
+        events.on('model:loaded', onModelLoaded),
+        events.on('point-selection', onPointSelection),
+        events.on('inputEvent:enter', applyDeleteSelectedPoints),
+        events.on('inputEvent:delete', applyDeleteSelectedPoints),
+        events.on('inputEvent:reset-camera', () => {
+            resetSelection()
+        }),
+    ]
+    function onPointSelection(selectedSet) {
+        if (!selectedSet) return
+        applyBtn.disabled = selectedSet.size === 0
+        deletedSet = new Set([...settings.removedSplats, ...selectedSet])
+        updateUndoRedoButtons()
+        global.dataDirty = true
+    }
+    function applyDeleteSelectedPoints() {
+        if (deletedSet.size > 0) {
+            applyPointMapping({ modelEntity, deletedSet })
+            settings.removedSplats = [...deletedSet]
+            currentControl.clearSelectionStateOnly()
+            events.fire('point-eraser:commit-delete', settings.removedSplats)
+            applyBtn.disabled = true
+            resetBtn.disabled = settings.removedSplats.length === 0
+            if (currentControl._activeStrategy) {
+                currentControl._activeStrategy._projDirty = true
+            }
+        }
+    }
+    function onModelLoaded() {
+        currentControl = new SelectionController({
+            canvas: app.graphicsDevice.canvas,
+            camera: camera,
+            gsplatComp: modelEntity.gsplat,
+            events,
+            app: app,
+            settings,
+        })
+        updateUndoRedoButtons()
         applyShaderModes()
-    })
+    }
+    function onUndo() {
+        events.fire('point-eraser:undo')
+    }
+    function onRedo() {
+        events.fire('point-eraser:redo')
+    }
+    function updateUndoRedoButtons() {
+        if (!currentControl) return
+        undoBtn.disabled = currentControl._historyIndex <= 0
+        redoBtn.disabled = currentControl._historyIndex >= currentControl._history.length - 1
+    }
+    container._cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+        resetSelection()
+        currentControl?.destroy()
+        isShowSplatMode = false
+        isShowSplatRing = false
+        applyShaderModes()
+        events.fire('point-eraser:completed')
+    }
     return container
 }

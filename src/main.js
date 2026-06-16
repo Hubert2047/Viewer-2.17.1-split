@@ -1176,11 +1176,7 @@ class CameraManager {
             if (state.cameraMode === 'anim') {
                 state.animationTime = this.controllers.anim.animState.cursor.value
             }
-            this.camera.rot = target.rot
         }
-        events.on('inputEvent:reset', () => {
-            this.controllers.ortery.reset()
-        })
         // handle input events
         events.on('inputEvent', (eventName, event) => {
             switch (eventName) {
@@ -1679,8 +1675,21 @@ class InputController {
                 } else {
                     events.fire('inputEvent', 'cancel', event)
                 }
+            } else if (event.ctrlKey && !event.altKey && !event.metaKey) {
+                if (event.key === 'z' || event.key === 'Z') {
+                    if (event.shiftKey) {
+                        events.fire('inputEvent:redo')
+                    } else {
+                        events.fire('inputEvent:undo')
+                    }
+                    event.preventDefault()
+                }
             } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
                 switch (event.key) {
+                    case 'Enter':
+                        events.fire('inputEvent:enter', event)
+                        event.preventDefault()
+                        break
                     case 'p':
                         events.fire('message:toggle-play')
                         break
@@ -1688,7 +1697,11 @@ class InputController {
                         events.fire('message:message-btns')
                         break
                     case 'r':
-                        events.fire('inputEvent:reset', event)
+                        events.fire('inputEvent:reset-camera', event)
+                        break
+                    case 'Delete':
+                        events.fire('inputEvent:delete', event)
+                        event.preventDefault()
                         break
                 }
             }
@@ -1800,8 +1813,8 @@ class InputController {
         for (let i = 0; i < button.length; i++) {
             this._state.mouse[i] += button[i]
         }
-        // this._state.shift += key[keyCode.SHIFT]
-        // this._state.ctrl += key[keyCode.CTRL]
+        this._state.shift += key[keyCode.SHIFT]
+        this._state.ctrl += key[keyCode.CTRL]
         const isWalk = state.cameraMode === 'walk'
         // Cancel any active auto-walk when the user provides WASD/arrow input
         if (isWalk && (this._state.axis.x !== 0 || this._state.axis.z !== 0)) {
@@ -2998,9 +3011,16 @@ class Viewer {
         Promise.all([gsplatLoad, skyboxLoad, voxelLoad]).then((results) => {
             const gsplat = results[0].gsplat
             const collider = results[2]
-            // get scene bounding box
             const gsplatBbox = gsplat.customAabb
-            if (gsplatBbox) {
+            const { removedSplats, pivot } = settings
+            if (removedSplats?.length > 0) {
+                const {
+                    bbox: { center, halfExtents },
+                } = calBbox(modelEntity, removedSplats)
+                sceneBound.center.copy(center)
+                sceneBound.halfExtents.copy(halfExtents)
+                sceneBound.setFromTransformedAabb(sceneBound, results[0].getWorldTransform())
+            } else if (gsplatBbox) {
                 sceneBound.setFromTransformedAabb(gsplatBbox, results[0].getWorldTransform())
             }
             if (settings.measurement?.calibration.points) {
@@ -3365,7 +3385,7 @@ function popcount(n) {
     return (((n + (n >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24
 }
 
-const loadGsplat = async (app, config, events, progressCallback) => {
+const loadGsplat = async (app, config, events, progressCallback, settings) => {
     const { contents, contentUrl, unified, aa } = config
     const c = contents
     const filename = new URL(contentUrl, location.href).pathname.split('/').pop()
@@ -3384,6 +3404,11 @@ const loadGsplat = async (app, config, events, progressCallback) => {
             material.setParameter('alphaClip', 1 / 255)
             app.root.addChild(entity)
             modelEntity = entity
+            events.fire('model:loaded')
+            if (settings.removedSplats.length > 0) {
+                applyPointMapping({ modelEntity, deletedSet: new Set(settings.removedSplats) })
+            }
+
             resolve(entity)
         })
         let watermark = 0
@@ -3650,9 +3675,15 @@ const main = async (canvas, settingsJson, config) => {
     // Initialize user interface
     const dom = initUI(global)
     // Load model
-    const gsplatLoad = loadGsplat(app, config, events, (progress) => {
-        state.progress = progress
-    })
+    const gsplatLoad = loadGsplat(
+        app,
+        config,
+        events,
+        (progress) => {
+            state.progress = progress
+        },
+        settings,
+    )
     // Load skybox
     const skyboxLoad =
         config.skyboxUrl &&

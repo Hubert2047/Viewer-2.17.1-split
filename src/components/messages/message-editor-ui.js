@@ -109,7 +109,12 @@ class MessageEditorUI {
             const rect = this.dom.ui.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
-            const position = pickModelLocalPoint(mouseX, mouseY, this.camera)
+            const position = pickModelLocalPoint({
+                x: mouseX,
+                y: mouseY,
+                camera: this.camera,
+                removedSplats: this.settings.removedSplats,
+            })
             this.events.fire('message:add', { position })
             document.body.style.cursor = 'default'
             this.isCreatinMessage = false

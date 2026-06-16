@@ -30,7 +30,7 @@ function makeDimensionSection(el, global) {
         const orientQuat = orientPose
             ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
             : new Quat(0, 0, 0, 1)
-        const localPoints = getVisiblePoints(modelEntity, orientQuat)
+        const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
         const count = localPoints.length / 3
 
         const result = await snapToFitOBBAsync(localPoints, getDimensionsRotation(localPoints))
@@ -77,7 +77,7 @@ function makeDimensionSection(el, global) {
     }
 
     async function getUpdateBoxSize(rotation) {
-        const points = getVisiblePoints(modelEntity)
+        const points = getVisiblePoints(modelEntity, settings.removedSplats)
         const result = await getBoxSize(points, rotation)
         return result
     }

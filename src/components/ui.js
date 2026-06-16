@@ -1,3 +1,484 @@
+function makeColorPickerDropdown({
+    label,
+    color = '#FF0000',
+    alpha = 255,
+    hasAlpha = false,
+    disabled = false,
+    debounceMs = 80,
+    onChange,
+} = {}) {
+    function hsvToRgb(h, s, v) {
+        h = h % 360
+        s /= 100
+        v /= 100
+        const c = v * s,
+            x = c * (1 - Math.abs(((h / 60) % 2) - 1)),
+            m = v - c
+        let r, g, b
+        if (h < 60) {
+            r = c
+            g = x
+            b = 0
+        } else if (h < 120) {
+            r = x
+            g = c
+            b = 0
+        } else if (h < 180) {
+            r = 0
+            g = c
+            b = x
+        } else if (h < 240) {
+            r = 0
+            g = x
+            b = c
+        } else if (h < 300) {
+            r = x
+            g = 0
+            b = c
+        } else {
+            r = c
+            g = 0
+            b = x
+        }
+        return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)]
+    }
+
+    function rgbToHsv(r, g, b) {
+        r /= 255
+        g /= 255
+        b /= 255
+        const mx = Math.max(r, g, b),
+            mn = Math.min(r, g, b),
+            d = mx - mn
+        let h
+        const s = mx === 0 ? 0 : d / mx,
+            v = mx
+        if (d === 0) h = 0
+        else if (mx === r) h = ((g - b) / d) % 6
+        else if (mx === g) h = (b - r) / d + 2
+        else h = (r - g) / d + 4
+        h = Math.round(h * 60)
+        if (h < 0) h += 360
+        return [h, Math.round(s * 100), Math.round(v * 100)]
+    }
+
+    function hexToRgb(hex) {
+        hex = hex.replace('#', '')
+        return [
+            parseInt(hex.slice(0, 2), 16) || 0,
+            parseInt(hex.slice(2, 4), 16) || 0,
+            parseInt(hex.slice(4, 6), 16) || 0,
+        ]
+    }
+
+    function toHex2(n) {
+        return Math.round(Math.max(0, Math.min(255, n)))
+            .toString(16)
+            .padStart(2, '0')
+            .toUpperCase()
+    }
+    function resolveColor(colorStr) {
+        if (/^#?[0-9a-fA-F]{6,8}$/.test(colorStr.trim())) {
+            return colorStr.startsWith('#') ? colorStr : '#' + colorStr
+        }
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = tempCanvas.height = 1
+        const tempCtx = tempCanvas.getContext('2d')
+        tempCtx.fillStyle = colorStr
+        tempCtx.fillRect(0, 0, 1, 1)
+        const [r, g, b] = tempCtx.getImageData(0, 0, 1, 1).data
+        return '#' + [r, g, b].map(toHex2).join('')
+    }
+
+    function buildRgba(r, g, b, a) {
+        return `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`
+    }
+    const resolvedColor = resolveColor(color)
+    const [initR, initG, initB] = hexToRgb(resolvedColor)
+    let [hue, sat, val] = rgbToHsv(initR, initG, initB)
+    let alphaVal = hasAlpha ? alpha : 255
+    let curX = (sat / 100) * 228
+    let curY = (1 - val / 100) * 140
+    let isDisabled = disabled
+    let isOpen = false
+    let debounceTimer = null
+
+    function el(tag, cls) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        return e
+    }
+
+    const row = el('div', 'section-group-row cpd-row')
+    const labelEl = el('span', 'label')
+    labelEl.textContent = label
+    row.appendChild(labelEl)
+
+    const trigger = el('div', 'cpd-trigger')
+    const swatchOuter = el('div', 'cpd-swatch-outer' + (hasAlpha ? ' cpd-checker' : ''))
+    const swatchFill = el('div', 'cpd-swatch-fill')
+    swatchOuter.appendChild(swatchFill)
+    trigger.appendChild(swatchOuter)
+
+    const hexLabel = el('span', 'cpd-hex-label')
+    trigger.appendChild(hexLabel)
+
+    const arrow = el('span', 'cpd-arrow')
+    arrow.textContent = '▾'
+    trigger.appendChild(arrow)
+    row.appendChild(trigger)
+
+    const dropdown = el('div', 'cpd-dropdown')
+    dropdown.style.display = 'none'
+
+    const canvasWrap = el('div', 'cpd-canvas-wrap')
+    const canvas = el('canvas')
+    canvas.width = 228
+    canvas.height = 140
+    const ctx = canvas.getContext('2d')
+    const cursor = el('div', 'cpd-cursor')
+    canvasWrap.appendChild(canvas)
+    canvasWrap.appendChild(cursor)
+    dropdown.appendChild(canvasWrap)
+
+    const barRow = el('div', 'cpd-bar-row')
+    const bigSwatch = el('div', 'cpd-big-swatch' + (hasAlpha ? ' cpd-checker' : ''))
+    const bigSwatchFill = el('div', 'cpd-swatch-fill')
+    bigSwatch.appendChild(bigSwatchFill)
+    barRow.appendChild(bigSwatch)
+
+    const barsCol = el('div', 'cpd-bars-col')
+    const hueBar = el('div', 'cpd-hue-bar')
+    const hueThumb = el('div', 'cpd-bar-thumb')
+    hueBar.appendChild(hueThumb)
+    barsCol.appendChild(hueBar)
+
+    let alphaBar = null,
+        alphaTrack = null,
+        alphaThumb = null
+    if (hasAlpha) {
+        alphaBar = el('div', 'cpd-alpha-bar')
+        const alphaBg = el('div', 'cpd-alpha-bg')
+        alphaTrack = el('div', 'cpd-alpha-track')
+        alphaThumb = el('div', 'cpd-bar-thumb')
+        alphaBar.appendChild(alphaBg)
+        alphaBar.appendChild(alphaTrack)
+        alphaBar.appendChild(alphaThumb)
+        barsCol.appendChild(alphaBar)
+    }
+
+    barRow.appendChild(barsCol)
+    dropdown.appendChild(barRow)
+
+    const fields = el('div', 'cpd-fields')
+    const uid = '_' + Math.random().toString(36).slice(2, 7)
+
+    function makeField(id, lbl, maxlen, wide) {
+        const wrap = el('div', 'cpd-field' + (wide ? ' cpd-field-wide' : ''))
+        const inp = el('input')
+        inp.id = id
+        inp.maxLength = maxlen
+        inp.type = 'text'
+        const fl = el('div', 'cpd-field-label')
+        fl.textContent = lbl
+        wrap.appendChild(inp)
+        wrap.appendChild(fl)
+        fields.appendChild(wrap)
+        return inp
+    }
+
+    const rInp = makeField('cpd-r' + uid, 'r', 3)
+    const gInp = makeField('cpd-g' + uid, 'g', 3)
+    const bInp = makeField('cpd-b' + uid, 'b', 3)
+    const aInp = hasAlpha ? makeField('cpd-a' + uid, 'a', 3) : null
+    const hxInp = makeField('cpd-hx' + uid, '#', hasAlpha ? 8 : 6, true)
+
+    dropdown.appendChild(fields)
+    document.body.appendChild(dropdown)
+
+    function drawCanvas() {
+        const [rh, gh, bh] = hsvToRgb(hue, 100, 100)
+        const g1 = ctx.createLinearGradient(0, 0, 228, 0)
+        g1.addColorStop(0, '#ffffff')
+        g1.addColorStop(1, `rgb(${rh},${gh},${bh})`)
+        ctx.fillStyle = g1
+        ctx.fillRect(0, 0, 228, 140)
+        const g2 = ctx.createLinearGradient(0, 0, 0, 140)
+        g2.addColorStop(0, 'rgba(0,0,0,0)')
+        g2.addColorStop(1, '#000000')
+        ctx.fillStyle = g2
+        ctx.fillRect(0, 0, 228, 140)
+    }
+
+    function syncUI() {
+        const [r, g, b] = hsvToRgb(hue, sat, val)
+        const hex6 = toHex2(r) + toHex2(g) + toHex2(b)
+        const colorStr = buildRgba(r, g, b, alphaVal)
+
+        cursor.style.left = Math.max(HALF_C, Math.min(228 - HALF_C, curX)) + 'px'
+        cursor.style.top = Math.max(HALF_C, Math.min(140 - HALF_C, curY)) + 'px'
+        const HALF_T = 3
+        const huePercent = (hue / 360) * 100
+        hueThumb.style.left = `clamp(${HALF_T}px, ${huePercent}%, calc(100% - ${HALF_T}px))`
+
+        if (hasAlpha && alphaBar) {
+            alphaTrack.style.background = `linear-gradient(to right,rgba(${r},${g},${b},0),rgb(${r},${g},${b}))`
+            const alphaPercent = (alphaVal / 255) * 100
+            alphaThumb.style.left = `clamp(${HALF_T}px, ${alphaPercent}%, calc(100% - ${HALF_T}px))`
+        }
+
+        swatchFill.style.background = colorStr
+        bigSwatchFill.style.background = colorStr
+        hexLabel.textContent = '#' + hex6
+        rInp.value = r
+        gInp.value = g
+        bInp.value = b
+        if (hasAlpha && aInp) aInp.value = alphaVal
+        hxInp.value = hasAlpha ? hex6 + toHex2(alphaVal) : hex6
+
+        drawCanvas()
+    }
+
+    function fireChange() {
+        if (!onChange) return
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+            const [r, g, b] = hsvToRgb(hue, sat, val)
+            const hex6 = toHex2(r) + toHex2(g) + toHex2(b)
+            onChange({ hex: '#' + hex6, r, g, b, alpha: alphaVal, rgba: buildRgba(r, g, b, alphaVal) })
+        }, debounceMs)
+    }
+
+    const CURSOR_SIZE = 14
+    const HALF_C = CURSOR_SIZE / 2
+
+    function pickSatVal(e) {
+        if (isDisabled) return
+        const rect = canvas.getBoundingClientRect()
+        const rawX = e.clientX - rect.left
+        const rawY = e.clientY - rect.top
+
+        sat = Math.round(Math.max(0, Math.min(1, rawX / 228)) * 100)
+        val = Math.round(Math.max(0, Math.min(1, 1 - rawY / 140)) * 100)
+
+        curX = Math.max(0, Math.min(228, rawX))
+        curY = Math.max(0, Math.min(140, rawY))
+
+        syncUI()
+        fireChange()
+    }
+
+    function pickHue(e) {
+        if (isDisabled) return
+        const rect = hueBar.getBoundingClientRect()
+        hue = Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 360)
+        syncUI()
+        fireChange()
+    }
+
+    function pickAlpha(e) {
+        if (!hasAlpha || isDisabled) return
+        const rect = alphaBar.getBoundingClientRect()
+        alphaVal = Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 255)
+        syncUI()
+        fireChange()
+    }
+
+    canvasWrap.addEventListener('pointerdown', (e) => {
+        canvasWrap.setPointerCapture(e.pointerId)
+        canvasWrap.style.cursor = 'crosshair'
+        pickSatVal(e)
+    })
+    canvasWrap.addEventListener('pointermove', (e) => {
+        if (e.buttons === 0) return
+        pickSatVal(e)
+    })
+    canvasWrap.addEventListener('pointerup', () => {
+        canvasWrap.style.cursor = 'crosshair'
+    })
+
+    hueBar.addEventListener('pointerdown', (e) => {
+        hueBar.setPointerCapture(e.pointerId)
+        hueBar.style.cursor = 'grabbing'
+        pickHue(e)
+    })
+    hueBar.addEventListener('pointermove', (e) => {
+        if (e.buttons === 0) return
+        pickHue(e)
+    })
+    hueBar.addEventListener('pointerup', () => {
+        hueBar.style.cursor = 'pointer'
+    })
+
+    if (hasAlpha && alphaBar) {
+        alphaBar.addEventListener('pointerdown', (e) => {
+            alphaBar.setPointerCapture(e.pointerId)
+            alphaBar.style.cursor = 'grabbing'
+            pickAlpha(e)
+        })
+        alphaBar.addEventListener('pointermove', (e) => {
+            if (e.buttons === 0) return
+            pickAlpha(e)
+        })
+        alphaBar.addEventListener('pointerup', () => {
+            alphaBar.style.cursor = 'pointer'
+        })
+    }
+
+    function rgbFieldChanged() {
+        if (isDisabled) return
+        const [h2, s2, v2] = rgbToHsv(
+            Math.max(0, Math.min(255, +rInp.value || 0)),
+            Math.max(0, Math.min(255, +gInp.value || 0)),
+            Math.max(0, Math.min(255, +bInp.value || 0)),
+        )
+        hue = h2
+        sat = s2
+        val = v2
+        curX = (sat / 100) * 228
+        curY = (1 - val / 100) * 140
+        syncUI()
+        fireChange()
+    }
+    rInp.addEventListener('input', rgbFieldChanged)
+    gInp.addEventListener('input', rgbFieldChanged)
+    bInp.addEventListener('input', rgbFieldChanged)
+
+    if (hasAlpha && aInp) {
+        aInp.addEventListener('input', () => {
+            if (isDisabled) return
+            alphaVal = Math.max(0, Math.min(255, +aInp.value || 0))
+            syncUI()
+            fireChange()
+        })
+    }
+
+    hxInp.addEventListener('change', () => {
+        if (isDisabled) return
+        const v = hxInp.value.replace('#', '')
+        if (v.length < 6) return
+        const [r, g, b] = hexToRgb(v)
+        if (hasAlpha && v.length === 8) alphaVal = parseInt(v.slice(6, 8), 16) || 255
+        const [h2, s2, v2] = rgbToHsv(r, g, b)
+        hue = h2
+        sat = s2
+        val = v2
+        curX = (sat / 100) * 228
+        curY = (1 - val / 100) * 140
+        syncUI()
+        fireChange()
+    })
+
+    function positionDropdown() {
+        const rect = trigger.getBoundingClientRect()
+        if (rect.width === 0 && rect.height === 0) {
+            closeDropdown()
+            return
+        }
+        const dropW = 252
+        const dropH = hasAlpha ? 290 : 255
+        dropdown.style.position = 'fixed'
+        dropdown.style.width = dropW + 'px'
+        dropdown.style.margin = '0'
+
+        let left = rect.left
+        if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8
+        if (left < 8) left = 8
+        dropdown.style.left = left + 'px'
+
+        if (window.innerHeight - rect.bottom < dropH && rect.top > dropH) {
+            dropdown.style.top = 'auto'
+            dropdown.style.bottom = window.innerHeight - rect.top + 4 + 'px'
+        } else {
+            dropdown.style.top = rect.bottom + 4 + 'px'
+            dropdown.style.bottom = 'auto'
+        }
+    }
+
+    function openDropdown() {
+        document.querySelectorAll('.cpd-dropdown').forEach((d) => {
+            if (d !== dropdown) d.style.display = 'none'
+        })
+        document.querySelectorAll('.cpd-trigger').forEach((t) => {
+            if (t !== trigger) {
+                t.classList.remove('cpd-open')
+                t.querySelector('.cpd-arrow').style.transform = ''
+            }
+        })
+        dropdown.style.display = 'block'
+        positionDropdown()
+        arrow.style.transform = 'rotate(180deg)'
+        trigger.classList.add('cpd-open')
+        isOpen = true
+        drawCanvas()
+    }
+
+    function closeDropdown() {
+        dropdown.style.display = 'none'
+        arrow.style.transform = ''
+        trigger.classList.remove('cpd-open')
+        isOpen = false
+    }
+
+    trigger.addEventListener('click', (e) => {
+        if (isDisabled) return
+        e.stopPropagation()
+        isOpen ? closeDropdown() : openDropdown()
+    })
+    dropdown.addEventListener('click', (e) => e.stopPropagation())
+    document.addEventListener('click', closeDropdown)
+    window.addEventListener(
+        'scroll',
+        () => {
+            if (isOpen) positionDropdown()
+        },
+        true,
+    )
+    window.addEventListener('resize', () => {
+        if (isOpen) positionDropdown()
+    })
+
+    function setColor(hex) {
+        const [r, g, b] = hexToRgb(hex)
+        const [h2, s2, v2] = rgbToHsv(r, g, b)
+        hue = h2
+        sat = s2
+        val = v2
+        curX = (sat / 100) * 228
+        curY = (1 - val / 100) * 140
+        syncUI()
+    }
+
+    function setAlpha(a) {
+        if (!hasAlpha) return
+        alphaVal = Math.max(0, Math.min(255, a))
+        syncUI()
+    }
+
+    function setDisabled(on) {
+        isDisabled = on
+        trigger.classList.toggle('cpd-disabled', on)
+        row.style.pointerEvents = on ? 'none' : ''
+        trigger.style.opacity = on ? '0.4' : '1'
+    }
+
+    function getValue() {
+        const [r, g, b] = hsvToRgb(hue, sat, val)
+        return {
+            hex: '#' + toHex2(r) + toHex2(g) + toHex2(b),
+            r,
+            g,
+            b,
+            alpha: alphaVal,
+            rgba: buildRgba(r, g, b, alphaVal),
+        }
+    }
+
+    if (disabled) setDisabled(true)
+    syncUI()
+
+    return { row, setColor, setAlpha, setDisabled, getValue }
+}
 function makeRow({ title, className, show = true }) {
     const row = document.createElement('div')
     row.classList.add('section-group-row')
@@ -330,6 +811,7 @@ function makeSegmentRow({ options, className, defaultValue, onChange }) {
         btn.innerHTML = icon ? icon : label
         btn.dataset.value = value
         if (value === defaultValue) btn.classList.add('active')
+
         btn.onclick = () => {
             row.querySelectorAll('.segment-btn').forEach((b) => b.classList.remove('active'))
             btn.classList.add('active')
@@ -436,13 +918,14 @@ function makeDivider() {
     el.style.cssText = 'border-top:0.5px solid rgba(0,0,0,0.08); margin:2px 0;'
     return el
 }
-function makeButton({ icon, title, className, id, onClick, onHold = false }) {
+function makeButton({ icon, title, disabled, className, id, onClick, onHold = false }) {
     const btn = document.createElement('button')
     btn.classList.add('btn')
     if (id) btn.id = id
     if (className) {
         btn.classList.add(...className.trim().split(/\s+/))
     }
+    if (disabled) btn.disabled = true
     if (title) btn.title = title
     btn.innerHTML = icon ? icon : title
     if (onHold) {

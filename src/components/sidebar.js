@@ -2,7 +2,8 @@ function makeMessagesSection(body, global, dom) {
     const editor = new MessageEditorUI(body, { dom, global })
     editor.mount()
 }
-function makeSection({ id, title, body: renderBody, classname = '', events, icon }) {
+function makeSection({ id, title, body: renderBody, classname = '', global, icon }) {
+    const { events } = global
     const section = document.createElement('div')
     section.classList.add('section')
 
@@ -33,6 +34,7 @@ function makeSection({ id, title, body: renderBody, classname = '', events, icon
     chevron.dataset.sidebarChevron = id
 
     renderBody(body)
+    section._cleanup = () => body._cleanup?.()
     body.style.display = 'none'
 
     const open = () => {
@@ -60,7 +62,7 @@ function makeSection({ id, title, body: renderBody, classname = '', events, icon
             header.classList.remove('active')
             return
         }
-
+        global.activeSidebarId = id
         open()
     }
 
@@ -85,7 +87,7 @@ function makePivotGroup(global, editGroup) {
             onCancel()
         },
     })
-    events.on('inputEvent:reset', () => {
+    events.on('inputEvent:reset-camera', () => {
         onCancel()
     })
     let editPivotPos = settings.pivot.position
@@ -117,12 +119,12 @@ function makePivotGroup(global, editGroup) {
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'
     addBtn.onclick = () => {
-        const localCenter = getPivotCenter(modelEntity)
-        settings.pivot.position = { x: localCenter.x, y: localCenter.y, z: localCenter.z }
+        const weight = getModelWeight(modelEntity, settings.removedSplats)
+        settings.pivot.position = { x: weight.x, y: weight.y, z: weight.z }
         setPivotConfigured(true)
-        editPivotPos = localCenter
+        editPivotPos = weight
         global.dataDirty = true
-        events.fire('pivot:positionsynced', localCenter)
+        events.fire('pivot:positionsynced', weight)
     }
     noPivotRow.appendChild(noPivotText)
     noPivotRow.appendChild(addBtn)
@@ -281,20 +283,24 @@ function makePoster(el, global) {
 function makeModelSection(el, global) {
     const { settings, events } = global
     const step = settings.setupStep
-    const isSherical = settings.model === 'spherical'
     const editGroup = makeEditGroup(events, ['sidebar:active', 'sidebar:clicked'])
     const container = makeSectionWrap()
-
-    const isOrientation = !isSherical && step === 2
-    if (isOrientation) {
-        container.appendChild(makeOrientationGroup(global, editGroup))
-        // container.appendChild(makeCameraLimitsGroup(global, editGroup))
+    let currentCom = null
+    switch (step) {
+        case 1: {
+            currentCom = makePointEraser(global)
+            break
+        }
+        case 2:
+            currentCom = makePivotGroup(global, editGroup)
+            break
+        default:
+            currentCom = makeOrientationGroup(global, editGroup)
+            break
     }
-    if (step === 1) {
-        container.appendChild(makePivotGroup(global, editGroup))
-    }
-
+    container.appendChild(currentCom)
     el.appendChild(container)
+    if (currentCom._cleanup) el._cleanup = currentCom._cleanup
 }
 function makeInitViewGroup(events, settings, global) {
     const wrap = document.createElement('div')
@@ -394,6 +400,7 @@ function makeViewerSection(el, global) {
     //iniview
     const initviewHint =
         'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
+
     const initviewGroup = makeSectionGroup('Initial View', initviewHint)
     initviewGroup.appendChild(makeInitViewGroup(events, settings, global))
 
@@ -427,7 +434,7 @@ function makeViewerSection(el, global) {
         min: 1,
         max: 999,
         name: 'slider-number',
-        className: 'spin-input',
+        className: 'small-input',
         onChange: (v) => {
             settings.spin.speed = v
             events.fire('spin-speed', v)
@@ -538,6 +545,7 @@ function makeExportSection(el, global) {
         onClick: () => {
             const filename = 'index.html'
             exportHtml(filename, global)
+            // exportPly(modelEntity, global.settings.removedSplats)
         },
     })
 
@@ -547,7 +555,7 @@ function makeSidebar(global, dom) {
     const { events } = global
     const SIDEBAR_WIDTH = '360px'
     const isSherical = global.settings.model === 'spherical'
-    const totalSteps = isSherical ? 2 : 3
+    const totalSteps = isSherical ? 3 : 4
     const minStep = 1
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
@@ -592,9 +600,9 @@ function makeSidebar(global, dom) {
         onClick: () => {
             if (global.settings.setupStep < totalSteps) {
                 global.settings.setupStep++
+                events.fire('next-step', global.settings.setupStep)
                 renderStep()
             }
-            events.fire('next-step')
         },
     })
     header.appendChild(nextBtn)
@@ -614,34 +622,37 @@ function makeSidebar(global, dom) {
                 switch (global.settings.model) {
                     case 'spherical':
                         Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 1,
+                            setupStep: 2,
                             contentUrl: global.settings.contentUrl,
                             base64: global.settings.base64,
                             pivot: global.settings.pivot,
                             model: global.settings.model,
+                            removedSplats: global.settings.removedSplats,
                             v: global.settings.v,
                         })
                         break
                     case 'hemispherical':
                         Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 2,
+                            setupStep: 3,
                             contentUrl: global.settings.contentUrl,
                             base64: global.settings.base64,
                             pivot: global.settings.pivot,
                             orientation: global.settings.orientation,
                             model: global.settings.model,
+                            removedSplats: global.settings.removedSplats,
                             v: global.settings.v,
                         })
                         break
                     default:
                         Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 2,
+                            setupStep: 3,
                             contentUrl: global.settings.contentUrl,
                             base64: global.settings.base64,
                             pivot: global.settings.pivot,
                             orientation: global.settings.orientation,
                             model: global.settings.model,
                             cameras: global.settings.cameras,
+                            removedSplats: global.settings.removedSplats,
                             v: global.settings.v,
                         })
                 }
@@ -684,25 +695,28 @@ function makeSidebar(global, dom) {
     const isFinalStep = () => global.settings.setupStep === totalSteps
 
     const renderModelStep = () => {
-        contentArea.appendChild(
-            makeSection({
-                id: 'model',
-                title: 'Model',
-                classname: 'model-section',
-                body: (el) => makeModelSection(el, global),
-                events,
-            }),
-        )
+        const modelSection = makeSection({
+            id: 'model',
+            title: 'Model',
+            classname: 'model-section',
+            body: (el) => makeModelSection(el, global),
+            global,
+        })
+        contentArea.appendChild(modelSection)
+        contentArea._cleanup = () => modelSection._cleanup?.()
         contentArea.appendChild(
             makeSection({
                 id: 'export',
                 title: 'Export',
                 classname: 'export-section',
                 body: (el) => makeExportSection(el, global),
-                events,
+                global,
             }),
         )
-        setTimeout(() => events.fire('sidebar:active', 'model'), 0)
+        setTimeout(() => {
+            global.activeSidebarId = 'model'
+            events.fire('sidebar:active', 'model')
+        }, 0)
     }
 
     const renderFullStep = () => {
@@ -712,7 +726,7 @@ function makeSidebar(global, dom) {
                 title: 'Viewer',
                 classname: 'viewer-setting-section',
                 body: (el) => makeViewerSection(el, global),
-                events,
+                global,
             }),
         )
         contentArea.appendChild(
@@ -721,7 +735,7 @@ function makeSidebar(global, dom) {
                 title: 'Messages',
                 classname: 'message-section',
                 body: (el) => makeMessagesSection(el, global, dom),
-                events,
+                global,
             }),
         )
         contentArea.appendChild(
@@ -730,7 +744,7 @@ function makeSidebar(global, dom) {
                 title: 'Dimensions',
                 classname: 'dimension-section',
                 body: (el) => makeDimensionSection(el, global, dom),
-                events,
+                global,
             }),
         )
 
@@ -740,7 +754,7 @@ function makeSidebar(global, dom) {
         //         title: 'Measurement',
         //         classname: 'measurement-section',
         //         body: (el) => makeMeasurementSection(el, global),
-        //         events,
+        //         global,
         //     }),
         // )
         // contentArea.appendChild(
@@ -749,7 +763,7 @@ function makeSidebar(global, dom) {
         //         title: 'Poster',
         //         classname: 'poster-section',
         //         body: (el) => makePoster(el, global),
-        //         events,
+        //         global,
         //     }),
         // )
 
@@ -759,13 +773,15 @@ function makeSidebar(global, dom) {
                 title: 'Export',
                 classname: 'export-section',
                 body: (el) => makeExportSection(el, global),
-                events,
+                global,
             }),
         )
     }
 
     const renderStep = () => {
         const step = global.settings.setupStep
+        contentArea._cleanup?.()
+        contentArea._cleanup = null
         contentArea.innerHTML = ''
         contentArea.classList.remove('step-content-enter')
         void contentArea.offsetWidth

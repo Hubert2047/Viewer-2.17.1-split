@@ -1,3 +1,174 @@
+const CHUNK_CORNER_POINT = `
+uniform vec4 viewport_size;
+uniform float splat_point_size;
+uniform sampler2D splatState;
+
+#ifndef VSELECTED_DECLARED
+#define VSELECTED_DECLARED
+varying float vSelected;
+#endif
+
+void computeCovariance(vec4 rotation, vec3 scale, out vec3 covA, out vec3 covB) {
+    covA = vec3(0.0); covB = vec3(0.0);
+}
+bool initCornerCov(SplatSource source, SplatCenter center, out SplatCorner corner, vec3 covA, vec3 covB) {
+    corner.offset = vec3(0.0); corner.uv = source.cornerUV; return true;
+}
+#if GSPLAT_2DGS
+void initCorner2DGS(SplatSource source, vec4 rotation, vec3 scale, out SplatCorner corner) {
+    corner.offset = vec3(0.0); corner.uv = source.cornerUV;
+}
+#endif
+bool initCorner(SplatSource source, SplatCenter center, out SplatCorner corner) {
+    vec2 offset = source.cornerUV * splat_point_size * viewport_size.zw * center.proj.w;
+    corner.offset = vec3(offset, 0.0);
+    corner.uv = source.cornerUV;
+
+    vSelected = texelFetch(splatState, splat.uv, 0).r;
+
+    return true;
+}
+`
+const CHUNK_MODIFY_SELECT_ONLY = `
+#ifndef VSELECTED_DECLARED
+#define VSELECTED_DECLARED
+varying float vSelected;
+#endif
+
+uniform vec4 splat_selected_color;
+uniform sampler2D splatState;
+
+void modifySplatCenter(inout vec3 center) {}
+void modifySplatRotationScale(vec3 orig, vec3 mod, inout vec4 rot, inout vec3 scale) {}
+
+void modifySplatColor(vec3 center, inout vec4 color) {
+    float selected = texelFetch(splatState, splat.uv, 0).r;
+    if (selected > 0.5) {
+        vec4 tint = splat_selected_color;
+        color.rgb = mix(color.rgb, tint.rgb, tint.a);
+        color.a = mix(color.a, max(color.a, 1.0), tint.a);
+    }
+}
+`
+const CHUNK_MODIFY_POINT = `
+#ifndef VSELECTED_DECLARED
+#define VSELECTED_DECLARED
+varying float vSelected;
+#endif
+
+uniform vec4 splat_selected_color;
+uniform vec4 splat_unselected_color;
+
+void modifySplatCenter(inout vec3 center) {}
+void modifySplatRotationScale(vec3 orig, vec3 mod, inout vec4 rot, inout vec3 scale) {}
+
+void modifySplatColor(vec3 center, inout vec4 color) {
+    if (vSelected > 0.5) {
+        vec4 tint = splat_selected_color;
+        color.rgb = mix(color.rgb, tint.rgb, tint.a);
+        color.a = mix(color.a, max(color.a, 1.0), tint.a);
+    } else {
+        vec4 tint = splat_unselected_color;
+        color.rgb = mix(color.rgb, tint.rgb, tint.a);
+        color.a = mix(color.a, max(color.a, 1.0), tint.a);
+    }
+}
+`
+const CHUNK_PS_RING = `
+#ifndef DITHER_NONE
+    #include "bayerPS"
+    #include "opacityDitherPS"
+    varying float id;
+#endif
+#if defined(SHADOW_PASS) || defined(PICK_PASS) || defined(PREPASS_PASS)
+    uniform float alphaClip;
+#endif
+#ifdef PREPASS_PASS
+    varying float vLinearDepth;
+    #include "floatAsUintPS"
+#endif
+varying mediump vec2 gaussianUV;
+varying mediump vec4 gaussianColor;
+#if defined(GSPLAT_UNIFIED_ID) && defined(PICK_PASS)
+    flat varying uint vPickId;
+#endif
+#ifdef PICK_PASS
+    #include "pickPS"
+#endif
+const float EXP4 = exp(-4.0);
+const float INV_EXP4 = 1.0 / (1.0 - EXP4);
+float normExp(float x) {
+    return (exp(x * -4.0) - EXP4) * INV_EXP4;
+}
+void main(void) {
+    mediump float A = dot(gaussianUV, gaussianUV);
+    if (A > 1.0) { discard; }
+    mediump float alpha = normExp(A) * gaussianColor.a;
+    #if defined(SHADOW_PASS) || defined(PICK_PASS) || defined(PREPASS_PASS)
+        if (alpha < alphaClip) { discard; }
+    #endif
+    #ifdef PICK_PASS
+        #ifdef GSPLAT_UNIFIED_ID
+            pcFragColor0 = encodePickOutput(vPickId);
+        #else
+            pcFragColor0 = getPickOutput();
+        #endif
+        #ifdef DEPTH_PICK_PASS
+            pcFragColor1 = getPickDepth();
+        #endif
+    #elif SHADOW_PASS
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    #elif PREPASS_PASS
+        gl_FragColor = float2vec4(vLinearDepth);
+    #else
+        if (alpha < 1.0 / 255.0) { discard; }
+        float ringSize = 0.25; 
+        if (A < 1.0 - ringSize) {
+            alpha = max(0.05, alpha);
+        } else {
+            alpha = 0.6;           
+        }
+        gl_FragColor = vec4(gaussianColor.xyz * alpha, alpha);
+    #endif
+}
+`
+const POINT_VIEW_GLSL_CORNER = `
+uniform vec4 viewport_size;
+
+void computeCovariance(vec4 rotation, vec3 scale, out vec3 covA, out vec3 covB) {
+    covA = vec3(0.0);
+    covB = vec3(0.0);
+}
+
+bool initCornerCov(SplatSource source, SplatCenter center, out SplatCorner corner, vec3 covA, vec3 covB) {
+    corner.offset = vec3(0.0);
+    corner.uv = source.cornerUV;
+    return true;
+}
+
+#if GSPLAT_2DGS
+void initCorner2DGS(SplatSource source, vec4 rotation, vec3 scale, out SplatCorner corner) {
+    corner.offset = vec3(0.0);
+    corner.uv = source.cornerUV;
+}
+#endif
+
+bool initCorner(SplatSource source, SplatCenter center, out SplatCorner corner) {
+    float pixelSize = 2.0; 
+    vec2 offset = source.cornerUV * pixelSize * viewport_size.zw * center.proj.w;
+    corner.offset = vec3(offset, 0.0);
+    corner.uv = source.cornerUV;
+    return true;
+}
+`
+
+const POINT_VIEW_GLSL_MODIFY = `
+void modifySplatCenter(inout vec3 center) {}
+void modifySplatRotationScale(vec3 orig, vec3 mod, inout vec4 rot, inout vec3 scale) {}
+void modifySplatColor(vec3 center, inout vec4 color) {
+    color = vec4(0.976, 0.373, 0.302, 1.0);
+}
+`
 var gsplatCompressedSHVS$1 = `
 #if SH_BANDS > 0
 vec4 unpack8888s(in uint bits) {
@@ -355,4 +526,3 @@ class SmoothDamp3 {
         }
     }
 }
-

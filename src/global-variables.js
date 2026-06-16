@@ -164,4 +164,16 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
   <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
   <path d="M3 3v5h5"/>
 </svg>`,
+    undo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M9 14 4 9l5-5"/>
+  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+</svg>`,
+    redo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m15 14 5-5-5-5"/>
+  <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>
+</svg>`,
+    rect: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`,
+    lasso: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4.5 0-8-2.5-8-6 0-2.5 1.5-4.5 4-5.5L12 3l4 6.5c2.5 1 4 3 4 5.5 0 3.5-3.5 6-8 6z"/></svg>`,
+    polygon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 9 18 21 6 21 2 9"/></svg>`,
+    brush: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1 1 2.48 1 3.96 1 2.24 0 4-1.79 4-4.01 0-1.67-1.33-3.03-2.96-3.03z"/></svg>`,
 }

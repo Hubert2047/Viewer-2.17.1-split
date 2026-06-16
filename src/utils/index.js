@@ -1,3 +1,12 @@
+function applyPointMapping({ modelEntity, deletedSet }) {
+    const gsplatComp = modelEntity.gsplat
+    const numSplats = gsplatComp.resource.numSplats
+    const kept = []
+    for (let i = 0; i < numSplats; i++) {
+        if (!deletedSet.has(i)) kept.push(i)
+    }
+    gsplatComp._instance.sorter.setMapping(new Uint32Array(kept))
+}
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -31,14 +40,15 @@ function updateProgress(loaded, total, initPoster) {
 function blurPoster(poster, progress) {
     poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
 }
-function normalizeColor(input) {
+function normalizeColor(input, alpha = 255) {
+    let rgb
     if (Array.isArray(input)) {
         if (input[0] > 1 || input[1] > 1 || input[2] > 1) {
-            return input.slice(0, 3).map((v) => v / 255)
+            rgb = input.slice(0, 3).map((v) => v / 255)
+        } else {
+            rgb = input.slice(0, 3)
         }
-        return input.slice(0, 3)
-    }
-    if (typeof input === 'string' && input.startsWith('#')) {
+    } else if (typeof input === 'string' && input.startsWith('#')) {
         let hex = input.replace('#', '')
         if (hex.length === 3) {
             hex = hex
@@ -46,22 +56,24 @@ function normalizeColor(input) {
                 .map((c) => c + c)
                 .join('')
         }
-        const r = parseInt(hex.substring(0, 2), 16)
-        const g = parseInt(hex.substring(2, 4), 16)
-        const b = parseInt(hex.substring(4, 6), 16)
-        return [r / 255, g / 255, b / 255]
-    }
-    if (input.startsWith('rgb')) {
+        rgb = [
+            parseInt(hex.substring(0, 2), 16) / 255,
+            parseInt(hex.substring(2, 4), 16) / 255,
+            parseInt(hex.substring(4, 6), 16) / 255,
+        ]
+    } else if (typeof input === 'string' && input.startsWith('rgb')) {
         const nums = input.match(/\d+/g).map(Number)
-        return [nums[0] / 255, nums[1] / 255, nums[2] / 255]
+        rgb = [nums[0] / 255, nums[1] / 255, nums[2] / 255]
+    } else {
+        const temp = document.createElement('div')
+        temp.style.color = input
+        document.body.appendChild(temp)
+        const rgbStr = getComputedStyle(temp).color
+        document.body.removeChild(temp)
+        const nums = rgbStr.match(/\d+/g).map(Number)
+        rgb = [nums[0] / 255, nums[1] / 255, nums[2] / 255]
     }
-    const temp = document.createElement('div')
-    temp.style.color = input
-    document.body.appendChild(temp)
-    const rgb = getComputedStyle(temp).color
-    document.body.removeChild(temp)
-    const nums = rgb.match(/\d+/g).map(Number)
-    return [nums[0] / 255, nums[1] / 255, nums[2] / 255]
+    return [...rgb, alpha / 255]
 }
 function showToast(content, opts = {}) {
     const duration = typeof opts.duration === 'number' ? opts.duration : 1500
@@ -130,6 +142,69 @@ function stripDefaults(settings, defaults = defaultSettings) {
     }
     return result
 }
+function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
+    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
+    const gsplatData = gsplatInstance.resource.gsplatData
+    const numSplats = gsplatData.numSplats
+    const deletedSet = new Set(removedSplats || [])
+
+    const vertexEl = gsplatData.getElement('vertex')
+    const props = vertexEl.properties.filter(p => p.storage)
+
+    const keepIndices = []
+    for (let i = 0; i < numSplats; i++) {
+        if (!deletedSet.has(i)) keepIndices.push(i)
+    }
+    const numKeep = keepIndices.length
+
+    const propLines = props.map(p => {
+        const typeName = p.storage instanceof Float32Array ? 'float' :
+                         p.storage instanceof Int32Array   ? 'int'   :
+                         p.storage instanceof Uint8Array   ? 'uchar' : 'float'
+        return `property ${typeName} ${p.name}`
+    }).join('\n')
+
+    const header = [
+        'ply',
+        'format binary_little_endian 1.0',
+        `element vertex ${numKeep}`,
+        propLines,
+        'end_header',
+    ].join('\n') + '\n'
+
+    const bytesPerProp = props.map(p =>
+        p.storage instanceof Float32Array ? 4 :
+        p.storage instanceof Int32Array   ? 4 :
+        p.storage instanceof Uint8Array   ? 1 : 4
+    )
+    const bytesPerSplat = bytesPerProp.reduce((a, b) => a + b, 0)
+
+    const headerBytes = new TextEncoder().encode(header)
+    const dataBuffer = new ArrayBuffer(numKeep * bytesPerSplat)
+    const dataView = new DataView(dataBuffer)
+
+    let offset = 0
+    for (const idx of keepIndices) {
+        for (let pi = 0; pi < props.length; pi++) {
+            const storage = props[pi].storage
+            const byteSize = bytesPerProp[pi]
+            if (byteSize === 4 && !(storage instanceof Uint8Array)) {
+                dataView.setFloat32(offset, storage[idx], true)
+            } else {
+                dataView.setUint8(offset, storage[idx])
+            }
+            offset += byteSize
+        }
+    }
+
+    const blob = new Blob([headerBytes, dataBuffer], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+}
 async function exportHtml(name, global) {
     const settings = global.settings
     const copySettings = JSON.parse(JSON.stringify(settings))
@@ -166,16 +241,22 @@ async function exportHtml(name, global) {
     delete copySettings.fileAudioStore
 
     const hasPivot = copySettings.pivot?.position
+    const hasRemovedSplats = copySettings.removedSplats?.length > 0
     const hasOrientation = copySettings.orientation?.pose
     const STEP_REQUIREMENTS = {
-        spherical: [{ step: 2, condition: hasPivot }],
+        spherical: [
+            { step: 2, condition: hasRemovedSplats },
+            { step: 3, condition: hasPivot },
+        ],
         hemispherical: [
-            { step: 2, condition: hasPivot },
-            { step: 3, condition: hasOrientation },
+            { step: 2, condition: hasRemovedSplats },
+            { step: 3, condition: hasPivot },
+            { step: 4, condition: hasOrientation },
         ],
         cylindrical: [
-            { step: 2, condition: hasPivot },
-            { step: 3, condition: hasOrientation },
+            { step: 2, condition: hasRemovedSplats },
+            { step: 3, condition: hasPivot },
+            { step: 4, condition: hasOrientation },
         ],
     }
 
@@ -304,11 +385,11 @@ function makeInfoPanel(settings, events) {
         { action: 'Reset Camera', key: 'Camera Icon' },
     ]
     const messageDesktop = [
-        { action: 'Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
+        { action: 'Story Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
         { action: 'Message Navigation', key: 'T / Text Icon', cls: 'messages-info' },
     ]
     const messageTouch = [
-        { action: 'Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
+        { action: 'Story Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
         { action: 'Message Navigation', key: 'Text Icon', cls: 'messages-info' },
     ]
 
@@ -372,7 +453,7 @@ function makeControlBotGroup(global, tooltip, dom) {
     const buttons = [
         ['startSpin', 'startSpin', 'Start Spin', hasSpin, showStartSpin, '360spin-start'],
         ['stopSpin', 'stopSpin', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
-        ['resetCamera', 'resetCamera', 'Reset Camera', true, true, 'inputEvent:reset'],
+        ['resetCamera', 'resetCamera', 'Reset Camera (R)', true, true, 'inputEvent:reset-camera'],
         ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
@@ -430,10 +511,22 @@ function makeMessageActionGroup(global, tooltip, events, dom) {
     const showStopPlayMessages = global.isAutoPlayMessages
     const hideMessages = global.isShowMessageNavigation || (global.isShowMessageNavigation === undefined && !isMobile)
     const buttons = [
-        ['stopMessage', 'stopPlay', 'Story Stop Play', showStopPlayMessages, 'stop-auto'],
-        ['startMessage', 'startPlay', 'Story Auto Play', !showStopPlayMessages, 'start-auto'],
-        ['hideMessageButton', 'hideMessageButton', 'Hide Message Navigation', hideMessages, 'hide-message-navigation'],
-        ['showMessageButton', 'showMessageButton', 'Show Message Navigation', !hideMessages, 'show-message-navigation'],
+        ['stopMessage', 'stopPlay', 'Story Stop Play (P)', showStopPlayMessages, 'stop-auto'],
+        ['startMessage', 'startPlay', 'Story Auto Play (P)', !showStopPlayMessages, 'start-auto'],
+        [
+            'hideMessageButton',
+            'hideMessageButton',
+            'Hide Message Navigation (T)',
+            hideMessages,
+            'hide-message-navigation',
+        ],
+        [
+            'showMessageButton',
+            'showMessageButton',
+            'Show Message Navigation (T)',
+            !hideMessages,
+            'show-message-navigation',
+        ],
     ]
     buttons.forEach(([id, icon, label, defaultShow, eventname, toggleId]) => {
         const el = makeButton({

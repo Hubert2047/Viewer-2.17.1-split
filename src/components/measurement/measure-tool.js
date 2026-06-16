@@ -3,6 +3,7 @@ class MeasureTool {
         const { app, camera, settings, events } = global
         this._app = app
         this._cam = camera
+        this.settings = settings
         this.global = global
         this._active = false
         this._points = []
@@ -333,7 +334,13 @@ class MeasureTool {
         }
         this._mouseMoveHandler = (e) => {
             if (this._points.length !== 1) return
-            const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, false)
+            const localPt = pickModelLocalPoint({
+                x: e.offsetX,
+                y: e.offsetY,
+                camera: this._cam.camera,
+                preciseMode: false,
+                removedSplats: this.settings.removedSplats,
+            })
             this._hoverPoint = localPt ?? null
         }
 
@@ -391,7 +398,13 @@ class MeasureTool {
         if (this._gizmos.some((g) => g.isDragging)) return
         if (this._points.length >= 2) return
 
-        const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, true)
+        const localPt = pickModelLocalPoint({
+            x: e.offsetX,
+            y: e.offsetY,
+            camera: this._cam.camera,
+            preciseMode: true,
+            removedSplats: this.settings.removedSplats,
+        })
         if (!localPt) {
             showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
             return
@@ -436,7 +449,13 @@ class MeasureTool {
         }
         this._mouseMoveHandler = (e) => {
             if (this._calibPickedCount !== 1) return
-            const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, false)
+            const localPt = pickModelLocalPoint({
+                x: e.offsetX,
+                y: e.offsetY,
+                camera: this._cam.camera,
+                preciseMode: false,
+                removedSplats: this.settings.removedSplats,
+            })
             this._hoverPoint = localPt ?? null
         }
 
@@ -455,7 +474,13 @@ class MeasureTool {
         if (this._gizmos.some((g) => g.isDragging)) return
         if (this._calibPickedCount >= 2) return
 
-        const localPt = pickModelLocalPoint(e.offsetX, e.offsetY, this._cam.camera, true)
+        const localPt = pickModelLocalPoint({
+            x: e.offsetX,
+            y: e.offsetY,
+            camera: this._cam.camera,
+            preciseMode: true,
+            removedSplats: this.settings.removedSplats,
+        })
         if (!localPt) {
             showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
             return

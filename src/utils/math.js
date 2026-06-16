@@ -149,7 +149,7 @@ function dimensionLocalToWorld(localPos, rotation) {
     }
 }
 function localToWorld(pos) {
-    const worldMatrix = modelEntity.gsplat.instance.meshInstance.node.getWorldTransform()
+    const worldMatrix = modelEntity.getWorldTransform()
     const worldPos = new Vec3()
     worldMatrix.transformPoint(pos, worldPos)
     return worldPos
@@ -222,7 +222,7 @@ function getDimensionsRotation(localCenters) {
     }
 }
 
-function getVisiblePoints(modelEntity, rotation) {
+function getVisiblePoints(modelEntity, rotation, removedSplats) {
     const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
     const resource = gsplatInstance.resource
     const gsplatData = resource.gsplatData
@@ -234,7 +234,9 @@ function getVisiblePoints(modelEntity, rotation) {
     const iter = gsplatData.createIter(p, r, s, c)
     const visibleCenters = []
     const tmp = new Vec3()
+    const deletedSet = new Set(removedSplats || [])
     for (let i = 0; i < count; i++) {
+        if (deletedSet.has(i)) continue
         iter.read(i)
         if (c.w > OPACITY_THRESHOLD) {
             if (rotation) {
@@ -249,23 +251,21 @@ function getVisiblePoints(modelEntity, rotation) {
     visiblePoints = new Float32Array(visibleCenters)
     return visiblePoints
 }
-function getPivotCenter(modelEntity) {
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const resource = gsplatInstance.resource
-    const gsplatData = resource.gsplatData
+function getModelWeight(modelEntity, removedSplats) {
+    const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData
     const count = gsplatData.numSplats
     const p = new Vec3()
     const r = new Quat()
     const s = new Vec3()
     const c = new Vec4()
     const iter = gsplatData.createIter(p, r, s, c)
-
+    const deletedSet = new Set(removedSplats || [])
     let wx = 0,
         wy = 0,
         wz = 0,
         totalWeight = 0
-
     for (let i = 0; i < count; i++) {
+        if (deletedSet.has(i)) continue
         iter.read(i)
         if (c.w > OPACITY_THRESHOLD) {
             wx += p.x * c.w
@@ -274,11 +274,46 @@ function getPivotCenter(modelEntity) {
             totalWeight += c.w
         }
     }
-    if (totalWeight === 0) return global.bbox.center.clone()
 
     return new Vec3(wx / totalWeight, wy / totalWeight, wz / totalWeight)
 }
-function pickModelLocalPoint(x, y, camera, preciseMode = false) {
+function calBbox(modelEntity, removedSplats) {
+    const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData
+    const count = gsplatData.numSplats
+    const p = new Vec3()
+    const r = new Quat()
+    const s = new Vec3()
+    const c = new Vec4()
+    const iter = gsplatData.createIter(p, r, s, c)
+    const deletedSet = new Set(removedSplats || [])
+
+    let minX = Infinity,
+        minY = Infinity,
+        minZ = Infinity
+    let maxX = -Infinity,
+        maxY = -Infinity,
+        maxZ = -Infinity
+
+    for (let i = 0; i < count; i++) {
+        if (deletedSet.has(i)) continue
+        iter.read(i)
+        if (c.w > OPACITY_THRESHOLD) {
+            minX = Math.min(minX, p.x)
+            maxX = Math.max(maxX, p.x)
+            minY = Math.min(minY, p.y)
+            maxY = Math.max(maxY, p.y)
+            minZ = Math.min(minZ, p.z)
+            maxZ = Math.max(maxZ, p.z)
+        }
+    }
+    const bbox = {
+        center: new Vec3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2),
+        halfExtents: new Vec3((maxX - minX) / 2, (maxY - minY) / 2, (maxZ - minZ) / 2),
+    }
+
+    return { bbox }
+}
+function pickModelLocalPoint({ x, y, camera, removedSplats = [], preciseMode = false }) {
     const from = camera.screenToWorld(x, y, camera.nearClip)
     const to = camera.screenToWorld(x, y, camera.farClip)
     const worldRay = new Ray(from, to.clone().sub(from).normalize())
@@ -290,7 +325,7 @@ function pickModelLocalPoint(x, y, camera, preciseMode = false) {
     invWorldMatrix.transformVector(worldRay.direction, localRayDirection)
     localRayDirection.normalize()
     const localRay = new Ray(localRayOrigin, localRayDirection)
-
+    const deletedSet = new Set(removedSplats || [])
     const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData
     const count = gsplatData.numSplats
 
@@ -308,6 +343,7 @@ function pickModelLocalPoint(x, y, camera, preciseMode = false) {
     let negCount = 0,
         totalSeen = 0
     for (let i = 0; i < Math.min(count, 200); i++) {
+        if (deletedSet.has(i)) continue
         detectIter.read(i)
         if (dc.w < 0.1) continue
         if (ds.x < 0 || ds.y < 0 || ds.z < 0) negCount++
@@ -320,6 +356,7 @@ function pickModelLocalPoint(x, y, camera, preciseMode = false) {
     const oc = new Vec3()
 
     for (let i = 0; i < count; i++) {
+        if (deletedSet.has(i)) continue
         iter.read(i)
         if (c.w <= OPACITY_THRESHOLD) continue
 
@@ -668,9 +705,9 @@ function mergeSettings(settings, defaultSettings) {
         merged.model = 'spherical'
     }
     const maxStepByModel = {
-        cylindrical: 3,
-        hemispherical: 3,
-        spherical: 2,
+        cylindrical: 4,
+        hemispherical: 4,
+        spherical: 3,
     }
     const maxStep = maxStepByModel[merged.model]
     if (maxStep != null) {

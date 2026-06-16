@@ -7,7 +7,8 @@ class Messages {
     circumference = 100.53
 
     isEdit = false
-    constructor({ camera, events, dom, data, button, editable, display = true }) {
+    constructor({ camera, events, dom, data, button, editable, display = true, removedSplats }) {
+        this.removedSplats = removedSplats
         this.camera = camera
         this.editable = editable
         this.events = events
@@ -156,7 +157,6 @@ class Messages {
     }
     resetTime() {
         if (!this._audioBtn && this.data.audio?.fileName && this.data.audio?.show) {
-            console.log('run in')
             this.createAudioBtn()
         }
         if (!this._audio) return
@@ -542,7 +542,7 @@ class Messages {
             this.dot.style.cursor = 'grab'
             const screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
             const screenY = parseFloat(this.dot.style.top) + this.dot.offsetHeight / 2
-            const newPos = pickModelLocalPoint(screenX, screenY, this.camera)
+            const newPos = pickModelLocalPoint({ x: screenX, y: screenY, camera: this.camera, removedSplats: this.removedSplats })
             if (newPos) {
                 this.data.focus.position = newPos
                 this.events.fire('message:drag-changed', this.data)

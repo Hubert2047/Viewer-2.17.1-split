@@ -63,6 +63,7 @@ class MessagesManager {
             button: this.createMessageActiveBtn(data),
             editable: this.editable,
             events: this.events,
+            removedSplats: this.settings.removedSplats,
         })
     }
 

@@ -1,7 +1,7 @@
 const defaultSettings = Object.freeze({
     version: 2,
     v: 1,
-    contentUrl: 'ortery_default.ply',
+    contentUrl: 'default.ply',
     base64: '',
     autoHideUI: false,
     background: Object.freeze({ color: 'white' }),
@@ -22,6 +22,7 @@ const defaultSettings = Object.freeze({
     dimensions: null,
     measurement: null,
     setupStep: 1,
+    removedSplats: [],
     ref: '',
     tonemapping: 'none',
     postEffectSettings: {

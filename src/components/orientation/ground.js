@@ -123,7 +123,14 @@ function makeGroundPanel(events, global) {
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerdown', (e) => {
         if (!pickingActive || e.button !== 0 || pickedPoints.length >= MAX_POINTS) return
-        const localPoint = pickModelLocalPoint(e.offsetX, e.offsetY, global.camera.camera, true)
+        const { settings, camera } = global
+        const localPoint = pickModelLocalPoint({
+            x: e.offsetX,
+            y: e.offsetY,
+            camera: camera.camera,
+            preciseMode: true,
+            removedSplats: settings.removedSplats,
+        })
         if (!localPoint) {
             showToast('Please try again!', { duration: 1000, type: 'warning' })
             return
