@@ -147,7 +147,7 @@ function makeGroundPanel(events, global) {
     // panel.appendChild(flipRow)
 
     updateHintText()
-
+   
     return {
         panel,
         stopPicking,

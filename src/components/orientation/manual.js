@@ -70,7 +70,6 @@ function makeManualPanel(events, global) {
             startSpin.classList.add('hidden')
         }
     }
-    events.on('ortery:stop-spin', () => updateSpinState(true))
     const yawStepInput = makeInput({ type: 'number', value: 5, step: 1, min: 0, className: 'orientation-step-input' })
     const getYawStep = () => parseFloat(yawStepInput.value) || 5
     // ── Yaw row
@@ -230,8 +229,14 @@ function makeManualPanel(events, global) {
     panel.appendChild(yPosRow)
     panel.appendChild(pitchRow)
     panel.appendChild(rollRow)
-
+    const handles = [
+        events.on('ortery:stop-spin', () => updateSpinState(true)),
+    ]
+    function clean() {
+        handles.forEach((h) => events.offByHandle(h))
+    }
     return {
         panel,
+        clean,
     }
 }

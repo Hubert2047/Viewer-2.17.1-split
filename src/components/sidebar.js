@@ -87,9 +87,6 @@ function makePivotGroup(global, editGroup) {
             onCancel()
         },
     })
-    events.on('inputEvent:reset-camera', () => {
-        onCancel()
-    })
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
     let isEditing = false
@@ -218,12 +215,6 @@ function makePivotGroup(global, editGroup) {
         noPivotRow.style.display = has ? 'none' : 'flex'
         hasPivotWrap.style.display = has ? 'flex' : 'none'
     }
-
-    events.on('pivot:positionsynced', ({ x, y, z }) => {
-        setInputValues({ x, y, z })
-        currrentPivotPos = { x, y, z }
-    })
-
     if (settings.pivotPos) {
         const p = settings.pivotPos
         setInputValues({ x: p.x, y: p.y, z: p.z })
@@ -235,6 +226,16 @@ function makePivotGroup(global, editGroup) {
 
     renderBtns()
     setPivotConfigured(!!settings.pivot.position)
+    const handles = [
+        events.on('inputEvent:reset-camera', onCancel),
+        events.on('pivot:positionsynced', ({ x, y, z }) => {
+            setInputValues({ x, y, z })
+            currrentPivotPos = { x, y, z }
+        }),
+    ]
+    group._cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+    }
     return group
 }
 function makePoster(el, global) {
@@ -807,7 +808,6 @@ function makeSidebar(global, dom) {
             renderModelStep()
         }
     }
-
     renderStep()
     return sidebar
 }

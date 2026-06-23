@@ -22,9 +22,8 @@ function makeOrientationGroup(global, editGroup) {
         const r = global.cameraManager.controllers.ortery.initialModelRotation
         setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
     }
-    events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z }))
-    events.on('next-step', () => onCancelOrientation())
-    const { panel: manualPanel } = makeManualPanel(events, global)
+
+    const { panel: manualPanel, clean: manualClean } = makeManualPanel(events, global)
     const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
 
     const methodWrap = document.createElement('div')
@@ -152,126 +151,13 @@ function makeOrientationGroup(global, editGroup) {
     group.appendChild(container)
 
     renderOrientBtns()
-
-    return group
-}
-
-function makeCameraLimitsGroup(global, editGroup) {
-    const { events, settings } = global
-    const group = makeSectionGroup('camera')
-    editGroup.register('cameraLimit', { cancel: () => onCancelPitch() })
-    const PITCH_MIN_DEG = -90
-    const PITCH_MAX_DEG = 90
-    let isEditingPitch = false
-    let pitchDraftDeg = 0
-    const clampPitch = (v) => Math.max(PITCH_MIN_DEG, Math.min(PITCH_MAX_DEG, v))
-
-    const pitchEditWrap = document.createElement('div')
-    pitchEditWrap.style.cssText = 'display:flex; flex-direction:column; gap:12px; margin-bottom:8px;'
-
-    const pitchInputRow = makeRow({ title: 'Pitch offset' })
-    const defaultValue =
-        settings.orientation.pitchOffset !== undefined ? Math.round(radToDeg(settings.orientation.pitchOffset)) : 0
-    const pitchInput = makeInput({
-        type: 'number',
-        value: defaultValue,
-        step: 1,
-        disabled: true,
-        min: PITCH_MIN_DEG,
-        max: PITCH_MAX_DEG,
-        className: 'orientation-step-input',
-        onChange: (value) => {
-            setPitchDraft(parseFloat(value) || 0)
-        },
-    })
-    pitchInputRow.appendChild(pitchInput)
-
-    const pitchSliderRow = document.createElement('div')
-    pitchSliderRow.style.cssText = 'display:none; align-items:center; gap:6px;'
-    const pitchSliderMin = document.createElement('span')
-    pitchSliderMin.style.cssText = 'font-size:10px; color:var(--text-muted); min-width:24px;'
-    pitchSliderMin.textContent = '-90°'
-
-    const pitchSlider = makeSlider({
-        min: PITCH_MIN_DEG,
-        max: PITCH_MAX_DEG,
-        step: 1,
-        value: defaultValue,
-        className: 'pitch-slider',
-        onChange: (value) => setPitchDraft(parseFloat(value) || 0),
-    })
-    pitchSlider.style.cssText = 'flex:1;'
-
-    const pitchSliderMax = document.createElement('span')
-    pitchSliderMax.style.cssText = 'font-size:10px; color:var(--text-muted); min-width:24px; text-align:right;'
-    pitchSliderMax.textContent = '90°'
-
-    pitchSliderRow.appendChild(pitchSliderMin)
-    pitchSliderRow.appendChild(pitchSlider)
-    pitchSliderRow.appendChild(pitchSliderMax)
-
-    const setPitchDraft = (deg) => {
-        pitchDraftDeg = clampPitch(deg)
-        const rounded = Math.round(pitchDraftDeg)
-        pitchInput.value = rounded
-        pitchSlider.value = rounded
-        events.fire('orientation:pitchoffset', { value: degToRad(pitchDraftDeg) })
+    const handles = [
+        events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z })),
+        events.on('next-step', () => onCancelOrientation()),
+    ]
+    group._cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+        manualClean()
     }
-    pitchEditWrap.appendChild(pitchInputRow)
-    pitchEditWrap.appendChild(pitchSliderRow)
-
-    const pitchBtnRow = document.createElement('div')
-    pitchBtnRow.classList.add('btn-row')
-
-    const onCancelPitch = () => {
-        if (!isEditingPitch) return
-        isEditingPitch = false
-        pitchInput.disabled = true
-        pitchSliderRow.style.display = 'none'
-        events.fire('orientation:cancel-pitchoffset')
-        renderPitchBtns()
-    }
-
-    const renderPitchBtns = () => {
-        pitchBtnRow.innerHTML = ''
-        if (isEditingPitch) {
-            const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancelPitch })
-
-            const btnApply = makeButton({
-                title: 'Apply',
-                className: 'confirm-btn',
-                onClick: () => {
-                    events.fire('orientation:save-pitchoffset', { value: degToRad(pitchDraftDeg) })
-                    isEditingPitch = false
-                    pitchInput.disabled = true
-                    pitchSliderRow.style.display = 'none'
-                    renderPitchBtns()
-                },
-            })
-
-            pitchBtnRow.appendChild(btnCancel)
-            pitchBtnRow.appendChild(btnApply)
-        } else {
-            const btnEdit = makeButton({
-                className: 'edit-btn',
-                title: 'Edit',
-                onClick: () => {
-                    isEditingPitch = true
-                    pitchInput.disabled = false
-                    pitchSliderRow.style.display = 'flex'
-                    editGroup.startEdit('cameraLimit')
-                    setPitchDraft(radToDeg(settings.orientation.pitchOffset ?? 0))
-                    renderPitchBtns()
-                },
-            })
-            pitchBtnRow.appendChild(btnEdit)
-        }
-    }
-
-    group.appendChild(pitchEditWrap)
-    group.appendChild(pitchBtnRow)
-
-    renderPitchBtns()
-
     return group
 }
