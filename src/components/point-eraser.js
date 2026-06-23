@@ -90,7 +90,7 @@ function makePointEraser(global) {
             selectedColorHex = hex
             selectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_selected_color', [r / 255, g / 255, b / 255, alpha / 255])
+            modelEntity.gsplat.material.setParameter('splat_selected_color', [r / 255, g / 255, b / 255, alpha])
             app.renderNextFrame = true
         },
     })
@@ -105,7 +105,7 @@ function makePointEraser(global) {
             unselectedColorHex = hex
             unselectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_unselected_color', [r / 255, g / 255, b / 255, alpha / 255])
+            modelEntity.gsplat.material.setParameter('splat_unselected_color', [r / 255, g / 255, b / 255, alpha])
             app.renderNextFrame = true
         },
     })

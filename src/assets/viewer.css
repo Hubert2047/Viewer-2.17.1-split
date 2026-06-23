@@ -974,6 +974,9 @@ button {
   display: flex;
   gap: 0.4375rem;
 }
+.message-font-size{
+  height: 32px;
+}
 /* Apply button */
 .message-apply-btn,
 .message-cancel-btn {

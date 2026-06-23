@@ -89,53 +89,46 @@ function makeDimensionSection(el, global) {
     const displayGroup = makeSectionGroup('display')
 
     // Color picker
-    const {
-        setDisabled: setBoxColorDisabled,
-        row: boxColorGroup,
-        input: boxColorInput,
-    } = makeColorPicker({
+    const { row: boxColorGroup, setDisabled: setBoxColorDisabled } = makeColorPickerDropdown({
         label: 'Box Color',
-        defaultValue: currentDimensions?.boxColor || '#ffffff',
-        onChange: (color) => {
-            currentDimensions = { ...currentDimensions, boxColor: color }
-            events.fire('dimensions:change', currentDimensions)
+        color: currentDimensions?.boxColor || '#ffffff',
+        debounceMs: 0,
+        onChange: ({ hex }) => {
+            currentDimensions = { ...currentDimensions, boxColor: hex }
+            events.fire('dimensions:color-change', currentDimensions)
             global.dataDirty = true
         },
     })
-    const {
-        setDisabled: setTextColorDisabled,
-        row: textColor,
-        input: textColorInput,
-    } = makeColorPicker({
+
+    const { row: textColor, setDisabled: setTextColorDisabled } = makeColorPickerDropdown({
         label: 'Text Color',
-        defaultValue: currentDimensions?.foregroundColor || '#ffffff',
-        onChange: (color) => {
-            currentDimensions = { ...currentDimensions, foregroundColor: color }
-            events.fire('dimensions:change', currentDimensions)
+        color: currentDimensions?.foregroundColor || '#ffffff',
+        debounceMs: 0,
+        onChange: ({ hex }) => {
+            currentDimensions = { ...currentDimensions, foregroundColor: hex }
+            events.fire('dimensions:color-change', currentDimensions)
             global.dataDirty = true
         },
     })
 
-    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
-    const backgroundColor = makeColorAlpha({
-        color: currentDimensions?.background.color || '#000000',
+    const { row: backgroundColor, setDisabled: setBackgroundDisabled } = makeColorPickerDropdown({
+        label: 'Text Background',
+        color: currentDimensions?.background.color || '#ffffff',
         alpha: currentDimensions?.background.alpha ?? 0.8,
-        onChangeColor: (color) => {
-            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, color } }
-            events.fire('dimensions:change', currentDimensions)
-            global.dataDirty = true
-        },
-        onChangeAlpha: (alpha) => {
-            currentDimensions = { ...currentDimensions, background: { ...currentDimensions.background, alpha } }
-            events.fire('dimensions:change', currentDimensions)
+        hasAlpha: true,
+        debounceMs: 0,
+        onChange: ({ hex, alpha }) => {
+            currentDimensions = {
+                ...currentDimensions,
+                background: { color: hex, alpha },
+            }
+            events.fire('dimensions:color-change', currentDimensions)
             global.dataDirty = true
         },
     })
-    backgroundRow.appendChild(backgroundColor)
-
     displayGroup.appendChild(boxColorGroup)
     displayGroup.appendChild(textColor)
-    displayGroup.appendChild(backgroundRow)
+    displayGroup.appendChild(backgroundColor)
 
     // ── Group 1: Box Transform ──
     // const boxGroup = makeSectionGroup('Box transform')
@@ -389,11 +382,7 @@ function makeDimensionSection(el, global) {
         // setRotValues(dim.rotation)
         // setSizeValues(dim.size)
         setRealValues(dim.realSize)
-        boxColorInput.value = dim.boxColor
-        textColorInput.value = dim.foregroundColor
         realUnitSelect.value = dim.unit
-        backgroundColor.setColor(dim.background.color)
-        backgroundColor.setAlpha(dim.background.alpha)
     }
 
     const setDisabled = (on) => {
@@ -405,7 +394,7 @@ function makeDimensionSection(el, global) {
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
         setUsMeasurementDisabled(!on)
-        backgroundColor.setDisabled(!on)
+        setBackgroundDisabled(!on)
         setAutoCalcDisabled(!on)
         // autoFitBtn.disabled = !on
     }

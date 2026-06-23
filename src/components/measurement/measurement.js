@@ -255,56 +255,42 @@ function makeMeasurementSection(el, global) {
     // ── Display group ──
     const displayGroup = makeSectionGroup('Display')
 
-    const {
-        row: lineColorRow,
-        input: lineColorInput,
-        setDisabled: setLineColorDisabled,
-    } = makeColorPicker({
+    const { row: lineColorRow, setDisabled: setLineColorDisabled } = makeColorPickerDropdown({
         label: 'Line Color',
-        defaultValue: currentMeasurement?.lineColor ?? '#f95f4d',
-        onChange: (color) => {
-            currentMeasurement = { ...currentMeasurement, lineColor: color }
+        color: currentMeasurement?.lineColor ?? '#f95f4d',
+        debounceMs: 0,
+        onChange: ({ hex }) => {
+            currentMeasurement = { ...currentMeasurement, lineColor: hex }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
             global.dataDirty = true
         },
     })
 
-    const {
-        row: textColorRow,
-        input: textColorInput,
-        setDisabled: setTextColorDisabled,
-    } = makeColorPicker({
+    const { row: textColorRow, setDisabled: setTextColorDisabled } = makeColorPickerDropdown({
         label: 'Text Color',
-        defaultValue: currentMeasurement?.textColor ?? '#ffffff',
-        onChange: (color) => {
-            currentMeasurement = { ...currentMeasurement, textColor: color }
+        color: currentMeasurement?.textColor ?? '#ffffff',
+        debounceMs: 0,
+        onChange: ({ hex }) => {
+            currentMeasurement = { ...currentMeasurement, textColor: hex }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
             global.dataDirty = true
         },
     })
-
-    const backgroundRow = makeRow({ title: 'Text Background', className: 'background-row' })
-    const backgroundColorEl = makeColorAlpha({
+    const { row: backgroundRow, setDisabled: setBackgroundDisabled } = makeColorPickerDropdown({
+        label: 'Text Background',
         color: currentMeasurement?.textBackground.color ?? '#000000',
         alpha: currentMeasurement?.textBackground.alpha ?? 0.8,
-        onChangeColor: (color) => {
+        hasAlpha: true,
+        debounceMs: 0,
+        onChange: ({ hex, alpha }) => {
             currentMeasurement = {
                 ...currentMeasurement,
-                textBackground: { ...currentMeasurement.textBackground, color },
-            }
-            if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
-            global.dataDirty = true
-        },
-        onChangeAlpha: (alpha) => {
-            currentMeasurement = {
-                ...currentMeasurement,
-                textBackground: { ...currentMeasurement.textBackground, alpha },
+                textBackground: { color: hex, alpha },
             }
             if (global.measureTool) global.measureTool.setConfig(currentMeasurement)
             global.dataDirty = true
         },
     })
-    backgroundRow.appendChild(backgroundColorEl)
 
     displayGroup.appendChild(lineColorRow)
     displayGroup.appendChild(textColorRow)
@@ -319,10 +305,6 @@ function makeMeasurementSection(el, global) {
 
     const setValues = (m) => {
         if (!m) return
-        lineColorInput.value = m.lineColor
-        textColorInput.value = m.textColor
-        backgroundColorEl.setColor(m.textBackground.color)
-        backgroundColorEl.setAlpha(m.textBackground.alpha)
         if (m.calibration) {
             calibDistanceInput.value = m.calibration.distance
             calibUnitSelect.value = m.calibration.unit
@@ -341,7 +323,7 @@ function makeMeasurementSection(el, global) {
     const setDisabled = (enabled) => {
         setLineColorDisabled(!enabled)
         setTextColorDisabled(!enabled)
-        backgroundColorEl.setDisabled(!enabled)
+        setBackgroundDisabled(!enabled)
         rePick.setDisplay(enabled)
         deleteCalibrationBtn.setDisplay(enabled)
         renderCalib()

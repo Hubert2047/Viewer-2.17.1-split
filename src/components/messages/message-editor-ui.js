@@ -312,34 +312,31 @@ class MessageEditorUI {
         labelField.appendChild(labelRow)
         textGroup.appendChild(labelField)
 
-        const colorGrid = this.makeGrid(2)
+        const colorGrid = this.makeGrid(3)
         const colorField = this.makeField('Text Color')
-        colorField.appendChild(
-            makeColorSwatch(this.activeMessageData.text.color, (v) => {
-                this.activeMessageData.text.color = v
+        const { row: textColor } = makeColorPickerDropdown({
+            color: this.activeMessageData.text.color,
+            debounceMs: 0,
+            onChange: ({ hex }) => {
+                this.activeMessageData.text.color = hex
                 this.applyDraft()
-            }),
-        )
+            },
+        })
+        colorField.appendChild(textColor)
+        const { row: backgroundColor } = makeColorPickerDropdown({
+            color: this.activeMessageData.text.background,
+            alpha: this.activeMessageData.text.backgroundAlpha,
+            hasAlpha: true,
+            debounceMs: 0,
+            onChange: ({ hex, alpha }) => {
+                this.activeMessageData.text.background = hex
+                this.activeMessageData.text.backgroundAlpha = alpha
+                this.applyDraft()
+            },
+        })
         const bgField = this.makeField('Background Color')
-        bgField.appendChild(
-            makeColorAlpha({
-                color: this.activeMessageData.text.background,
-                alpha: this.activeMessageData.text.backgroundAlpha,
-                onChangeColor: (v) => {
-                    this.activeMessageData.text.background = v
-                    this.applyDraft()
-                },
-                onChangeAlpha: (v) => {
-                    this.activeMessageData.text.backgroundAlpha = v
-                    this.applyDraft()
-                },
-            }),
-        )
-        colorGrid.appendChild(colorField)
-        colorGrid.appendChild(bgField)
-        textGroup.appendChild(colorGrid)
+        bgField.appendChild(backgroundColor)
 
-        const fontGrid = this.makeGrid(2)
         const fontSizeField = this.makeField('Font size')
         fontSizeField.appendChild(
             makeInput({
@@ -348,6 +345,7 @@ class MessageEditorUI {
                 min: 8,
                 max: 72,
                 name: 'font-size',
+                className: 'message-font-size',
                 onChange: (v) => {
                     this.activeMessageData.text.fontSize = parseInt(v)
                     this.applyDraft()
@@ -366,9 +364,12 @@ class MessageEditorUI {
         //         { name: 'font-family' },
         //     ),
         // )
-        fontGrid.appendChild(fontSizeField)
+        // fontGrid.appendChild(fontSizeField)
         // fontGrid.appendChild(fontFamilyField)
-        textGroup.appendChild(fontGrid)
+        colorGrid.appendChild(colorField)
+        colorGrid.appendChild(bgField)
+        colorGrid.appendChild(fontSizeField)
+        textGroup.appendChild(colorGrid)
         panel.appendChild(textGroup)
 
         const messageGroup = makeSectionGroup('Hotspot')
@@ -422,12 +423,15 @@ class MessageEditorUI {
             strokeField.style.display = 'none'
         }
         const strokeColorField = this.makeField('Stroke color')
-        strokeColorField.appendChild(
-            makeColorSwatch(this.activeMessageData.dot.strokeColor, (v) => {
-                this.activeMessageData.dot.strokeColor = v
+        const { row: strokeColor } = makeColorPickerDropdown({
+            color: this.activeMessageData.dot.strokeColor,
+            debounceMs: 0,
+            onChange: ({ hex }) => {
+                this.activeMessageData.dot.strokeColor = hex
                 this.applyDraft()
-            }),
-        )
+            },
+        })
+        strokeColorField.appendChild(strokeColor)
         dotGrid.appendChild(sizeField)
         dotGrid.appendChild(strokeField)
         dotGrid.appendChild(strokeColorField)
@@ -566,28 +570,29 @@ class MessageEditorUI {
 
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Icon Color')
-        iconColorField.appendChild(
-            makeColorSwatch(this.activeMessageData.audio?.iconColor || '#ffffff', (v) => {
-                this.activeMessageData.audio.iconColor = v
+        const { row: audioIconColor } = makeColorPickerDropdown({
+            color: this.activeMessageData.audio?.iconColor || '#ffffff',
+            debounceMs: 0,
+            onChange: ({ hex }) => {
+                this.activeMessageData.audio.iconColor = hex
                 this.applyDraft()
-            }),
-        )
+            },
+        })
+        iconColorField.appendChild(audioIconColor)
 
         const iconBgField = this.makeField('Icon Background Color', 'background-color')
-        iconBgField.appendChild(
-            makeColorAlpha({
-                color: this.activeMessageData.audio?.bgColor || '#000000',
-                alpha: this.activeMessageData.audio?.bgAlpha ?? 0.35,
-                onChangeColor: (v) => {
-                    this.activeMessageData.audio.bgColor = v
-                    this.applyDraft()
-                },
-                onChangeAlpha: (v) => {
-                    this.activeMessageData.audio.bgAlpha = v
-                    this.applyDraft()
-                },
-            }),
-        )
+        const { row: iconBg } = makeColorPickerDropdown({
+            color: this.activeMessageData.audio?.bgColor || '#000000',
+            alpha: this.activeMessageData.audio?.bgAlpha ?? 0.35,
+            hasAlpha: true,
+            debounceMs: 0,
+            onChange: ({ hex, alpha }) => {
+                this.activeMessageData.audio.bgColor = hex
+                this.activeMessageData.audio.bgAlpha = alpha
+                this.applyDraft()
+            },
+        })
+        iconBgField.appendChild(iconBg)
 
         const loopField = this.makeField('Loop')
         loopField.appendChild(

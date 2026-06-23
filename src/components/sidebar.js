@@ -346,21 +346,22 @@ function makeInitViewGroup(events, settings, global) {
     return wrap
 }
 function makeViewerSection(el, global) {
-    const { settings, events } = global
+    const { settings, events, app, camera } = global
     const container = makeSectionWrap()
     //general
     const generalGroup = makeSectionGroup('General')
 
-    const { row: backgroundColor } = makeColorPicker({
+    const { row: backgroundColor } = makeColorPickerDropdown({
         label: 'Background',
-        defaultValue: settings.background.color,
-        onChange: (color) => {
-            settings.background.color = color
-            events.fire('viewer:background-changed', color)
+        color: settings.background.color,
+        debounceMs: 0,
+        onChange: ({ hex }) => {
+            settings.background.color = hex
+            camera.camera.clearColor = new Color(normalizeColor(hex))
+            app.render()
             global.dataDirty = true
         },
     })
-
     const inertiaRow = makeRow({ title: 'Inertia' })
     const inertiaToggleEl = makeToggle({
         initialValue: settings.inertia,

@@ -77,31 +77,37 @@ function makeColorPickerDropdown({
             .padStart(2, '0')
             .toUpperCase()
     }
+
     function resolveColor(colorStr) {
-        if (/^#?[0-9a-fA-F]{6,8}$/.test(colorStr.trim())) {
-            return colorStr.startsWith('#') ? colorStr : '#' + colorStr
-        }
-        const tempCanvas = document.createElement('canvas')
-        tempCanvas.width = tempCanvas.height = 1
-        const tempCtx = tempCanvas.getContext('2d')
-        tempCtx.fillStyle = colorStr
-        tempCtx.fillRect(0, 0, 1, 1)
-        const [r, g, b] = tempCtx.getImageData(0, 0, 1, 1).data
+        if (/^#?[0-9a-fA-F]{6,8}$/.test(colorStr.trim())) return colorStr.startsWith('#') ? colorStr : '#' + colorStr
+        const c = document.createElement('canvas')
+        c.width = c.height = 1
+        const cx = c.getContext('2d')
+        cx.fillStyle = colorStr
+        cx.fillRect(0, 0, 1, 1)
+        const [r, g, b] = cx.getImageData(0, 0, 1, 1).data
         return '#' + [r, g, b].map(toHex2).join('')
     }
 
     function buildRgba(r, g, b, a) {
         return `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`
     }
+
     const resolvedColor = resolveColor(color)
     const [initR, initG, initB] = hexToRgb(resolvedColor)
     let [hue, sat, val] = rgbToHsv(initR, initG, initB)
-    let alphaVal = hasAlpha ? alpha : 255
+    let alphaVal = hasAlpha ? Math.round(Math.max(0, Math.min(1, alpha)) * 255) : 255
     let curX = (sat / 100) * 228
     let curY = (1 - val / 100) * 140
     let isDisabled = disabled
     let isOpen = false
     let debounceTimer = null
+    let rafId = null
+    let dirty = false
+    let canvasRect = null,
+        hueRect = null,
+        alphaRect = null
+    let lastDrawnHue = -1
 
     function el(tag, cls) {
         const e = document.createElement(tag)
@@ -110,9 +116,11 @@ function makeColorPickerDropdown({
     }
 
     const row = el('div', 'section-group-row cpd-row')
-    const labelEl = el('span', 'label')
-    labelEl.textContent = label
-    row.appendChild(labelEl)
+    if (label) {
+        const labelEl = el('span', 'label')
+        labelEl.textContent = label
+        row.appendChild(labelEl)
+    }
 
     const trigger = el('div', 'cpd-trigger')
     const swatchOuter = el('div', 'cpd-swatch-outer' + (hasAlpha ? ' cpd-checker' : ''))
@@ -196,7 +204,13 @@ function makeColorPickerDropdown({
     dropdown.appendChild(fields)
     document.body.appendChild(dropdown)
 
+    const CURSOR_SIZE = 14
+    const HALF_C = CURSOR_SIZE / 2
+    const HALF_T = 3
+
     function drawCanvas() {
+        if (lastDrawnHue === hue) return
+        lastDrawnHue = hue
         const [rh, gh, bh] = hsvToRgb(hue, 100, 100)
         const g1 = ctx.createLinearGradient(0, 0, 228, 0)
         g1.addColorStop(0, '#ffffff')
@@ -215,16 +229,14 @@ function makeColorPickerDropdown({
         const hex6 = toHex2(r) + toHex2(g) + toHex2(b)
         const colorStr = buildRgba(r, g, b, alphaVal)
 
-        cursor.style.left = Math.max(HALF_C, Math.min(228 - HALF_C, curX)) + 'px'
-        cursor.style.top = Math.max(HALF_C, Math.min(140 - HALF_C, curY)) + 'px'
-        const HALF_T = 3
+        cursor.style.transform = `translate(${Math.max(HALF_C, Math.min(228 - HALF_C, curX)) - HALF_C}px,${Math.max(HALF_C, Math.min(140 - HALF_C, curY)) - HALF_C}px)`
         const huePercent = (hue / 360) * 100
-        hueThumb.style.left = `clamp(${HALF_T}px, ${huePercent}%, calc(100% - ${HALF_T}px))`
+        hueThumb.style.left = `clamp(${HALF_T}px,${huePercent}%,calc(100% - ${HALF_T}px))`
 
         if (hasAlpha && alphaBar) {
             alphaTrack.style.background = `linear-gradient(to right,rgba(${r},${g},${b},0),rgb(${r},${g},${b}))`
             const alphaPercent = (alphaVal / 255) * 100
-            alphaThumb.style.left = `clamp(${HALF_T}px, ${alphaPercent}%, calc(100% - ${HALF_T}px))`
+            alphaThumb.style.left = `clamp(${HALF_T}px,${alphaPercent}%,calc(100% - ${HALF_T}px))`
         }
 
         swatchFill.style.background = colorStr
@@ -239,52 +251,75 @@ function makeColorPickerDropdown({
         drawCanvas()
     }
 
+    function scheduleSync() {
+        if (rafId) return
+        rafId = requestAnimationFrame(() => {
+            rafId = null
+            syncUI()
+            if (dirty) {
+                fireChange()
+                dirty = false
+            }
+        })
+    }
+
     function fireChange() {
         if (!onChange) return
         clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => {
             const [r, g, b] = hsvToRgb(hue, sat, val)
             const hex6 = toHex2(r) + toHex2(g) + toHex2(b)
-            onChange({ hex: '#' + hex6, r, g, b, alpha: alphaVal, rgba: buildRgba(r, g, b, alphaVal) })
+            onChange({ hex: '#' + hex6, r, g, b, alpha: alphaVal / 255, rgba: buildRgba(r, g, b, alphaVal) })
         }, debounceMs)
     }
 
-    const CURSOR_SIZE = 14
-    const HALF_C = CURSOR_SIZE / 2
+    function invalidateRects() {
+        canvasRect = null
+        hueRect = null
+        alphaRect = null
+    }
+
+    function getCanvasRect() {
+        return canvasRect || (canvasRect = canvas.getBoundingClientRect())
+    }
+    function getHueRect() {
+        return hueRect || (hueRect = hueBar.getBoundingClientRect())
+    }
+    function getAlphaRect() {
+        return alphaRect || (alphaRect = alphaBar ? alphaBar.getBoundingClientRect() : null)
+    }
 
     function pickSatVal(e) {
         if (isDisabled) return
-        const rect = canvas.getBoundingClientRect()
+        const rect = getCanvasRect()
         const rawX = e.clientX - rect.left
         const rawY = e.clientY - rect.top
-
         sat = Math.round(Math.max(0, Math.min(1, rawX / 228)) * 100)
         val = Math.round(Math.max(0, Math.min(1, 1 - rawY / 140)) * 100)
-
         curX = Math.max(0, Math.min(228, rawX))
         curY = Math.max(0, Math.min(140, rawY))
-
-        syncUI()
-        fireChange()
+        dirty = true
+        scheduleSync()
     }
 
     function pickHue(e) {
         if (isDisabled) return
-        const rect = hueBar.getBoundingClientRect()
+        const rect = getHueRect()
         hue = Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 360)
-        syncUI()
-        fireChange()
+        dirty = true
+        scheduleSync()
     }
 
     function pickAlpha(e) {
         if (!hasAlpha || isDisabled) return
-        const rect = alphaBar.getBoundingClientRect()
+        const rect = getAlphaRect()
         alphaVal = Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 255)
-        syncUI()
-        fireChange()
+        dirty = true
+        scheduleSync()
     }
 
     canvasWrap.addEventListener('pointerdown', (e) => {
+        canvasRect = null
         canvasWrap.setPointerCapture(e.pointerId)
         canvasWrap.style.cursor = 'crosshair'
         pickSatVal(e)
@@ -298,6 +333,7 @@ function makeColorPickerDropdown({
     })
 
     hueBar.addEventListener('pointerdown', (e) => {
+        hueRect = null
         hueBar.setPointerCapture(e.pointerId)
         hueBar.style.cursor = 'grabbing'
         pickHue(e)
@@ -312,6 +348,7 @@ function makeColorPickerDropdown({
 
     if (hasAlpha && alphaBar) {
         alphaBar.addEventListener('pointerdown', (e) => {
+            alphaRect = null
             alphaBar.setPointerCapture(e.pointerId)
             alphaBar.style.cursor = 'grabbing'
             pickAlpha(e)
@@ -337,8 +374,8 @@ function makeColorPickerDropdown({
         val = v2
         curX = (sat / 100) * 228
         curY = (1 - val / 100) * 140
-        syncUI()
-        fireChange()
+        dirty = true
+        scheduleSync()
     }
     rInp.addEventListener('input', rgbFieldChanged)
     gInp.addEventListener('input', rgbFieldChanged)
@@ -348,8 +385,8 @@ function makeColorPickerDropdown({
         aInp.addEventListener('input', () => {
             if (isDisabled) return
             alphaVal = Math.max(0, Math.min(255, +aInp.value || 0))
-            syncUI()
-            fireChange()
+            dirty = true
+            scheduleSync()
         })
     }
 
@@ -365,8 +402,8 @@ function makeColorPickerDropdown({
         val = v2
         curX = (sat / 100) * 228
         curY = (1 - val / 100) * 140
-        syncUI()
-        fireChange()
+        dirty = true
+        scheduleSync()
     })
 
     function positionDropdown() {
@@ -377,15 +414,11 @@ function makeColorPickerDropdown({
         }
         const dropW = 252
         const dropH = hasAlpha ? 290 : 255
-        dropdown.style.position = 'fixed'
-        dropdown.style.width = dropW + 'px'
-        dropdown.style.margin = '0'
-
+        dropdown.style.cssText += `;position:fixed;width:${dropW}px;margin:0`
         let left = rect.left
         if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8
         if (left < 8) left = 8
         dropdown.style.left = left + 'px'
-
         if (window.innerHeight - rect.bottom < dropH && rect.top > dropH) {
             dropdown.style.top = 'auto'
             dropdown.style.bottom = window.innerHeight - rect.top + 4 + 'px'
@@ -396,20 +429,13 @@ function makeColorPickerDropdown({
     }
 
     function openDropdown() {
-        document.querySelectorAll('.cpd-dropdown').forEach((d) => {
-            if (d !== dropdown) d.style.display = 'none'
-        })
-        document.querySelectorAll('.cpd-trigger').forEach((t) => {
-            if (t !== trigger) {
-                t.classList.remove('cpd-open')
-                t.querySelector('.cpd-arrow').style.transform = ''
-            }
-        })
         dropdown.style.display = 'block'
+        invalidateRects()
         positionDropdown()
         arrow.style.transform = 'rotate(180deg)'
         trigger.classList.add('cpd-open')
         isOpen = true
+        lastDrawnHue = -1
         drawCanvas()
     }
 
@@ -419,23 +445,34 @@ function makeColorPickerDropdown({
         trigger.classList.remove('cpd-open')
         isOpen = false
     }
-
+    document.addEventListener('cpd:close-all', closeDropdown)
     trigger.addEventListener('click', (e) => {
         if (isDisabled) return
         e.stopPropagation()
-        isOpen ? closeDropdown() : openDropdown()
+        if (isOpen) {
+            closeDropdown()
+        } else {
+            document.dispatchEvent(new CustomEvent('cpd:close-all'))
+            openDropdown()
+        }
     })
     dropdown.addEventListener('click', (e) => e.stopPropagation())
     document.addEventListener('click', closeDropdown)
     window.addEventListener(
         'scroll',
         () => {
-            if (isOpen) positionDropdown()
+            if (isOpen) {
+                invalidateRects()
+                positionDropdown()
+            }
         },
         true,
     )
     window.addEventListener('resize', () => {
-        if (isOpen) positionDropdown()
+        if (isOpen) {
+            invalidateRects()
+            positionDropdown()
+        }
     })
 
     function setColor(hex) {
@@ -446,13 +483,13 @@ function makeColorPickerDropdown({
         val = v2
         curX = (sat / 100) * 228
         curY = (1 - val / 100) * 140
-        syncUI()
+        scheduleSync()
     }
 
     function setAlpha(a) {
         if (!hasAlpha) return
         alphaVal = Math.max(0, Math.min(255, a))
-        syncUI()
+        scheduleSync()
     }
 
     function setDisabled(on) {
@@ -469,12 +506,17 @@ function makeColorPickerDropdown({
             r,
             g,
             b,
-            alpha: alphaVal,
+            alpha: alphaVal / 255,
             rgba: buildRgba(r, g, b, alphaVal),
         }
     }
 
     if (disabled) setDisabled(true)
+
+    cursor.style.position = 'absolute'
+    cursor.style.left = '0'
+    cursor.style.top = '0'
+    cursor.style.willChange = 'transform'
     syncUI()
 
     return { row, setColor, setAlpha, setDisabled, getValue }
@@ -576,116 +618,7 @@ function makeCheckbox({ label, checked = false, disabled = false, onChange } = {
 
     return { row, setDisabled, setChecked, getValue: () => checked }
 }
-function makeColorAlpha({ color, alpha, onChangeColor, onChangeAlpha, disabled = false, debounceMs = 150 }) {
-    const block = document.createElement('div')
-    block.classList.add('color-alpha-block')
 
-    const swatch = makeColorSwatch(color, (v) => {
-        if (disabled) return
-        swatch.style.background = v
-        checkerColor.style.background = v
-        onChangeColor(v)
-    })
-
-    const bgRow = document.createElement('div')
-    bgRow.classList.add('color-alpha-bg-row')
-
-    const checkerWrap = document.createElement('div')
-    checkerWrap.classList.add('color-alpha-checker')
-
-    const checkerColor = document.createElement('div')
-    checkerColor.classList.add('color-alpha-checker-fill')
-    checkerColor.style.background = color
-    checkerColor.style.opacity = alpha
-
-    let colorDebounce = null
-    let alphaDebounce = null
-    const colorInput = document.createElement('input')
-    colorInput.type = 'color'
-    colorInput.value = color
-    colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;'
-    colorInput.addEventListener('input', () => {
-        if (disabled) return
-        const v = colorInput.value
-        checkerColor.style.background = v
-        swatch.style.background = v
-
-        clearTimeout(colorDebounce)
-        colorDebounce = setTimeout(() => onChangeColor(v), debounceMs)
-    })
-
-    checkerWrap.appendChild(checkerColor)
-    checkerWrap.appendChild(colorInput)
-
-    const sliderWrap = document.createElement('div')
-    sliderWrap.classList.add('color-alpha-slider-wrap')
-
-    const slider = document.createElement('input')
-    const alphaVal = document.createElement('span')
-    alphaVal.classList.add('alpha-value')
-
-    const updateTrack = (v) => {
-        slider.style.background = `linear-gradient(
-            to right,
-            rgba(0,0,0,0.6) 0%,
-            rgba(0,0,0,0.6) ${v * 100}%,
-            rgba(0,0,0,0.08) ${v * 100}%,
-            rgba(0,0,0,0.08) 100%
-        )`
-        alphaVal.textContent = Math.round(v * 100) + '%'
-        checkerColor.style.opacity = v
-    }
-
-    slider.type = 'range'
-    slider.classList.add('alpha-slider')
-    slider.min = 0
-    slider.max = 1
-    slider.step = 0.05
-    slider.value = alpha
-    updateTrack(alpha)
-
-    slider.addEventListener('input', () => {
-        if (disabled) return
-        const v = parseFloat(slider.value)
-        updateTrack(v)
-
-        clearTimeout(alphaDebounce)
-        alphaDebounce = setTimeout(() => onChangeAlpha(v), debounceMs)
-    })
-
-    sliderWrap.appendChild(slider)
-    sliderWrap.appendChild(alphaVal)
-    bgRow.appendChild(checkerWrap)
-    bgRow.appendChild(sliderWrap)
-    block.appendChild(bgRow)
-
-    const applyDisabled = (val) => {
-        disabled = val
-        colorInput.disabled = val
-        slider.disabled = val
-        block.classList.toggle('color-alpha-disabled', val)
-        colorInput.style.cursor = val ? 'not-allowed' : 'pointer'
-    }
-
-    const setColor = (val) => {
-        colorInput.value = val
-        checkerColor.style.background = val
-        swatch.style.background = val
-    }
-
-    const setAlpha = (val) => {
-        slider.value = val
-        updateTrack(val)
-    }
-
-    applyDisabled(disabled)
-
-    block.setDisabled = (val) => applyDisabled(val)
-    block.setColor = (val) => setColor(val)
-    block.setAlpha = (val) => setAlpha(val)
-
-    return block
-}
 function makeLink({
     label,
     href = '#',
@@ -878,22 +811,7 @@ function makeSlider({ min, max, step = 0.1, value, className, variant = 'default
 
     return slider
 }
-function makeColorSwatch(value, onChange) {
-    const label = document.createElement('label')
-    label.classList.add('color-swatch')
-    label.style.background = value
-    const input = document.createElement('input')
-    input.type = 'color'
-    input.value = value
-    input.style.cssText =
-        'position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);opacity:0;cursor:pointer;'
-    input.addEventListener('input', () => {
-        label.style.background = input.value
-        onChange(input.value)
-    })
-    label.appendChild(input)
-    return label
-}
+
 function makeTextarea(value, opts = {}) {
     const textarea = document.createElement('textarea')
     textarea.value = value

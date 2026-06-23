@@ -138,6 +138,9 @@ const initUI = async (global) => {
     events.on('inputEvent:hide-dimensions', () => {
         global.dimensionsBox.hide()
     })
+    events.on('dimensions:color-change', (dim) => {
+        global.dimensionsBox.updateColorOnly(dim)
+    })
     dom.infoPanel.addEventListener('pointerdown', () => {
         dom.infoPanel.classList.add('hidden')
     })
@@ -3239,10 +3242,6 @@ class Viewer {
         const highPrecisionRendering = config.hpr ?? settings.highPrecisionRendering
         const enableCameraFrame =
             !app.xr.active && !config.nofx && (anyPostEffectEnabled(postEffectSettings) || highPrecisionRendering)
-        global.events.on('viewer:background-changed', (color) => {
-            camera.camera.clearColor = new Color(normalizeColor(color))
-            global.app.render()
-        })
         if (enableCameraFrame) {
             // create instance
             if (!this.cameraFrame) {

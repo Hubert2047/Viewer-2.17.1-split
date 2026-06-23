@@ -149,7 +149,7 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
     const deletedSet = new Set(removedSplats || [])
 
     const vertexEl = gsplatData.getElement('vertex')
-    const props = vertexEl.properties.filter(p => p.storage)
+    const props = vertexEl.properties.filter((p) => p.storage)
 
     const keepIndices = []
     for (let i = 0; i < numSplats; i++) {
@@ -157,25 +157,32 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
     }
     const numKeep = keepIndices.length
 
-    const propLines = props.map(p => {
-        const typeName = p.storage instanceof Float32Array ? 'float' :
-                         p.storage instanceof Int32Array   ? 'int'   :
-                         p.storage instanceof Uint8Array   ? 'uchar' : 'float'
-        return `property ${typeName} ${p.name}`
-    }).join('\n')
+    const propLines = props
+        .map((p) => {
+            const typeName =
+                p.storage instanceof Float32Array
+                    ? 'float'
+                    : p.storage instanceof Int32Array
+                      ? 'int'
+                      : p.storage instanceof Uint8Array
+                        ? 'uchar'
+                        : 'float'
+            return `property ${typeName} ${p.name}`
+        })
+        .join('\n')
 
-    const header = [
-        'ply',
-        'format binary_little_endian 1.0',
-        `element vertex ${numKeep}`,
-        propLines,
-        'end_header',
-    ].join('\n') + '\n'
+    const header =
+        ['ply', 'format binary_little_endian 1.0', `element vertex ${numKeep}`, propLines, 'end_header'].join('\n') +
+        '\n'
 
-    const bytesPerProp = props.map(p =>
-        p.storage instanceof Float32Array ? 4 :
-        p.storage instanceof Int32Array   ? 4 :
-        p.storage instanceof Uint8Array   ? 1 : 4
+    const bytesPerProp = props.map((p) =>
+        p.storage instanceof Float32Array
+            ? 4
+            : p.storage instanceof Int32Array
+              ? 4
+              : p.storage instanceof Uint8Array
+                ? 1
+                : 4,
     )
     const bytesPerSplat = bytesPerProp.reduce((a, b) => a + b, 0)
 
@@ -810,29 +817,24 @@ function dimensionsSetup(app, camera, config) {
 
     const canvas = app.graphicsDevice.canvas
 
-    // Create SVG overlay for lines
     const svgOverlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svgOverlay.style.cssText =
         'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;overflow:visible;'
     document.body.appendChild(svgOverlay)
 
-    // Create lines and labels
     const elements = {}
     for (const axis of ['x', 'y', 'z']) {
-        // Line from edge to label (will be updated to point to center of label)
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
         line.setAttribute('stroke-width', '1.5')
         line.setAttribute('stroke-dasharray', '4,3')
         line.style.display = 'none'
         svgOverlay.appendChild(line)
 
-        // Small dot at edge position
         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         dot.setAttribute('r', '3')
         dot.style.display = 'none'
         svgOverlay.appendChild(dot)
 
-        // Label
         const label = document.createElement('div')
         label.classList.add('dimension-label')
         document.body.appendChild(label)
@@ -849,7 +851,6 @@ function dimensionsSetup(app, camera, config) {
         }
     }
 
-    // Get the 8 corners of the box in world space
     const getWorldCorners = (dim) => {
         const { position, rotation, size } = dim
         const center = new Vec3(position.x, position.y, position.z)
@@ -877,8 +878,6 @@ function dimensionsSetup(app, camera, config) {
             return final
         })
     }
-
-    // Get the midpoint of the edge that is most aligned with the camera view direction
     const getBestEdgeMidpoint = (corners, axis, cameraDir) => {
         const axisEdges = {
             x: [
@@ -1087,12 +1086,13 @@ function dimensionsSetup(app, camera, config) {
         lineMat.emissive = new Color(normalizeColor(dim.boxColor))
         lineMat.update()
         app.renderNextFrame = true
+        const backgroundColor = transparentColor(dim.background.color, dim.background.alpha)
         for (const axis of ['x', 'y', 'z']) {
             elements[axis].line.setAttribute('stroke', dim.foregroundColor)
             elements[axis].dot.setAttribute('stroke', dim.foregroundColor)
             elements[axis].dot.setAttribute('fill', dim.foregroundColor)
             elements[axis].label.style.color = dim.foregroundColor
-            elements[axis].label.style.backgroundColor = transparentColor(dim.background.color, dim.background.alpha)
+            elements[axis].label.style.backgroundColor = backgroundColor
         }
     }
 
@@ -1128,7 +1128,15 @@ function dimensionsSetup(app, camera, config) {
         drawCorners(corners)
         updateLabels(corners, dim)
     }
-
+    let colorRafId = null
+    const updateColorOnly = (dim) => {
+        currentDim = dim
+        if (colorRafId) return
+        colorRafId = requestAnimationFrame(() => {
+            colorRafId = null
+            updateColor(currentDim)
+        })
+    }
     const hideDimensionBox = () => {
         if (!visible) return
         visible = false
@@ -1166,6 +1174,7 @@ function dimensionsSetup(app, camera, config) {
             return modelEntity?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
         },
         draw: drawDimensionBox,
+        updateColorOnly,
         hide: hideDimensionBox,
     }
 }
