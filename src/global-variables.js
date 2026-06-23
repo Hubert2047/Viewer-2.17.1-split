@@ -1,4 +1,4 @@
-const version$1 = '2.17.1'
+const version = '2.17.1'
 const TRACEID_GPU_TIMINGS = 'GpuTimings'
 const AUTO_PLAY_LERP_TIME = 1.5
 const NORMAL_FADE_TIME = 0.5

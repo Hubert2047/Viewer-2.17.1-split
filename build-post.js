@@ -15,6 +15,7 @@ function minifyCss(css) {
         .replace(/\s*,\s*/g, ',')
         .trim()
 }
+
 function copyDir(src, dest) {
     fs.mkdirSync(dest, { recursive: true })
     for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -28,47 +29,90 @@ function copyDir(src, dest) {
     }
 }
 
+function collectGlobalNames(files) {
+    const names = new Set()
+    for (const { file } of files) {
+        const src = fs.readFileSync(file, 'utf8')
+        for (const line of src.split('\n')) {
+            const f = line.match(/^function\s+(\w+)/)
+            if (f) names.add(f[1])
+            const v = line.match(/^(?:const|let|var)\s+(\w+)/)
+            if (v) names.add(v[1])
+            const c = line.match(/^class\s+(\w+)/)
+            if (c) names.add(c[1])
+        }
+    }
+    return [...names].filter((n) => n.length > 1 && /^[a-zA-Z_$]/.test(n)).map((n) => `^${n}$`)
+}
+
+const OBFUSCATE_PRESETS = {
+    engine: {
+        compact: true,
+        controlFlowFlattening: false,
+        deadCodeInjection: false,
+        stringArray: false,
+        numbersToExpressions: false,
+        simplify: false,
+        renameGlobals: false,
+        selfDefending: false,
+        transformObjectKeys: false,
+    },
+    default: {
+        compact: true,
+        controlFlowFlattening: true,
+        deadCodeInjection: true,
+        stringArray: true,
+        numbersToExpressions: true,
+        simplify: true,
+        renameGlobals: true,
+        selfDefending: true,
+        transformObjectKeys: true,
+    },
+}
+
 const files = [
-    'src/libs/custome-engine.js',
-    'src/libs/engine-1.js',
-    'src/libs/engine-2.js',
-    'src/libs/engine-3.js',
-    'src/global-variables.js',
-    'src/default-settings.js',
-    'src/utils/math.js',
-    'src/libs/engine-4.js',
-    'src/components/rotation-gizmo.js',
-    'src/components/entity-rotatable.js',
-    'src/components/dimensions/dimension-rotatable.js',
-    'src/components/position-gizmo.js',
-    'src/utils/index.js',
-    'src/components/loading.js',
-    'src/components/ground-plane-picker.js',
-    'src/components/ui.js',
-    'src/components/selections.js',
-    'src/camera/ortery-controller.js',
-    'src/components/dimensions/dimensions.js',
-    'src/components/point-eraser.js',
-    'src/components/measurement/measure-tool.js',
-    'src/components/measurement/measurement.js',
-    'src/components/pivot-dot.js',
-    'src/components/messages/message-button.js',
-    'src/components/messages/message.js',
-    'src/components/messages/message-manager.js',
-    'src/components/messages/message-editor-ui.js',
-    'src/components/orientation/manual.js',
-    'src/components/orientation/ground.js',
-    'src/components/orientation/orientation.js',
-    'src/components/sidebar.js',
-    'src/main.js',
+    { file: 'src/libs/custome-engine.js', preset: 'engine' },
+    { file: 'src/libs/engine-1.js', preset: 'engine' },
+    { file: 'src/libs/engine-2.js', preset: 'engine' },
+    { file: 'src/libs/engine-3.js', preset: 'engine' },
+    { file: 'src/libs/engine-4.js', preset: 'engine' },
+    { file: 'src/global-variables.js', preset: 'default' },
+    { file: 'src/default-settings.js', preset: 'default' },
+    { file: 'src/utils/math.js', preset: 'default' },
+    { file: 'src/utils/index.js', preset: 'default' },
+    { file: 'src/components/rotation-gizmo.js', preset: 'default' },
+    { file: 'src/components/entity-rotatable.js', preset: 'default' },
+    { file: 'src/components/dimensions/dimension-rotatable.js', preset: 'default' },
+    { file: 'src/components/position-gizmo.js', preset: 'default' },
+    { file: 'src/components/loading.js', preset: 'default' },
+    { file: 'src/components/ground-plane-picker.js', preset: 'default' },
+    { file: 'src/components/ui.js', preset: 'default' },
+    { file: 'src/components/selections.js', preset: 'default' },
+    { file: 'src/camera/ortery-controller.js', preset: 'default' },
+    { file: 'src/components/dimensions/dimensions.js', preset: 'default' },
+    { file: 'src/components/point-eraser.js', preset: 'default' },
+    { file: 'src/components/measurement/measure-tool.js', preset: 'default' },
+    { file: 'src/components/measurement/measurement.js', preset: 'default' },
+    { file: 'src/components/pivot-dot.js', preset: 'default' },
+    { file: 'src/components/messages/message-button.js', preset: 'default' },
+    { file: 'src/components/messages/message.js', preset: 'default' },
+    { file: 'src/components/messages/message-manager.js', preset: 'default' },
+    { file: 'src/components/messages/message-editor-ui.js', preset: 'default' },
+    { file: 'src/components/orientation/manual.js', preset: 'default' },
+    { file: 'src/components/orientation/ground.js', preset: 'default' },
+    { file: 'src/components/orientation/orientation.js', preset: 'default' },
+    { file: 'src/components/sidebar.js', preset: 'default' },
+    { file: 'src/main.js', preset: 'default' },
 ]
 
 function build() {
     try {
-        const js = files.map((f) => fs.readFileSync(f, 'utf8')).join('\n')
         fs.mkdirSync('dist', { recursive: true })
 
         if (isProduction) {
+            const reservedNames = [...collectGlobalNames(files.filter((f) => f.preset === 'default')), 'ecb']
+            console.log(`✓ Reserved ${reservedNames.length} global names`)
+
             const playcanvasLicense = `/**\n * ${[
                 'Copyright (c) 2011-2026 PlayCanvas Ltd.',
                 '',
@@ -91,34 +135,26 @@ function build() {
                 'SOFTWARE.',
             ].join('\n * ')}\n */\n`
 
-            // obfuscate JS
-            const obfuscated = JavaScriptObfuscator.obfuscate(js, {
-                compact: true,
-                controlFlowFlattening: true,
-                deadCodeInjection: false,
-                stringArray: false,
-                stringArrayEncoding: ['rc4'],
-                stringArrayRotate: true,
-                stringArrayShuffle: true,
-                stringArrayThreshold: 0.75,
-                numbersToExpressions: true,
-                simplify: false,
-                renameGlobals: true,
-                selfDefending: true,
-                transformObjectKeys: true,
+            const obfuscatedParts = files.map(({ file, preset }) => {
+                const src = fs.readFileSync(file, 'utf8')
+                const presetOptions =
+                    preset === 'default' ? { ...OBFUSCATE_PRESETS.default, reservedNames } : OBFUSCATE_PRESETS.engine
+                return JavaScriptObfuscator.obfuscate(src, presetOptions).getObfuscatedCode()
             })
+            const obfuscatedCode = obfuscatedParts.join('\n')
+
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
             const now = new Date()
             const built = now.toDateString() + ' ' + now.toTimeString().split(' ')[0]
             const header = `/**\n * @Software: 3D Model Viewer\n * @PackageVersion: ${pkg.version}\n * @Built: ${built}\n * @Copyright (c) 2025-${new Date().getFullYear()} Ortery Technologies Inc.\n * @All rights reserved.\n */\n`
-            fs.writeFileSync('dist/viewer.js', header + obfuscated.getObfuscatedCode() + '\n\n' + playcanvasLicense)
+            fs.writeFileSync('dist/viewer.js', header + obfuscatedCode + '\n\n' + playcanvasLicense)
 
-            // minify CSS
             const css = fs.readFileSync('src/assets/viewer.css', 'utf8')
             fs.writeFileSync('dist/viewer.css', minifyCss(css))
 
             console.log('✓ Production build: obfuscated + minified CSS')
         } else {
+            const js = files.map(({ file }) => fs.readFileSync(file, 'utf8')).join('\n')
             fs.writeFileSync('dist/viewer.js', js)
             fs.copyFileSync('src/assets/viewer.css', 'dist/viewer.css')
             console.log('✓ Dev build')

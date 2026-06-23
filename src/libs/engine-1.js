@@ -6636,7 +6636,7 @@ class GraphicsDevice extends EventHandler {
             (this.mapsToClear = new Set()))
         this.canvas = canvas
         if ('setAttribute' in canvas) {
-            canvas.setAttribute('data-engine', `PlayCanvas ${version$1}`)
+            canvas.setAttribute('data-engine', `PlayCanvas ${version}`)
         }
         this.initOptions = {
             ...options,

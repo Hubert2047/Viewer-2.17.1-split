@@ -8944,7 +8944,7 @@ class ProgramLibrary {
         }
         text += '\n];\n'
         text += 'pc.getProgramLibrary(device).precompile(shaders);\n'
-        text += `if (pc.version != \"${version$1}\" || pc.revision != \"${revision}\")\n`
+        text += `if (pc.version != \"${version}\" || pc.revision != \"${revision}\")\n`
         text +=
             '\tconsole.warn(\"precompile-shaders.js: engine version mismatch, rebuild shaders lib with current engine\");'
         const element = document.createElement('a')
