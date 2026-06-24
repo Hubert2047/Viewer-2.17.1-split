@@ -422,16 +422,16 @@ class MessageEditorUI {
         autoplayGrid.classList.add('message-autoplay')
 
         const autoPlayGroup = makeSectionGroup('Auto Play')
-        const timeField = this.makeField('Elapsed Time (ms)')
+        const timeField = this.makeField('Elapsed Time (s)')
         timeField.appendChild(
             makeInput({
                 type: 'number',
                 value: this.activeMessageData.autoPlay.time,
                 min: 0,
-                step: 500,
+                step: 0.5,
                 name: 'play-time',
                 onChange: (v) => {
-                    this.activeMessageData.autoPlay.time = parseInt(v)
+                    this.activeMessageData.autoPlay.time = parseFloat(v)
                     this.applyDraft()
                 },
             }),

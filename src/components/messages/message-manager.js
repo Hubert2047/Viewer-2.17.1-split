@@ -266,7 +266,7 @@ class MessagesManager {
         const defaultName = `message${this.settings.messages.length + 1}`
         return {
             id: guid.create(),
-            autoPlay: { time: 3000 },
+            autoPlay: { time: 3 },
             button: { title: defaultName },
             text: {
                 color: 'black',
@@ -383,7 +383,7 @@ class MessagesManager {
         const isSamePose = this.setActive(next, AUTO_PLAY_LERP_TIME)
         this.intervalID = setTimeout(
             () => this.autoPlay(),
-            next.data.autoPlay.time + (isSamePose ? 0 : AUTO_PLAY_LERP_TIME * 1000),
+            next.data.autoPlay.time * 1000 + (isSamePose ? 0 : AUTO_PLAY_LERP_TIME * 1000),
         )
     }
     startAutoPlay() {
