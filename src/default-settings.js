@@ -11,6 +11,8 @@ const defaultSettings = Object.freeze({
         enabled: false,
         continuous: true,
         autoStart: true,
+        direction: 'cw',
+        axis: 'y',
         speed: 5,
     },
     lockZoomIn: Object.freeze({ value: 11, locked: false }),

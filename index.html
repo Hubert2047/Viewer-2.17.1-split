@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=147" />
+        <link rel="stylesheet" href="viewer.css?v=152" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -52,12 +52,16 @@
         window.sse = {
             settings: {
                 ref: '',
-                model: 'hemispherical',
-                contentUrl: 'models/tai.ply',
-                v: 147,
-                setupStep: 4,
+                model: 'spherical',
+                // contentUrl: 'motobike.ply',
+                contentUrl: 'canon.ply',
+                v: 152,
+                background: { color: '#FFFFFF' },
+                spin: { enabled: true, continuous: true, autoStart: true, direction: 'cw', axis: 'y', speed: 5 },
+                setupStep: 3,
+                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
             },
         }
     </script>
-    <script src="./viewer.js?v=147"></script>
+    <script src="./viewer.js?v=152"></script>
 </html>

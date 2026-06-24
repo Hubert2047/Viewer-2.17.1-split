@@ -521,18 +521,28 @@ function makeColorPickerDropdown({
 
     return { row, setColor, setAlpha, setDisabled, getValue }
 }
-function makeRow({ title, className, show = true }) {
+function makeRow({ title, className, show = true } = {}) {
     const row = document.createElement('div')
     row.classList.add('section-group-row')
     if (!show) row.classList.add('hidden')
-    if (className) {
-        row.classList.add(className)
-    }
+    if (className) row.classList.add(className)
+
     const label = document.createElement('span')
     label.classList.add('label')
     label.textContent = title
     row.appendChild(label)
-    return row
+
+    const setShow = (visible) => {
+        if (visible) row.classList.remove('hidden')
+        else row.classList.add('hidden')
+    }
+
+    const setDisabled = (on) => {
+        row.style.opacity = on ? '0.4' : ''
+        row.style.pointerEvents = on ? 'none' : ''
+    }
+
+    return { el: row, setShow, setDisabled }
 }
 function makeSectionWrap(otps = {}) {
     const container = document.createElement('div')
@@ -700,38 +710,6 @@ function makeToggle({ initialValue, onChange }) {
         toggle.classList.toggle('disabled', disabled)
     }
     return wrap
-}
-function makeColorPicker({ label, defaultValue, onChange, disabled = false, debounceMs = 300 }) {
-    const row = makeRow({ title: label })
-    const input = document.createElement('input')
-    input.type = 'color'
-    input.classList.add('color-input', 'background-input')
-    input.value = defaultValue
-
-    let debounceTimer = null
-
-    input.addEventListener('input', (e) => {
-        if (disabled) return
-        const newColor = e.target.value
-        input.value = newColor
-
-        if (onChange) {
-            clearTimeout(debounceTimer)
-            debounceTimer = setTimeout(() => {
-                onChange(newColor)
-            }, debounceMs)
-        }
-    })
-
-    const applyDisabled = (val) => {
-        disabled = val
-        input.disabled = val
-        input.classList.toggle('color-picker-disabled', val)
-    }
-    applyDisabled(disabled)
-    row.appendChild(input)
-    row.setDisabled = (val) => applyDisabled(val)
-    return { row, input, setDisabled: (val) => applyDisabled(val) }
 }
 function makeSegmentRow({ options, className, defaultValue, onChange }) {
     const row = document.createElement('div')
@@ -912,19 +890,108 @@ function makeInput({ type, value, min, max, step, placeholder, onChange, disable
         })
     return input
 }
-function makeSelect(options, value, onChange, opts = {}) {
-    const select = document.createElement('select')
-    select.classList.add('input-field', 'select-field')
-    if (opts.name) select.name = opts.name
-    if (opts.className) select.classList.add(opts.className)
-    options.forEach((opt) => {
-        const el = document.createElement('option')
-        el.value = el.textContent = opt
-        if (opt === value) el.selected = true
-        select.appendChild(el)
+function makeSelect({ options, value, onChange, className, name } = {}) {
+    let current = value
+    let isOpen = false
+
+    const wrap = document.createElement('div')
+    wrap.classList.add('sd-wrap')
+    if (className) wrap.classList.add(...className.trim().split(/\s+/))
+
+    const trigger = document.createElement('div')
+    trigger.classList.add('sd-trigger')
+    if (name) trigger.dataset.name = name
+
+    const label = document.createElement('span')
+    label.classList.add('sd-label')
+
+    const arrow = document.createElement('span')
+    arrow.classList.add('sd-arrow')
+    arrow.textContent = '▾'
+
+    trigger.appendChild(label)
+    trigger.appendChild(arrow)
+    wrap.appendChild(trigger)
+
+    const dropdown = document.createElement('div')
+    dropdown.classList.add('sd-dropdown')
+    dropdown.style.display = 'none'
+    document.body.appendChild(dropdown)
+
+    function renderLabel() {
+        const found = options.find((o) => (typeof o === 'object' ? o.value : o) === String(current))
+        label.textContent = found ? (typeof found === 'object' ? found.label : found) : ''
+    }
+
+    function positionDropdown() {
+        const rect = trigger.getBoundingClientRect()
+        dropdown.style.minWidth = rect.width + 'px'
+        let top = rect.bottom + 2
+        let left = rect.left
+        if (left + dropdown.offsetWidth > window.innerWidth - 8) left = window.innerWidth - dropdown.offsetWidth - 8
+        if (top + dropdown.offsetHeight > window.innerHeight - 8) top = rect.top - dropdown.offsetHeight - 2
+        dropdown.style.top = top + 'px'
+        dropdown.style.left = left + 'px'
+    }
+
+    function openDropdown() {
+        dropdown.innerHTML = ''
+        options.forEach((opt) => {
+            const val = typeof opt === 'object' ? opt.value : opt
+            const lbl = typeof opt === 'object' ? opt.label : opt
+            const item = document.createElement('div')
+            item.classList.add('sd-option')
+            if (String(val) === String(current)) item.classList.add('active')
+            item.textContent = lbl
+            item.addEventListener('click', (e) => {
+                e.stopPropagation()
+                current = val
+                renderLabel()
+                onChange?.(val)
+                closeDropdown()
+            })
+            dropdown.appendChild(item)
+        })
+        dropdown.style.display = 'block'
+        requestAnimationFrame(positionDropdown)
+        arrow.style.transform = 'rotate(180deg)'
+        trigger.classList.add('sd-open')
+        isOpen = true
+    }
+
+    function closeDropdown() {
+        dropdown.style.display = 'none'
+        arrow.style.transform = ''
+        trigger.classList.remove('sd-open')
+        isOpen = false
+    }
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (isOpen) closeDropdown()
+        else {
+            document.dispatchEvent(new CustomEvent('sd:close-all'))
+            openDropdown()
+        }
     })
-    select.addEventListener('change', () => onChange(select.value))
-    return select
+    document.addEventListener('sd:close-all', closeDropdown)
+    document.addEventListener('click', closeDropdown)
+    window.addEventListener('resize', () => {
+        if (isOpen) positionDropdown()
+    })
+
+    const setValue = (val) => {
+        current = val
+        renderLabel()
+    }
+    const setDisabled = (on) => {
+        trigger.classList.toggle('sd-disabled', on)
+    }
+    const getValue = () => current
+
+    renderLabel()
+
+    return { el: wrap, setValue, getValue, setDisabled }
 }
 function makeTabs({ tabs, width = 100, height = 100, className, onTabChange }) {
     const container = document.createElement('div')

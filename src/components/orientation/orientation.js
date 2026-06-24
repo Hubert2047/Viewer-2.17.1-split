@@ -39,7 +39,7 @@ function makeOrientationGroup(global, editGroup) {
         className: 'orientation-method-btns',
         onChange: (val) => switchMethod(val),
     })
-    methodRow.appendChild(methodBtns)
+    methodRow.el.appendChild(methodBtns)
 
     const switchMethod = (method) => {
         currentMethod = method
@@ -51,7 +51,7 @@ function makeOrientationGroup(global, editGroup) {
         }
         events.fire('orientation:switch-method', currentMethod)
     }
-    methodWrap.appendChild(methodRow)
+    methodWrap.appendChild(methodRow.el)
     methodWrap.appendChild(manualPanel)
     methodWrap.appendChild(groundPanel)
 

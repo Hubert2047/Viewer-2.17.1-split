@@ -286,7 +286,7 @@ function makeDimensionSection(el, global) {
                 currentDimensions = { ...currentDimensions, realSize, unit }
             }
             currentDimensions.useMeasurementData = val
-            realUnitSelect.value = currentDimensions.unit
+            realUnitSelect.setValue(currentDimensions.unit) 
             setValues(currentDimensions)
             events.fire('dimensions:change', currentDimensions)
             global.dataDirty = true
@@ -310,21 +310,23 @@ function makeDimensionSection(el, global) {
     })
 
     const realUnitRow = makeRow({ title: 'Unit' })
-    const realUnitSelect = makeSelect(
-        ['mm', 'cm', 'm', 'inch'],
-        settings.dimensions?.unit || 'cm',
-        (v) => {
+    const realUnitSelect = makeSelect({
+        options: [
+            { value: 'mm', label: 'mm' },
+            { value: 'cm', label: 'cm' },
+            { value: 'm', label: 'm' },
+            { value: 'inch', label: 'inch' },
+        ],
+        value: settings.dimensions?.unit || 'cm',
+        onChange: (v) => {
             currentDimensions = { ...currentDimensions, unit: v }
             events.fire('dimensions:change', currentDimensions)
             global.dataDirty = true
         },
-        { name: 'unit', className: 'unit-select' },
-    )
-    const setRealUnitDisabled = (val) => {
-        realUnitSelect.disabled = val
-        realUnitSelect.classList.toggle('unit-select-disabled', val)
-    }
-    realUnitRow.appendChild(realUnitSelect)
+        name: 'unit',
+    })
+ 
+    realUnitRow.el.appendChild(realUnitSelect.el)
 
     const {
         row: realSizeRow,
@@ -370,7 +372,7 @@ function makeDimensionSection(el, global) {
         if (currentDimensions?.useMeasurementData && canUseMeasurementData) return
         realSizeContent.appendChild(autoCalcRow)
         realSizeContent.appendChild(realSizeRow)
-        realSizeContent.appendChild(realUnitRow)
+        realSizeContent.appendChild(realUnitRow.el)
     }
     renderRealGroup()
     // ── Shared helpers ──
@@ -382,7 +384,6 @@ function makeDimensionSection(el, global) {
         // setRotValues(dim.rotation)
         // setSizeValues(dim.size)
         setRealValues(dim.realSize)
-        realUnitSelect.value = dim.unit
     }
 
     const setDisabled = (on) => {
@@ -390,7 +391,7 @@ function makeDimensionSection(el, global) {
         // setRotDisabled(!on)
         // setSizeDisabled(!on)
         setRealDisabled(!on)
-        setRealUnitDisabled(!on)
+        realUnitSelect.setDisabled(!on)
         setBoxColorDisabled(!on)
         setTextColorDisabled(!on)
         setUsMeasurementDisabled(!on)

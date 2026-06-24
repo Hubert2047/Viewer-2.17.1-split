@@ -32,6 +32,8 @@ class OtherController {
     fov = 50
     maxFov = 100
     minFov = 5
+    spinDirection = 'cw'
+    spinAxis = 'y'
 
     constructor({ global, bbox }) {
         this.global = global
@@ -122,9 +124,11 @@ class OtherController {
         this.events.on('360spin-stop', () => {
             this.stopSpin360()
         })
-        this.events.on('spin:enabled', (v) => this.stopSpin360())
+        this.events.on('spin:enabled', () => this.stopSpin360())
         this.events.on('spin-speed', (v) => (this.spinSpeed = v))
         this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
+        this.events.on('spin-axis', (v) => (this.spinAxis = v))
+        this.events.on('spin-direction', (v) => (this.spinDirection = v))
 
         this.events.on('setup-reset', () => this.reset())
 
@@ -697,21 +701,33 @@ class OtherController {
                 ? this.spinSpeed * 0.001
                 : Math.min(this.spinSpeed * 0.001, totalAngle - rotated)
             rotated += delta
-
+            const clockwise = this.spinDirection === 'cw'
+            let dirSign = 1
             switch (model) {
                 case 'axis':
                     const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
-                    const spinSign = forward.z >= 0 ? 1 : -1
-                    const step = (delta / this.rotateSpeed) * spinSign
+                    const facingPositive = forward.z >= 0
+                    dirSign = facingPositive === clockwise ? 1 : -1
+                    const step = (delta / this.rotateSpeed) * dirSign
                     this.sphericalAxisRot(step, 0)
                     break
-
                 case 'spherical':
-                    const modelUp = new Vec33(0, 1, 0).transformQuat(modelEntity.localRotation).normalize()
-                    const dotY = modelUp.y
-                    const sign = dotY >= 0 ? 1 : -1
-                    const quatYaw = new Quat3().setFromAxisAngle(modelUp, -delta * sign)
-
+                    dirSign = clockwise ? 1 : -1
+                    const angle = delta * dirSign
+                    let axis
+                    switch (this.spinAxis) {
+                        case 'x':
+                            axis = this.rightCam.clone()
+                            break
+                        case 'z':
+                            axis = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
+                            break
+                        case 'y':
+                        default:
+                            axis = this.upCam.clone()
+                            break
+                    }
+                    const quatYaw = new Quat3().setFromAxisAngle(axis, angle)
                     v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
                     v$2.transformQuat(quatYaw)
                     modelEntity.localPosition.copy(this.centerPivot).add(v$2)
@@ -723,11 +739,11 @@ class OtherController {
 
                 case 'hemispherical':
                 case 'cylindrical':
-                    this.currentYaw = this.clampYaw(this.currentYaw - delta)
+                    dirSign = clockwise ? 1 : -1
+                    this.currentYaw = this.clampYaw(this.currentYaw - delta * dirSign)
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                     break
             }
-
             if (rotated >= totalAngle) {
                 if (this.isSpin360Loop) {
                     rotated -= totalAngle
@@ -796,7 +812,7 @@ class OtherController {
         }
 
         this.clearPrevEditOrientation()
-            this.hemisphericalRot(this.currentYaw, 0)
+        this.hemisphericalRot(this.currentYaw, 0)
         this.currentPitch = 0
         this.syncHierarchyAndRender()
         this.saveInitview({ isShowToast: false, defaultDistance: true })
@@ -1201,7 +1217,6 @@ class OtherController {
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos
         pose.fov = 50
-
         if (this._snapCameraToOrigin) {
             this._snapCameraToOrigin = false
             this.lerpPositionY = undefined

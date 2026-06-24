@@ -48,17 +48,21 @@ function collectGlobalNames(files) {
 const OBFUSCATE_PRESETS = {
     engine: {
         compact: true,
+        stringArray: false,
+        stringArrayThreshold: 0.5,
+        stringArrayEncoding: ['base64'],
+        renameGlobals: false,
         controlFlowFlattening: false,
         deadCodeInjection: false,
-        stringArray: false,
         numbersToExpressions: false,
-        simplify: false,
-        renameGlobals: false,
+        simplify: true,
         selfDefending: false,
         transformObjectKeys: false,
+        identifierNamesGenerator: 'mangled',
     },
     default: {
         compact: true,
+        stringArrayEncoding: ['rc4'],
         controlFlowFlattening: true,
         deadCodeInjection: true,
         stringArray: true,
@@ -102,7 +106,7 @@ const files = [
     { file: 'src/components/orientation/ground.js', preset: 'default' },
     { file: 'src/components/orientation/orientation.js', preset: 'default' },
     { file: 'src/components/sidebar.js', preset: 'default' },
-    { file: 'src/main.js', preset: 'default' },
+    { file: 'src/main.js', preset: 'engine' },
 ]
 
 function build() {
@@ -110,7 +114,8 @@ function build() {
         fs.mkdirSync('dist', { recursive: true })
 
         if (isProduction) {
-            const reservedNames = [...collectGlobalNames(files.filter((f) => f.preset === 'default')), 'ecb']
+            const defaultFiles = files.filter((f) => f.preset === 'default')
+            const reservedNames = [...collectGlobalNames(defaultFiles), 'ecb']
             console.log(`✓ Reserved ${reservedNames.length} global names`)
 
             const playcanvasLicense = `/**\n * ${[
@@ -134,14 +139,19 @@ function build() {
                 'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE',
                 'SOFTWARE.',
             ].join('\n * ')}\n */\n`
+            const engineFiles = files.filter((f) => f.preset === 'engine' && f.file !== 'src/main.js')
+            const engineSrc = engineFiles.map(({ file }) => fs.readFileSync(file, 'utf8')).join('\n')
+            const engineObfuscated = JavaScriptObfuscator.obfuscate(engineSrc, OBFUSCATE_PRESETS.engine).getObfuscatedCode()
 
-            const obfuscatedParts = files.map(({ file, preset }) => {
+            const defaultObfuscated = defaultFiles.map(({ file }) => {
                 const src = fs.readFileSync(file, 'utf8')
-                const presetOptions =
-                    preset === 'default' ? { ...OBFUSCATE_PRESETS.default, reservedNames } : OBFUSCATE_PRESETS.engine
-                return JavaScriptObfuscator.obfuscate(src, presetOptions).getObfuscatedCode()
+                return JavaScriptObfuscator.obfuscate(src, { ...OBFUSCATE_PRESETS.default, reservedNames }).getObfuscatedCode()
             })
-            const obfuscatedCode = obfuscatedParts.join('\n')
+
+            const mainSrc = fs.readFileSync('src/main.js', 'utf8')
+            const mainObfuscated = JavaScriptObfuscator.obfuscate(mainSrc, OBFUSCATE_PRESETS.engine).getObfuscatedCode()
+
+            const obfuscatedCode = [engineObfuscated, ...defaultObfuscated, mainObfuscated].join('\n')
 
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
             const now = new Date()

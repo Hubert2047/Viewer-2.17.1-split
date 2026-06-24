@@ -3008,7 +3008,7 @@ class Viewer {
         events.on('firstFrame', () => {
             state.loaded = true
             state.animationPaused = !!config.noanim
-            checkPerformance(app, global)
+            // checkPerformance(app, global)
         })
         // wait for the model to load
         Promise.all([gsplatLoad, skyboxLoad, voxelLoad]).then((results) => {

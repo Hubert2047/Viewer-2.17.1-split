@@ -60,7 +60,7 @@ function makeManualPanel(events, global) {
     spinRight.appendChild(spinFastLabel)
     spinRight.appendChild(startSpin)
     spinRight.appendChild(stopSpin)
-    spinRow.appendChild(spinRight)
+    spinRow.el.appendChild(spinRight)
     function updateSpinState(spin) {
         if (spin) {
             startSpin.classList.remove('hidden')
@@ -101,7 +101,7 @@ function makeManualPanel(events, global) {
     yawRight.appendChild(btnYawLeft)
     yawRight.appendChild(yawStepInput)
     yawRight.appendChild(btnYawRight)
-    yawRow.appendChild(yawRight)
+    yawRow.el.appendChild(yawRight)
 
     // ── Y Position row
     const yPosStepInput = makeInput({
@@ -143,7 +143,7 @@ function makeManualPanel(events, global) {
     yPosRight.appendChild(btnYPosDown)
     yPosRight.appendChild(yPosStepInput)
     yPosRight.appendChild(btnYPosUp)
-    yPosRow.appendChild(yPosRight)
+    yPosRow.el.appendChild(yPosRight)
 
     // ── Pitch ──
     const pitchStepInput = makeInput({
@@ -181,7 +181,7 @@ function makeManualPanel(events, global) {
     pitchRight.appendChild(btnPitchDown)
     pitchRight.appendChild(pitchStepInput)
     pitchRight.appendChild(btnPitchUp)
-    pitchRow.appendChild(pitchRight)
+    pitchRow.el.appendChild(pitchRight)
 
     // ── Roll ──
     const rollStepInput = makeInput({
@@ -221,14 +221,14 @@ function makeManualPanel(events, global) {
     rollRight.appendChild(btnRollCCW)
     rollRight.appendChild(rollStepInput)
     rollRight.appendChild(btnRollCW)
-    rollRow.appendChild(rollRight)
+    rollRow.el.appendChild(rollRight)
 
     panel.appendChild(hint)
-    panel.appendChild(spinRow)
-    panel.appendChild(yawRow)
-    panel.appendChild(yPosRow)
-    panel.appendChild(pitchRow)
-    panel.appendChild(rollRow)
+    panel.appendChild(spinRow.el)
+    panel.appendChild(yawRow.el)
+    panel.appendChild(yPosRow.el)
+    panel.appendChild(pitchRow.el)
+    panel.appendChild(rollRow.el)
     const handles = [
         events.on('ortery:stop-spin', () => updateSpinState(true)),
     ]

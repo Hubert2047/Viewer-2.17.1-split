@@ -12,7 +12,6 @@ class MessageEditorUI {
         this.listEl = null
         this.countEl = null
         this.listenEvents()
-        // this.createEmbedTooltip()
     }
     listenEvents() {
         this.events.on('message:add-cancelled', () => {
@@ -37,25 +36,6 @@ class MessageEditorUI {
             }
             this.activeMessageData = data
         })
-    }
-    createEmbedTooltip() {
-        if (!document.getElementById('embed-tooltip-global')) {
-            const t = document.createElement('div')
-            t.id = 'embed-tooltip-global'
-            t.classList.add('embed-tooltip')
-            t.innerHTML = `
-            <div class="embed-tip-row">
-                <span class="embed-tip-dot amber"></span>
-                <span>Embedding increases the exported file size — not recommended, especially for large files.</span>
-            </div>
-            <div class="embed-tip-row">
-                <span class="embed-tip-dot green"></span>
-                <span>Keep embed off and copy the audio file into the <b style="color:var(--primary)">audios/</b> folder — include that folder when sharing.</span>
-            </div>
-            `
-            document.body.appendChild(t)
-            this.embedTooltip = t
-        }
     }
     mount() {
         this.renderHeader()

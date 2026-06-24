@@ -262,7 +262,7 @@ function makePoster(el, global) {
             global.dataDirty = true
         },
     })
-    filenameRow.appendChild(filenameInput)
+    filenameRow.el.appendChild(filenameInput)
 
     const captureBtn = makeButton({
         title: 'Capture',
@@ -275,7 +275,7 @@ function makePoster(el, global) {
     captureBtn.style.cssText = 'justify-content:center; width:100%; font-size:0.8125rem'
 
     capturePicture.appendChild(hintText)
-    capturePicture.appendChild(filenameRow)
+    capturePicture.appendChild(filenameRow.el)
     capturePicture.appendChild(captureBtn)
 
     container.appendChild(capturePicture)
@@ -372,7 +372,7 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    inertiaRow.appendChild(inertiaToggleEl)
+    inertiaRow.el.appendChild(inertiaToggleEl)
 
     const autoHideUIRow = makeRow({ title: 'Auto Hide UI' })
     const autoHideUIToggleEl = makeToggle({
@@ -383,7 +383,7 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    autoHideUIRow.appendChild(autoHideUIToggleEl)
+    autoHideUIRow.el.appendChild(autoHideUIToggleEl)
 
     const lockZoomInRow = makeRow({ title: 'Lock Zoom In' })
     const lockZoomInToggleEl = makeToggle({
@@ -393,12 +393,12 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    lockZoomInRow.appendChild(lockZoomInToggleEl)
+    lockZoomInRow.el.appendChild(lockZoomInToggleEl)
 
     generalGroup.appendChild(backgroundColor)
-    generalGroup.appendChild(inertiaRow)
-    generalGroup.appendChild(autoHideUIRow)
-    generalGroup.appendChild(lockZoomInRow)
+    generalGroup.appendChild(inertiaRow.el)
+    generalGroup.appendChild(autoHideUIRow.el)
+    generalGroup.appendChild(lockZoomInRow.el)
     //iniview
     const initviewHint =
         'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
@@ -413,21 +413,18 @@ function makeViewerSection(el, global) {
         initialValue: settings.spin.enabled,
         onChange: (value) => {
             settings.spin.enabled = value
-            if (settings.spin.enabled) {
-                spinContinuousRow.classList.remove('hidden')
-                spinOnStartRow.classList.remove('hidden')
-                speedRow.classList.remove('hidden')
-            } else {
-                spinContinuousRow.classList.add('hidden')
-                spinOnStartRow.classList.add('hidden')
-                speedRow.classList.add('hidden')
-            }
+            spinContinuousRow.setShow(value)
+            spinOnStartRow.setShow(value)
+            speedRow.setShow(value)
+            directionRow.setShow(value)
+            rotationAxisRow?.setShow(value)
+
             global.dataDirty = true
             events.fire('spin:enabled', value)
             events.fire('re-render:control-wrap', value)
         },
     })
-    spinEnabledRow.appendChild(spinEnabledToggleEl)
+    spinEnabledRow.el.appendChild(spinEnabledToggleEl)
 
     const speedRow = makeRow({ title: 'Speed', show: settings.spin.enabled, className: 'spin-speed' })
     const speedInput = makeInput({
@@ -443,8 +440,43 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    speedRow.appendChild(speedInput)
-
+    speedRow.el.appendChild(speedInput)
+    const directionRow = makeRow({ title: 'Direction', show: settings.spin.enabled })
+    const directionSelect = makeSelect({
+        options: [
+            { label: 'Clockwise', value: 'cw' },
+            { label: 'Counter Clockwise', value: 'ccw' },
+        ],
+        value: settings.spin.direction || 'cw',
+        onChange: (v) => {
+            settings.spin.direction = v
+            events.fire('spin-direction', v)
+            global.dataDirty = true
+        },
+        name: 'spin-direction',
+    })
+    directionRow.el.appendChild(directionSelect.el)
+    const isSpherical = settings.model ==="spherical"
+    let rotationAxisRow
+    if(isSpherical){
+        rotationAxisRow = makeRow({ title: 'Rotation Axis', show: settings.spin.enabled })
+        const axisSelect = makeSelect({
+            options: [
+                { value: 'x', label: 'X' },
+                { value: 'y', label: 'Y' },
+                { value: 'z', label: 'Z' },
+            ],
+            value: settings.spin.axis || 'y',
+            onChange: (v) => {
+                settings.spin.axis = v
+                events.fire('spin-axis', v)
+                global.dataDirty = true
+            },
+            name: 'spin-direction',
+            className: 'rotate-axis',
+        })
+        rotationAxisRow.el.appendChild(axisSelect.el)
+    }
     const spinContinuousRow = makeRow({ title: 'Continuous', show: settings.spin.enabled })
     const spinContinuousToggleEl = makeToggle({
         initialValue: settings.spin.continuous,
@@ -454,7 +486,7 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    spinContinuousRow.appendChild(spinContinuousToggleEl)
+    spinContinuousRow.el.appendChild(spinContinuousToggleEl)
 
     const spinOnStartRow = makeRow({ title: 'Auto Start', show: settings.spin.enabled })
     const spinOnStartToggleEl = makeToggle({
@@ -464,12 +496,16 @@ function makeViewerSection(el, global) {
             global.dataDirty = true
         },
     })
-    spinOnStartRow.appendChild(spinOnStartToggleEl)
+    spinOnStartRow.el.appendChild(spinOnStartToggleEl)
 
-    spinGroup.appendChild(spinEnabledRow)
-    spinGroup.appendChild(speedRow)
-    spinGroup.appendChild(spinContinuousRow)
-    spinGroup.appendChild(spinOnStartRow)
+    spinGroup.appendChild(spinEnabledRow.el)
+    spinGroup.appendChild(spinContinuousRow.el)
+    spinGroup.appendChild(spinOnStartRow.el)
+    spinGroup.appendChild(speedRow.el)
+    if(rotationAxisRow){
+        spinGroup.appendChild(rotationAxisRow.el)
+    }
+    spinGroup.appendChild(directionRow.el)
 
     container.appendChild(generalGroup)
     container.appendChild(initviewGroup)
@@ -477,7 +513,6 @@ function makeViewerSection(el, global) {
 
     el.appendChild(container)
 }
-
 function makeExportSection(el, global) {
     const hint = document.createElement('p')
     hint.textContent = 'Please put the exported HTML file in the current folder.'

@@ -28,7 +28,7 @@ function makeGroundPanel(events, global) {
 
     pickActionRow.appendChild(pickBtn)
     pickActionRow.appendChild(btnCancelGround)
-    pickRow.appendChild(pickActionRow)
+    pickRow.el.appendChild(pickActionRow)
     // const flipRow = document.createElement('div')
     // flipRow.classList.add('section-group-row')
 
@@ -142,7 +142,7 @@ function makeGroundPanel(events, global) {
     })
 
     panel.appendChild(hint)
-    panel.appendChild(pickRow)
+    panel.appendChild(pickRow.el)
     panel.appendChild(pointInputsWrap)
     // panel.appendChild(flipRow)
 

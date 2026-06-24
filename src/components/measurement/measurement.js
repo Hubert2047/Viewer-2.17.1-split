@@ -173,17 +173,22 @@ function makeMeasurementSection(el, global) {
             global.dataDirty = true
         },
     })
-    const calibUnitSelect = makeSelect(
-        ['mm', 'cm', 'm', 'inch'],
-        settings.measurement?.calibration?.unit || 'cm',
-        (v) => {
+    const calibUnitSelect = makeSelect({
+        options: [
+            { value: 'mm', label: 'mm' },
+            { value: 'cm', label: 'cm' },
+            { value: 'm', label: 'm' },
+            { value: 'inch', label: 'inch' },
+        ],
+        value: settings.measurement?.calibration?.unit || 'cm',
+        onChange: (v) => {
             currentMeasurement.calibration.unit = v
             global.dataDirty = true
         },
-        { name: 'unit', className: 'unit-select' },
-    )
-    distanceRow.appendChild(calibDistanceInput)
-    distanceRow.appendChild(calibUnitSelect)
+        name: 'unit',
+    })
+    distanceRow.el.appendChild(calibDistanceInput)
+    distanceRow.el.appendChild(calibUnitSelect.el)
     const {
         row: useDimCheckBox,
         setDisabled: setUseDimCheckboxDisabled,
@@ -235,9 +240,9 @@ function makeMeasurementSection(el, global) {
             calibContent.appendChild(pointARow)
             calibContent.appendChild(pointBRow)
             calibDistanceInput.disabled = !isEditing
-            calibUnitSelect.disabled = !isEditing
-            distanceRow.disabled = !isEditing
-            calibContent.appendChild(distanceRow)
+            calibUnitSelect.setDisabled(!isEditing) 
+            distanceRow.setDisabled(!isEditing) 
+            calibContent.appendChild(distanceRow.el)
         }
     }
 
@@ -307,7 +312,7 @@ function makeMeasurementSection(el, global) {
         if (!m) return
         if (m.calibration) {
             calibDistanceInput.value = m.calibration.distance
-            calibUnitSelect.value = m.calibration.unit
+            calibUnitSelect.setValue(m.calibration.unit) 
             setUseDimChecked(m.calibration.useDimensionData)
             if (m.calibration?.points.length >= 2) {
                 setPointAValues(m.calibration.points[0])

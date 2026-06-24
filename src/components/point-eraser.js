@@ -43,7 +43,7 @@ function makePointEraser(global) {
             applyShaderModes()
         },
     })
-    splatModeRow.appendChild(spatModeToggle)
+    splatModeRow.el.appendChild(spatModeToggle)
 
     // const showSplatRow = makeRow({ title: 'Splat Outline' })
     // const showSplatToggle = makeToggle({
@@ -68,7 +68,7 @@ function makePointEraser(global) {
             app.renderNextFrame = true
         },
     })
-    pointSizeRow.appendChild(pointSizeInput)
+    pointSizeRow.el.appendChild(pointSizeInput)
 
     const { row: backgroundRow } = makeColorPickerDropdown({
         label: 'Background Color',
@@ -110,9 +110,9 @@ function makePointEraser(global) {
         },
     })
 
-    viewGroup.appendChild(splatModeRow)
+    viewGroup.appendChild(splatModeRow.el)
     // viewGroup.appendChild(showSplatRow)
-    viewGroup.appendChild(pointSizeRow)
+    viewGroup.appendChild(pointSizeRow.el)
     viewGroup.appendChild(backgroundRow)
     viewGroup.appendChild(selectedColorRow)
     viewGroup.appendChild(unselectedColorRow)
@@ -160,7 +160,7 @@ function makePointEraser(global) {
                 events.fire('point-eraser:active', true)
                 activeMode = id
                 modeBtns.forEach((b) => b.classList.toggle('active', b.dataset.mode === id))
-                brushSizeRow.style.display = id === 'brush' ? 'flex' : 'none'
+                brushSizeRow.setShow(id === 'brush')
                 currentControl.setMode(id)
             }
         }
@@ -171,7 +171,7 @@ function makePointEraser(global) {
         events.fire('point-eraser:active', false)
         activeMode = null
         if (activeBtn) activeBtn.classList.remove('active')
-        brushSizeRow.style.display = 'none'
+        brushSizeRow.setShow(false)
         currentControl.setMode(null)
     }
 
@@ -191,8 +191,8 @@ function makePointEraser(global) {
             events.fire('point-eraser:brush-size', v)
         },
     })
-    brushSizeRow.appendChild(brushInput)
-    modeGroup.appendChild(brushSizeRow)
+    brushSizeRow.el.appendChild(brushInput)
+    modeGroup.appendChild(brushSizeRow.el)
 
     // ── Stats ────────────────────────────────────────────────────
     // const statsGroup = makeSectionGroup('Statistics')
