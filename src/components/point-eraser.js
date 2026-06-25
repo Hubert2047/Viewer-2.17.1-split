@@ -9,9 +9,9 @@ function makePointEraser(global) {
     let currentControl = null
     let backgroundColor = settings.background.color
     let selectedColorHex = '#FFD900'
-    let selectedAlpha = 255
+    let selectedAlpha = 1
     let unselectedColorHex = '#F95F4D'
-    let unselectedAlpha = 255
+    let unselectedAlpha = 1
     if (modelEntity && !currentControl) {
         currentControl = new SelectionController({
             canvas: app.graphicsDevice.canvas,
@@ -86,11 +86,11 @@ function makePointEraser(global) {
         alpha: selectedAlpha,
         hasAlpha: true,
         debounceMs: 0,
-        onChange: ({ hex, r, g, b, alpha }) => {
-            selectedColorHex = hex
+        onChange: ({ r, g, b, alpha }) => {
+            selectedColorHex = `rgb(${r},${g},${b})`
             selectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_selected_color', [r / 255, g / 255, b / 255, alpha])
+            modelEntity.gsplat.material.setParameter('splat_selected_color',normalizeColor(selectedColorHex, selectedAlpha))
             app.renderNextFrame = true
         },
     })
@@ -101,11 +101,11 @@ function makePointEraser(global) {
         alpha: unselectedAlpha,
         hasAlpha: true,
         debounceMs: 0,
-        onChange: ({ hex, r, g, b, alpha }) => {
-            unselectedColorHex = hex
+        onChange: ({ r, g, b, alpha }) => {
+            unselectedColorHex = `rgb(${r},${g},${b})`
             unselectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_unselected_color', [r / 255, g / 255, b / 255, alpha])
+            modelEntity.gsplat.material.setParameter('splat_unselected_color',normalizeColor(unselectedColorHex, unselectedAlpha))
             app.renderNextFrame = true
         },
     })
@@ -286,7 +286,6 @@ function makePointEraser(global) {
             mat.setParameter('splat_point_size', 4.0)
             mat.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
             mat.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
-
             if (currentControl) {
                 currentControl._upload()
             }

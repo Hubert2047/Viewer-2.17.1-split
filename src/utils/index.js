@@ -40,7 +40,7 @@ function updateProgress(loaded, total, initPoster) {
 function blurPoster(poster, progress) {
     poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
 }
-function normalizeColor(input, alpha = 255) {
+function normalizeColor(input, alpha = 1) {
     let rgb
     if (Array.isArray(input)) {
         if (input[0] > 1 || input[1] > 1 || input[2] > 1) {
@@ -73,7 +73,7 @@ function normalizeColor(input, alpha = 255) {
         const nums = rgbStr.match(/\d+/g).map(Number)
         rgb = [nums[0] / 255, nums[1] / 255, nums[2] / 255]
     }
-    return [...rgb, alpha / 255]
+    return [...rgb, alpha]
 }
 function showToast(content, opts = {}) {
     const duration = typeof opts.duration === 'number' ? opts.duration : 1500
