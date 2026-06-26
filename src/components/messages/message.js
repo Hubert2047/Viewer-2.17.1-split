@@ -42,7 +42,6 @@ class Messages {
         }
     }
 
-    // ── DOM creation ─────────────────────────
     createDot() {
         this.dot = document.createElement('div')
         this.dot.classList.add('message-dot')
@@ -226,7 +225,6 @@ class Messages {
         }
     }
 
-    // ── Update loop ──────────────────────────
     update(updateContent = true, buttonTitle = undefined) {
         if (buttonTitle !== undefined) this.button.updateTitle(buttonTitle)
         const containerRect = this.dom.ui.getBoundingClientRect()
@@ -509,7 +507,6 @@ class Messages {
         }
     }
 
-    // ── Drag events ──────────────────────────
     addDotDragEvents() {
         let startX = 0,
             startY = 0
@@ -709,7 +706,6 @@ class Messages {
         this.div.style.height = actualHeight + 'px'
     }
 
-    // ── Show / Hide / Destroy ─────────────────
     show() {
         this.isDisplay = true
         this.div.style.display = 'flex'

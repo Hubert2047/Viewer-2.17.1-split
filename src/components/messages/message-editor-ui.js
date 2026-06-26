@@ -338,20 +338,6 @@ class MessageEditorUI {
                 },
             }),
         )
-        // const fontFamilyField = this.makeField('Font')
-        // fontFamilyField.appendChild(
-        //     makeSelect(
-        //         ['Lato', 'Roboto', 'Open Sans', 'Montserrat'],
-        //         this.activeMessageData.text.font,
-        //         (v) => {
-        //             this.activeMessageData.text.font = v
-        //             this.applyDraft()
-        //         },
-        //         { name: 'font-family' },
-        //     ),
-        // )
-        // fontGrid.appendChild(fontSizeField)
-        // fontGrid.appendChild(fontFamilyField)
         colorFlex.appendChild(colorField)
         colorFlex.appendChild(bgField)
         colorFlex.appendChild(fontSizeField)
@@ -482,13 +468,9 @@ class MessageEditorUI {
             className: 'delete-btn audio-clear-btn',
             onClick: () => {
                 const audio = this.activeMessageData.audio
-                // const store = this.settings.fileAudioStore
                 if (audio?.src?.startsWith('blob:')) {
                     URL.revokeObjectURL(audio.src)
                 }
-                // if (audio?.fileId && store instanceof Map) {
-                //     store.delete(audio.fileId)
-                // }
                 delete this.activeMessageData.audio
                 fileInput.value = ''
                 fileNameSpan.textContent = 'No file chosen'
@@ -518,8 +500,6 @@ class MessageEditorUI {
                     iconColor: '#ffffff',
                     volume: 1,
                     loop: false,
-                    // embed: false,
-                    // persist: false,
                     autoPlay: false,
                 }
             }
@@ -529,20 +509,6 @@ class MessageEditorUI {
             fileNameSpan.textContent = file.name
             clearAudioBtn.style.display = ''
             audioSettings.style.display = ''
-
-            // if (!(this.settings.fileAudioStore instanceof Map)) {
-            //     this.settings.fileAudioStore = new Map()
-            // }
-            // if (!(this.settings.fileAudioStore instanceof Map)) {
-            //     this.settings.fileAudioStore = new Map()
-            // }
-
-            // const store = this.settings.fileAudioStore
-            // const fileId = guid.create()
-
-            // this.activeMessageData.audio.fileId = fileId
-            // store.set(fileId, file)
-
             this.applyDraft(true)
         })
 
@@ -601,13 +567,7 @@ class MessageEditorUI {
                 },
             }),
         )
-        // const persistField = this.makeField('Persist')
-        // persistField.appendChild(
-        //     makeToggle(this.activeMessageData.audio?.persist, (value) => {
-        //         this.activeMessageData.audio.persist = value
-        //         return this.activeMessageData.audio.persist
-        //     }),
-        // )
+       
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
             makeToggle({
@@ -619,54 +579,6 @@ class MessageEditorUI {
             }),
         )
 
-        // const embedField = this.makeField('Embed', 'embed')
-        // const embedLabel = embedField.querySelector('div:first-child')
-        // if (embedLabel) {
-        //     const infoIcon = document.createElement('span')
-        //     infoIcon.classList.add('info-icon')
-        //     infoIcon.innerHTML = ICONS.hintInfo
-        //     infoIcon.setAttribute('tabindex', '0')
-
-        //     infoIcon.addEventListener('mouseenter', () => {
-        //         const rect = infoIcon.getBoundingClientRect()
-        //         this.embedTooltip.style.display = 'block'
-        //         const tooltipW = this.embedTooltip.offsetWidth
-        //         const tooltipH = this.embedTooltip.offsetHeight
-        //         const margin = 8
-        //         let left = rect.left + rect.width / 2 - tooltipW / 2
-        //         let top = rect.top - tooltipH - 6
-        //         left = Math.max(margin, Math.min(left, window.innerWidth - tooltipW - margin))
-        //         if (top < margin) {
-        //             top = rect.bottom + 6
-        //         }
-        //         this.embedTooltip.style.left = `${left}px`
-        //         this.embedTooltip.style.top = `${top}px`
-        //     })
-
-        //     infoIcon.addEventListener('mouseleave', () => {
-        //         this.embedTooltip.style.display = 'none'
-        //     })
-        //     embedLabel.appendChild(infoIcon)
-        // }
-        // const embedToggle = makeToggle(this.activeMessageData.audio?.embed, (value) => {
-        //     if (value) {
-        //         const src = this.activeMessageData.audio.src
-        //         const hasValidSrc = src?.startsWith('data:') || src?.startsWith('blob:')
-        //         if (!hasValidSrc && this.activeMessageData.audio.fileName) {
-        //             showToast('To embed, please re-select the audio file using the file picker.', {
-        //                 duration: 5000,
-        //                 type: 'warning',
-        //             })
-        //             embedToggle.setValue(false)
-        //             return
-        //         }
-        //     }
-        //     this.activeMessageData.audio.embed = value
-        //     this.applyDraft()
-        // })
-
-        // embedField.appendChild(embedToggle)
-
         const audioToggleGrid = this.makeGrid(3)
         audioGrid.appendChild(iconColorField)
         audioGrid.appendChild(iconBgField)
@@ -674,8 +586,6 @@ class MessageEditorUI {
         audioToggleGrid.appendChild(showField)
         audioToggleGrid.appendChild(autoPlayField)
         audioToggleGrid.appendChild(loopField)
-        // audioToggleGrid.appendChild(persistField)
-        // audioToggleGrid.appendChild(embedField)
 
         const volumeField = this.makeField('Volume', 'volume')
         const volumeWrap = document.createElement('div')
