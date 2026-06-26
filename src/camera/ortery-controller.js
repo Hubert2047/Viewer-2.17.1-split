@@ -75,7 +75,116 @@ class OtherController {
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
     }
+    startRecording({ fps, filename, region }) {
+        const srcCanvas = this.app.graphicsDevice.canvas
+        const cropCanvas = document.createElement('canvas')
+        const ctx = cropCanvas.getContext('2d')
+        const getRegion = () => {
+            if (region && region.width > 0 && region.height > 0) {
+                return { x: region.x ?? 0, y: region.y ?? 0, width: region.width, height: region.height }
+            }
+            return { x: 0, y: 0, width: srcCanvas.width, height: srcCanvas.height }
+        }
+        this.events.fire('record-start')
+        const r0 = getRegion()
+        cropCanvas.width = r0.width
+        cropCanvas.height = r0.height
+        this.global.recording = true
+
+        const onPostRender = () => {
+            if (!this.global.recording) return
+            const r = getRegion()
+            ctx.drawImage(srcCanvas, r.x, r.y, r.width, r.height, 0, 0, cropCanvas.width, cropCanvas.height)
+        }
+        this.app.on('postrender', onPostRender)
+        this._stopPostRender = () => this.app.off('postrender', onPostRender)
+
+        const mimeTypes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4', '']
+        const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
+        const recorderOptions = mimeType ? { mimeType } : {}
+        // recorderOptions.videoBitsPerSecond = 8_000_000
+        this.mediaRecorder = new MediaRecorder(cropCanvas.captureStream(fps), recorderOptions)
+        const chunks = []
+        this.mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data)
+        }
+        this.mediaRecorder.onstop = () => {
+            this.global.recording = false
+            const mime = this.mediaRecorder.mimeType || 'video/webm'
+            const ext = mime.includes('mp4') ? 'mp4' : 'webm'
+            const blob = new Blob(chunks, { type: mime })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${filename}.${ext}`
+            a.click()
+            URL.revokeObjectURL(url)
+        }
+        this.app.renderNextFrame = true
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (this.global.recording) this.mediaRecorder.start(1000)
+            })
+        })
+    }
+    stopRecording() {
+        if (this._stopPostRender) {
+            this._stopPostRender()
+            this._stopPostRender = null
+        }
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop()
+        }
+        this.global.recording = false
+        this.events.fire('record-end')
+    }
     listenEvents() {
+        this.events.on('record-setup', (data) => {
+            const { pattern } = data
+            this.events.fire('hide-ui')
+            switch (pattern) {
+                case 'none':
+                    this.startRecording(data)
+                    break
+                case 'spin':
+                    this.reset({
+                        onResetFinished: () => {
+                            this.isSpin360Loop = false
+                            this.isRecordSpin = true
+                            this.spin360({
+                                model: this.model,
+                                onStop: () => {
+                                    this.stopRecording()
+                                    this.isRecordSpin = false
+                                },
+                            })
+                            this.startRecording(data)
+                        },
+                    })
+                    break
+                case 'story':
+                    this.reset({
+                        onResetFinished: () => {
+                            this.isRecordStory = true
+                            this.events.fire('message:start-auto', {
+                                onFinished: (messageManager) => {
+                                    this.stopRecording()
+                                    this.isRecordStory = false
+                                    messageManager.hideAllMessages()
+                                },
+                                loop: false,
+                            })
+                            this.startRecording(data)
+                        },
+                    })
+                    break
+            }
+        })
+        this.events.on('record-stop', () => {
+            if (this.isRecordSpin) this.stopSpin360()
+            if (this.isRecordStory) this.events.fire('message:stop-auto', { hideMessages: true })
+            this.stopRecording()
+        })
         this.events.on('inputEvent:reset-camera', () => {
             this.reset()
         })
@@ -93,7 +202,7 @@ class OtherController {
             this.isEditMessage = isEdit
             this.stopSpin360()
         })
-        this.events.on('sidebar:active', () => {
+        this.events.on('message:selected', () => {
             this.stopSpin360()
         })
         this.events.on('inputEvent', (eventName, event) => {
@@ -115,9 +224,7 @@ class OtherController {
 
         //spin
         this.events.on('360spin-start', () => {
-            this.global.isSpin360 = true
-            this.isSpin360Loop = this.settings.spin.continuous
-            this.spinSpeed = this.settings.spin.speed
+            this.setSpinSettings()
             this.spin360({ model: this.model })
             this.targetPose = null
         })
@@ -393,11 +500,11 @@ class OtherController {
             startFov = targetFov
             startYaw = targetYaw
             startPitch = targetPitch
-            if (this.settings.spin.enabled && this.settings.spin.autoStart) {
-                this.global.isSpin360 = true
-                this.isSpin360Loop = this.settings.spin.continuous
-                this.spinSpeed = this.settings.spin.speed
-                this.spin360({ model: this.model })
+            if (this.settings.spin.enabled) {
+                this.setSpinSettings()
+                if (this.settings.spin.autoStart) {
+                    this.spin360({ model: this.model })
+                }
             }
         } else {
             startFocus = this.focus.clone()
@@ -680,26 +787,29 @@ class OtherController {
         this.events.fire('ortery:stop-spin')
         this.events.fire('re-render:control-wrap')
     }
+    setSpinSettings() {
+        this.isSpin360Loop = this.settings.spin.continuous
+        this.spinSpeed = this.settings.spin.speed
+        this.spinAxis = this.settings.spin.axis
+        this.spinDirection = this.settings.spin.direction
+    }
     spin360({ onStop, model = 'axis' } = {}) {
-        if (!modelEntity) return
-        if (this._autoRotating || this._pitchRotating) return
+        if (!modelEntity || this._autoRotating) return
         this.events.fire('re-render:control-wrap')
         this.updateModelRotation()
         this._autoRotating = true
-
+        this.global.isSpin360 = true
         const totalAngle = Math.PI * 2
         let rotated = 0
-
         const initialYaw = this.currentYaw
         const initialPitch = this.currentPitch
         const initialRotation = this.cameraRotation.clone()
 
         const tick = (dt) => {
             if (!this._autoRotating) return
-
             const delta = this.isSpin360Loop
-                ? this.spinSpeed * 0.001
-                : Math.min(this.spinSpeed * 0.001, totalAngle - rotated)
+                ? this.spinSpeed * (this.global.recording ? 0.06 * dt : 0.001)
+                : Math.min(this.spinSpeed * (this.global.recording ? 0.06 * dt : 0.001), totalAngle - rotated)
             rotated += delta
             const clockwise = this.spinDirection === 'cw'
             let dirSign = 1
@@ -948,12 +1058,13 @@ class OtherController {
                 this.currentPitch = this.targetPose.pitch
                 this.hemisphericalRot(this.currentYaw, this.currentPitch)
             }
-            if (this.onTransitionFinished) {
-                this.onTransitionFinished()
-                this.onTransitionFinished = null
-            }
             this.targetPose = null
             this.startPose = null
+            if (this.onTransitionFinished) {
+                const cb = this.onTransitionFinished
+                this.onTransitionFinished = null
+                cb()
+            }
         }
         this.syncHierarchyAndRender()
     }
@@ -1019,7 +1130,7 @@ class OtherController {
     }
 
     move(move, rotate) {
-        if (this.isEditMessage || this.isMeasurementDrag) return
+        if (this.isEditMessage || this.isMeasurementDrag || this.global.recording) return
         const [x, y, z] = move
         if (move[2] !== 0) {
             if (

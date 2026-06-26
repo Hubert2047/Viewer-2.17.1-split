@@ -736,6 +736,12 @@ function makeSegmentRow({ options, className, defaultValue, onChange }) {
             b.classList.toggle('active', b.dataset.value === String(value))
         })
     }
+    row.setDisabled = (disabled) => {
+        row.querySelectorAll('.segment-btn').forEach((b) => {
+            b.classList.toggle('disabled', disabled)
+            b.style.pointerEvents = disabled ? 'none' : ''
+        })
+    }
 
     return row
 }
@@ -814,38 +820,60 @@ function makeDivider() {
     el.style.cssText = 'border-top:0.5px solid rgba(0,0,0,0.08); margin:2px 0;'
     return el
 }
-function makeButton({ icon, title, disabled, className, id, onClick, onHold = false }) {
+function makeButton({ icon, title, disabled, className, id, onClick, show = true, onHold = false, variant, label }) {
     const btn = document.createElement('button')
     btn.classList.add('btn')
     if (id) btn.id = id
     if (className) {
         btn.classList.add(...className.trim().split(/\s+/))
     }
+    if (!show) btn.classList.add('hidden')
     if (disabled) btn.disabled = true
     if (title) btn.title = title
-    btn.innerHTML = icon ? icon : title
+
+    if (variant === 'full') {
+        btn.style.cssText = `width:100%; display:flex; align-items:center; justify-content:center;gap:8px;`
+        if (className === 'primary') {
+            btn.style.background = 'var(--primary)'
+            btn.style.color = 'white'
+        } else {
+            btn.style.background = 'var(--bg-hover)'
+            btn.style.color = 'var(--text-main)'
+            btn.style.borderColor = 'var(--border)'
+        }
+        if (icon) {
+            const iconWrap = document.createElement('span')
+            iconWrap.style.cssText = 'display:flex;align-items:center;width:16px;height:16px;'
+            iconWrap.innerHTML = icon
+            btn.appendChild(iconWrap)
+        }
+        if (label) {
+            const labelEl = document.createElement('span')
+            labelEl.textContent = label
+            btn.appendChild(labelEl)
+        }
+    } else {
+        btn.innerHTML = icon ? icon : title
+    }
+
     if (onHold) {
         let interval = null
         let timeout = null
-
         const start = (e) => {
             onClick?.(e)
             timeout = setTimeout(() => {
                 interval = setInterval(() => onClick?.(e), 80)
             }, 400)
         }
-
         const stop = () => {
             clearTimeout(timeout)
             clearInterval(interval)
             timeout = null
             interval = null
         }
-
         btn.addEventListener('mousedown', (e) => start(e))
         btn.addEventListener('mouseup', stop)
         btn.addEventListener('mouseleave', stop)
-
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault()
             start(e)
@@ -854,9 +882,12 @@ function makeButton({ icon, title, disabled, className, id, onClick, onHold = fa
     } else {
         if (onClick) btn.addEventListener('click', (e) => onClick(e))
     }
+    btn.setShow = (visible) => {
+        if (visible) btn.classList.remove('hidden')
+        else btn.classList.add('hidden')
+    }
     return btn
 }
-
 function makeInput({ type, value, min, max, step, placeholder, onChange, disabled = false, name, className } = {}) {
     const input = document.createElement('input')
     input.type = type
@@ -890,7 +921,8 @@ function makeInput({ type, value, min, max, step, placeholder, onChange, disable
         })
     return input
 }
-function makeSelect({ options, value, onChange, className, name } = {}) {
+function makeSelect({ options: _options, value, onChange, className, name } = {}) {
+    let options = _options
     let current = value
     let isOpen = false
 
@@ -939,12 +971,15 @@ function makeSelect({ options, value, onChange, className, name } = {}) {
         options.forEach((opt) => {
             const val = typeof opt === 'object' ? opt.value : opt
             const lbl = typeof opt === 'object' ? opt.label : opt
+            const disabled = typeof opt === 'object' ? !!opt.disabled : false
             const item = document.createElement('div')
             item.classList.add('sd-option')
             if (String(val) === String(current)) item.classList.add('active')
+            if (disabled) item.classList.add('sd-option-disabled')
             item.textContent = lbl
             item.addEventListener('click', (e) => {
                 e.stopPropagation()
+                if (disabled) return
                 current = val
                 renderLabel()
                 onChange?.(val)
@@ -988,10 +1023,14 @@ function makeSelect({ options, value, onChange, className, name } = {}) {
         trigger.classList.toggle('sd-disabled', on)
     }
     const getValue = () => current
-
+    const setOptions = (newOptions) => {
+        options = newOptions
+        renderLabel()
+        if (isOpen) openDropdown()
+    }
     renderLabel()
 
-    return { el: wrap, setValue, getValue, setDisabled }
+    return { el: wrap, setValue, getValue, setDisabled, setOptions }
 }
 function makeTabs({ tabs, width = 100, height = 100, className, onTabChange }) {
     const container = document.createElement('div')

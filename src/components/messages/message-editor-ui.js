@@ -45,6 +45,7 @@ class MessageEditorUI {
         this.events.fire('message:editor', this)
     }
 
+
     renderHeader() {
         const header = document.createElement('div')
         header.classList.add('message-section-header')
@@ -80,7 +81,7 @@ class MessageEditorUI {
         document.body.style.cursor = 'crosshair'
         this.isCreatinMessage = true
         this.events.fire('message:editing', true)
-        this.events.fire('message:editor-selected', null)
+        this.events.fire('message:selected', null)
 
         this.setAddBtnCancel(true)
 
@@ -207,7 +208,7 @@ class MessageEditorUI {
             icon: ICONS.messageEditBtn,
             title: 'Edit',
             className: 'message-action-btn',
-            onClick: () => this.events.fire('message:editor-selected', isExpanded ? null : h),
+            onClick: () => this.events.fire('message:selected', isExpanded ? null : h),
         })
         if (isExpanded) editBtn.classList.add('active')
 
@@ -292,7 +293,8 @@ class MessageEditorUI {
         labelField.appendChild(labelRow)
         textGroup.appendChild(labelField)
 
-        const colorGrid = this.makeGrid(3)
+        const colorFlex = document.createElement('div')
+        colorFlex.classList.add('message-row')
         const colorField = this.makeField('Text Color')
         const { row: textColor } = makeColorPickerDropdown({
             color: this.activeMessageData.text.color,
@@ -346,10 +348,10 @@ class MessageEditorUI {
         // )
         // fontGrid.appendChild(fontSizeField)
         // fontGrid.appendChild(fontFamilyField)
-        colorGrid.appendChild(colorField)
-        colorGrid.appendChild(bgField)
-        colorGrid.appendChild(fontSizeField)
-        textGroup.appendChild(colorGrid)
+        colorFlex.appendChild(colorField)
+        colorFlex.appendChild(bgField)
+        colorFlex.appendChild(fontSizeField)
+        textGroup.appendChild(colorFlex)
         panel.appendChild(textGroup)
 
         const messageGroup = makeSectionGroup('Hotspot')
@@ -560,7 +562,7 @@ class MessageEditorUI {
         })
         iconColorField.appendChild(audioIconColor)
 
-        const iconBgField = this.makeField('Icon Background Color', 'background-color')
+        const iconBgField = this.makeField('Background Color', 'background-color')
         const { row: iconBg } = makeColorPickerDropdown({
             color: this.activeMessageData.audio?.bgColor || '#000000',
             alpha: this.activeMessageData.audio?.bgAlpha ?? 0.35,
@@ -757,6 +759,7 @@ class MessageEditorUI {
         grid.classList.add(variant === 3 ? 'message-grid-3' : 'message-grid-2')
         return grid
     }
+
 
     makeFormatBtn(char, key, onChange) {
         const btn = document.createElement('button')

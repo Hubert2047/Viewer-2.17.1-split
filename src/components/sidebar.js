@@ -54,6 +54,13 @@ function makeSection({ id, title, body: renderBody, classname = '', global, icon
     }
 
     const toggle = () => {
+        if (global.recording) {
+            showToast('This action is unavailable while recording.', {
+                duration: 1500,
+                type: 'warning',
+            })
+            return
+        }
         const isOpen = body.style.display !== 'none'
         events.fire('sidebar:clicked', { id, open: !isOpen })
         if (isOpen) {
@@ -456,9 +463,9 @@ function makeViewerSection(el, global) {
         name: 'spin-direction',
     })
     directionRow.el.appendChild(directionSelect.el)
-    const isSpherical = settings.model ==="spherical"
+    const isSpherical = settings.model === 'spherical'
     let rotationAxisRow
-    if(isSpherical){
+    if (isSpherical) {
         rotationAxisRow = makeRow({ title: 'Rotation Axis', show: settings.spin.enabled })
         const axisSelect = makeSelect({
             options: [
@@ -502,7 +509,7 @@ function makeViewerSection(el, global) {
     spinGroup.appendChild(spinContinuousRow.el)
     spinGroup.appendChild(spinOnStartRow.el)
     spinGroup.appendChild(speedRow.el)
-    if(rotationAxisRow){
+    if (rotationAxisRow) {
         spinGroup.appendChild(rotationAxisRow.el)
     }
     spinGroup.appendChild(directionRow.el)
@@ -590,7 +597,7 @@ function makeExportSection(el, global) {
 }
 function makeSidebar(global, dom) {
     const { events } = global
-    const SIDEBAR_WIDTH = '360px'
+    const SIDEBAR_WIDTH = '400px'
     const isSherical = global.settings.model === 'spherical'
     const totalSteps = isSherical ? 3 : 4
     const minStep = 1
@@ -648,6 +655,13 @@ function makeSidebar(global, dom) {
         className: 'reset-setup-btn',
         title: 'Back',
         onClick: async () => {
+            if (global.recording) {
+                showToast('This action is unavailable while recording.', {
+                    duration: 1500,
+                    type: 'warning',
+                })
+                return
+            }
             const ok = await global.confirmDialog.ask({
                 title: 'Back to Model Setup',
                 message: 'When you go back to model setup, your current settings will be lost. Do you want to go back?',
@@ -732,6 +746,10 @@ function makeSidebar(global, dom) {
     const isFinalStep = () => global.settings.setupStep === totalSteps
 
     const renderModelStep = () => {
+        contentArea._cleanup = () => {
+            modelSection._cleanup?.()
+            exportSection._cleanup?.()
+        }
         const modelSection = makeSection({
             id: 'model',
             title: 'Model',
@@ -739,17 +757,15 @@ function makeSidebar(global, dom) {
             body: (el) => makeModelSection(el, global),
             global,
         })
+        const exportSection = makeSection({
+            id: 'export',
+            title: 'Export',
+            classname: 'export-section',
+            body: (el) => makeExportSection(el, global),
+            global,
+        })
         contentArea.appendChild(modelSection)
-        contentArea._cleanup = () => modelSection._cleanup?.()
-        contentArea.appendChild(
-            makeSection({
-                id: 'export',
-                title: 'Export',
-                classname: 'export-section',
-                body: (el) => makeExportSection(el, global),
-                global,
-            }),
-        )
+        contentArea.appendChild(exportSection)
         setTimeout(() => {
             global.activeSidebarId = 'model'
             events.fire('sidebar:active', 'model')
@@ -757,6 +773,16 @@ function makeSidebar(global, dom) {
     }
 
     const renderFullStep = () => {
+        contentArea._cleanup = () => {
+            recordSection._cleanup?.()
+        }
+        const recordSection = makeSection({
+            id: 'record',
+            title: 'Record Video',
+            classname: 'record-section',
+            body: (el) => makeRecordSection(el, global),
+            global,
+        })
         contentArea.appendChild(
             makeSection({
                 id: 'settings',
@@ -803,6 +829,7 @@ function makeSidebar(global, dom) {
         //         global,
         //     }),
         // )
+        contentArea.appendChild(recordSection)
 
         contentArea.appendChild(
             makeSection({

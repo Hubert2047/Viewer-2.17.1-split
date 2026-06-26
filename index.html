@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=152" />
+        <link rel="stylesheet" href="viewer.css?v=158" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -53,15 +53,102 @@
             settings: {
                 ref: '',
                 model: 'spherical',
-                // contentUrl: 'motobike.ply',
                 contentUrl: 'canon.ply',
-                v: 152,
+                v: 158,
                 background: { color: '#FFFFFF' },
-                spin: { enabled: true, continuous: true, autoStart: true, direction: 'cw', axis: 'y', speed: 5 },
+                spin: { enabled: true, continuous: true, autoStart: false, direction: 'cw', axis: 'y', speed: 5 },
+                messages: [
+                    {
+                        id: '8a680e07-74f7-40e1-8d45-40589c048f00',
+                        autoPlay: { time: 3 },
+                        button: { title: 'message1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: -3.7821891260571734, y: -16.066427460347192, z: 7.330246113727063 },
+                            botRight: { x: -9.909362023322425, y: -13.900221293907878, z: 6.132779641995954 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: -2.867228500338072, y: -11.873919726665804, z: 7.114754439259997 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -2.2578818855856326, y: -12.51038928236984, z: 7.302132947630041 },
+                            botRight: { x: -3.480163373753756, y: -11.236488981301527, z: 6.942950391842478 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: 0.247403959254523,
+                                y: 1.5149123339871682e-17,
+                                z: 0.9689124217106447,
+                                w: 5.932877479510262e-17,
+                            },
+                            position: { x: 1.3455936392233445, y: 0, z: -2.094374221875556 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -3.428320246987357, y: 8.85147717100097, z: -3.6820729784615356 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                    {
+                        id: 'e120a2ef-c6bd-41c7-b3fd-52d6986f1f45',
+                        autoPlay: { time: 0 },
+                        button: { title: 'message2' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message2',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 2.0386411019258865, y: -14.032278980612734, z: -9.046064381760328 },
+                            botRight: { x: 3.4023579108637936, y: -10.63786734666854, z: -15.715393666634062 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 0.37988943435554035, y: -9.516426697348217, z: -7.821764302337673 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 0.3450282869051673, y: -10.33371021234657, z: -7.186030645868771 },
+                            botRight: { x: 0.3983975164468214, y: -8.705011240758578, z: -8.463794226647709 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.5615012953590469,
+                                y: -0.110281042274261,
+                                z: 0.8121500398412906,
+                                w: 0.11387141788352903,
+                            },
+                            position: { x: -6.2423571282624195, y: -0.8025517060894671, z: -2.088143207580943 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -3.428320246987357, y: 8.85147717100097, z: -3.6820729784615356 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                ],
                 setupStep: 3,
                 cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
             },
         }
     </script>
-    <script src="./viewer.js?v=152"></script>
+    <script src="./viewer.js?v=158"></script>
 </html>

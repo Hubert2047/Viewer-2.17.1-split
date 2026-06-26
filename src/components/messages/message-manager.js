@@ -36,7 +36,7 @@ class MessagesManager {
                 const message = this.messages.find((message) => message.id === id)
                 if (message) {
                     const data = this.settings.messages.find((h) => h.id === message.id)
-                    this.events.fire('message:editor-selected', JSON.parse(JSON.stringify(data)))
+                    this.events.fire('message:selected', JSON.parse(JSON.stringify(data)))
                 }
             },
         })
@@ -79,10 +79,10 @@ class MessagesManager {
                 this.events.fire('info-panel:rebuild')
             }
             this.messages.push(this.createMessage(data))
-            this.events.fire('message:editor-selected', data)
+            this.events.fire('message:selected', data)
             this.events.fire('message:editing', false)
         })
-        this.events.on('message:editor-selected', (selectedData) => {
+        this.events.on('message:selected', (selectedData) => {
             this.stopAutoPlay()
             if (this.activeData && selectedData === null) this.resetActiveMessageBtnName()
             this.activeData = selectedData
@@ -125,8 +125,8 @@ class MessagesManager {
             this.activeData = data
             this.events.fire('message:update-ui-data', data)
         })
-        this.events.on('message:start-auto', () => this.startAutoPlay())
-        this.events.on('message:stop-auto', () => this.stopAutoPlay())
+        this.events.on('message:start-auto', (data) => this.startAutoPlay(data))
+        this.events.on('message:stop-auto', (data) => this.stopAutoPlay(data))
         this.events.on('message:show-message-navigation', () => this.showMessageNavigation(true))
         this.events.on('message:hide-message-navigation', () => this.showMessageNavigation(false))
         this.events.on('message:editor-cancelled', () => this.editorCancelled())
@@ -229,7 +229,10 @@ class MessagesManager {
                         : currentIdx - 1
                     : (currentIdx + 1) % this.messages.length
             const nextData = this.settings.messages[nextIdx]
-            this.events.fire('message:editor-selected', JSON.parse(JSON.stringify(nextData)))
+            this.events.fire('message:selected', JSON.parse(JSON.stringify(nextData)))
+        })
+        this.events.on('record-section:active', () => {
+            if (this.activeMessage) this.activeMessage.hide()
         })
     }
     hideAllMessages() {
@@ -324,12 +327,12 @@ class MessagesManager {
     }
     setActive(message, lerpDuration = 1.5) {
         if (!message || !modelEntity) return
-        if (this.editable && this.activeMessage && message.id !== this.activeMessage?.id) {
+        if (!this.global.recordActive && this.editable && this.activeMessage && message.id !== this.activeMessage?.id) {
             const data = this.settings.messages.find((i) => i.id === this.activeMessage.data.id)
             this.activeMessage.data = JSON.parse(JSON.stringify(data))
             this.activeMessage.update(true, this.activeMessage.data.button.title)
         }
-        this.events.fire('sidebar:active', 'message')
+        if (this.global.recordActive) message?.hide()
         this.activeMessage?.hide()
         message.resetTime()
         const isSamePose = this.isSamePose(message)
@@ -368,37 +371,50 @@ class MessagesManager {
             entityInfo: message.data.entityInfo,
             lerpDuration,
             onTransitionFinished: () => {
-                message.show()
-                message.update()
+                if (this.global.recordActive) {
+                    message.hide()
+                } else {
+                    message.show()
+                    message.update()
+                }
                 this.isTranslating = false
             },
         })
         return false
     }
-    autoPlay() {
+    autoPlay({ onFinished, loop = true } = {}) {
         if (this.messages.length === 0) return
         const currentIdx = this.activeMessage ? this.messages.findIndex((h) => h.id === this.activeMessage.id) : -1
-        const nextIdx = (currentIdx + 1) % this.messages.length
-        const next = this.messages[nextIdx]
+        const nextIdx = currentIdx + 1
+        const wrappedIdx = nextIdx % this.messages.length
+        const next = this.messages[wrappedIdx]
         const isSamePose = this.setActive(next, AUTO_PLAY_LERP_TIME)
+        const isLastMessage = !loop && nextIdx >= this.messages.length - 1
         this.intervalID = setTimeout(
-            () => this.autoPlay(),
+            () => {
+                if (isLastMessage) {
+                    onFinished?.(this)
+                } else {
+                    this.autoPlay({ onFinished, loop })
+                }
+            },
             next.data.autoPlay.time * 1000 + (isSamePose ? 0 : AUTO_PLAY_LERP_TIME * 1000),
         )
     }
-    startAutoPlay() {
-        this.events.fire('message:editor-selected', null)
+    startAutoPlay(data) {
+        this.events.fire('message:selected', null)
         this.global.isAutoPlayMessages = true
         this.events.fire('re-render:control-wrap')
-        this.autoPlay()
+        this.autoPlay(data)
     }
 
-    stopAutoPlay() {
+    stopAutoPlay({ hideMessages = false } = {}) {
         if (!this.global.isAutoPlayMessages) return
         if (this.intervalID) {
             clearTimeout(this.intervalID)
             this.intervalID = null
         }
+        if (!hideMessages) this.hideAllMessages()
         this.global.isAutoPlayMessages = false
         this.events.fire('re-render:control-wrap')
     }
@@ -418,7 +434,7 @@ class MessagesManager {
         if (this.editor) this.editor.render(this.settings.messages, this.activeData)
     }
     update() {
-        if (this.isTranslating) return
+        if (this.isTranslating || this.global.recordActive) return
         this.messages.forEach((h) => {
             if (h.id === this.activeMessage?.id) {
                 h.update()

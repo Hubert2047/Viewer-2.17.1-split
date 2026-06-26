@@ -156,10 +156,15 @@ const initUI = async (global) => {
         }
     })
     // fade ui controls after 5 seconds of inactivity
+    let ableShowUI = true
     events.on('controlsHidden:changed', (value) => {
+        if (!ableShowUI) return
+        fadedoutUI(value)
+    })
+    function fadedoutUI(value) {
         dom.controlsWrap.classList.toggle('faded-out', value)
         dom.controlsWrap.classList.toggle('faded-in', !value)
-    })
+    }
     // show the ui and start a timer to hide it again
     let uiTimeout = null
     let annotationVisible = false
@@ -187,7 +192,16 @@ const initUI = async (global) => {
         showUI()
     })
     events.on('viewer:auto-hide-ui', (value) => {
-        showUI()
+        state.controlsHidden = value
+        fadedoutUI(value)
+    })
+    events.on('hide-ui', () => {
+        ableShowUI = false
+        fadedoutUI(true)
+    })
+    events.on('show-ui', () => {
+        ableShowUI = true
+        fadedoutUI(false)
     })
     events.on('annotation.deactivate', () => {
         annotationVisible = false

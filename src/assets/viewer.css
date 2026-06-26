@@ -31,7 +31,9 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-
+html {
+  font-size: 18px;
+}
 canvas {
   opacity: var(--canvas-opacity);
   position: fixed;
@@ -468,6 +470,12 @@ button {
   overflow-y: auto;
   scrollbar-width: auto;
 }
+.message-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
 .message {
   display: none;
   justify-content: center;
@@ -599,7 +607,8 @@ button {
   background-color: rgba(249, 87, 68, 0.18);
 }
 .message-label {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+  min-width: max-content;
   color: rgb(140, 159, 180);
 }
 .input-field {
@@ -689,6 +698,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+.message-field .cpd-trigger {
+  width: 100%;
 }
 .message-field.embed {
   gap: 0px;
@@ -1729,6 +1741,11 @@ button {
   transition: background 0.1s;
   white-space: nowrap;
 }
+.sd-option-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: auto;
+}
 .sd-option:hover {
   background: var(--bg-hover);
 }
@@ -2499,4 +2516,14 @@ button {
 .cpd-row {
   height: auto;
   min-height: 32px;
+}
+.record-filename > .label,
+.record-region > .label {
+  min-width: 166px;
+}
+.record-filename-input {
+  text-align: center;
+}
+.record-pattern .sd-trigger {
+  min-width: 72px;
 }

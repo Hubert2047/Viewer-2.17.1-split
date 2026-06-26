@@ -106,6 +106,7 @@ const files = [
     { file: 'src/components/orientation/ground.js', preset: 'default' },
     { file: 'src/components/orientation/orientation.js', preset: 'default' },
     { file: 'src/components/sidebar.js', preset: 'default' },
+    { file: 'src/components/record-video.js', preset: 'default' },
     { file: 'src/main.js', preset: 'engine' },
 ]
 
@@ -115,7 +116,7 @@ function build() {
 
         if (isProduction) {
             const defaultFiles = files.filter((f) => f.preset === 'default')
-            const reservedNames = [...collectGlobalNames(defaultFiles), 'ecb']
+            const reservedNames = [...collectGlobalNames(defaultFiles), 'ecb', 'exportHtml']
             console.log(`✓ Reserved ${reservedNames.length} global names`)
 
             const playcanvasLicense = `/**\n * ${[
@@ -141,11 +142,17 @@ function build() {
             ].join('\n * ')}\n */\n`
             const engineFiles = files.filter((f) => f.preset === 'engine' && f.file !== 'src/main.js')
             const engineSrc = engineFiles.map(({ file }) => fs.readFileSync(file, 'utf8')).join('\n')
-            const engineObfuscated = JavaScriptObfuscator.obfuscate(engineSrc, OBFUSCATE_PRESETS.engine).getObfuscatedCode()
+            const engineObfuscated = JavaScriptObfuscator.obfuscate(
+                engineSrc,
+                OBFUSCATE_PRESETS.engine,
+            ).getObfuscatedCode()
 
             const defaultObfuscated = defaultFiles.map(({ file }) => {
                 const src = fs.readFileSync(file, 'utf8')
-                return JavaScriptObfuscator.obfuscate(src, { ...OBFUSCATE_PRESETS.default, reservedNames }).getObfuscatedCode()
+                return JavaScriptObfuscator.obfuscate(src, {
+                    ...OBFUSCATE_PRESETS.default,
+                    reservedNames,
+                }).getObfuscatedCode()
             })
 
             const mainSrc = fs.readFileSync('src/main.js', 'utf8')
