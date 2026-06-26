@@ -3,8 +3,6 @@ function makeDimensionSection(el, global) {
     let isEditing = false
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
-    // let currentBoxLocalPos = { x: 0, y: 0, z: 0 }
-    // let prevRotation = { x: 0, y: 0, z: 0 }
     let canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
     const container = document.createElement('div')
     container.classList.add('section-wrap')
@@ -79,11 +77,9 @@ function makeDimensionSection(el, global) {
     noDimRow.appendChild(noDimText)
     noDimRow.appendChild(addBtn)
 
-    // ── Has dimension ──
     const hasDimWrap = makeSectionWrap()
     const displayGroup = makeSectionGroup('display')
 
-    // Color picker
     const { row: boxColorGroup, setDisabled: setBoxColorDisabled } = makeColorPickerDropdown({
         label: 'Box Color',
         color: currentDimensions?.boxColor || '#ffffff',
@@ -125,141 +121,6 @@ function makeDimensionSection(el, global) {
     displayGroup.appendChild(textColor)
     displayGroup.appendChild(backgroundColor)
 
-    // ── Group 1: Box Transform ──
-    // const boxGroup = makeSectionGroup('Box transform')
-    // const {
-    //     row: positionRow,
-    //     setDisabled: setPosDisabled,
-    //     setValues: setPosValues,
-    // } = makeVec3Inputs({
-    //     title: 'Position',
-    //     step: 0.5,
-    //     onFocus: () => {
-    //         if (!currentDimensions) return
-    //         currentBoxLocalPos = dimensionWorldToLocal(currentDimensions.position, currentDimensions.rotation)
-    //         setPosValues(currentBoxLocalPos)
-    //     },
-    //     onChange: ({ x, y, z }) => {
-    //         if (!isEditing) return
-    //         currentBoxLocalPos = { x, y, z }
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             position: dimensionLocalToWorld({ x, y, z }, currentDimensions.rotation),
-    //         }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // events.on('dimensions:position-synced', ({ x, y, z }) => {
-    //     currentBoxLocalPos = dimensionWorldToLocal({ x, y, z }, currentDimensions.rotation)
-    //     setPosValues(currentBoxLocalPos)
-    //     currentDimensions = { ...currentDimensions, position: { x, y, z } }
-    //     events.fire('dimensions:change', currentDimensions)
-    // })
-
-    // const {
-    //     row: rotationRow,
-    //     setDisabled: setRotDisabled,
-    //     setValues: setRotValues,
-    // } = makeVec3Inputs({
-    //     title: 'Rotation',
-    //     step: 0.1,
-    //     onFocus: () => {
-    //         if (currentDimensions?.rotation) {
-    //             prevRotation = { ...currentDimensions.rotation }
-    //         }
-    //     },
-    //     onChange: async ({ x, y, z }) => {
-    //         if (!isEditing) return
-
-    //         const dx = x - prevRotation.x
-    //         const dy = y - prevRotation.y
-    //         const dz = z - prevRotation.z
-    //         prevRotation = { x, y, z }
-
-    //         const currRot = currentDimensions.rotation
-    //         const qCurr = new Quat().setFromEulerAngles(currRot.x, currRot.y, currRot.z)
-    //         const wx = new Vec3(1, 0, 0)
-    //         qCurr.transformVector(wx, wx)
-    //         const wy = new Vec3(0, 1, 0)
-    //         qCurr.transformVector(wy, wy)
-    //         const wz = new Vec3(0, 0, 1)
-    //         qCurr.transformVector(wz, wz)
-
-    //         const qx = new Quat().setFromAxisAngle(wx, dx)
-    //         const qy = new Quat().setFromAxisAngle(wy, dy)
-    //         const qz = new Quat().setFromAxisAngle(wz, dz)
-    //         const qDelta = qy.mul(qx).mul(qz)
-
-    //         const qNew = qDelta.mul(qCurr)
-
-    //         const newEuler = qNew.getEulerAngles()
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             rotation: { x: newEuler.x, y: newEuler.y, z: newEuler.z },
-    //         }
-
-    //         prevRotation = { ...newEuler }
-    //         setRotValues(newEuler)
-
-    //         const result = await getUpdateBoxSize(currentDimensions.rotation)
-    //         currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // events.on('dimensions:eulersynced', ({ x, y, z }) => {
-    //     setRotValues({ x, y, z })
-    //     prevRotation = { x, y, z }
-    //     currentDimensions = { ...currentDimensions, rotation: { x, y, z } }
-    //     events.fire('dimensions:change', currentDimensions)
-    // })
-
-    // const {
-    //     row: sizeRow,
-    //     setDisabled: setSizeDisabled,
-    //     setValues: setSizeValues,
-    // } = makeVec3Inputs({
-    //     title: 'Size',
-    //     step: 0.1,
-    //     onChange: ({ x, y, z }) => {
-    //         if (!isEditing) return
-    //         currentDimensions = { ...currentDimensions, size: { x, y, z } }
-    //         events.fire('dimensions:change', currentDimensions)
-    //     },
-    // })
-    // // ── Auto Fit row ──
-    // const autoFitRow = makeRow('Auto Fit')
-    // const autoFitBtn = makeButton({
-    //     icon: ICONS.autoFit,
-    //     title: 'Auto Fit',
-    //     onClick: async () => {
-    //         if (!currentDimensions || !isEditing) return
-    //         await global.loading.show()
-    //         const points = getVisiblePoints(modelEntity)
-    //         const result = await snapToFitOBBAsync(points, currentDimensions.rotation, {
-    //             maxIterations: 300,
-    //             learningRate: 1,
-    //             chunkSize: 50,
-    //         })
-    //         currentDimensions = {
-    //             ...currentDimensions,
-    //             ...result,
-    //             ...result,
-    //             ...result,
-    //         }
-    //         setValues(currentDimensions)
-    //         events.fire('dimensions:change', currentDimensions)
-    //         global.loading.hide()
-    //     },
-    // })
-    // autoFitBtn.style.cssText = 'height:32px;'
-
-    // autoFitRow.appendChild(autoFitBtn)
-
-    // boxGroup.appendChild(positionRow)
-    // boxGroup.appendChild(rotationRow)
-    // boxGroup.appendChild(sizeRow)
-    // boxGroup.appendChild(autoFitRow)
-    // ── Group 2: Real Dimensions ──
     const actualHint = `Measure the real-world dimensions of the model along each axis using the bounding box edges as reference. You can measure just one side and enable Auto Calculate to derive the other two automatically. If you've already calibrated in the Measurement section, you can use that data directly.`
     const realGroup = makeSectionGroup('Real size', actualHint)
     const realSizeContent = document.createElement('div')
@@ -288,7 +149,6 @@ function makeDimensionSection(el, global) {
             renderRealGroup()
         },
     })
-    // ── Auto Calculate checkbox ──
     let autoCalc = false
     const {
         row: autoCalcRow,
@@ -370,21 +230,12 @@ function makeDimensionSection(el, global) {
         realSizeContent.appendChild(realUnitRow.el)
     }
     renderRealGroup()
-    // ── Shared helpers ──
     const setValues = (dim) => {
         if (!dim) return
-        // prevRotation = { ...dim.rotation }
-        // currentBoxLocalPos = dimensionWorldToLocal(dim.position, dim.rotation)
-        // setPosValues(currentBoxLocalPos)
-        // setRotValues(dim.rotation)
-        // setSizeValues(dim.size)
         setRealValues(dim.realSize)
     }
 
     const setDisabled = (on) => {
-        // setPosDisabled(!on)
-        // setRotDisabled(!on)
-        // setSizeDisabled(!on)
         setRealDisabled(!on)
         realUnitSelect.setDisabled(!on)
         setBoxColorDisabled(!on)
@@ -392,10 +243,8 @@ function makeDimensionSection(el, global) {
         setUsMeasurementDisabled(!on)
         setBackgroundDisabled(!on)
         setAutoCalcDisabled(!on)
-        // autoFitBtn.disabled = !on
     }
 
-    // ── Buttons ──
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row')
 
@@ -482,17 +331,14 @@ function makeDimensionSection(el, global) {
     }
 
     hasDimWrap.appendChild(realGroup)
-    // hasDimWrap.appendChild(boxGroup)
     hasDimWrap.appendChild(displayGroup)
     hasDimWrap.appendChild(btnRow)
 
-    // ── Toggle configured state ──
     const setDimConfigured = (has) => {
         noDimRow.style.display = has ? 'none' : 'flex'
         hasDimWrap.style.display = has ? 'flex' : 'none'
     }
 
-    // ── Assemble ──
     container.appendChild(noDimRow)
     container.appendChild(hasDimWrap)
     el.appendChild(container)
@@ -517,7 +363,6 @@ function makeDimensionSection(el, global) {
             events.fire('dimensions:change', currentDimensions)
         }),
     ]
-
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
     }

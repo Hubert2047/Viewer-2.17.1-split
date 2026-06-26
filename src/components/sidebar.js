@@ -810,20 +810,20 @@ function makeSidebar(global, dom) {
             body: (el) => makeDimensionSection(el, global, dom),
             global,
         })
-        const measurementSection = makeSection({
-            id: 'measurement',
-            title: 'Measurement',
-            classname: 'measurement-section',
-            body: (el) => makeMeasurementSection(el, global),
-            global,
-        })
-        const posterSection = makeSection({
-            id: 'poster',
-            title: 'Poster',
-            classname: 'poster-section',
-            body: (el) => makePoster(el, global),
-            global,
-        })
+        // const measurementSection = makeSection({
+        //     id: 'measurement',
+        //     title: 'Measurement',
+        //     classname: 'measurement-section',
+        //     body: (el) => makeMeasurementSection(el, global),
+        //     global,
+        // })
+        // const posterSection = makeSection({
+        //     id: 'poster',
+        //     title: 'Poster',
+        //     classname: 'poster-section',
+        //     body: (el) => makePoster(el, global),
+        //     global,
+        // })
         const recordSection = makeSection({
             id: 'record',
             title: 'Record Video',
@@ -841,8 +841,8 @@ function makeSidebar(global, dom) {
         contentArea.appendChild(viewerSection)
         contentArea.appendChild(messageSection)
         contentArea.appendChild(dimensionsSection)
-        contentArea.appendChild(measurementSection)
-        contentArea.appendChild(posterSection)
+        // contentArea.appendChild(measurementSection)
+        // contentArea.appendChild(posterSection)
         contentArea.appendChild(recordSection)
         contentArea.appendChild(exportSection)
     }
