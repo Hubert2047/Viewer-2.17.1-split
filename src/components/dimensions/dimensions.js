@@ -17,12 +17,7 @@ function makeDimensionSection(el, global) {
     const addBtn = document.createElement('button')
     addBtn.classList.add('add-btn')
     addBtn.textContent = '+ Add'
-    events.on('gizmo-rotation:drag-end', async () => {
-        if (!isEditing) return
-        const result = await getUpdateBoxSize(currentDimensions.rotation)
-        currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-        events.fire('dimensions:change', currentDimensions)
-    })
+
     addBtn.onclick = async () => {
         await global.loading.show()
 
@@ -286,7 +281,7 @@ function makeDimensionSection(el, global) {
                 currentDimensions = { ...currentDimensions, realSize, unit }
             }
             currentDimensions.useMeasurementData = val
-            realUnitSelect.setValue(currentDimensions.unit) 
+            realUnitSelect.setValue(currentDimensions.unit)
             setValues(currentDimensions)
             events.fire('dimensions:change', currentDimensions)
             global.dataDirty = true
@@ -325,7 +320,7 @@ function makeDimensionSection(el, global) {
         },
         name: 'unit',
     })
- 
+
     realUnitRow.el.appendChild(realUnitSelect.el)
 
     const {
@@ -506,12 +501,24 @@ function makeDimensionSection(el, global) {
     setDisabled(false)
     setDimConfigured(!!settings.dimensions)
     if (settings.dimensions) setValues(settings.dimensions)
-    events.on('sidebar:active', () => onCancel())
-    events.on('sidebar:clicked', ({ id }) => {
-        onCancel()
-        if (id !== 'dimensions') return
-        canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
-        setUseMeasurementChecked(currentDimensions?.useMeasurementData)
-        renderRealGroup()
-    })
+    const handles = [
+        events.on('sidebar:active', () => onCancel()),
+        events.on('sidebar:clicked', ({ id }) => {
+            onCancel()
+            if (id !== 'dimensions') return
+            canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
+            setUseMeasurementChecked(currentDimensions?.useMeasurementData)
+            renderRealGroup()
+        }),
+        events.on('gizmo-rotation:drag-end', async () => {
+            if (!isEditing) return
+            const result = await getUpdateBoxSize(currentDimensions.rotation)
+            currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+            events.fire('dimensions:change', currentDimensions)
+        }),
+    ]
+
+    el.cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+    }
 }

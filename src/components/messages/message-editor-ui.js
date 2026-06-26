@@ -11,31 +11,34 @@ class MessageEditorUI {
         this.activeMessageData = null
         this.listEl = null
         this.countEl = null
+        this.handles = []
         this.listenEvents()
     }
     listenEvents() {
-        this.events.on('message:add-cancelled', () => {
-            document.body.style.cursor = 'default'
-            this.events.fire('message:editing', false)
-            this.isCreatinMessage = false
-            this.resetAddBtn()
-        })
-        this.events.on('message:update-ui-data', (data) => {
-            if (!this.activeMessageData) return
-            if (this.activeMessageData.dot.size !== data.dot.size) {
-                if (!this.dotSizeInput) this.dotSizeInput = this.body.querySelector('input[name="dot-size"]')
-                if (this.dotSizeInput && document.activeElement !== this.dotSizeInput) {
-                    this.dotSizeInput.value = data.dot.size
+        this.handles = [
+            this.events.on('message:add-cancelled', () => {
+                document.body.style.cursor = 'default'
+                this.events.fire('message:editing', false)
+                this.isCreatinMessage = false
+                this.resetAddBtn()
+            }),
+            this.events.on('message:update-ui-data', (data) => {
+                if (!this.activeMessageData) return
+                if (this.activeMessageData.dot.size !== data.dot.size) {
+                    if (!this.dotSizeInput) this.dotSizeInput = this.body.querySelector('input[name="dot-size"]')
+                    if (this.dotSizeInput && document.activeElement !== this.dotSizeInput) {
+                        this.dotSizeInput.value = data.dot.size
+                    }
                 }
-            }
-            if (this.activeMessageData.text.fontSize !== data.text.fontSize) {
-                if (!this.fontSizeInput) this.fontSizeInput = this.body.querySelector('input[name="font-size"]')
-                if (this.fontSizeInput && document.activeElement !== this.fontSizeInput) {
-                    this.fontSizeInput.value = data.text.fontSize
+                if (this.activeMessageData.text.fontSize !== data.text.fontSize) {
+                    if (!this.fontSizeInput) this.fontSizeInput = this.body.querySelector('input[name="font-size"]')
+                    if (this.fontSizeInput && document.activeElement !== this.fontSizeInput) {
+                        this.fontSizeInput.value = data.text.fontSize
+                    }
                 }
-            }
-            this.activeMessageData = data
-        })
+                this.activeMessageData = data
+            }),
+        ]
     }
     mount() {
         this.renderHeader()
@@ -44,7 +47,6 @@ class MessageEditorUI {
         this.body.appendChild(this.listEl)
         this.events.fire('message:editor', this)
     }
-
 
     renderHeader() {
         const header = document.createElement('div')
@@ -85,22 +87,24 @@ class MessageEditorUI {
 
         this.setAddBtnCancel(true)
 
-        this.events.on('pointerup', (e) => {
-            if (!this.isCreatinMessage) return
-            const rect = this.dom.ui.getBoundingClientRect()
-            const mouseX = e.clientX - rect.left
-            const mouseY = e.clientY - rect.top
-            const position = pickModelLocalPoint({
-                x: mouseX,
-                y: mouseY,
-                camera: this.camera,
-                removedSplats: this.settings.removedSplats,
-            })
-            this.events.fire('message:add', { position })
-            document.body.style.cursor = 'default'
-            this.isCreatinMessage = false
-            this.setAddBtnCancel(false)
-        })
+        this.handles.push(
+            this.events.on('pointerup', (e) => {
+                if (!this.isCreatinMessage) return
+                const rect = this.dom.ui.getBoundingClientRect()
+                const mouseX = e.clientX - rect.left
+                const mouseY = e.clientY - rect.top
+                const position = pickModelLocalPoint({
+                    x: mouseX,
+                    y: mouseY,
+                    camera: this.camera,
+                    removedSplats: this.settings.removedSplats,
+                })
+                this.events.fire('message:add', { position })
+                document.body.style.cursor = 'default'
+                this.isCreatinMessage = false
+                this.setAddBtnCancel(false)
+            }),
+        )
     }
     setAddBtnCancel(isCancel) {
         if (!this.addBtn) return
@@ -760,7 +764,6 @@ class MessageEditorUI {
         return grid
     }
 
-
     makeFormatBtn(char, key, onChange) {
         const btn = document.createElement('button')
         btn.classList.add('fmt-btn')
@@ -772,5 +775,8 @@ class MessageEditorUI {
             onChange()
         })
         return btn
+    }
+    cleanup() {
+        this.handles.forEach((h) => this.events.offByHandle(h))
     }
 }

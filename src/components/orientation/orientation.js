@@ -155,7 +155,7 @@ function makeOrientationGroup(global, editGroup) {
         events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z })),
         events.on('next-step', () => onCancelOrientation()),
     ]
-    group._cleanup = () => {
+    group.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
         manualClean()
     }

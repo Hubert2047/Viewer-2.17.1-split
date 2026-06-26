@@ -154,13 +154,6 @@ function makeMeasurementSection(el, global) {
             global.dataDirty = true
         },
     })
-
-    events.on('measurement:calibration-point-moved', ({ idx, pos }) => {
-        if (idx === 0) setPointAValues(pos)
-        else setPointBValues(pos)
-        calibPoints[idx] = pos
-    })
-
     // distance input row
     const distanceRow = makeRow({ title: 'Real Distance', className: 'real-distance' })
     const calibDistanceInput = makeInput({
@@ -240,20 +233,11 @@ function makeMeasurementSection(el, global) {
             calibContent.appendChild(pointARow)
             calibContent.appendChild(pointBRow)
             calibDistanceInput.disabled = !isEditing
-            calibUnitSelect.setDisabled(!isEditing) 
-            distanceRow.setDisabled(!isEditing) 
+            calibUnitSelect.setDisabled(!isEditing)
+            distanceRow.setDisabled(!isEditing)
             calibContent.appendChild(distanceRow.el)
         }
     }
-
-    events.on('measurement:calibration-picked', (points) => {
-        if (points.length < 2) return
-        calibPoints = points
-        calibState = 'picked'
-        setPointAValues(points[0])
-        setPointBValues(points[1])
-        renderCalib()
-    })
 
     calibGroup.appendChild(calibContent)
 
@@ -312,7 +296,7 @@ function makeMeasurementSection(el, global) {
         if (!m) return
         if (m.calibration) {
             calibDistanceInput.value = m.calibration.distance
-            calibUnitSelect.setValue(m.calibration.unit) 
+            calibUnitSelect.setValue(m.calibration.unit)
             setUseDimChecked(m.calibration.useDimensionData)
             if (m.calibration?.points.length >= 2) {
                 setPointAValues(m.calibration.points[0])
@@ -455,24 +439,44 @@ function makeMeasurementSection(el, global) {
     container.appendChild(hasMeasureWrap)
     el.appendChild(container)
 
-    events.on('sidebar:active', ({ id }) => {
-        onCancel()
-    })
-    events.on('sidebar:clicked', ({ id }) => {
-        onCancel()
-        if (id !== 'measurement') return
-        canUseDimensionData = hasDimensionsData(settings.dimensions)
-        renderCalib()
-    })
-    events.on('dimensions:delete', () => {
-        if (!hasCalibrationData(currentMeasurement?.calibration)) {
-            global.measureTool.deactivate()
-        }
-    })
-
     renderBtns()
     setDisabled(false)
     renderCalib()
     setConfigured(!!editMeasurement)
     if (editMeasurement) setValues(editMeasurement)
+    const handles = [
+        events.on('sidebar:active', ({ id }) => {
+            onCancel()
+        }),
+        events.on('sidebar:clicked', ({ id }) => {
+            onCancel()
+            if (id !== 'measurement') return
+            canUseDimensionData = hasDimensionsData(settings.dimensions)
+            renderCalib()
+        }),
+        events.on('dimensions:delete', () => {
+            if (!hasCalibrationData(currentMeasurement?.calibration)) {
+                global.measureTool.deactivate()
+            }
+        }),
+        events.on('measurement:calibration-picked', (points) => {
+            if (points.length < 2) return
+            calibPoints = points
+            calibState = 'picked'
+            setPointAValues(points[0])
+            setPointBValues(points[1])
+            renderCalib()
+        }),
+        events.on('measurement:calibration-point-moved', ({ idx, pos }) => {
+            if (idx === 0) setPointAValues(pos)
+            else setPointBValues(pos)
+            calibPoints[idx] = pos
+        }),
+    ]
+    el.cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+        if (global.measureTool) {
+            global.measureTool.cleanup()
+        }
+    }
 }

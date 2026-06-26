@@ -1,5 +1,8 @@
 function makeMessagesSection(body, global, dom) {
     const editor = new MessageEditorUI(body, { dom, global })
+    body.cleanup = () => {
+        editor.cleanup()
+    }
     editor.mount()
 }
 function makeSection({ id, title, body: renderBody, classname = '', global, icon }) {
@@ -34,7 +37,7 @@ function makeSection({ id, title, body: renderBody, classname = '', global, icon
     chevron.dataset.sidebarChevron = id
 
     renderBody(body)
-    section._cleanup = () => body._cleanup?.()
+    section.cleanup = () => body.cleanup?.()
     body.style.display = 'none'
 
     const open = () => {
@@ -240,7 +243,7 @@ function makePivotGroup(global, editGroup) {
             currrentPivotPos = { x, y, z }
         }),
     ]
-    group._cleanup = () => {
+    group.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
     }
     return group
@@ -287,6 +290,10 @@ function makePoster(el, global) {
 
     container.appendChild(capturePicture)
     el.appendChild(container)
+    const handles = []
+    el.cleanup = () => {
+        handles.forEach((h) => events.offByHandle(h))
+    }
 }
 function makeModelSection(el, global) {
     const { settings, events } = global
@@ -308,7 +315,7 @@ function makeModelSection(el, global) {
     }
     container.appendChild(currentCom)
     el.appendChild(container)
-    if (currentCom._cleanup) el._cleanup = currentCom._cleanup
+    if (currentCom.cleanup) el.cleanup = currentCom.cleanup
 }
 function makeInitViewGroup(events, settings, global) {
     const wrap = document.createElement('div')
@@ -746,9 +753,9 @@ function makeSidebar(global, dom) {
     const isFinalStep = () => global.settings.setupStep === totalSteps
 
     const renderModelStep = () => {
-        contentArea._cleanup = () => {
-            modelSection._cleanup?.()
-            exportSection._cleanup?.()
+        contentArea.cleanup = () => {
+            modelSection.cleanup?.()
+            exportSection.cleanup?.()
         }
         const modelSection = makeSection({
             id: 'model',
@@ -773,9 +780,50 @@ function makeSidebar(global, dom) {
     }
 
     const renderFullStep = () => {
-        contentArea._cleanup = () => {
-            recordSection._cleanup?.()
+        contentArea.cleanup = () => {
+            viewerSection.cleanup?.()
+            messageSection.cleanup?.()
+            dimensionsSection.cleanup?.()
+            measurementSection.cleanup?.()
+            posterSection.cleanup?.()
+            recordSection.cleanup?.()
+            exportSection.cleanup?.()
         }
+        const viewerSection = makeSection({
+            id: 'settings',
+            title: 'Viewer',
+            classname: 'viewer-setting-section',
+            body: (el) => makeViewerSection(el, global),
+            global,
+        })
+        const messageSection = makeSection({
+            id: 'message',
+            title: 'Messages',
+            classname: 'message-section',
+            body: (el) => makeMessagesSection(el, global, dom),
+            global,
+        })
+        const dimensionsSection = makeSection({
+            id: 'dimensions',
+            title: 'Dimensions',
+            classname: 'dimension-section',
+            body: (el) => makeDimensionSection(el, global, dom),
+            global,
+        })
+        const measurementSection = makeSection({
+            id: 'measurement',
+            title: 'Measurement',
+            classname: 'measurement-section',
+            body: (el) => makeMeasurementSection(el, global),
+            global,
+        })
+        const posterSection = makeSection({
+            id: 'poster',
+            title: 'Poster',
+            classname: 'poster-section',
+            body: (el) => makePoster(el, global),
+            global,
+        })
         const recordSection = makeSection({
             id: 'record',
             title: 'Record Video',
@@ -783,69 +831,26 @@ function makeSidebar(global, dom) {
             body: (el) => makeRecordSection(el, global),
             global,
         })
-        contentArea.appendChild(
-            makeSection({
-                id: 'settings',
-                title: 'Viewer',
-                classname: 'viewer-setting-section',
-                body: (el) => makeViewerSection(el, global),
-                global,
-            }),
-        )
-        contentArea.appendChild(
-            makeSection({
-                id: 'message',
-                title: 'Messages',
-                classname: 'message-section',
-                body: (el) => makeMessagesSection(el, global, dom),
-                global,
-            }),
-        )
-        contentArea.appendChild(
-            makeSection({
-                id: 'dimensions',
-                title: 'Dimensions',
-                classname: 'dimension-section',
-                body: (el) => makeDimensionSection(el, global, dom),
-                global,
-            }),
-        )
-
-        // contentArea.appendChild(
-        //     makeSection({
-        //         id: 'measurement',
-        //         title: 'Measurement',
-        //         classname: 'measurement-section',
-        //         body: (el) => makeMeasurementSection(el, global),
-        //         global,
-        //     }),
-        // )
-        // contentArea.appendChild(
-        //     makeSection({
-        //         id: 'poster',
-        //         title: 'Poster',
-        //         classname: 'poster-section',
-        //         body: (el) => makePoster(el, global),
-        //         global,
-        //     }),
-        // )
+        const exportSection = makeSection({
+            id: 'export',
+            title: 'Export',
+            classname: 'export-section',
+            body: (el) => makeExportSection(el, global),
+            global,
+        })
+        contentArea.appendChild(viewerSection)
+        contentArea.appendChild(messageSection)
+        contentArea.appendChild(dimensionsSection)
+        contentArea.appendChild(measurementSection)
+        contentArea.appendChild(posterSection)
         contentArea.appendChild(recordSection)
-
-        contentArea.appendChild(
-            makeSection({
-                id: 'export',
-                title: 'Export',
-                classname: 'export-section',
-                body: (el) => makeExportSection(el, global),
-                global,
-            }),
-        )
+        contentArea.appendChild(exportSection)
     }
 
     const renderStep = () => {
         const step = global.settings.setupStep
-        contentArea._cleanup?.()
-        contentArea._cleanup = null
+        contentArea.cleanup?.()
+        contentArea.cleanup = null
         contentArea.innerHTML = ''
         contentArea.classList.remove('step-content-enter')
         void contentArea.offsetWidth

@@ -487,7 +487,7 @@ function makeRecordSection(el, global) {
             stopRecordTimer()
         }),
     ]
-    el._cleanup = () => {
+    el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
         cancelRecordingWithoutDownload()
         unmountOverlay()

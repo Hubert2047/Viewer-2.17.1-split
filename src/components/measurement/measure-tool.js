@@ -29,55 +29,59 @@ class MeasureTool {
         this._calibPickedCount = 0
         this._calibClickHandler = null
         this._calibFrameHandle = null
+        this.handles = [
+            events.on('dimensions:change', (dim) => {
+                this._dimensions = dim
+                this._render()
+            }),
+            events.on('measurement:calibration-set-input-point', ({ idx, pos }) => {
+                this.setCalibFromInputPoint(idx, pos)
+            }),
+            events.on('measurement:calibration-pick-start', () => {
+                this.startCalibrationPick()
+            }),
+            events.on('measurement:calibration-cancel', () => {
+                this.cancelCalibrationPick()
+            }),
+            events.on('measurement:calibration-reset', () => {
+                this.resetCalib()
+            }),
+            events.on('measurement:calibration-restore-points', (points) => {
+                if (!points || points.length < 2) return
+                if (this._active) this.deactivate()
+                this._gizmos.forEach((g) => g.disable())
+                if (this._calibFrameHandle) {
+                    this._calibFrameHandle.off()
+                    this._calibFrameHandle = null
+                }
 
-        events.on('dimensions:change', (dim) => {
-            this._dimensions = dim
-            this._render()
-        })
-        events.on('measurement:calibration-set-input-point', ({ idx, pos }) => {
-            this.setCalibFromInputPoint(idx, pos)
-        })
-        events.on('measurement:calibration-pick-start', () => {
-            this.startCalibrationPick()
-        })
-        events.on('measurement:calibration-cancel', () => {
-            this.cancelCalibrationPick()
-        })
-        events.on('measurement:calibration-reset', () => {
-            this.resetCalib()
-        })
-        events.on('measurement:calibration-restore-points', (points) => {
-            if (!points || points.length < 2) return
-            if (this._active) this.deactivate()
-            this._gizmos.forEach((g) => g.disable())
-            if (this._calibFrameHandle) {
-                this._calibFrameHandle.off()
-                this._calibFrameHandle = null
-            }
+                this._calibMode = true
+                this._calibPickedCount = 2
+                this._calibPoints = [
+                    new Vec3(points[0].x, points[0].y, points[0].z),
+                    new Vec3(points[1].x, points[1].y, points[1].z),
+                ]
 
-            this._calibMode = true
-            this._calibPickedCount = 2
-            this._calibPoints = [
-                new Vec3(points[0].x, points[0].y, points[0].z),
-                new Vec3(points[1].x, points[1].y, points[1].z),
-            ]
+                this._svg.style.display = ''
 
-            this._svg.style.display = ''
+                this._gizmos.forEach((g, i) => {
+                    g.setPosition(this._calibPoints[i])
+                    g.enable()
+                })
+                this._activeGizmoIdx = -1
 
-            this._gizmos.forEach((g, i) => {
-                g.setPosition(this._calibPoints[i])
-                g.enable()
-            })
-            this._activeGizmoIdx = -1
-
-            this._calibFrameHandle = this._app.on('update', () => {
-                if (!this._calibMode) return
-                this._renderCalib()
-            })
-        })
-        events.on('setup-reset', () => {
-            this.deactivate()
-        })
+                this._calibFrameHandle = this._app.on('update', () => {
+                    if (!this._calibMode) return
+                    this._renderCalib()
+                })
+            }),
+            events.on('setup-reset', () => {
+                this.deactivate()
+            }),
+        ]
+    }
+    cleanup() {
+        this.handles.forEach((h) => this.events.offByHandle(h))
     }
 
     // ─── Config ───────────────────────────────────────────────────────────────

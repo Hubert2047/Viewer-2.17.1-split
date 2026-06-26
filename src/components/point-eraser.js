@@ -358,7 +358,7 @@ function makePointEraser(global) {
         undoBtn.disabled = currentControl._historyIndex <= 0
         redoBtn.disabled = currentControl._historyIndex >= currentControl._history.length - 1
     }
-    container._cleanup = () => {
+    container.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
         resetSelection()
         currentControl?.destroy()
