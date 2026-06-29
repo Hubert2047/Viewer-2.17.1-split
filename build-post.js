@@ -82,7 +82,7 @@ const files = [
     { file: 'src/libs/engine-4.js', preset: 'engine' },
     { file: 'src/global-variables.js', preset: 'default' },
     { file: 'src/default-settings.js', preset: 'default' },
-    { file: 'src/utils/math.js', preset: 'default' },
+    { file: 'src/utils/math.js', preset: 'engine' },
     { file: 'src/utils/index.js', preset: 'default' },
     { file: 'src/components/rotation-gizmo.js', preset: 'default' },
     { file: 'src/components/entity-rotatable.js', preset: 'default' },

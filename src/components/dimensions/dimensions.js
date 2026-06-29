@@ -24,10 +24,7 @@ function makeDimensionSection(el, global) {
             ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
             : new Quat(0, 0, 0, 1)
         const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
-        const count = localPoints.length / 3
-
         const result = await snapToFitOBBAsync(localPoints, getDimensionsRotation(localPoints))
-
         const invOrientQuat = orientQuat.clone().invert()
 
         const posInOriented = new Vec3(result.position.x, result.position.y, result.position.z)
@@ -173,6 +170,7 @@ function makeDimensionSection(el, global) {
             { value: 'inch', label: 'inch' },
         ],
         value: settings.dimensions?.unit || 'cm',
+        className: 'dimensions-unit',
         onChange: (v) => {
             currentDimensions = { ...currentDimensions, unit: v }
             events.fire('dimensions:change', currentDimensions)

@@ -61,10 +61,6 @@ button {
   border: 1px solid transparent;
   cursor: pointer;
   font-size: 0.8125rem;
-  -webkit-transition: background 0.12s;
-  -moz-transition: background 0.12s;
-  -ms-transition: background 0.12s;
-  -o-transition: background 0.12s;
   transition: background 0.12s;
 }
 .btn:hover {
@@ -161,35 +157,6 @@ button {
     visibility 0s 0.5s,
     opacity 0.5s ease-out;
 }
-#controlsWrap > #timelineContainer {
-  height: 30px;
-  cursor: pointer;
-}
-#controlsWrap > #timelineContainer > #line {
-  width: 100%;
-  height: 50%;
-  border-bottom: 4px solid #d9d9d9;
-}
-#controlsWrap > #timelineContainer > #handle {
-  position: absolute;
-  top: 16.5px;
-  width: 12px;
-  height: 12px;
-  transform: translate(-50%, -50%);
-  border: 2px solid #d9d9d9;
-  border-radius: 50%;
-  background-color: #ffaf50;
-}
-#controlsWrap > #timelineContainer > #time {
-  position: absolute;
-  top: 0;
-  padding: 0.125rem 0.25rem;
-  transform: translate(-50%, -100%);
-  font-size: 0.75rem;
-  border-radius: 0.25rem;
-  color: #fff;
-  background-color: rgba(40, 40, 40, 0.5);
-}
 #controlsWrap > #buttonsContainer {
   display: flex;
   flex: 1;
@@ -259,10 +226,6 @@ button {
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right {
   border-radius: 0px 0.25rem 0.25rem 0px;
-  -webkit-border-radius: 0px 0.25rem 0.25rem 0px;
-  -moz-border-radius: 0px 0.25rem 0.25rem 0px;
-  -ms-border-radius: 0px 0.25rem 0.25rem 0px;
-  -o-border-radius: 0px 0.25rem 0.25rem 0px;
 }
 #controlsWrap > #buttonsContainer .control-btn.toggle.right:not(.active) {
   background-position: 200% 0%;
@@ -317,11 +280,9 @@ button {
   cursor: pointer;
   font-size: 0.875rem;
   gap: 0.25rem;
-  color: #111;
-  transition: background 0.12s;
-  user-select: none;
   color: #333;
   transition: color 0.2s ease;
+  user-select: none;
 }
 .section-header.active {
   color: var(--primary);
@@ -395,22 +356,6 @@ button {
   transition:
     opacity 1.5s ease,
     visibility 1.5s;
-  -webkit-transition:
-    opacity 1.5s ease,
-    visibility 1.5s;
-  -moz-transition:
-    opacity 1.5s ease,
-    visibility 1.5s;
-  -ms-transition:
-    opacity 1.5s ease,
-    visibility 1.5s;
-  -o-transition:
-    opacity 1.5s ease,
-    visibility 1.5s;
-  -webkit-border-radius: 0.1875rem;
-  -moz-border-radius: 0.1875rem;
-  -ms-border-radius: 0.1875rem;
-  -o-border-radius: 0.1875rem;
 }
 .message-align-btns > .btn {
   width: 28px;
@@ -534,14 +479,6 @@ button {
 .select-field {
   cursor: pointer;
 }
-
-.message-cancel-btn {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.12);
-  color: rgba(0, 0, 0, 0.4);
-}
-
-/* ===== Messages Section ===== */
 .message-section-header {
   display: flex;
   justify-content: space-between;
@@ -569,20 +506,15 @@ button {
 .message-item.expanded {
   border-color: rgba(249, 87, 68, 0.4);
 }
-/* Edit panel groups */
 .section-group {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.5rem;
   background: rgba(0, 0, 0, 0.03);
   border: 0.5px solid rgba(0, 0, 0, 0.07);
   border-radius: 0.5rem;
   padding: 0.625rem;
   flex: 1;
-  -webkit-border-radius: 0.5rem;
-  -moz-border-radius: 0.5rem;
-  -ms-border-radius: 0.5rem;
-  -o-border-radius: 0.5rem;
 }
 .section-group-title {
   font-size: 0.875rem;
@@ -666,7 +598,6 @@ button {
   color: var(--primary);
   border-color: rgba(249, 87, 68, 0.4);
 }
-/* Style toggle */
 .segment-row {
   display: flex;
   gap: 0.25rem;
@@ -702,21 +633,6 @@ button {
 }
 .message-font-size {
   height: 32px;
-}
-.message-apply-btn,
-.message-cancel-btn {
-  flex: 1;
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  -webkit-transition: background 0.12s;
-  -moz-transition: background 0.12s;
-  -ms-transition: background 0.12s;
-  -o-transition: background 0.12s;
-  transition: background 0.12s;
-}
-.message-apply-btn,
-.message-cancel-btn :hover {
-  background-color: #7c8ea4;
 }
 .audio-settings {
   display: flex;
@@ -885,14 +801,12 @@ button {
 .message-audio-btn.playing .wave {
   animation: wave-ripple 0.9s ease-in-out infinite;
   transform-origin: 7px 7px;
-  -webkit-animation: wave-ripple 0.9s ease-in-out infinite;
 }
 .message-audio-btn.playing .w1 {
   animation: wave-ripple 0.9s ease-in-out infinite;
   animation-delay: 0s;
   transform-origin: 9px 7px;
 }
-
 .message-audio-btn.playing .w2 {
   animation: wave-ripple 0.9s ease-in-out infinite;
   animation-delay: 0.45s;
@@ -906,31 +820,21 @@ button {
   60% {
     opacity: 0.7;
     transform: scale(1.3);
-    -webkit-transform: scale(1.3);
-    -moz-transform: scale(1.3);
-    -ms-transform: scale(1.3);
-    -o-transform: scale(1.3);
   }
   100% {
     opacity: 0;
     transform: scale(1.6);
-    -webkit-transform: scale(1.6);
-    -moz-transform: scale(1.6);
-    -ms-transform: scale(1.6);
-    -o-transform: scale(1.6);
   }
 }
 
 .background-color {
   min-width: 130px;
 }
-/* Checkbox toggle */
 .audio-toggle-wrap {
   display: flex;
   align-items: center;
   height: 30px;
 }
-/* Export section */
 .export-section {
   display: flex;
   flex-direction: column;
@@ -950,7 +854,6 @@ button {
   border-radius: 0;
   min-width: 0;
 }
-
 .export-ext {
   padding: 0 0.625rem;
   font-size: 0.75rem;
@@ -1093,10 +996,6 @@ button {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  -webkit-border-radius: 0.25rem;
-  -moz-border-radius: 0.25rem;
-  -ms-border-radius: 0.25rem;
-  -o-border-radius: 0.25rem;
   border-radius: 0.25rem;
 }
 .apply-row {
@@ -1124,9 +1023,6 @@ button {
 }
 .section-group-row.clickable span {
   transition: color 0.2s ease;
-}
-.section-group-row.clickable:hover span {
-  color: var(--primary);
 }
 .toggle {
   width: 36px;
@@ -1368,7 +1264,7 @@ button {
 
 .vec3-input-label {
   margin-top: 1rem;
-  min-width: 52px;
+  min-width: 60px;
 }
 .no-configured-row {
   display: flex;
@@ -1394,9 +1290,6 @@ button {
   background: rgba(229, 62, 62, 0.1) !important;
   color: #c53030 !important;
   filter: none !important;
-}
-.reset-btn {
-  flex: 0 !important;
 }
 .add-btn.cancel-mode {
   background: rgba(220, 60, 60, 0.15);
@@ -1494,10 +1387,6 @@ button {
   border: none;
   cursor: pointer;
   transition: all 0.15s ease;
-  -webkit-border-radius: 0.3125rem;
-  -moz-border-radius: 0.3125rem;
-  -ms-border-radius: 0.3125rem;
-  -o-border-radius: 0.3125rem;
 }
 
 .md-btn.cancel {
@@ -1604,7 +1493,6 @@ button {
   gap: 0.625rem;
   flex: 1;
 }
-.color-picker-disabled,
 .dimension-label {
   position: fixed;
   font-size: 0.875rem;
@@ -1665,7 +1553,7 @@ button {
   padding: 0.75rem;
 }
 .pick-ground-btn {
-  height: 30px;
+  height: 32px;
 }
 .highlight {
   color: var(--primary);
@@ -1675,7 +1563,6 @@ button {
 .highlight.cancel {
   color: #f87171;
 }
-/* ===== Setup Step Wizard ===== */
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -1760,7 +1647,6 @@ button {
 }
 .step-content-enter {
   animation: stepFadeIn 0.6s ease forwards;
-  -webkit-animation: stepFadeIn 0.6s ease forwards;
 }
 
 @keyframes stepFadeIn {
@@ -1837,16 +1723,6 @@ button {
   display: flex;
 }
 
-.loading-box {
-  background: #fff;
-  border-radius: 1rem;
-  padding: 1.75rem 2.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.875rem;
-  min-width: 240px;
-}
 .loading-spinner {
   width: 42px;
   height: 42px;
@@ -1860,39 +1736,10 @@ button {
     transform: rotate(360deg);
   }
 }
-
-.loading-progress-bar {
-  width: 100%;
-  height: 6px;
-  border-radius: 0.1875rem;
-  background: rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-.loading-progress-fill {
-  height: 100%;
-  border-radius: 0.1875rem;
-  background: var(--primary);
-  width: 0%;
-  transition: width 0.3s ease;
-}
-.loading-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--text-main);
-  text-align: center;
-}
-.loading-message {
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  text-align: center;
-}
 .toggle.disabled {
   opacity: 0.4;
   pointer-events: none;
   cursor: not-allowed;
-}
-.background-row > span {
-  min-width: 160px;
 }
 
 .hint-icon {
@@ -2063,10 +1910,11 @@ button {
   max-width: auto;
 }
 .real-distance > .label {
-  min-width: 148px;
+  min-width: 152.5px;
 }
-.real-distance > .sd-wrap {
-  min-width: 86px;
+.real-distance > .sd-wrap,
+.dimensions-unit {
+  min-width: 83.5px;
 }
 
 .tool-mode-btn {

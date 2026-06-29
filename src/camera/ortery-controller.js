@@ -33,7 +33,6 @@ class OtherController {
     maxFov = 100
     minFov = 5
     spinDirection = 'cw'
-    spinAxis = 'y'
 
     constructor({ global, bbox }) {
         this.global = global
@@ -249,7 +248,12 @@ class OtherController {
         })
         this.events.on('spin-speed', (v) => (this.spinSpeed = v))
         this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
-        this.events.on('spin-axis', (v) => (this.spinAxis = v))
+        this.events.on('spin-axis', (v) => {
+            if (this.originModel === 'spherical') {
+                const localAxis = this.settings.spin.axes[v]
+                this.spinRotationAxis = modelEntity.localRotation.transformVector(new Vec3(localAxis.x, localAxis.y, localAxis.z))
+            }
+        })
         this.events.on('spin-direction', (v) => (this.spinDirection = v))
 
         this.events.on('setup-reset', () => this.reset())
@@ -805,8 +809,11 @@ class OtherController {
     setSpinSettings() {
         this.isSpin360Loop = this.settings.spin.continuous
         this.spinSpeed = this.settings.spin.speed
-        this.spinAxis = this.settings.spin.axis
         this.spinDirection = this.settings.spin.direction
+        if (this.originModel === 'spherical') {
+            const localAxis = this.settings.spin.axes[this.settings.spin.axis]
+            this.spinRotationAxis = modelEntity.localRotation.transformVector(new Vec3(localAxis.x, localAxis.y, localAxis.z))
+        }
     }
     spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity || this._autoRotating) return
@@ -819,11 +826,6 @@ class OtherController {
         const initialYaw = this.currentYaw
         const initialPitch = this.currentPitch
         const initialRotation = this.cameraRotation.clone()
-        let localAxis, w
-        if (model === 'spherical') {
-            localAxis = this.settings.spin.axes[this.spinAxis]
-            w = modelEntity.localRotation.transformVector(new Vec3(localAxis.x, localAxis.y, localAxis.z))
-        }
         const tick = (dt) => {
             if (!this._autoRotating) return
             const delta = this.isSpin360Loop
@@ -843,7 +845,7 @@ class OtherController {
                 case 'spherical':
                     dirSign = clockwise ? 1 : -1
                     const angle = delta * dirSign
-                    const axis = new Vec33(w.x, w.y, w.z).normalize()
+                    const axis = new Vec33(this.spinRotationAxis.x, this.spinRotationAxis.y, this.spinRotationAxis.z).normalize()
                     const quatYaw = new Quat3().setFromAxisAngle(axis, angle)
                     v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
                     v$2.transformQuat(quatYaw)

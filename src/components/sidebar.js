@@ -444,15 +444,20 @@ function makeViewerSection(el, global) {
                         : new Quat(0, 0, 0, 1)
                     const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
                     const initialRot = getDimensionsRotation(localPoints)
-                    snapToFitOBBAsync(localPoints, initialRot).then(({ rotation }) => {
-                        const obbQuat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
-                        const worldObbQuat = orientPose ? new Quat().mul2(orientQuat, obbQuat) : obbQuat
-                        const initModelQuatInv = modelEntity.localRotation.clone().invert()
-                        const localObbQuat = new Quat().mul2(initModelQuatInv, worldObbQuat)
-
-                        const lx = localObbQuat.transformVector(new Vec3(1, 0, 0))
-                        const ly = localObbQuat.transformVector(new Vec3(0, 1, 0))
-                        const lz = localObbQuat.transformVector(new Vec3(0, 0, 1))
+                    snapToFitOBBAsync(localPoints, initialRot).then((result) => {
+                        const invOrientQuat = orientQuat.clone().invert()
+                        const posInOriented = new Vec3(result.position.x, result.position.y, result.position.z)
+                        const posInLocal = new Vec3()
+                        invOrientQuat.transformVector(posInOriented, posInLocal)
+                        const snapQuat = new Quat().setFromEulerAngles(
+                            result.rotation.x,
+                            result.rotation.y,
+                            result.rotation.z,
+                        )
+                        const finalQuat = new Quat().mul2(invOrientQuat, snapQuat)
+                        const lx = finalQuat.transformVector(new Vec3(1, 0, 0))
+                        const ly = finalQuat.transformVector(new Vec3(0, 1, 0))
+                        const lz = finalQuat.transformVector(new Vec3(0, 0, 1))
                         settings.spin = {
                             ...defaultSettings.spin,
                             enabled: value,
@@ -642,8 +647,7 @@ function makeExportSection(el, global) {
 function makeSidebar(global, dom) {
     const { events } = global
     const SIDEBAR_WIDTH = '400px'
-    const isSherical = global.settings.model === 'spherical'
-    const totalSteps = isSherical ? 3 : 4
+    const totalSteps = MAX_STEP
     const minStep = 1
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
@@ -714,44 +718,20 @@ function makeSidebar(global, dom) {
                 confirmText: 'Back',
             })
             if (ok) {
-                switch (global.settings.model) {
-                    case 'spherical':
-                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 2,
-                            contentUrl: global.settings.contentUrl,
-                            base64: global.settings.base64,
-                            pivot: global.settings.pivot,
-                            model: global.settings.model,
-                            removedSplats: global.settings.removedSplats,
-                            v: global.settings.v,
-                        })
-                        break
-                    case 'hemispherical':
-                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 3,
-                            contentUrl: global.settings.contentUrl,
-                            base64: global.settings.base64,
-                            pivot: global.settings.pivot,
-                            orientation: global.settings.orientation,
-                            model: global.settings.model,
-                            removedSplats: global.settings.removedSplats,
-                            v: global.settings.v,
-                        })
-                        break
-                    default:
-                        Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), {
-                            setupStep: 3,
-                            contentUrl: global.settings.contentUrl,
-                            base64: global.settings.base64,
-                            pivot: global.settings.pivot,
-                            orientation: global.settings.orientation,
-                            model: global.settings.model,
-                            cameras: global.settings.cameras,
-                            removedSplats: global.settings.removedSplats,
-                            v: global.settings.v,
-                        })
+                const basePreserved = {
+                    setupStep: 3,
+                    contentUrl: global.settings.contentUrl,
+                    base64: global.settings.base64,
+                    pivot: global.settings.pivot,
+                    orientation: global.settings.orientation,
+                    model: global.settings.model,
+                    removedSplats: global.settings.removedSplats,
+                    v: global.settings.v,
                 }
-
+                if (global.settings.model === 'cylindrical') {
+                    basePreserved.cameras = global.settings.cameras
+                }
+                Object.assign(global.settings, JSON.parse(JSON.stringify(defaultSettings)), basePreserved)
                 events.fire('setup-reset', global.settings)
                 events.fire('re-render:control-wrap')
                 renderStep()
@@ -821,7 +801,7 @@ function makeSidebar(global, dom) {
             viewerSection.cleanup?.()
             messageSection.cleanup?.()
             dimensionsSection.cleanup?.()
-            // measurementSection.cleanup?.()
+            measurementSection.cleanup?.()
             // posterSection.cleanup?.()
             recordSection.cleanup?.()
             exportSection.cleanup?.()
@@ -847,13 +827,13 @@ function makeSidebar(global, dom) {
             body: (el) => makeDimensionSection(el, global, dom),
             global,
         })
-        // const measurementSection = makeSection({
-        //     id: 'measurement',
-        //     title: 'Measurement',
-        //     classname: 'measurement-section',
-        //     body: (el) => makeMeasurementSection(el, global),
-        //     global,
-        // })
+        const measurementSection = makeSection({
+            id: 'measurement',
+            title: 'Measurement',
+            classname: 'measurement-section',
+            body: (el) => makeMeasurementSection(el, global),
+            global,
+        })
         // const posterSection = makeSection({
         //     id: 'poster',
         //     title: 'Poster',
@@ -878,7 +858,7 @@ function makeSidebar(global, dom) {
         contentArea.appendChild(viewerSection)
         contentArea.appendChild(messageSection)
         contentArea.appendChild(dimensionsSection)
-        // contentArea.appendChild(measurementSection)
+        contentArea.appendChild(measurementSection)
         // contentArea.appendChild(posterSection)
         contentArea.appendChild(recordSection)
         contentArea.appendChild(exportSection)

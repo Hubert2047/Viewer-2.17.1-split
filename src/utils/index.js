@@ -250,25 +250,13 @@ async function exportHtml(name, global) {
     const hasPivot = copySettings.pivot?.position
     const hasRemovedSplats = copySettings.removedSplats?.length > 0
     const hasOrientation = copySettings.orientation?.pose
-    const STEP_REQUIREMENTS = {
-        spherical: [
-            { step: 2, condition: hasRemovedSplats },
-            { step: 3, condition: hasPivot },
-        ],
-        hemispherical: [
-            { step: 2, condition: hasRemovedSplats },
-            { step: 3, condition: hasPivot },
-            { step: 4, condition: hasOrientation },
-        ],
-        cylindrical: [
-            { step: 2, condition: hasRemovedSplats },
-            { step: 3, condition: hasPivot },
-            { step: 4, condition: hasOrientation },
-        ],
-    }
+    const STEP_REQUIREMENTS = [
+        { step: 2, condition: hasRemovedSplats },
+        { step: 3, condition: hasPivot },
+        { step: 4, condition: hasOrientation },
+    ]
 
-    const requirements = STEP_REQUIREMENTS[copySettings.model] ?? []
-    const setupStep = requirements.reduce((currentStep, { step, condition }) => {
+    const setupStep = STEP_REQUIREMENTS.reduce((currentStep, { step, condition }) => {
         return condition && currentStep < step ? step : currentStep
     }, copySettings.setupStep)
     const newVersion = (copySettings.v ?? 0) + 1

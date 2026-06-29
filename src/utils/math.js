@@ -704,15 +704,7 @@ function mergeSettings(settings, defaultSettings) {
     if (!['cylindrical', 'spherical', 'hemispherical'].includes(merged.model)) {
         merged.model = 'spherical'
     }
-    const maxStepByModel = {
-        cylindrical: 4,
-        hemispherical: 4,
-        spherical: 3,
-    }
-    const maxStep = maxStepByModel[merged.model]
-    if (maxStep != null) {
-        merged.setupStep = Math.max(Math.min(merged.setupStep, maxStep), MIN_STEP)
-    }
+    merged.setupStep = Math.max(Math.min(merged.setupStep, MAX_STEP), MIN_STEP)
     return merged
 }
 function getOBBInfo(rx, ry, rz, count, points) {

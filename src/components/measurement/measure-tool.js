@@ -4,6 +4,7 @@ class MeasureTool {
         this._app = app
         this._cam = camera
         this.settings = settings
+        this.events = events
         this.global = global
         this._active = false
         this._points = []

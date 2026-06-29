@@ -11,6 +11,7 @@ const isMobile =
 const LARGE_AUDIO_THRESHOLD_MB = 2
 const OPACITY_THRESHOLD = 0.1
 const MIN_STEP = 1
+const MAX_STEP = 4
 const ICONS = {
     trash: `<svg width="14" height="14" viewBox="0 0 12 12" fill="none">
         <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
