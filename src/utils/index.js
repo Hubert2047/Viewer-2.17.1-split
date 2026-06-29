@@ -378,67 +378,6 @@ function makeTabPanel(id, items, hidden = false) {
     return panel
 }
 
-function makeInfoPanel(settings, events) {
-    const baseDesktop = [
-        { action: 'Rotate', key: 'Left Mouse' },
-        { action: 'Pan', key: 'Right Mouse' },
-        { action: 'Zoom', key: 'Mouse Wheel' },
-        { action: 'Reset Camera', key: 'R / Camera Icon' },
-    ]
-    const baseTouch = [
-        { action: 'Rotate', key: 'One Finger Drag' },
-        { action: 'Pan', key: 'Two Finger Drag' },
-        { action: 'Zoom', key: 'Pinch' },
-        { action: 'Reset Camera', key: 'Camera Icon' },
-    ]
-    const messageDesktop = [
-        { action: 'Story Auto Play', key: 'P / Triangle icon', cls: 'autoPlay-info' },
-        { action: 'Message Navigation', key: 'T / Text Icon', cls: 'messages-info' },
-    ]
-    const messageTouch = [
-        { action: 'Story Auto Play', key: 'Triangle icon', cls: 'autoPlay-info' },
-        { action: 'Message Navigation', key: 'Text Icon', cls: 'messages-info' },
-    ]
-
-    const getControls = () => ({
-        desktop: settings.messages?.length ? [...baseDesktop, ...messageDesktop] : baseDesktop,
-        touch: settings.messages?.length ? [...baseTouch, ...messageTouch] : baseTouch,
-    })
-
-    const wrapper = document.createElement('div')
-    wrapper.id = 'infoPanel'
-    wrapper.className = 'hidden'
-
-    const content = document.createElement('div')
-    content.id = 'infoPanelContent'
-    content.addEventListener('pointerdown', (e) => e.stopPropagation())
-
-    const tabs = document.createElement('div')
-    tabs.id = 'tabs'
-    tabs.innerHTML = `
-        <div id="desktopTab" class="tab active">Desktop</div>
-        <div id="touchTab" class="tab">Touch</div>
-    `
-
-    const panels = document.createElement('div')
-    panels.id = 'infoPanels'
-
-    const rebuild = () => {
-        const controls = getControls()
-        panels.innerHTML = ''
-        panels.appendChild(makeTabPanel('desktopInfoPanel', controls.desktop))
-        panels.appendChild(makeTabPanel('touchInfoPanel', controls.touch, true))
-    }
-
-    rebuild()
-    content.append(tabs, panels)
-    wrapper.appendChild(content)
-
-    events.on('info-panel:rebuild', rebuild)
-
-    return wrapper
-}
-
 function makeControlBotGroup(global, tooltip, dom) {
     const { settings, events, dimensionsBox, isEditMeasurement, isSpin360 } = global
     const group = document.createElement('div')
@@ -480,7 +419,6 @@ function makeControlBotGroup(global, tooltip, dom) {
             'inputEvent:hide-dimensions',
             'showDimension',
         ],
-        ['info', 'info', 'Controls Guide', true, true, 'inputEvent:toggle-help'],
         // ['settings', 'settings', 'Settings', true, true, 'inputEvent:setting-panel'],
     ]
 

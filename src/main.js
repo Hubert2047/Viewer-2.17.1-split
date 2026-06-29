@@ -19,11 +19,9 @@ const initUI = async (global) => {
     global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
     const ui = document.getElementById('ui')
-    ui.appendChild(makeInfoPanel(settings, events))
     ui.appendChild(makeSettingsPanel(global.app))
     const dom = [
         'ui',
-        'infoPanel',
         'desktopTab',
         'touchTab',
         'desktopInfoPanel',
@@ -95,34 +93,6 @@ const initUI = async (global) => {
         document.getElementById('loadingWrap').classList.add('hidden')
         if (sidebar) sidebar.style.visibility = 'visible'
     })
-    // Info panel
-    const updateInfoTab = (tab) => {
-        if (tab === 'desktop') {
-            dom.desktopTab.classList.add('active')
-            dom.touchTab.classList.remove('active')
-            dom.desktopInfoPanel.classList.remove('hidden')
-            dom.touchInfoPanel.classList.add('hidden')
-        } else {
-            dom.desktopTab.classList.remove('active')
-            dom.touchTab.classList.add('active')
-            dom.desktopInfoPanel.classList.add('hidden')
-            dom.touchInfoPanel.classList.remove('hidden')
-        }
-    }
-    dom.desktopTab.addEventListener('click', () => {
-        updateInfoTab('desktop')
-    })
-    dom.touchTab.addEventListener('click', () => {
-        updateInfoTab('touch')
-    })
-    const toggleHelp = () => {
-        updateInfoTab(state.inputMode)
-        dom.infoPanel.classList.toggle('hidden')
-        if (!dom.infoPanel.classList.contains('hidden')) {
-            dom.settingsPanel.classList.add('hidden')
-        }
-    }
-    events.on('inputEvent:toggle-help', () => toggleHelp())
     events.on('inputEvent:toggle-measure', () => {
         if (!global.measureTool) {
             global.measureTool = new MeasureTool(global)
@@ -141,15 +111,12 @@ const initUI = async (global) => {
     events.on('dimensions:color-change', (dim) => {
         global.dimensionsBox.updateColorOnly(dim)
     })
-    dom.infoPanel.addEventListener('pointerdown', () => {
-        dom.infoPanel.classList.add('hidden')
-    })
+  
     events.on('inputEvent', (event) => {
         if (event === 'toggleHelp') {
             toggleHelp()
         } else if (event === 'cancel') {
             // close info panel on cancel
-            dom.infoPanel.classList.add('hidden')
             dom.settingsPanel.classList.add('hidden')
         } else if (event === 'interrupt') {
             dom.settingsPanel.classList.add('hidden')
