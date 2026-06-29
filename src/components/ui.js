@@ -822,7 +822,7 @@ function makeDivider() {
 }
 function makeButton({ icon, title, disabled, className, id, onClick, show = true, onHold = false, variant, label }) {
     const btn = document.createElement('button')
-    btn.classList.add('btn')
+    btn.classList.add('btn', 'flex-center')
     if (id) btn.id = id
     if (className) {
         btn.classList.add(...className.trim().split(/\s+/))
@@ -836,7 +836,7 @@ function makeButton({ icon, title, disabled, className, id, onClick, show = true
         if (className === 'primary') {
             btn.style.background = 'var(--primary)'
             btn.style.color = 'white'
-        } 
+        }
         if (icon) {
             const iconWrap = document.createElement('span')
             iconWrap.style.cssText = 'display:flex;align-items:center;width:16px;height:16px;'

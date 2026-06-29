@@ -188,6 +188,14 @@ class OtherController {
             if (this.isRecordStory) this.events.fire('message:stop-auto', { hideMessages: true })
             this.stopRecording({ discard })
         })
+        this.events.on('spin:toggle-play', () => {
+            if (!this.global.settings.spin.enabled) return
+            if (!this.global.isSpin360) {
+                this.spin360({ model: this.originModel })
+            } else {
+                this.stopSpin360()
+            }
+        })
         this.events.on('inputEvent:reset-camera', () => {
             this.reset()
         })
@@ -798,10 +806,10 @@ class OtherController {
     }
     spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity || this._autoRotating) return
+        this.global.isSpin360 = true
         this.events.fire('re-render:control-wrap')
         this.updateModelRotation()
         this._autoRotating = true
-        this.global.isSpin360 = true
         const totalAngle = Math.PI * 2
         let rotated = 0
         const initialYaw = this.currentYaw

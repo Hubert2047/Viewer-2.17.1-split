@@ -217,7 +217,7 @@ class MessageEditorUI {
         if (isExpanded) editBtn.classList.add('active')
 
         const delBtn = makeButton({
-            icon: ICONS.messageDelete,
+            icon: ICONS.trash,
             title: 'Delete',
             className: 'message-action-btn message-delete-btn',
             onClick: () => this.onDelete(h.id),

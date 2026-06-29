@@ -87,24 +87,8 @@ const initUI = async (global) => {
         document.getElementById('loadingWrap').classList.add('hidden')
         if (sidebar) sidebar.style.visibility = 'visible'
     })
-    events.on('inputEvent:toggle-measure', () => {
-        if (!global.measureTool) {
-            global.measureTool = new MeasureTool(global)
-        }
-        const tool = global.measureTool
-        tool.activate()
-        if (dom.measure) dom.measure.classList.toggle('active', tool.active)
-    })
-    events.on('inputEvent:show-dimensions', () => {
-        if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
-        global.dimensionsBox.draw(global.settings.dimensions)
-    })
-    events.on('inputEvent:hide-dimensions', () => {
-        global.dimensionsBox.hide()
-    })
-    events.on('dimensions:color-change', (dim) => {
-        global.dimensionsBox.updateColorOnly(dim)
-    })
+    initMeasurement({ global, dom, events })
+    initDimensions({ global, events, config })
     let ableShowUI = true
     events.on('controlsHidden:changed', (value) => {
         if (!ableShowUI) return
@@ -1632,13 +1616,16 @@ class InputController {
                         events.fire('spin:toggle-play')
                         break
                     case 'd':
-                        events.fire('dimensions:toggle-play')
+                        events.fire('dimensions:toggle-show')
                         break
                     case 't':
                         events.fire('message:message-btns')
                         break
                     case 'r':
                         events.fire('inputEvent:reset-camera', event)
+                        break
+                    case 'm':
+                        events.fire('inputEvent:toggle-measure', event)
                         break
                     case 'Delete':
                         events.fire('inputEvent:delete', event)

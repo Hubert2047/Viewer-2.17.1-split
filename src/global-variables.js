@@ -12,7 +12,7 @@ const LARGE_AUDIO_THRESHOLD_MB = 2
 const OPACITY_THRESHOLD = 0.1
 const MIN_STEP = 1
 const ICONS = {
-    trash: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    trash: `<svg width="14" height="14" viewBox="0 0 12 12" fill="none">
         <path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`,
     alignCenter: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
@@ -35,17 +35,12 @@ const ICONS = {
         <circle cx="4" cy="6"   r="1"/><circle cx="8" cy="6"   r="1"/>
         <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
         </svg>`,
-    messageDelete: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 3H10.5M4.5 3V2H7.5V3M2.5 3L3 10H9L9.5 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    messageEditBtn: `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5L11.5 3.5L4.5 10.5H2.5V8.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
-    hintInfo: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    messageEditBtn: `<svg width="16" height="16" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5L11.5 3.5L4.5 10.5H2.5V8.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
+    hintInfo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 16v-4"/>
             <path d="M12 8h.01"/>
         </svg>`,
-    delete: `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <path d="M1.5 3.5h10M5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M10.5 3.5l-.7 7a.5.5 0 0 1-.5.5H3.7a.5.5 0 0 1-.5-.5l-.7-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M5 6v3M8 6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>`,
     autoFit: ` <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
      <rect x="5" y="5" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1" stroke-dasharray="2 1.5"/>
      <line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>

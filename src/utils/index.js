@@ -398,9 +398,9 @@ function makeControlBotGroup(global, tooltip, dom) {
     const showStartSpin = !isSpin360
     const buttons = [
         ['startSpin', 'startSpin', 'Start Spin (S)', hasSpin, showStartSpin, '360spin-start'],
-        ['stopSpin', 'stopSpin', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
+        ['stopSpin', 'stopSpin', 'Stop Spin (S)', hasSpin, !showStartSpin, '360spin-stop'],
         ['resetCamera', 'resetCamera', 'Reset Camera (R)', true, true, 'inputEvent:reset-camera'],
-        ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
+        ['measure', 'measure', 'Measurement (M)', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
             'showDimension',
@@ -413,7 +413,7 @@ function makeControlBotGroup(global, tooltip, dom) {
         [
             'hideDimension',
             'hideDimension',
-            'Hide Dimensions',
+            'Hide Dimensions (D)',
             hasDimension,
             !isShowDimensions,
             'inputEvent:hide-dimensions',
@@ -1045,4 +1045,39 @@ function dimensionsSetup(app, camera, config) {
         updateColorOnly,
         hide: hideDimensionBox,
     }
+}
+function showDimensions({ global, config }) {
+    if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(global.app, global.camera, config)
+    global.dimensionsBox.draw(global.settings.dimensions)
+}
+function hideDimensions({ global }) {
+    if (!global.dimensionsBox) return
+    global.dimensionsBox.hide()
+}
+function initDimensions({ global, events, config }) {
+    events.on('inputEvent:show-dimensions', () => {
+        showDimensions({ global, config })
+    })
+    events.on('inputEvent:hide-dimensions', () => {
+        hideDimensions({ global })
+    })
+    events.on('dimensions:color-change', (dim) => {
+        global.dimensionsBox.updateColorOnly(dim)
+    })
+    events.on('dimensions:toggle-show', () => {
+        if (!global.settings.dimensions) return
+        if (!global.dimensionsBox?.show) showDimensions({ global })
+        else hideDimensions({ global })
+    })
+}
+function initMeasurement({ global, dom, events }) {
+    events.on('inputEvent:toggle-measure', () => {
+        if (!global.settings.measurement) return
+        if (!global.measureTool) {
+            global.measureTool = new MeasureTool(global)
+        }
+        const tool = global.measureTool
+        tool.activate()
+        if (dom.measure) dom.measure.classList.toggle('active', tool.active)
+    })
 }
