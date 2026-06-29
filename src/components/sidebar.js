@@ -426,16 +426,53 @@ function makeViewerSection(el, global) {
     const spinEnabledToggleEl = makeToggle({
         initialValue: settings.spin.enabled,
         onChange: (value) => {
-            settings.spin.enabled = value
             spinContinuousRow.setShow(value)
             spinOnStartRow.setShow(value)
             speedRow.setShow(value)
             directionRow.setShow(value)
             rotationAxisRow?.setShow(value)
+            if (value && settings.model === 'spherical' && !settings.spin.axes) {
+                global.loading.show().then(() => {
+                    const orientPose = settings.orientation?.pose
+                    const orientQuat = orientPose
+                        ? new Quat(
+                              orientPose.rotation.x,
+                              orientPose.rotation.y,
+                              orientPose.rotation.z,
+                              orientPose.rotation.w,
+                          )
+                        : new Quat(0, 0, 0, 1)
+                    const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
+                    const initialRot = getDimensionsRotation(localPoints)
+                    snapToFitOBBAsync(localPoints, initialRot).then(({ rotation }) => {
+                        const obbQuat = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
+                        const worldObbQuat = orientPose ? new Quat().mul2(orientQuat, obbQuat) : obbQuat
+                        const initModelQuatInv = modelEntity.localRotation.clone().invert()
+                        const localObbQuat = new Quat().mul2(initModelQuatInv, worldObbQuat)
 
+                        const lx = localObbQuat.transformVector(new Vec3(1, 0, 0))
+                        const ly = localObbQuat.transformVector(new Vec3(0, 1, 0))
+                        const lz = localObbQuat.transformVector(new Vec3(0, 0, 1))
+                        settings.spin = {
+                            ...defaultSettings.spin,
+                            enabled: value,
+                            axes: {
+                                x: { x: lx.x, y: lx.y, z: lx.z },
+                                y: { x: ly.x, y: ly.y, z: ly.z },
+                                z: { x: lz.x, y: lz.y, z: lz.z },
+                            },
+                        }
+                        global.loading.hide()
+                        events.fire('spin:enabled', value)
+                        events.fire('re-render:control-wrap', value)
+                    })
+                })
+            } else {
+                settings.spin.enabled = value
+                events.fire('spin:enabled', value)
+                events.fire('re-render:control-wrap', value)
+            }
             global.dataDirty = true
-            events.fire('spin:enabled', value)
-            events.fire('re-render:control-wrap', value)
         },
     })
     spinEnabledRow.el.appendChild(spinEnabledToggleEl)

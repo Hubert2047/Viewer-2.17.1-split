@@ -74,6 +74,8 @@ class OtherController {
         this.originModel = this.model
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
+        if (this.model === 'spherical') {
+        }
     }
     startRecording({ fps, filename, region }) {
         const srcCanvas = this.app.graphicsDevice.canvas
@@ -242,7 +244,9 @@ class OtherController {
         this.events.on('360spin-stop', () => {
             this.stopSpin360()
         })
-        this.events.on('spin:enabled', () => this.stopSpin360())
+        this.events.on('spin:enabled', () => {
+            this.stopSpin360()
+        })
         this.events.on('spin-speed', (v) => (this.spinSpeed = v))
         this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
         this.events.on('spin-axis', (v) => (this.spinAxis = v))
@@ -815,7 +819,11 @@ class OtherController {
         const initialYaw = this.currentYaw
         const initialPitch = this.currentPitch
         const initialRotation = this.cameraRotation.clone()
-
+        let localAxis, w
+        if (model === 'spherical') {
+            localAxis = this.settings.spin.axes[this.spinAxis]
+            w = modelEntity.localRotation.transformVector(new Vec3(localAxis.x, localAxis.y, localAxis.z))
+        }
         const tick = (dt) => {
             if (!this._autoRotating) return
             const delta = this.isSpin360Loop
@@ -835,29 +843,15 @@ class OtherController {
                 case 'spherical':
                     dirSign = clockwise ? 1 : -1
                     const angle = delta * dirSign
-                    let axis
-                    switch (this.spinAxis) {
-                        case 'x':
-                            axis = this.rightCam.clone()
-                            break
-                        case 'z':
-                            axis = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
-                            break
-                        case 'y':
-                        default:
-                            axis = this.upCam.clone()
-                            break
-                    }
+                    const axis = new Vec33(w.x, w.y, w.z).normalize()
                     const quatYaw = new Quat3().setFromAxisAngle(axis, angle)
                     v$2.copy(modelEntity.localPosition).sub(this.centerPivot)
                     v$2.transformQuat(quatYaw)
                     modelEntity.localPosition.copy(this.centerPivot).add(v$2)
-
                     const result = quatYaw.mul(this.modelRotation).normalize()
                     modelEntity.localRotation.set(result.x, result.y, result.z, result.w)
                     this.modelRotation.copy(modelEntity.localRotation)
                     break
-
                 case 'hemispherical':
                 case 'cylindrical':
                     dirSign = clockwise ? 1 : -1
@@ -874,7 +868,6 @@ class OtherController {
                     return
                 }
             }
-
             this.syncHierarchyAndRender()
         }
 

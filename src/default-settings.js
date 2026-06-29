@@ -14,6 +14,7 @@ const defaultSettings = Object.freeze({
         direction: 'cw',
         axis: 'y',
         speed: 5,
+        axes: null,
     },
     lockZoomIn: Object.freeze({ value: 11, locked: false }),
     pivot: Object.freeze({ position: null }),
