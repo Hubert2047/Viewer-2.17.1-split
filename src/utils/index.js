@@ -397,14 +397,14 @@ function makeControlBotGroup(global, tooltip, dom) {
             (measurement.calibration.useDimensionData && hasDimensionsData(dimensions)))
     const showStartSpin = !isSpin360
     const buttons = [
-        ['startSpin', 'startSpin', 'Start Spin', hasSpin, showStartSpin, '360spin-start'],
+        ['startSpin', 'startSpin', 'Start Spin (S)', hasSpin, showStartSpin, '360spin-start'],
         ['stopSpin', 'stopSpin', 'Stop Spin', hasSpin, !showStartSpin, '360spin-stop'],
         ['resetCamera', 'resetCamera', 'Reset Camera (R)', true, true, 'inputEvent:reset-camera'],
         ['measure', 'measure', 'Measurement', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
         [
             'showDimension',
             'showDimension',
-            'Show Dimensions',
+            'Show Dimensions (D)',
             hasDimension,
             isShowDimensions,
             'inputEvent:show-dimensions',
@@ -419,7 +419,6 @@ function makeControlBotGroup(global, tooltip, dom) {
             'inputEvent:hide-dimensions',
             'showDimension',
         ],
-        // ['settings', 'settings', 'Settings', true, true, 'inputEvent:setting-panel'],
     ]
 
     buttons.forEach(([id, icon, label, create, show, eventName, toggleId]) => {
@@ -578,75 +577,6 @@ function makeGroupWrapper(title) {
 
     group.appendChild(groupTitle)
     return group
-}
-
-function makeQualityGroup(app) {
-    const group = makeGroupWrapper('Quality')
-    const optionsEl = document.createElement('div')
-    optionsEl.className = 'quality-options'
-    const qualities = [
-        { id: 'lowQuality', value: '0', label: 'Low' },
-        { id: '', value: '1', label: 'Medium' },
-        { id: '', value: '2', label: 'High' },
-        { id: '', value: '3', label: 'Ultra', checked: true },
-    ]
-    qualities.forEach(({ id, value, label, checked }) => {
-        const labelEl = document.createElement('label')
-        labelEl.className = 'option-item'
-
-        const input = document.createElement('input')
-        input.type = 'radio'
-        input.name = 'quality'
-        input.value = value
-        if (id) input.id = id
-        if (checked) input.checked = true
-
-        input.addEventListener('change', (e) => {
-            const bands = parseInt(e.target.value)
-            const coeffs = bands > 0 ? (bands + 1) * (bands + 1) - 1 : 0
-
-            app.root.findComponents('gsplat').forEach((gsplatComp) => {
-                const instance = gsplatComp.instance
-                const meshInstance = instance?.meshInstance
-                if (!meshInstance) return
-
-                const material = meshInstance.material
-                material.setDefine('SH_BANDS', bands)
-                material.setDefine('SH_COEFFS', coeffs)
-                material.clearVariants()
-                material.update()
-                meshInstance.clearShaders()
-            })
-
-            app.renderNextFrame = true
-        })
-
-        labelEl.appendChild(input)
-        labelEl.append(` ${label}`)
-        optionsEl.appendChild(labelEl)
-    })
-
-    group.appendChild(optionsEl)
-    return group
-}
-
-function makeSettingsPanel(app) {
-    const panel = document.createElement('div')
-    panel.id = 'settingsPanel'
-    panel.classList.add('setting-panel', 'hidden')
-
-    const viewOptionHeader = document.createElement('div')
-    viewOptionHeader.className = 'view-option-header'
-    viewOptionHeader.textContent = 'View Options'
-
-    const viewOptionContent = document.createElement('div')
-    viewOptionContent.className = 'view-option-content'
-
-    viewOptionContent.appendChild(makeQualityGroup(app))
-
-    panel.appendChild(viewOptionHeader)
-    panel.appendChild(viewOptionContent)
-    return panel
 }
 
 function makeEditGroup(events, cancelAllEvents = []) {

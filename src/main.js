@@ -19,7 +19,6 @@ const initUI = async (global) => {
     global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
     const ui = document.getElementById('ui')
-    ui.appendChild(makeSettingsPanel(global.app))
     const dom = [
         'ui',
         'desktopTab',
@@ -54,11 +53,6 @@ const initUI = async (global) => {
     // Remove focus from buttons after click so keyboard input isn't captured by the UI
     dom.ui.addEventListener('click', () => {
         document.activeElement?.blur()
-    })
-    // Forward wheel events from UI overlays to the canvas so the camera zooms
-    // instead of the page scrolling (e.g. annotation nav, tooltips, hotspots)
-    window.addEventListener('resize', () => {
-        dom.settingsPanel.classList.add('hidden')
     })
     const canvas = global.app.graphicsDevice.canvas
     canvas.addEventListener('pointerup', (event) => {
@@ -111,18 +105,6 @@ const initUI = async (global) => {
     events.on('dimensions:color-change', (dim) => {
         global.dimensionsBox.updateColorOnly(dim)
     })
-  
-    events.on('inputEvent', (event) => {
-        if (event === 'toggleHelp') {
-            toggleHelp()
-        } else if (event === 'cancel') {
-            // close info panel on cancel
-            dom.settingsPanel.classList.add('hidden')
-        } else if (event === 'interrupt') {
-            dom.settingsPanel.classList.add('hidden')
-        }
-    })
-    // fade ui controls after 5 seconds of inactivity
     let ableShowUI = true
     events.on('controlsHidden:changed', (value) => {
         if (!ableShowUI) return
@@ -174,38 +156,7 @@ const initUI = async (global) => {
         annotationVisible = false
         showUI()
     })
-    events.on('inputEvent:setting-panel', () => {
-        const panel = dom.settingsPanel
-        panel.classList.toggle('hidden')
-        if (panel.classList.contains('hidden')) return
-        const GAP = 8
-        const OFFSET = 6
-        panel.style.visibility = 'hidden'
-        panel.style.position = 'absolute'
-        panel.classList.remove('hidden')
-        const btnRect = dom.settings.getBoundingClientRect()
-        const parentRect = panel.offsetParent.getBoundingClientRect()
-        const panelW = panel.offsetWidth
-        const panelH = panel.offsetHeight
-        let left = btnRect.left - parentRect.left + btnRect.width / 2 - panelW / 2
-        let top = btnRect.top - parentRect.top - panelH - OFFSET
-        if (top < GAP) {
-            top = btnRect.bottom - parentRect.top + OFFSET
-        }
-        if (top + panelH > parentRect.height - GAP) {
-            top = parentRect.height - panelH - GAP
-        }
-        if (left + panelW > parentRect.width - GAP) {
-            left = parentRect.width - panelW - GAP
-        }
-        if (left < GAP) left = GAP
-        panel.style.left = left + 'px'
-        panel.style.top = top + 'px'
-        panel.style.visibility = 'visible'
-    })
-    // Initialize annotation navigator
-    // initAnnotationNav(dom, events, state, global.settings.annotations)
-    // Hide all UI (poster, loading bar, controls)
+
     if (config.noui) {
         dom.ui.classList.add('hidden')
     }
@@ -1676,6 +1627,12 @@ class InputController {
                         break
                     case 'p':
                         events.fire('message:toggle-play')
+                        break
+                    case 's':
+                        events.fire('spin:toggle-play')
+                        break
+                    case 'd':
+                        events.fire('dimensions:toggle-play')
                         break
                     case 't':
                         events.fire('message:message-btns')
