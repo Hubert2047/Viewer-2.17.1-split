@@ -633,11 +633,11 @@ class MessageEditorUI {
         panel.appendChild(audioGroup)
 
         const applyRow = document.createElement('div')
-        applyRow.classList.add('apply-row')
+        applyRow.classList.add('btn-row')
 
         const cancelBtn = makeButton({
             title: 'Cancel',
-            className: 'cancel-btn message-cancel-btn',
+            className: 'cancel-btn',
             onClick: () => {
                 this.onCancel()
             },
@@ -645,7 +645,7 @@ class MessageEditorUI {
 
         const applyBtn = makeButton({
             title: 'Apply',
-            className: 'message-apply-btn confirm-btn',
+            className: 'confirm-btn',
             onClick: () => {
                 this.onApply()
             },

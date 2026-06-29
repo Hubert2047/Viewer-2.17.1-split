@@ -799,7 +799,6 @@ button {
   color: var(--primary);
 }
 
-/* Bottom grid Auto Play + Button */
 .message-autoplay {
   display: flex;
   gap: 0.4375rem;
@@ -807,7 +806,6 @@ button {
 .message-font-size {
   height: 32px;
 }
-/* Apply button */
 .message-apply-btn,
 .message-cancel-btn {
   flex: 1;
@@ -823,7 +821,6 @@ button {
 .message-cancel-btn :hover {
   background-color: #7c8ea4;
 }
-/* Audio file input */
 .audio-settings {
   display: flex;
   flex-direction: column;
@@ -1742,9 +1739,9 @@ button {
   white-space: nowrap;
 }
 .sd-option-disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: auto;
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto;
 }
 .sd-option:hover {
   background: var(--bg-hover);
@@ -2527,3 +2524,4 @@ button {
 .record-pattern .sd-trigger {
   min-width: 72px;
 }
+

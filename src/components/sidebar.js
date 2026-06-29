@@ -784,8 +784,8 @@ function makeSidebar(global, dom) {
             viewerSection.cleanup?.()
             messageSection.cleanup?.()
             dimensionsSection.cleanup?.()
-            measurementSection.cleanup?.()
-            posterSection.cleanup?.()
+            // measurementSection.cleanup?.()
+            // posterSection.cleanup?.()
             recordSection.cleanup?.()
             exportSection.cleanup?.()
         }

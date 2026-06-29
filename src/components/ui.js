@@ -836,11 +836,7 @@ function makeButton({ icon, title, disabled, className, id, onClick, show = true
         if (className === 'primary') {
             btn.style.background = 'var(--primary)'
             btn.style.color = 'white'
-        } else {
-            btn.style.background = 'var(--bg-hover)'
-            btn.style.color = 'var(--text-main)'
-            btn.style.borderColor = 'var(--border)'
-        }
+        } 
         if (icon) {
             const iconWrap = document.createElement('span')
             iconWrap.style.cssText = 'display:flex;align-items:center;width:16px;height:16px;'

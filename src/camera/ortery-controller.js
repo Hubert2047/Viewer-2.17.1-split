@@ -127,12 +127,15 @@ class OtherController {
             })
         })
     }
-    stopRecording() {
+    stopRecording({ discard = false } = {}) {
         if (this._stopPostRender) {
             this._stopPostRender()
             this._stopPostRender = null
         }
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            if (discard) {
+                this.mediaRecorder.onstop = null
+            }
             this.mediaRecorder.stop()
         }
         this.global.recording = false
@@ -180,10 +183,10 @@ class OtherController {
                     break
             }
         })
-        this.events.on('record-stop', () => {
+        this.events.on('record-stop', ({ discard } = {}) => {
             if (this.isRecordSpin) this.stopSpin360()
             if (this.isRecordStory) this.events.fire('message:stop-auto', { hideMessages: true })
-            this.stopRecording()
+            this.stopRecording({ discard })
         })
         this.events.on('inputEvent:reset-camera', () => {
             this.reset()

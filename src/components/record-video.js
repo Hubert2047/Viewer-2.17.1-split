@@ -404,19 +404,33 @@ function makeRecordSection(el, global) {
         },
     })
 
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
     const stopBtn = makeButton({
         icon: ICONS.stopRecord,
         label: 'Stop & Download',
         show: false,
         variant: 'full',
-        onClick: () => {
-            events.fire('record-stop')
-        },
+        className: 'confirm-btn',
+        onClick: () => events.fire('record-stop'),
     })
+
+    const cancelBtn = makeButton({
+        icon: ICONS.cancelRecord,
+        label: 'Cancel',
+        title: 'Cancel',
+        show: false,
+        className: 'cancel-btn',
+        onClick: () => cancelRecordingWithoutDownload(),
+    })
+
+    btnRow.appendChild(cancelBtn)
+    btnRow.appendChild(stopBtn)
 
     recordGroup.appendChild(statusBox)
     recordGroup.appendChild(startBtn)
-    recordGroup.appendChild(stopBtn)
+    recordGroup.appendChild(btnRow)
 
     container.appendChild(settingsGroup)
     container.appendChild(recordGroup)
@@ -472,6 +486,7 @@ function makeRecordSection(el, global) {
             statusTitle.textContent = 'Recording...'
             statusSub.textContent = pattern === 'none' ? 'Press stop when finished' : 'Wait for the recording to finish'
             stopBtn.setShow(true)
+            cancelBtn.setShow(true)
             startBtn.setShow(false)
             startRecordTimer()
         }),
@@ -481,6 +496,7 @@ function makeRecordSection(el, global) {
             statusTitle.textContent = 'Ready'
             statusSub.textContent = 'Press record to start capturing'
             stopBtn.setShow(false)
+            cancelBtn.setShow(false)
             startBtn.setShow(true)
             events.fire('show-ui')
             startBtn.disabled = false
