@@ -370,6 +370,7 @@ class MessageEditorUI {
                 min: 1,
                 max: 999,
                 name: 'dot-size',
+                className: 'text-center',
                 onChange: (v) => {
                     this.activeMessageData.dot.size = parseInt(v)
                     this.applyDraft()
@@ -385,6 +386,7 @@ class MessageEditorUI {
                 max: 99,
                 step: 0.5,
                 name: 'stroke-width',
+                className: 'text-center',
                 onChange: (v) => {
                     this.activeMessageData.dot.stroke = parseFloat(v)
                     this.applyDraft()
@@ -414,20 +416,20 @@ class MessageEditorUI {
         autoplayGrid.classList.add('message-autoplay')
 
         const autoPlayGroup = makeSectionGroup('Auto Play')
-        const timeField = this.makeField('Elapsed Time (s)')
-        timeField.appendChild(
-            makeInput({
-                type: 'number',
-                value: this.activeMessageData.autoPlay.time,
-                min: 0,
-                step: 0.5,
-                name: 'play-time',
-                onChange: (v) => {
-                    this.activeMessageData.autoPlay.time = parseFloat(v)
-                    this.applyDraft()
-                },
-            }),
-        )
+        const timeField = this.makeField('Elapsed Time (s)', 'elapsed-time')
+        const timeInput = makeInput({
+            type: 'number',
+            value: this.activeMessageData.autoPlay.time,
+            min: 0,
+            step: 0.5,
+            name: 'play-time',
+            className: 'text-center',
+            onChange: (v) => {
+                this.activeMessageData.autoPlay.time = parseFloat(v)
+                this.applyDraft()
+            },
+        })
+        timeField.appendChild(timeInput)
         autoPlayGroup.appendChild(timeField)
 
         autoplayGrid.appendChild(autoPlayGroup)
@@ -462,6 +464,57 @@ class MessageEditorUI {
         audioSettings.classList.add('audio-settings')
         if (!hasAudio) audioSettings.style.display = 'none'
 
+        const durationRow = document.createElement('div')
+        durationRow.classList.add('message-audio-duration-row')
+        durationRow.style.display = 'none'
+
+        const durationText = document.createElement('span')
+        durationText.classList.add('message-audio-duration-text')
+
+        const applyDurationBtn = makeButton({
+            title: 'Apply to Elapsed Time',
+            className: 'message-audio-apply-duration-btn',
+            onClick: () => {
+                if (this._audioDurationSec == null) return
+                const rounded = Math.round(this._audioDurationSec * 10) / 10
+                this.activeMessageData.autoPlay.time = rounded
+                timeInput.value = rounded
+                this.applyDraft()
+            },
+        })
+
+        durationRow.appendChild(durationText)
+        durationRow.appendChild(applyDurationBtn)
+
+        const readAudioDuration = (src) => {
+            if (!src) {
+                durationRow.style.display = 'none'
+                this._audioDurationSec = null
+                return
+            }
+            const probe = new Audio()
+            probe.preload = 'metadata'
+            probe.addEventListener(
+                'loadedmetadata',
+                () => {
+                    if (!isFinite(probe.duration)) return
+                    this._audioDurationSec = probe.duration
+                    durationText.textContent = `Duration: ${probe.duration.toFixed(1)}s`
+                    durationRow.style.display = 'flex'
+                },
+                { once: true },
+            )
+            probe.addEventListener(
+                'error',
+                () => {
+                    durationRow.style.display = 'none'
+                    this._audioDurationSec = null
+                },
+                { once: true },
+            )
+            probe.src = src
+        }
+
         const clearAudioBtn = makeButton({
             icon: ICONS.trash,
             title: 'Remove audio',
@@ -476,6 +529,8 @@ class MessageEditorUI {
                 fileNameSpan.textContent = 'No file chosen'
                 clearAudioBtn.style.display = 'none'
                 audioSettings.style.display = 'none'
+                durationRow.style.display = 'none'
+                this._audioDurationSec = null
 
                 this.applyDraft(true)
             },
@@ -509,6 +564,7 @@ class MessageEditorUI {
             fileNameSpan.textContent = file.name
             clearAudioBtn.style.display = ''
             audioSettings.style.display = ''
+            readAudioDuration(this.activeMessageData.audio.src)
             this.applyDraft(true)
         })
 
@@ -519,6 +575,11 @@ class MessageEditorUI {
         audioFileFieldGroup.appendChild(audioFileField)
         audioFileFieldGroup.appendChild(clearAudioBtn)
         audioGroup.appendChild(audioFileFieldGroup)
+        audioGroup.appendChild(durationRow)
+
+        if (hasAudio) {
+            readAudioDuration(this.activeMessageData.audio.src || `./audios/${this.activeMessageData.audio.fileName}`)
+        }
 
         const audioGrid = this.makeGrid(2)
         const iconColorField = this.makeField('Icon Color')
