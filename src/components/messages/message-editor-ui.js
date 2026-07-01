@@ -567,7 +567,7 @@ class MessageEditorUI {
                 },
             }),
         )
-       
+
         const autoPlayField = this.makeField('Auto Play')
         autoPlayField.appendChild(
             makeToggle({

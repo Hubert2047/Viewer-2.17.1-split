@@ -181,17 +181,13 @@ class MessagesManager {
         this.events.on('message:reorder', ({ fromId, toId }) => {
             const fromDataIdx = this.settings.messages.findIndex((d) => d.id === fromId)
             const toDataIdx = this.settings.messages.findIndex((d) => d.id === toId)
-            if (fromDataIdx < 0 || toDataIdx < 0) return
-            ;[this.settings.messages[fromDataIdx], this.settings.messages[toDataIdx]] = [
-                this.settings.messages[toDataIdx],
-                this.settings.messages[fromDataIdx],
-            ]
+            if (fromDataIdx < 0 || toDataIdx < 0 || fromDataIdx === toDataIdx) return
+            const [movedData] = this.settings.messages.splice(fromDataIdx, 1)
+            this.settings.messages.splice(toDataIdx, 0, movedData)
             const fromMessageIdx = this.messages.findIndex((h) => h.id === fromId)
             const toMessageIdx = this.messages.findIndex((h) => h.id === toId)
-            ;[this.messages[fromMessageIdx], this.messages[toMessageIdx]] = [
-                this.messages[toMessageIdx],
-                this.messages[fromMessageIdx],
-            ]
+            const [movedMessage] = this.messages.splice(fromMessageIdx, 1)
+            this.messages.splice(toMessageIdx, 0, movedMessage)
             this.messages.forEach((h) => {
                 this.dom.messageContainer.appendChild(h.button.el)
             })
