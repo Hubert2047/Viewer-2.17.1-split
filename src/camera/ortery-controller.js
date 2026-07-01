@@ -910,6 +910,7 @@ class OtherController {
                 this.stopSpin360()
                 this.syncHierarchyAndRender()
                 this.app.once('postrender', () => {
+                    this._drawFrame?.()
                     onStop?.()
                 })
                 return

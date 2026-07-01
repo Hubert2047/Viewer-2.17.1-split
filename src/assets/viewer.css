@@ -563,21 +563,6 @@ button {
   white-space: nowrap;
 }
 
-.message-audio-apply-duration-btn {
-  flex-shrink: 0;
-  padding: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-}
 
 .info-icon {
   top: -0.5625rem;

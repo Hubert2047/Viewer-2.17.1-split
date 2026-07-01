@@ -473,7 +473,7 @@ class MessageEditorUI {
 
         const applyDurationBtn = makeButton({
             title: 'Apply to Elapsed Time',
-            className: 'message-audio-apply-duration-btn',
+            className: 'audio-file-btn',
             onClick: () => {
                 if (this._audioDurationSec == null) return
                 const rounded = Math.round(this._audioDurationSec * 10) / 10
