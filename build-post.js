@@ -84,6 +84,7 @@ const files = [
     { file: 'src/default-settings.js', preset: 'default' },
     { file: 'src/utils/math.js', preset: 'engine' },
     { file: 'src/utils/index.js', preset: 'default' },
+    { file: 'src/libs/oobworker.js', preset: 'engine' },
     { file: 'src/components/rotation-gizmo.js', preset: 'default' },
     { file: 'src/components/entity-rotatable.js', preset: 'default' },
     { file: 'src/components/dimensions/dimension-rotatable.js', preset: 'default' },

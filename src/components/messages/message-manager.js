@@ -234,6 +234,22 @@ class MessagesManager {
         this.events.on('record-section:active', () => {
             if (this.activeMessage) this.activeMessage.hide()
         })
+        this.events.on('message:goto-first', ({ onReady } = {}) => {
+            if (this.messages.length === 0) {
+                onReady?.()
+                return
+            }
+            const first = this.messages[0]
+            if (this.isSamePose(first)) {
+                onReady?.()
+                return
+            }
+            this.events.fire('ortery-controller:transition', {
+                entityInfo: first.data.entityInfo,
+                lerpDuration: AUTO_PLAY_LERP_TIME,
+                onTransitionFinished: () => onReady?.(),
+            })
+        })
     }
     hideAllMessages() {
         if (this.activeData) this.events.fire('message:editor-cancelled')
@@ -354,13 +370,11 @@ class MessagesManager {
             }
         }
         if (isSamePose && message.id === this.activeMessage?.id) {
-            message.show()
-            message.update()
+            this.updateMessage(message)
             return true
         }
         if (isSamePose) {
-            message.show()
-            message.update()
+            this.updateMessage(message)
             this.activeMessage = message
             return true
         }
@@ -371,18 +385,22 @@ class MessagesManager {
             entityInfo: message.data.entityInfo,
             lerpDuration,
             onTransitionFinished: () => {
-                if (this.global.recordActive) {
-                    message.hide()
-                } else {
-                    message.show()
-                    message.update()
-                }
+                this.updateMessage(message)
                 this.isTranslating = false
             },
         })
         return false
     }
-    autoPlay({ onFinished, loop = true } = {}) {
+    updateMessage(message) {
+        if (this.global.recordActive) {
+            message.hide()
+            if (message.button) message.button.setActiveColor()
+        } else {
+            message.show()
+            message.update()
+        }
+    }
+    autoPlay({ onFinished, loop = true, hideMessages = false } = {}) {
         if (this.messages.length === 0) return
         const currentIdx = this.activeMessage ? this.messages.findIndex((h) => h.id === this.activeMessage.id) : -1
         const nextIdx = currentIdx + 1
@@ -393,7 +411,18 @@ class MessagesManager {
         this.intervalID = setTimeout(
             () => {
                 if (isLastMessage) {
-                    onFinished?.(this)
+                    this.stopAutoPlay({ hideMessages })
+                    const first = this.messages[0]
+                    const isFirstSamePose = this.isSamePose(first)
+                    if (isFirstSamePose) {
+                        onFinished?.(this)
+                    } else {
+                        this.events.fire('ortery-controller:transition', {
+                            entityInfo: first.data.entityInfo,
+                            lerpDuration: AUTO_PLAY_LERP_TIME,
+                            onTransitionFinished: () => onFinished?.(this),
+                        })
+                    }
                 } else {
                     this.autoPlay({ onFinished, loop })
                 }

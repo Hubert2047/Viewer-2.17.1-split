@@ -539,7 +539,12 @@ class Messages {
             this.dot.style.cursor = 'grab'
             const screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
             const screenY = parseFloat(this.dot.style.top) + this.dot.offsetHeight / 2
-            const newPos = pickModelLocalPoint({ x: screenX, y: screenY, camera: this.camera, removedSplats: this.removedSplats })
+            const newPos = pickModelLocalPoint({
+                x: screenX,
+                y: screenY,
+                camera: this.camera,
+                removedSplats: this.removedSplats,
+            })
             if (newPos) {
                 this.data.focus.position = newPos
                 this.events.fire('message:drag-changed', this.data)
@@ -730,6 +735,7 @@ class Messages {
         }
         this.updateProgress()
     }
+    
     updateProgress = () => {
         if (!this._audio || !this._audio.duration) return
         const pct = this._audio.currentTime / this._audio.duration

@@ -7,6 +7,7 @@ function hasDimensionsData(dimensions) {
         (dimensions.realSize.x > 0 || dimensions.realSize.y > 0 || dimensions.realSize.z > 0)
     )
 }
+
 function hasCalibrationData(calibration) {
     if (!calibration) return false
     const { distance, points } = calibration
@@ -125,104 +126,23 @@ function isSameQuat(q1, q2, precision = 1e-5) {
 function isSameFloat(a, b, eps = 1e-4) {
     return Math.abs(a - b) < eps
 }
-function dimensionWorldToLocal(worldPos, rotation) {
-    const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
-    const right = q.transformVector(new Vec3(1, 0, 0))
-    const up = q.transformVector(new Vec3(0, 1, 0))
-    const forward = q.transformVector(new Vec3(0, 0, 1))
-    return {
-        x: worldPos.x * right.x + worldPos.y * right.y + worldPos.z * right.z,
-        y: worldPos.x * up.x + worldPos.y * up.y + worldPos.z * up.z,
-        z: worldPos.x * forward.x + worldPos.y * forward.y + worldPos.z * forward.z,
-    }
-}
-function dimensionLocalToWorld(localPos, rotation) {
-    const q = new Quat().setFromEulerAngles(rotation.x, rotation.y, rotation.z)
-    const right = q.transformVector(new Vec3(1, 0, 0))
-    const up = q.transformVector(new Vec3(0, 1, 0))
-    const forward = q.transformVector(new Vec3(0, 0, 1))
-    const { x, y, z } = localPos
-    return {
-        x: x * right.x + y * up.x + z * forward.x,
-        y: x * right.y + y * up.y + z * forward.y,
-        z: x * right.z + y * up.z + z * forward.z,
-    }
-}
 function localToWorld(pos) {
     const worldMatrix = modelEntity.getWorldTransform()
     const worldPos = new Vec3()
     worldMatrix.transformPoint(pos, worldPos)
     return worldPos
 }
-
-function getDimensionsRotation(localCenters) {
-    const count = localCenters.length / 3
-
-    // --- centroid ---
-    let cx = 0,
-        cz = 0
-    for (let i = 0; i < count; i++) {
-        cx += localCenters[i * 3]
-        cz += localCenters[i * 3 + 2]
-    }
-    cx /= count
-    cz /= count
-
-    // --- covariance XZ ---
-    let cxx = 0,
-        cxz = 0,
-        czz = 0
-    for (let i = 0; i < count; i++) {
-        const dx = localCenters[i * 3] - cx
-        const dz = localCenters[i * 3 + 2] - cz
-        cxx += dx * dx
-        cxz += dx * dz
-        czz += dz * dz
-    }
-    cxx /= count
-    cxz /= count
-    czz /= count
-
-    // --- PCA angle ---
-    let angle = 0.5 * Math.atan2(2 * cxz, cxx - czz)
-
-    const cosA = Math.cos(angle)
-    const sinA = Math.sin(angle)
-
-    let minX = Infinity,
-        maxX = -Infinity
-    let minZ = Infinity,
-        maxZ = -Infinity
-
-    for (let i = 0; i < count; i++) {
-        const dx = localCenters[i * 3] - cx
-        const dz = localCenters[i * 3 + 2] - cz
-
-        const lx = cosA * dx + sinA * dz
-        const lz = -sinA * dx + cosA * dz
-
-        if (lx < minX) minX = lx
-        if (lx > maxX) maxX = lx
-        if (lz < minZ) minZ = lz
-        if (lz > maxZ) maxZ = lz
-    }
-
-    if (maxZ - minZ > maxX - minX) {
-        angle += Math.PI / 2
-    }
-
-    // normalize
-    while (angle > Math.PI) angle -= Math.PI * 2
-    while (angle < -Math.PI) angle += Math.PI * 2
-
+function getSpinAxes(quat) {
+    const lx = quat.transformVector(new Vec3(1, 0, 0))
+    const ly = quat.transformVector(new Vec3(0, 1, 0))
+    const lz = quat.transformVector(new Vec3(0, 0, 1))
     return {
-        x: 0,
-        y: angle * (180 / Math.PI),
-        z: 0,
+        x: { x: lx.x, y: lx.y, z: lx.z },
+        y: { x: ly.x, y: ly.y, z: ly.z },
+        z: { x: lz.x, y: lz.y, z: lz.z },
     }
 }
-
-function getVisiblePoints(modelEntity, rotation, removedSplats) {
+function getVisiblePoints({ modelEntity, rotation, removedSplats }) {
     const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
     const resource = gsplatInstance.resource
     const gsplatData = resource.gsplatData
@@ -748,110 +668,7 @@ function getOBBInfo(rx, ry, rz, count, points) {
 
     return { volume, size: { x: sx, y: sy, z: sz }, position: { x: cx, y: cy, z: cz } }
 }
-function snapToFitOBBAsync(points, initialRotation, options = {}) {
-    const { chunkSize = 50 } = options
-    return new Promise((resolve) => {
-        const count = points.length / 3
-        const rx0 = 0
-        const rz0 = 0
 
-        const scan1 = []
-        let scan1Idx = 0
-        let bestRy1 = 0
-        let bestVol1 = Infinity
-
-        function phase1() {
-            for (let deg = 0; deg <= 180; deg += 5) {
-                scan1.push(deg)
-            }
-            bestVol1 = getOBBInfo(rx0, 0, rz0, count, points).volume
-            bestRy1 = 0
-            phase1Chunk()
-        }
-
-        function phase1Chunk() {
-            const end = Math.min(scan1Idx + chunkSize, scan1.length)
-            for (; scan1Idx < end; scan1Idx++) {
-                const testRy = scan1[scan1Idx]
-                const { volume } = getOBBInfo(rx0, testRy, rz0, count, points)
-                if (volume < bestVol1) {
-                    bestVol1 = volume
-                    bestRy1 = testRy
-                }
-            }
-            if (scan1Idx >= scan1.length) {
-                setTimeout(phase2, 0)
-            } else {
-                setTimeout(phase1Chunk, 0)
-            }
-        }
-
-        const scan2 = []
-        let scan2Idx = 0
-        let bestRy2 = 0
-        let bestVol2 = Infinity
-
-        function phase2() {
-            bestRy2 = bestRy1
-            bestVol2 = bestVol1
-            for (let dy = -5; dy <= 5 + 1e-9; dy += 0.5) {
-                scan2.push(bestRy1 + dy)
-            }
-            phase2Chunk()
-        }
-
-        function phase2Chunk() {
-            const end = Math.min(scan2Idx + chunkSize, scan2.length)
-            for (; scan2Idx < end; scan2Idx++) {
-                const testRy = scan2[scan2Idx]
-                const { volume } = getOBBInfo(rx0, testRy, rz0, count, points)
-                if (volume < bestVol2) {
-                    bestVol2 = volume
-                    bestRy2 = testRy
-                }
-            }
-            if (scan2Idx >= scan2.length) {
-                setTimeout(phase3, 0)
-            } else {
-                setTimeout(phase2Chunk, 0)
-            }
-        }
-
-        const scan3 = []
-        let scan3Idx = 0
-        let bestRy3 = 0
-        let bestVol3 = Infinity
-
-        function phase3() {
-            bestRy3 = bestRy2
-            bestVol3 = bestVol2
-            for (let dy = -0.5; dy <= 0.5 + 1e-9; dy += 0.05) {
-                scan3.push(bestRy2 + dy)
-            }
-            phase3Chunk()
-        }
-
-        function phase3Chunk() {
-            const end = Math.min(scan3Idx + chunkSize, scan3.length)
-            for (; scan3Idx < end; scan3Idx++) {
-                const testRy = scan3[scan3Idx]
-                const { volume } = getOBBInfo(rx0, testRy, rz0, count, points)
-                if (volume < bestVol3) {
-                    bestVol3 = volume
-                    bestRy3 = testRy
-                }
-            }
-            if (scan3Idx >= scan3.length) {
-                const { size, position } = getOBBInfo(rx0, bestRy3, rz0, count, points)
-                resolve({ rotation: { x: rx0, y: bestRy3, z: rz0 }, position, size })
-            } else {
-                setTimeout(phase3Chunk, 0)
-            }
-        }
-
-        setTimeout(phase1, 0)
-    })
-}
 function getBoxSize(points, initialRotation) {
     const count = points.length / 3
     const { x: rx0, y: ry0, z: rz0 } = initialRotation

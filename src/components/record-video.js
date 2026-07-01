@@ -1,8 +1,8 @@
 function makeRecordSection(el, global) {
     const { events, app } = global
     const container = makeSectionWrap()
-    let fps = 30
-    let isRegionVisible = true
+    let fps = 60
+    let isRegionVisible = false
     let filename = 'recording'
     let isRecording = false
 
@@ -10,9 +10,16 @@ function makeRecordSection(el, global) {
 
     const getCanvasRect = () => srcCanvas.getBoundingClientRect()
 
+    const DEFAULT_REGION_WIDTH = 1920
+    const DEFAULT_REGION_HEIGHT = 1080
+
     const getFullRegion = () => {
         const rect = getCanvasRect()
-        return { x: 0, y: 0, width: rect.width, height: rect.height }
+        const width = Math.min(DEFAULT_REGION_WIDTH, rect.width)
+        const height = Math.min(DEFAULT_REGION_HEIGHT, rect.height)
+        const x = (rect.width - width) / 2
+        const y = (rect.height - height) / 2
+        return { x, y, width, height }
     }
 
     const clampRegion = (r) => {
@@ -229,7 +236,7 @@ function makeRecordSection(el, global) {
 
         overlayRoot.style.display = isRegionVisible ? '' : 'none'
 
-        region = clampRegion(getFullRegion())
+        region = clampRegion(region)
         renderOverlay()
         syncInputsFromRegion()
 

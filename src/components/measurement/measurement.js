@@ -456,7 +456,7 @@ function makeMeasurementSection(el, global) {
         }),
         events.on('dimensions:delete', () => {
             if (!hasCalibrationData(currentMeasurement?.calibration)) {
-                global.measureTool.deactivate()
+              if(global.measureTool)  global.measureTool.deactivate()
             }
         }),
         events.on('measurement:calibration-picked', (points) => {

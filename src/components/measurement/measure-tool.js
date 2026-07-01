@@ -85,8 +85,6 @@ class MeasureTool {
         this.handles.forEach((h) => this.events.offByHandle(h))
     }
 
-    // ─── Config ───────────────────────────────────────────────────────────────
-
     setConfig(config) {
         Object.assign(this._config, config)
         this._applyLabelStyle()
@@ -101,8 +99,6 @@ class MeasureTool {
         this._label.style.background = transparentColor(color, alpha)
         this._label.style.color = textColor
     }
-
-    // ─── Build ────────────────────────────────────────────────────────────────
 
     _buildSVG() {
         const canvas = this._app.graphicsDevice.canvas
@@ -150,8 +146,6 @@ class MeasureTool {
         }
     }
 
-    // ─── Coordinate helpers ───────────────────────────────────────────────────
-
     _localToWorld(localPt) {
         if (!modelEntity) return localPt.clone()
         const w = new Vec3()
@@ -178,8 +172,6 @@ class MeasureTool {
         })
         return best
     }
-
-    // ─── Shared drawing primitives ────────────────────────────────────────────
 
     _renderLine(sp0, sp1, labelText = null) {
         const { lineColor } = this._config
@@ -237,8 +229,6 @@ class MeasureTool {
         }
     }
 
-    // ─── Render ───────────────────────────────────────────────────────────────
-
     _render() {
         if (!this._active) return
         this._svg.innerHTML = ''
@@ -283,8 +273,6 @@ class MeasureTool {
         screenPts.forEach((sp, i) => this._renderDot(sp, i === 0 ? 'A' : 'B'))
     }
 
-    // ─── Distance text ────────────────────────────────────────────────────────
-
     _getDistanceText(worldDist) {
         const { calibration } = this.global.settings.measurement
         const { useDimensionData, points, unit, distance } = calibration
@@ -310,8 +298,6 @@ class MeasureTool {
 
         return `${worldDist.toFixed(3)} ${calibration.unit ?? 'cm'}`
     }
-
-    // ─── Measure mode ─────────────────────────────────────────────────────────
 
     activate() {
         if (this._active) {
@@ -425,8 +411,6 @@ class MeasureTool {
         }
         this._render()
     }
-
-    // ─── Calibration mode ─────────────────────────────────────────────────────
 
     startCalibrationPick() {
         if (this._active) this.deactivate()

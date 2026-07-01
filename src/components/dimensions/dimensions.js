@@ -12,62 +12,51 @@ function makeDimensionSection(el, global) {
     noDimRow.classList.add('no-configured-row')
     const noDimText = document.createElement('span')
     noDimText.textContent = 'No dimensions configured'
-    const addBtn = document.createElement('button')
-    addBtn.classList.add('add-btn')
-    addBtn.textContent = '+ Add'
-
-    addBtn.onclick = async () => {
-        await global.loading.show()
-
-        const orientPose = settings.orientation.pose
-        const orientQuat = orientPose
-            ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
-            : new Quat(0, 0, 0, 1)
-        const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
-        const result = await snapToFitOBBAsync(localPoints, getDimensionsRotation(localPoints))
-        const invOrientQuat = orientQuat.clone().invert()
-
-        const posInOriented = new Vec3(result.position.x, result.position.y, result.position.z)
-        const posInLocal = new Vec3()
-        invOrientQuat.transformVector(posInOriented, posInLocal)
-
-        const snapQuat = new Quat().setFromEulerAngles(result.rotation.x, result.rotation.y, result.rotation.z)
-        const finalQuat = new Quat().mul2(invOrientQuat, snapQuat)
-        const finalEuler = finalQuat.getEulerAngles()
-
-        global.loading.hide()
-
-        currentDimensions = {
-            boxColor: '#f95f4d',
-            background: { color: 'white', alpha: 0.8 },
-            foregroundColor: '#f95f4d',
-            realSize: { x: 0, y: 0, z: 0 },
-            unit: 'cm',
-        }
-
-        const finalDimension = {
-            ...currentDimensions,
-            position: { x: posInLocal.x, y: posInLocal.y, z: posInLocal.z },
-            size: result.size,
-            rotation: { x: finalEuler.x, y: finalEuler.y, z: finalEuler.z },
-        }
-        if (canUseMeasurementData) {
-            finalDimension.useMeasurementData = true
-            setUseMeasurementChecked(true)
-        }
-        global.dataDirty = true
-        editDimension = { ...finalDimension }
-        currentDimensions = { ...finalDimension }
-        settings.dimensions = finalDimension
-        setDimConfigured(true)
-        setValues(currentDimensions)
-        events.fire('dimensions:configured', currentDimensions)
-        renderRealGroup()
-        onEdit()
-    }
+    const addBtn = makeButton({
+        title: '+ Add',
+        className: 'add-btn',
+        onClick: async () => {
+            if (!global.oobbInfo) {
+                await global.loading.show()
+                await global.oobbInfoPromise
+                global.loading.hide()
+            }
+            const { finalQuat, posInLocal, size } = global.oobbInfo
+            const finalEuler = finalQuat.getEulerAngles()
+            currentDimensions = {
+                boxColor: '#f95f4d',
+                background: { color: 'white', alpha: 0.8 },
+                foregroundColor: '#f95f4d',
+                realSize: { x: 0, y: 0, z: 0 },
+                unit: 'cm',
+            }
+            const finalDimension = {
+                ...currentDimensions,
+                position: { x: posInLocal.x, y: posInLocal.y, z: posInLocal.z },
+                size,
+                rotation: { x: finalEuler.x, y: finalEuler.y, z: finalEuler.z },
+            }
+            if (canUseMeasurementData) {
+                finalDimension.useMeasurementData = true
+                setUseMeasurementChecked(true)
+            }
+            global.dataDirty = true
+            editDimension = { ...finalDimension }
+            currentDimensions = { ...finalDimension }
+            settings.dimensions = finalDimension
+            if (settings.spin.enabled) {
+                settings.spin = { ...settings.spin, axes: getSpinAxes(finalQuat) }
+            }
+            setDimConfigured(true)
+            setValues(currentDimensions)
+            events.fire('dimensions:configured', currentDimensions)
+            renderRealGroup()
+            onEdit()
+        },
+    })
 
     async function getUpdateBoxSize(rotation) {
-        const points = getVisiblePoints(modelEntity, settings.removedSplats)
+        const points = getVisiblePoints({ modelEntity, removedSplats: settings.removedSplats })
         const result = await getBoxSize(points, rotation)
         return result
     }
@@ -358,6 +347,13 @@ function makeDimensionSection(el, global) {
             if (!isEditing) return
             const result = await getUpdateBoxSize(currentDimensions.rotation)
             currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+            if (settings.spin.enabled) {
+                const { x, y, z } = currentDimensions.rotation
+                settings.spin = {
+                    ...settings.spin,
+                    axes: getSpinAxes(new Quat().setFromEulerAngles(x, y, z)),
+                }
+            }
             events.fire('dimensions:change', currentDimensions)
         }),
     ]

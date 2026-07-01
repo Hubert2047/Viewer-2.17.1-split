@@ -419,64 +419,42 @@ function makeViewerSection(el, global) {
 
     const initviewGroup = makeSectionGroup('Initial View', initviewHint)
     initviewGroup.appendChild(makeInitViewGroup(events, settings, global))
-
     //spin
     const spinGroup = makeSectionGroup('Spin')
     const spinEnabledRow = makeRow({ title: 'Enabled' })
+
     const spinEnabledToggleEl = makeToggle({
         initialValue: settings.spin.enabled,
-        onChange: (value) => {
+        onChange: async (value) => {
+            if (value && settings.model === 'spherical' && !settings.spin.axes) {
+                let axes
+                if (settings.dimensions) {
+                    const { x, y, z } = settings.dimensions.rotation
+                    const quat = new Quat().setFromEulerAngles(x, y, z)
+                    axes = getSpinAxes(quat)
+                } else {
+                    if (!global.oobbInfo) {
+                        await global.loading.show()
+                        await global.oobbInfoPromise
+                        global.loading.hide()
+                    }
+                    axes = getSpinAxes(global.oobbInfo.finalQuat)
+                }
+                settings.spin = {
+                    ...defaultSettings.spin,
+                    enabled: value,
+                    axes,
+                }
+            } else {
+                settings.spin.enabled = value
+            }
             spinContinuousRow.setShow(value)
             spinOnStartRow.setShow(value)
             speedRow.setShow(value)
             directionRow.setShow(value)
             rotationAxisRow?.setShow(value)
-            if (value && settings.model === 'spherical' && !settings.spin.axes) {
-                global.loading.show().then(() => {
-                    const orientPose = settings.orientation?.pose
-                    const orientQuat = orientPose
-                        ? new Quat(
-                              orientPose.rotation.x,
-                              orientPose.rotation.y,
-                              orientPose.rotation.z,
-                              orientPose.rotation.w,
-                          )
-                        : new Quat(0, 0, 0, 1)
-                    const localPoints = getVisiblePoints(modelEntity, orientQuat, settings.removedSplats)
-                    const initialRot = getDimensionsRotation(localPoints)
-                    snapToFitOBBAsync(localPoints, initialRot).then((result) => {
-                        const invOrientQuat = orientQuat.clone().invert()
-                        const posInOriented = new Vec3(result.position.x, result.position.y, result.position.z)
-                        const posInLocal = new Vec3()
-                        invOrientQuat.transformVector(posInOriented, posInLocal)
-                        const snapQuat = new Quat().setFromEulerAngles(
-                            result.rotation.x,
-                            result.rotation.y,
-                            result.rotation.z,
-                        )
-                        const finalQuat = new Quat().mul2(invOrientQuat, snapQuat)
-                        const lx = finalQuat.transformVector(new Vec3(1, 0, 0))
-                        const ly = finalQuat.transformVector(new Vec3(0, 1, 0))
-                        const lz = finalQuat.transformVector(new Vec3(0, 0, 1))
-                        settings.spin = {
-                            ...defaultSettings.spin,
-                            enabled: value,
-                            axes: {
-                                x: { x: lx.x, y: lx.y, z: lx.z },
-                                y: { x: ly.x, y: ly.y, z: ly.z },
-                                z: { x: lz.x, y: lz.y, z: lz.z },
-                            },
-                        }
-                        global.loading.hide()
-                        events.fire('spin:enabled', value)
-                        events.fire('re-render:control-wrap', value)
-                    })
-                })
-            } else {
-                settings.spin.enabled = value
-                events.fire('spin:enabled', value)
-                events.fire('re-render:control-wrap', value)
-            }
+            events.fire('spin:enabled', value)
+            events.fire('re-render:control-wrap', value)
             global.dataDirty = true
         },
     })
@@ -649,6 +627,10 @@ function makeSidebar(global, dom) {
     const SIDEBAR_WIDTH = '400px'
     const totalSteps = MAX_STEP
     const minStep = 1
+    const oobbWorker = new OOBBWorker({ global })
+    events.on('model:loaded', () => oobbWorker.runOOBB(settings))
+    events.on('orientation:reset', () => oobbWorker.runOOBB(settings))
+    events.on('orientation:added', () => oobbWorker.runOOBB(settings))
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
 
@@ -669,7 +651,6 @@ function makeSidebar(global, dom) {
     headerTitle.classList.add('header-title')
     headerTitle.style.flex = '1'
     header.appendChild(headerTitle)
-
     const stepBadge = document.createElement('span')
     stepBadge.classList.add('step-badge')
     header.appendChild(stepBadge)
@@ -761,7 +742,7 @@ function makeSidebar(global, dom) {
     canvas.style.width = `calc(100% - ${SIDEBAR_WIDTH})`
     document.getElementById('ui').style.width = `calc(100% - ${SIDEBAR_WIDTH})`
 
-    const updateProgress = () => {
+    function updateProgress() {
         segs.forEach((seg, i) => {
             seg.classList.toggle('done', i < global.settings.setupStep)
         })
@@ -769,7 +750,7 @@ function makeSidebar(global, dom) {
 
     const isFinalStep = () => global.settings.setupStep === totalSteps
 
-    const renderModelStep = () => {
+    function renderModelStep() {
         contentArea.cleanup = () => {
             modelSection.cleanup?.()
             exportSection.cleanup?.()
@@ -796,7 +777,7 @@ function makeSidebar(global, dom) {
         }, 0)
     }
 
-    const renderFullStep = () => {
+    function renderFullStep() {
         contentArea.cleanup = () => {
             viewerSection.cleanup?.()
             messageSection.cleanup?.()
@@ -864,7 +845,7 @@ function makeSidebar(global, dom) {
         contentArea.appendChild(exportSection)
     }
 
-    const renderStep = () => {
+    function renderStep() {
         const step = global.settings.setupStep
         contentArea.cleanup?.()
         contentArea.cleanup = null
