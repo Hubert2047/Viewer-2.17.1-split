@@ -24,8 +24,8 @@ function makeRecordSection(el, global) {
 
     const clampRegion = (r) => {
         const rect = getCanvasRect()
-        const width = Math.min(Math.max(r.width, 40), rect.width)
-        const height = Math.min(Math.max(r.height, 40), rect.height)
+        const width = Math.min(Math.max(r.width, 0), rect.width)
+        const height = Math.min(Math.max(r.height, 0), rect.height)
         const x = Math.min(Math.max(r.x, 0), rect.width - width)
         const y = Math.min(Math.max(r.y, 0), rect.height - height)
         return { x, y, width, height }
@@ -322,7 +322,11 @@ function makeRecordSection(el, global) {
         className: 'record-region-input',
         onChange: (value) => {
             const n = parseInt(value, 10)
-            if (Number.isFinite(n) && n > 0) setRegion({ ...region, width: n }, { fromInput: true })
+            const rect = getCanvasRect()
+            const maxWidth = Math.round(rect.width)
+            const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 1), maxWidth) : 1
+            setRegion({ ...region, width: clamped }, { fromInput: true })
+            syncInputsFromRegion()
         },
     })
 
@@ -337,7 +341,11 @@ function makeRecordSection(el, global) {
         className: 'record-region-input',
         onChange: (value) => {
             const n = parseInt(value, 10)
-            if (Number.isFinite(n) && n > 0) setRegion({ ...region, height: n }, { fromInput: true })
+            const rect = getCanvasRect()
+            const maxHeight = Math.round(rect.height)
+            const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 1), maxHeight) : 1
+            setRegion({ ...region, height: clamped }, { fromInput: true })
+            syncInputsFromRegion()
         },
     })
 

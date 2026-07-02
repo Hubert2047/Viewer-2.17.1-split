@@ -884,7 +884,19 @@ function makeButton({ icon, title, disabled, className, id, onClick, show = true
     }
     return btn
 }
-function makeInput({ type, value, min, max, step, placeholder, onChange, disabled = false, name, className } = {}) {
+function makeInput({
+    type,
+    value,
+    min,
+    max,
+    step,
+    placeholder,
+    onChange,
+    onBlur,
+    disabled = false,
+    name,
+    className,
+} = {}) {
     const input = document.createElement('input')
     input.type = type
     input.value = value
@@ -898,6 +910,9 @@ function makeInput({ type, value, min, max, step, placeholder, onChange, disable
     if (step !== undefined) input.step = step
     if (placeholder) input.placeholder = placeholder
     if (disabled) input.disabled = true
+    if (onBlur) {
+        input.addEventListener('blur', (e) => onBlur(e.target.value))
+    }
     if (onChange)
         input.addEventListener('input', (e) => {
             let value = input.value
