@@ -25,7 +25,7 @@ function makeDimensionSection(el, global) {
             const finalEuler = finalQuat.getEulerAngles()
             currentDimensions = {
                 boxColor: '#f95f4d',
-                background: { color: 'white', alpha: 0.8 },
+                background: { color: '#ffffff', alpha: 0.8 },
                 foregroundColor: '#f95f4d',
                 realSize: { x: 0, y: 0, z: 0 },
                 unit: 'cm',
@@ -44,9 +44,7 @@ function makeDimensionSection(el, global) {
             editDimension = { ...finalDimension }
             currentDimensions = { ...finalDimension }
             settings.dimensions = finalDimension
-            if (settings.spin.enabled) {
-                settings.spin = { ...settings.spin, axes: getSpinAxes(finalQuat) }
-            }
+            calSpinAxesFromDimensions()
             setDimConfigured(true)
             setValues(currentDimensions)
             events.fire('dimensions:configured', currentDimensions)
@@ -55,11 +53,6 @@ function makeDimensionSection(el, global) {
         },
     })
 
-    async function getUpdateBoxSize(rotation) {
-        const points = getVisiblePoints({ modelEntity, removedSplats: settings.removedSplats })
-        const result = await getBoxSize(points, rotation)
-        return result
-    }
     noDimRow.appendChild(noDimText)
     noDimRow.appendChild(addBtn)
 
@@ -68,7 +61,7 @@ function makeDimensionSection(el, global) {
 
     const { row: boxColorGroup, setDisabled: setBoxColorDisabled } = makeColorPickerDropdown({
         label: 'Box Color',
-        color: currentDimensions?.boxColor || '#ffffff',
+        color: currentDimensions?.boxColor || '#f95f4d',
         debounceMs: 0,
         onChange: ({ hex }) => {
             currentDimensions = { ...currentDimensions, boxColor: hex }
@@ -79,7 +72,7 @@ function makeDimensionSection(el, global) {
 
     const { row: textColor, setDisabled: setTextColorDisabled } = makeColorPickerDropdown({
         label: 'Text Color',
-        color: currentDimensions?.foregroundColor || '#ffffff',
+        color: currentDimensions?.foregroundColor || '#f95f4d',
         debounceMs: 0,
         onChange: ({ hex }) => {
             currentDimensions = { ...currentDimensions, foregroundColor: hex }
@@ -136,6 +129,8 @@ function makeDimensionSection(el, global) {
         },
     })
     let autoCalc = false
+    let lastChangedAxis = null
+    let lastInputAxisValue = null
     const {
         row: autoCalcRow,
         getValue: getAutoCalc,
@@ -147,6 +142,21 @@ function makeDimensionSection(el, global) {
         disabled: true,
         onChange: (val) => {
             autoCalc = val
+            if (val && lastChangedAxis && lastInputAxisValue) {
+                const boxSize = currentDimensions.size
+                const boxVal = boxSize[lastChangedAxis]
+                if (boxVal && boxVal !== 0) {
+                    const ratio = lastInputAxisValue / boxVal
+                    const newReal = {
+                        x: lastChangedAxis === 'x' ? lastInputAxisValue : boxSize.x * ratio,
+                        y: lastChangedAxis === 'y' ? lastInputAxisValue : boxSize.y * ratio,
+                        z: lastChangedAxis === 'z' ? lastInputAxisValue : boxSize.z * ratio,
+                    }
+                    currentDimensions = { ...currentDimensions, realSize: newReal }
+                    setRealValues({ x: newReal.x, y: newReal.y, z: newReal.z })
+                    events.fire('dimensions:change', currentDimensions)
+                }
+            }
         },
     })
 
@@ -179,6 +189,8 @@ function makeDimensionSection(el, global) {
         title: 'Size',
         step: 0.1,
         onChange: ({ x, y, z, changedAxis }) => {
+            lastChangedAxis = changedAxis
+            lastInputAxisValue = { x, y, z }[changedAxis]
             if (!isEditing) return
             if (autoCalc && currentDimensions?.size && changedAxis) {
                 const boxSize = currentDimensions.size
@@ -205,7 +217,47 @@ function makeDimensionSection(el, global) {
         },
     })
     if (settings.dimensions) setRealValues(settings.dimensions.realSize)
-    const renderRealGroup = () => {
+
+    renderRealGroup()
+
+    const btnRow = document.createElement('div')
+    btnRow.classList.add('btn-row')
+
+    hasDimWrap.appendChild(realGroup)
+    hasDimWrap.appendChild(displayGroup)
+    hasDimWrap.appendChild(btnRow)
+
+    container.appendChild(noDimRow)
+    container.appendChild(hasDimWrap)
+    el.appendChild(container)
+
+    renderBtns()
+    setDisabled(false)
+    setDimConfigured(!!settings.dimensions)
+    if (settings.dimensions) setValues(settings.dimensions)
+    const handles = [
+        events.on('sidebar:active', () => onCancel()),
+        events.on('sidebar:clicked', ({ id }) => {
+            onCancel()
+            if (id !== 'dimensions') return
+            canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
+            setUseMeasurementChecked(currentDimensions?.useMeasurementData)
+            renderRealGroup()
+        }),
+        events.on('gizmo-rotation:drag-end', async () => {
+            if (!isEditing) return
+            const result = await getUpdateBoxSize(currentDimensions.rotation)
+            currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+            calSpinAxesFromDimensions()
+            events.fire('dimensions:change', currentDimensions)
+        }),
+    ]
+    async function getUpdateBoxSize(rotation) {
+        const points = getVisiblePoints({ modelEntity, removedSplats: settings.removedSplats })
+        const result = await getBoxSize(points, rotation)
+        return result
+    }
+    function renderRealGroup() {
         realSizeContent.innerHTML = ''
         const hasDimensions = hasDimensionsData(currentDimensions)
         if (canUseMeasurementData) {
@@ -216,13 +268,12 @@ function makeDimensionSection(el, global) {
         realSizeContent.appendChild(realSizeRow)
         realSizeContent.appendChild(realUnitRow.el)
     }
-    renderRealGroup()
-    const setValues = (dim) => {
+    function setValues(dim) {
         if (!dim) return
         setRealValues(dim.realSize)
     }
 
-    const setDisabled = (on) => {
+    function setDisabled(on) {
         setRealDisabled(!on)
         realUnitSelect.setDisabled(!on)
         setBoxColorDisabled(!on)
@@ -231,29 +282,7 @@ function makeDimensionSection(el, global) {
         setBackgroundDisabled(!on)
         setAutoCalcDisabled(!on)
     }
-
-    const btnRow = document.createElement('div')
-    btnRow.classList.add('btn-row')
-
-    const onEdit = () => {
-        isEditing = true
-        setDisabled(true)
-        renderBtns()
-        events.fire('dimensions:edit', currentDimensions)
-    }
-
-    const onCancel = () => {
-        if (!isEditing) return
-        isEditing = false
-        setDisabled(false)
-        if (editDimension) setValues(editDimension)
-        currentDimensions = { ...editDimension }
-        renderBtns()
-        renderRealGroup()
-        events.fire('dimensions:cancel')
-    }
-
-    const renderBtns = () => {
+    function renderBtns() {
         btnRow.innerHTML = ''
         if (isEditing) {
             const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancel })
@@ -316,47 +345,58 @@ function makeDimensionSection(el, global) {
             btnRow.appendChild(btnDelete)
         }
     }
-
-    hasDimWrap.appendChild(realGroup)
-    hasDimWrap.appendChild(displayGroup)
-    hasDimWrap.appendChild(btnRow)
-
-    const setDimConfigured = (has) => {
+    function onEdit() {
+        isEditing = true
+        lastChangedAxis = null
+        lastInputAxisValue = null
+        setDisabled(true)
+        renderBtns()
+        events.fire('dimensions:edit', currentDimensions)
+    }
+    function onCancel() {
+        if (!isEditing) return
+        isEditing = false
+        setDisabled(false)
+        if (editDimension) setValues(editDimension)
+        currentDimensions = { ...editDimension }
+        renderBtns()
+        renderRealGroup()
+        deleteSpinAxes()
+        events.fire('dimensions:cancel')
+    }
+    function setDimConfigured(has) {
         noDimRow.style.display = has ? 'none' : 'flex'
         hasDimWrap.style.display = has ? 'flex' : 'none'
     }
 
-    container.appendChild(noDimRow)
-    container.appendChild(hasDimWrap)
-    el.appendChild(container)
-
-    renderBtns()
-    setDisabled(false)
-    setDimConfigured(!!settings.dimensions)
-    if (settings.dimensions) setValues(settings.dimensions)
-    const handles = [
-        events.on('sidebar:active', () => onCancel()),
-        events.on('sidebar:clicked', ({ id }) => {
-            onCancel()
-            if (id !== 'dimensions') return
-            canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
-            setUseMeasurementChecked(currentDimensions?.useMeasurementData)
-            renderRealGroup()
-        }),
-        events.on('gizmo-rotation:drag-end', async () => {
-            if (!isEditing) return
-            const result = await getUpdateBoxSize(currentDimensions.rotation)
-            currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-            if (settings.spin.enabled) {
-                const { x, y, z } = currentDimensions.rotation
-                settings.spin = {
-                    ...settings.spin,
-                    axes: getSpinAxes(new Quat().setFromEulerAngles(x, y, z)),
-                }
+    async function deleteSpinAxes() {
+        let axes = null
+        if (settings.dimensions) {
+            const { x, y, z } = settings.dimensions.rotation
+            const quat = new Quat().setFromEulerAngles(x, y, z)
+            axes = getSpinAxes(quat)
+        } else {
+            if (!global.oobbInfo) {
+                await global.loading.show()
+                await global.oobbInfoPromise
+                global.loading.hide()
             }
-            events.fire('dimensions:change', currentDimensions)
-        }),
-    ]
+            axes = getSpinAxes(global.oobbInfo.finalQuat)
+        }
+        settings.spin = {
+            ...settings.spin,
+            axes,
+        }
+    }
+    function calSpinAxesFromDimensions() {
+        if (settings.spin.enabled) {
+            const { x, y, z } = currentDimensions.rotation
+            settings.spin = {
+                ...settings.spin,
+                axes: getSpinAxes(new Quat().setFromEulerAngles(x, y, z)),
+            }
+        }
+    }
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
     }

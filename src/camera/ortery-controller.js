@@ -78,8 +78,12 @@ class OtherController {
     }
     startRecording({ fps = 60, filename, region, onStarted }) {
         const srcCanvas = this.app.graphicsDevice.canvas
+
         const cropCanvas = document.createElement('canvas')
         const ctx = cropCanvas.getContext('2d', { alpha: false, desynchronized: true })
+
+        const desiredWidth = region?.outputWidth ?? region?.width ?? srcCanvas.width
+        const desiredHeight = region?.outputHeight ?? region?.height ?? srcCanvas.height
 
         const getRegion = () => {
             if (region?.width > 0 && region?.height > 0) {
@@ -87,21 +91,14 @@ class OtherController {
             }
             return { x: 0, y: 0, width: srcCanvas.width, height: srcCanvas.height }
         }
-        const r = getRegion()
-        cropCanvas.width = r.width
-        cropCanvas.height = r.height
+
+        cropCanvas.width = desiredWidth
+        cropCanvas.height = desiredHeight
 
         this.global.recording = true
         this.events.fire('record-start')
 
-        const supportsManualFrame = (() => {
-            const testStream = cropCanvas.captureStream(0)
-            const t = testStream.getVideoTracks()[0]
-            return typeof t.requestFrame === 'function'
-        })()
-
-        const stream = cropCanvas.captureStream(supportsManualFrame ? 0 : fps)
-        const track = stream.getVideoTracks()[0]
+        const stream = cropCanvas.captureStream()
 
         let accumulator = 0
         const frameInterval = 1 / fps
@@ -109,19 +106,14 @@ class OtherController {
         const drawFrame = () => {
             const r = getRegion()
             ctx.drawImage(srcCanvas, r.x, r.y, r.width, r.height, 0, 0, cropCanvas.width, cropCanvas.height)
-            if (supportsManualFrame) track.requestFrame()
         }
         this._drawFrame = drawFrame
 
         const onPostRender = () => {
-            if (supportsManualFrame) {
+            accumulator += this._lastDt ?? frameInterval
+            while (accumulator >= frameInterval) {
                 drawFrame()
-            } else {
-                accumulator += this._lastDt ?? frameInterval
-                while (accumulator >= frameInterval) {
-                    drawFrame()
-                    accumulator -= frameInterval
-                }
+                accumulator -= frameInterval
             }
         }
         const onFrameEnd = () => {
@@ -909,9 +901,11 @@ class OtherController {
                 }
                 this.stopSpin360()
                 this.syncHierarchyAndRender()
-                this.app.once('postrender', () => {
-                    this._drawFrame?.()
-                    onStop?.()
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this._drawFrame?.()
+                        onStop?.()
+                    })
                 })
                 return
             }

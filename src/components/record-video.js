@@ -269,6 +269,8 @@ function makeRecordSection(el, global) {
             y: Math.round(region.y * scaleY),
             width: Math.round(region.width * scaleX),
             height: Math.round(region.height * scaleY),
+            outputWidth: Math.round(region.width),
+            outputHeight: Math.round(region.height),
         }
     }
 
