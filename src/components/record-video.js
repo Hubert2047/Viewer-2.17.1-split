@@ -470,7 +470,7 @@ function makeRecordSection(el, global) {
         heightInput.disabled = disabled
         patternSelect.setDisabled(disabled)
         showRegionToggle.setDisabled(disabled)
-        fpsSegment.setDisabled(disabled)
+        // fpsSegment.setDisabled(disabled)
     }
     function updatePatternOptions() {
         const hasStory = global.settings.messages?.length > 0

@@ -99,7 +99,7 @@ function showToast(content, opts = {}) {
     if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
     toast._hideTimeout = setTimeout(() => {
         toast.classList.remove('show')
-        toast._removeTimeout = setTimeout(() => { }, 300)
+        toast._removeTimeout = setTimeout(() => {}, 300)
     }, duration)
 }
 function showNotSupportWebGL() {
@@ -163,10 +163,10 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
                 p.storage instanceof Float32Array
                     ? 'float'
                     : p.storage instanceof Int32Array
-                        ? 'int'
-                        : p.storage instanceof Uint8Array
-                            ? 'uchar'
-                            : 'float'
+                      ? 'int'
+                      : p.storage instanceof Uint8Array
+                        ? 'uchar'
+                        : 'float'
             return `property ${typeName} ${p.name}`
         })
         .join('\n')
@@ -179,10 +179,10 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
         p.storage instanceof Float32Array
             ? 4
             : p.storage instanceof Int32Array
-                ? 4
-                : p.storage instanceof Uint8Array
-                    ? 1
-                    : 4,
+              ? 4
+              : p.storage instanceof Uint8Array
+                ? 1
+                : 4,
     )
     const bytesPerSplat = bytesPerProp.reduce((a, b) => a + b, 0)
 
@@ -377,7 +377,7 @@ function makeControlBotGroup(global, tooltip, dom) {
         spin: { enabled: hasSpin },
     } = settings
     const hasDimension = !!dimensions
-    const isShowDimensions = dimensionsBox?.show && dimensionsBox?.type !=="axis"
+    const isShowDimensions = dimensionsBox?.show && dimensionsBox?.type !== 'axis'
     const hasMeasurement =
         measurement &&
         !isEditMeasurement &&
@@ -609,7 +609,7 @@ function checkPerformance(app, global) {
                 global.modal.open(
                     'Performance Warning',
                     'Your device seems to be running slowly.<br>' +
-                    'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
+                        'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
                     'top',
                     {
                         showCancel: false,
@@ -628,9 +628,9 @@ function transparentColor(color, alpha = 0.5) {
         const full =
             hex[1].length === 3
                 ? hex[1]
-                    .split('')
-                    .map((c) => c + c)
-                    .join('')
+                      .split('')
+                      .map((c) => c + c)
+                      .join('')
                 : hex[1]
         const r = parseInt(full.slice(0, 2), 16)
         const g = parseInt(full.slice(2, 4), 16)
@@ -826,9 +826,9 @@ function dimensionsSetup(app, camera, config) {
     }
     function getLabelText(dim, axis) {
         switch (dim.type) {
-            case "axis":
+            case 'axis':
                 return axis
-            case "dimensions":
+            case 'dimensions':
             default:
                 const { useMeasurementData } = dim
                 const { realSize, unit } = getRealSize(dim, useMeasurementData)
@@ -1007,7 +1007,7 @@ function dimensionsSetup(app, camera, config) {
         }
     })
 
-    app.on('update', () => {
+    app.on('postrender', () => {
         if (!visible || currentDim === null) return
         if (!modelEntity) return
         const corners = getCorners(currentDim)
@@ -1022,7 +1022,7 @@ function dimensionsSetup(app, camera, config) {
         get show() {
             return visible
         },
-        get type(){
+        get type() {
             return currentDim?.type
         },
         get center() {
