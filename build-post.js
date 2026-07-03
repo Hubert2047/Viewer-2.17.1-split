@@ -111,6 +111,7 @@ const files = [
     { file: 'src/components/record-video.js', preset: 'default' },
     { file: 'src/main.js', preset: 'engine' },
 ]
+const chunkFile = 'src/libs/chunk.js'
 
 function build() {
     try {
@@ -171,11 +172,23 @@ function build() {
             const css = fs.readFileSync('src/assets/viewer.css', 'utf8')
             fs.writeFileSync('dist/viewer.css', minifyCss(css))
 
+            const chunkSrc = fs.readFileSync(chunkFile, 'utf8')
+            const chunkObfuscated = JavaScriptObfuscator.obfuscate(chunkSrc, {
+                ...OBFUSCATE_PRESETS.default,
+            }).getObfuscatedCode()
+            fs.mkdirSync('dist/data', { recursive: true })
+            fs.writeFileSync('dist/data/chunk.js', header + chunkObfuscated)
+            console.log('✓ Obfuscated chunk.js → dist/data/chunk.js')
+
             console.log('✓ Production build: obfuscated + minified CSS')
         } else {
             const js = files.map(({ file }) => fs.readFileSync(file, 'utf8')).join('\n')
             fs.writeFileSync('dist/viewer.js', js)
             fs.copyFileSync('src/assets/viewer.css', 'dist/viewer.css')
+
+            fs.mkdirSync('dist/data', { recursive: true })
+            fs.copyFileSync(chunkFile, 'dist/data/chunk.js')
+
             console.log('✓ Dev build')
         }
 

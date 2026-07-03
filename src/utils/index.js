@@ -215,38 +215,6 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
 async function exportHtml(name, global) {
     const settings = global.settings
     const copySettings = JSON.parse(JSON.stringify(settings))
-    const messages = await Promise.all(
-        (copySettings.messages ?? []).map(async (h) => {
-            if (!h.audio) return h
-            const audio = { ...h.audio }
-            const isBase64 =
-                typeof audio.src === 'string' && audio.src.startsWith('data:') && audio.src.includes('base64')
-            let src = isBase64 ? audio.src : ''
-            if (audio.embed && settings.fileAudioStore instanceof Map) {
-                const file = settings.fileAudioStore.get(audio.fileId)
-                if (!file) {
-                    console.warn('Missing audio file:', h.id)
-                    return h
-                }
-                src = await new Promise((resolve, reject) => {
-                    const reader = new FileReader()
-                    reader.onload = () => resolve(reader.result)
-                    reader.onerror = reject
-                    reader.readAsDataURL(file)
-                })
-            }
-            delete audio.fileId
-            return {
-                ...h,
-                audio: {
-                    ...audio,
-                    src,
-                },
-            }
-        }),
-    )
-    delete copySettings.fileAudioStore
-
     const hasPivot = copySettings.pivot?.position
     const hasRemovedSplats = copySettings.removedSplats?.length > 0
     const hasOrientation = copySettings.orientation?.pose
@@ -255,7 +223,6 @@ async function exportHtml(name, global) {
         { step: 3, condition: hasPivot },
         { step: 4, condition: hasOrientation },
     ]
-
     const setupStep = STEP_REQUIREMENTS.reduce((currentStep, { step, condition }) => {
         return condition && currentStep < step ? step : currentStep
     }, copySettings.setupStep)
@@ -263,7 +230,6 @@ async function exportHtml(name, global) {
     const strippedSettings = stripDefaults({
         ...copySettings,
         v: newVersion,
-        messages,
         setupStep,
     })
     delete strippedSettings.ref
@@ -272,11 +238,11 @@ async function exportHtml(name, global) {
         model: strippedSettings.model,
         contentUrl: strippedSettings.contentUrl,
         ...strippedSettings,
-        base64: strippedSettings.base64,
     }
 
     const injectedScript = `<script>window.sse = { "settings": ${JSON.stringify(orderedSettings)} }<\/script>`
-    const template = getHtmlTemplate(newVersion)
+    const hasChunk = orderedSettings.hasChunk > 0
+    const template = getHtmlTemplate(newVersion, hasChunk)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
 
     const blob = new Blob([html], { type: 'text/html' })
@@ -290,59 +256,68 @@ async function exportHtml(name, global) {
     URL.revokeObjectURL(url)
     global.dataDirty = false
 }
-function getHtmlTemplate(version) {
+function getHtmlTemplate(version, hasChunk) {
     return `
-    <!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=${version}">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=${version}" />
+        <link rel="preload" href="viewer.js?v=${version}" as="script" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loading-overlay">
+                <div class="spinner-wrap">
+                    <svg class="progress-ring" viewBox="0 0 200 200">
+                        <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                        <circle id="progressRingFg" class="progress-ring-fg" cx="100" cy="100" r="86" fill="none" />
+                    </svg>
+                    <span id="spinnerPercent" class="spinner-percent">0%</span>
+                </div>
+            </div>
         </div>
-        <div id="loading-overlay">
-            <div class="spinner"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<!-- INJECT_SCRIPT -->
-<script src="./viewer.js?v=${version}"><\/script>
-</html>
+        <div id="tooltip"></div>
+    </body>
+    <!-- INJECT_SCRIPT -->
+    ${hasChunk ? `<script src="./data/chunk.js?v=${version}"></script>` : `<script src="./data/data.js?v=${version}"></script>`}
+    </html> 
     `
 }
 

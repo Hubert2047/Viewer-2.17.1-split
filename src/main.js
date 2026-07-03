@@ -2975,7 +2975,7 @@ class Viewer {
                 onMove: (pos) => {
                     events.fire('pivot:positionsynced', pos)
                 },
-            })   
+            })
 
             events.on('pivot:enable-edit', ({ position, enable }) => {
                 if (enable) {
@@ -3474,7 +3474,7 @@ const skyboxUrl = url.searchParams.get('skybox')
 const voxelUrl = url.searchParams.get('voxel')
 
 const rawSettings = window?.sse?.settings ?? {}
-if (!rawSettings.contentUrl) rawSettings.contentUrl = 'ortery_default.ply'
+if (!rawSettings.contentUrl) rawSettings.contentUrl = 'default.ply'
 const settings = mergeSettings(rawSettings, defaultSettings)
 const hasPoster = !!posterUrl
 const config = {
@@ -3496,8 +3496,8 @@ const config = {
     aa: url.searchParams.has('aa'),
     heatmap: url.searchParams.has('heatmap'),
 }
-
-const main = async (canvas, settingsJson, config) => {
+if (settings.base64) delete settings.base64
+const main = async (canvas, config) => {
     const loadingOverlay = document.getElementById('loading-overlay')
     if (loadingOverlay) loadingOverlay.classList.add('hidden')
     const { app, camera } = await createApp(canvas, config)
@@ -3587,31 +3587,31 @@ const main = async (canvas, settingsJson, config) => {
             },
             {
                 capture: true,
-                once: true, 
+                once: true,
             },
         )
     }
     return new Viewer(global, gsplatLoad, skyboxLoad, voxelLoad, dom)
 }
 const { poster } = config
-// Show the poster image
 if (poster) {
     const element = document.getElementById('poster')
     element.style.setProperty('--poster-url', `url(${poster.src})`)
     element.style.display = 'block'
     element.style.filter = 'blur(40px)'
-
-    // hide the canvas
     document.documentElement.style.setProperty('--canvas-opacity', '0')
 }
-
-document.addEventListener('DOMContentLoaded', async () => {
+async function __orteryInitViewer() {
     if (!checkWebGL()) {
         showNotSupportWebGL()
         return
     }
- 
     const canvas = document.getElementById('application-canvas')
-    const settingsJson = await settings
-    const viewer = await main(canvas, settingsJson, config)
-})
+    await main(canvas, config)
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', __orteryInitViewer)
+} else {
+    __orteryInitViewer()
+}
