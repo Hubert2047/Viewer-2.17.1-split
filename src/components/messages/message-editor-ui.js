@@ -20,7 +20,7 @@ class MessageEditorUI {
                 document.body.style.cursor = 'default'
                 this.events.fire('message:editing', false)
                 this.isCreatinMessage = false
-                this.resetAddBtn()
+                this.updateAddIcon(false)
             }),
             this.events.on('message:update-ui-data', (data) => {
                 if (!this.activeMessageData) return
@@ -62,22 +62,22 @@ class MessageEditorUI {
         titleGroup.appendChild(title)
         titleGroup.appendChild(this.countEl)
 
-        const addBtn = document.createElement('button')
-        addBtn.classList.add('add-btn')
-        addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg> Add`
-        addBtn.addEventListener('click', (e) => this.onAdd(e))
-        this.addBtn = addBtn
+        this.addBtn = makeButton({
+            icon: `${ICONS.add} Add`,
+            label: 'Add',
+            className: 'add-btn',
+            onClick: (e) => {
+                this.onAdd(e)
+            },
+        })
         header.appendChild(titleGroup)
-        header.appendChild(addBtn)
+        header.appendChild(this.addBtn)
         this.body.appendChild(header)
     }
     onAdd(e) {
         if (this.isCreatinMessage) {
             this.events.fire('message:add-cancelled')
-            this.resetAddBtn()
+            this.updateAddIcon(false)
             return
         }
         document.body.style.cursor = 'crosshair'
@@ -85,7 +85,7 @@ class MessageEditorUI {
         this.events.fire('message:editing', true)
         this.events.fire('message:selected', null)
 
-        this.setAddBtnCancel(true)
+        this.updateAddIcon(true)
 
         this.handles.push(
             this.events.on('pointerup', (e) => {
@@ -102,28 +102,18 @@ class MessageEditorUI {
                 this.events.fire('message:add', { position })
                 document.body.style.cursor = 'default'
                 this.isCreatinMessage = false
-                this.setAddBtnCancel(false)
+                this.updateAddIcon(false)
             }),
         )
     }
-    setAddBtnCancel(isCancel) {
+    updateAddIcon(isCancel) {
         if (!this.addBtn) return
+        this.addBtn.updateIcon(isCancel ? `${ICONS.cancel} Cancel` : `${ICONS.add} Add`)
         if (isCancel) {
-            this.addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg> Cancel`
             this.addBtn.classList.add('cancel-mode')
         } else {
-            this.addBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg> Add`
             this.addBtn.classList.remove('cancel-mode')
         }
-    }
-    resetAddBtn() {
-        this.setAddBtnCancel(false)
     }
     async onDelete(id) {
         const ok = await this.confirmDialog.ask({
@@ -209,7 +199,7 @@ class MessageEditorUI {
         actions.classList.add('message-header-actions')
 
         const editBtn = makeButton({
-            icon: ICONS.messageEditBtn,
+            icon: ICONS.edit,
             title: 'Edit',
             className: 'message-action-btn',
             onClick: () => this.events.fire('message:selected', isExpanded ? null : h),

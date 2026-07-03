@@ -2969,14 +2969,13 @@ class Viewer {
             }
             this.cameraManager = new CameraManager(global, sceneBound, collider)
             global.cameraManager = this.cameraManager
-            const rotationGizmo = new RotationGizmo(app, camera, events)
+            global.rotationGizmo = new RotationGizmo(app, camera, events)
             const pivotDot = new PivotDot(app, camera, modelEntity)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
                 onMove: (pos) => {
                     events.fire('pivot:positionsynced', pos)
                 },
-            })
-            let dimensionRotatable = null
+            })   
 
             events.on('pivot:enable-edit', ({ position, enable }) => {
                 if (enable) {
@@ -3008,52 +3007,6 @@ class Viewer {
             if (settings.dimensions) {
                 global.dimensionsBox = dimensionsSetup(app, camera, config)
             }
-            // Redraw bbox theo events
-            events.on('dimensions:configured', (dim) => {
-                if (dim === null) hideDimensions()
-                else {
-                    if (!global.dimensionsBox) global.dimensionsBox = dimensionsSetup(app, camera, config)
-                    if (dimensionRotatable) {
-                        dimensionRotatable.syncFromExternal(dim)
-                    }
-                    global.dimensionsBox.draw(dim)
-                    events.fire('re-render:control-wrap')
-                }
-            })
-            events.on('dimensions:edit', (dim) => {
-                global.dimensionsBox.draw(dim)
-                if (!dimensionRotatable) {
-                    dimensionRotatable = new DimensionRotatable(app, dim, ({ x, y, z }) => {
-                        events.fire('dimensions:eulersynced', { x, y, z })
-                    })
-                } else {
-                    dimensionRotatable.syncFromExternal(dim)
-                }
-                rotationGizmo.enable(dimensionRotatable)
-                events.fire('re-render:control-wrap')
-            })
-            events.on('dimensions:change', (dim) => {
-                if (dimensionRotatable) {
-                    dimensionRotatable.syncFromExternal(dim)
-                }
-                global.dimensionsBox.draw(dim)
-            })
-            events.on('dimensions:save', (dim) => {
-                global.dimensionsBox.draw(dim)
-                rotationGizmo.disable()
-            })
-            events.on('dimensions:cancel', () => {
-                hideDimensions()
-                rotationGizmo.disable()
-            })
-            function hideDimensions() {
-                if (global.dimensionsBox && global.dimensionsBox.show) {
-                    global.dimensionsBox.hide()
-                    events.fire('re-render:control-wrap')
-                }
-            }
-
-            events.on('setup-reset', () => hideDimensions())
 
             if (global.settings.model !== 'cylindrical') applyCamera(this.cameraManager.camera)
             if (collider) {
@@ -3634,7 +3587,7 @@ const main = async (canvas, settingsJson, config) => {
             },
             {
                 capture: true,
-                once: true,
+                once: true, 
             },
         )
     }
@@ -3657,6 +3610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showNotSupportWebGL()
         return
     }
+ 
     const canvas = document.getElementById('application-canvas')
     const settingsJson = await settings
     const viewer = await main(canvas, settingsJson, config)

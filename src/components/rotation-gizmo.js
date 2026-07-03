@@ -221,28 +221,20 @@ class RotationGizmo {
 
     _onDrag(cx, cy) {
         if (!this._dragging || !this._target) return
-
         const prev = this._prevMouse
         if (!prev) {
             this._prevMouse = { x: cx, y: cy }
             return
         }
-
         const dx = cx - prev.x
         const dy = cy - prev.y
         if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return
-
         const { worldAxis, sign } = this._getDragAxis(this._activeAxis, dx, dy)
         const distance = Math.sqrt(dx * dx + dy * dy)
-
         const SENSITIVITY = 0.03
-
         const angle = sign * distance * SENSITIVITY
-
         const rot = new Quat().setFromAxisAngle(worldAxis, angle)
-
         this._target.applyRotation(rot)
-
         this._app.renderNextFrame = true
         this._prevMouse = { x: cx, y: cy }
     }
@@ -290,8 +282,8 @@ class RotationGizmo {
         this._resetStyle()
         document.body.style.cursor = ''
         const euler = this._target?.getEuler()
-        if (euler) this._target.onRotate({ x: euler.x, y: euler.y, z: euler.z })
-        this.events.fire('gizmo-rotation:drag-end')
+        this._target?.onDragEnd()
+
     }
 
     _highlightOnly(activeAxis) {

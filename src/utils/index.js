@@ -99,7 +99,7 @@ function showToast(content, opts = {}) {
     if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
     toast._hideTimeout = setTimeout(() => {
         toast.classList.remove('show')
-        toast._removeTimeout = setTimeout(() => {}, 300)
+        toast._removeTimeout = setTimeout(() => { }, 300)
     }, duration)
 }
 function showNotSupportWebGL() {
@@ -163,10 +163,10 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
                 p.storage instanceof Float32Array
                     ? 'float'
                     : p.storage instanceof Int32Array
-                      ? 'int'
-                      : p.storage instanceof Uint8Array
-                        ? 'uchar'
-                        : 'float'
+                        ? 'int'
+                        : p.storage instanceof Uint8Array
+                            ? 'uchar'
+                            : 'float'
             return `property ${typeName} ${p.name}`
         })
         .join('\n')
@@ -179,10 +179,10 @@ function exportPly(modelEntity, removedSplats, filename = 'export.ply') {
         p.storage instanceof Float32Array
             ? 4
             : p.storage instanceof Int32Array
-              ? 4
-              : p.storage instanceof Uint8Array
-                ? 1
-                : 4,
+                ? 4
+                : p.storage instanceof Uint8Array
+                    ? 1
+                    : 4,
     )
     const bytesPerSplat = bytesPerProp.reduce((a, b) => a + b, 0)
 
@@ -377,7 +377,7 @@ function makeControlBotGroup(global, tooltip, dom) {
         spin: { enabled: hasSpin },
     } = settings
     const hasDimension = !!dimensions
-    const isShowDimensions = !dimensionsBox?.show
+    const isShowDimensions = dimensionsBox?.show && dimensionsBox?.type !=="axis"
     const hasMeasurement =
         measurement &&
         !isEditMeasurement &&
@@ -394,7 +394,7 @@ function makeControlBotGroup(global, tooltip, dom) {
             'showDimension',
             'Show Dimensions (D)',
             hasDimension,
-            isShowDimensions,
+            !isShowDimensions,
             'inputEvent:show-dimensions',
             'hideDimension',
         ],
@@ -403,7 +403,7 @@ function makeControlBotGroup(global, tooltip, dom) {
             'hideDimension',
             'Hide Dimensions (D)',
             hasDimension,
-            !isShowDimensions,
+            isShowDimensions,
             'inputEvent:hide-dimensions',
             'showDimension',
         ],
@@ -609,7 +609,7 @@ function checkPerformance(app, global) {
                 global.modal.open(
                     'Performance Warning',
                     'Your device seems to be running slowly.<br>' +
-                        'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
+                    'You can go to <strong>View Options</strong> and select a lower quality setting for better performance.',
                     'top',
                     {
                         showCancel: false,
@@ -628,9 +628,9 @@ function transparentColor(color, alpha = 0.5) {
         const full =
             hex[1].length === 3
                 ? hex[1]
-                      .split('')
-                      .map((c) => c + c)
-                      .join('')
+                    .split('')
+                    .map((c) => c + c)
+                    .join('')
                 : hex[1]
         const r = parseInt(full.slice(0, 2), 16)
         const g = parseInt(full.slice(2, 4), 16)
@@ -711,7 +711,6 @@ function dimensionsSetup(app, camera, config) {
         const { position, rotation, size } = dim
         const center = new Vec3(position.x, position.y, position.z)
         const he = { x: size.x / 2, y: size.y / 2, z: size.z / 2 }
-
         const localCorners = [
             new Vec3(-he.x, -he.y, -he.z),
             new Vec3(he.x, -he.y, -he.z),
@@ -819,17 +818,28 @@ function dimensionsSetup(app, camera, config) {
         line.setAttribute('x2', edgeX)
         line.setAttribute('y2', edgeY)
     }
-
+    function getRealSize(dim, useMeasurementData) {
+        if (useMeasurementData && hasCalibrationData(settings.measurement?.calibration)) {
+            return calRealSizeFromMeasurement(dim.size)
+        }
+        return { realSize: dim.realSize, unit: dim.unit }
+    }
+    function getLabelText(dim, axis) {
+        switch (dim.type) {
+            case "axis":
+                return axis
+            case "dimensions":
+            default:
+                const { useMeasurementData } = dim
+                const { realSize, unit } = getRealSize(dim, useMeasurementData)
+                const value = realSize[axis]
+                const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
+                const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
+                return config.editable ? `${axis}: ${mainText}` : mainText
+        }
+    }
     const updateLabels = (corners, dim) => {
         if (!dim || !dim.size) return
-        const { useMeasurementData } = dim
-        function getRealSize() {
-            if (useMeasurementData && hasCalibrationData(settings.measurement?.calibration)) {
-                return calRealSizeFromMeasurement(dim.size)
-            }
-            return { realSize: dim.realSize, unit: dim.unit }
-        }
-        const { realSize, unit } = getRealSize()
         const cameraDir = new Vec3(0, 0, -1)
         camera.getRotation().transformVector(cameraDir, cameraDir)
         const screenCorners = corners.map((c) => worldToScreen(c.x, c.y, c.z))
@@ -839,34 +849,23 @@ function dimensionsSetup(app, camera, config) {
         const screenMaxY = Math.max(...screenCorners.map((c) => c.y))
         const screenCenterX = (screenMinX + screenMaxX) / 2
         const screenCenterY = (screenMinY + screenMaxY) / 2
-
         for (const axis of ['x', 'y', 'z']) {
             const midpoint = getBestEdgeMidpoint(corners, axis, cameraDir)
             if (!midpoint) continue
-
             const edgeScreen = worldToScreen(midpoint.x, midpoint.y, midpoint.z)
-
             const dx = edgeScreen.x - screenCenterX
             const dy = edgeScreen.y - screenCenterY
             const len = Math.sqrt(dx * dx + dy * dy) || 1
-
             const { line, dot, label } = elements[axis]
-
-            const value = realSize[axis]
-            const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
-            const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
-            label.textContent = config.editable ? `${axis}: ${mainText}` : mainText
+            label.textContent = getLabelText(dim, axis)
             label.style.display = 'block'
             label.style.left = '-9999px'
             label.style.top = '-9999px'
-
             const lw = label.offsetWidth
             const lh = label.offsetHeight
-
             const MARGIN = 16
             let ox = dx / len
             let oy = dy / len
-
             let extraOffset = 8
             if (ox > 0)
                 extraOffset = Math.max(
@@ -1022,6 +1021,9 @@ function dimensionsSetup(app, camera, config) {
     return {
         get show() {
             return visible
+        },
+        get type(){
+            return currentDim?.type
         },
         get center() {
             return modelEntity?.gsplat?.customAabb?.center ?? new Vec3()

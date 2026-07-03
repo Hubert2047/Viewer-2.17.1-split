@@ -90,7 +90,7 @@ function makePointEraser(global) {
             selectedColorHex = `rgb(${r},${g},${b})`
             selectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_selected_color',normalizeColor(selectedColorHex, selectedAlpha))
+            modelEntity.gsplat.material.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
             app.renderNextFrame = true
         },
     })
@@ -105,7 +105,7 @@ function makePointEraser(global) {
             unselectedColorHex = `rgb(${r},${g},${b})`
             unselectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_unselected_color',normalizeColor(unselectedColorHex, unselectedAlpha))
+            modelEntity.gsplat.material.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
             app.renderNextFrame = true
         },
     })
@@ -365,6 +365,7 @@ function makePointEraser(global) {
         isShowSplatMode = false
         isShowSplatRing = false
         applyShaderModes()
+        updateVisiblePoints(settings.removedSplats)
         events.fire('point-eraser:completed')
     }
     return container

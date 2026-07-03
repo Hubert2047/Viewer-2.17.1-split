@@ -290,8 +290,9 @@ class OtherController {
         this.events.on('spin-speed', (v) => (this.spinSpeed = v))
         this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
         this.events.on('spin-axis', (v) => {
-            if (this.originModel === 'spherical') {
-                const localAxis = this.settings.spin.axes[v]
+            if (this.originModel === 'spherical' && this.settings.spin.rotation) {
+                const axes = getSpinAxes(this.settings.spin.rotation)
+                const localAxis = axes[v]
                 this.spinRotationAxis = modelEntity.localRotation.transformVector(
                     new Vec3(localAxis.x, localAxis.y, localAxis.z),
                 )
@@ -854,8 +855,9 @@ class OtherController {
         this.isSpin360Loop = this.settings.spin.continuous
         this.spinSpeed = this.settings.spin.speed
         this.spinDirection = this.settings.spin.direction
-        if (this.originModel === 'spherical') {
-            const localAxis = this.settings.spin.axes[this.settings.spin.axis]
+        if (this.originModel === 'spherical' && this.settings.spin.rotation) {
+            const axes = getSpinAxes(this.settings.spin.rotation)
+            const localAxis = axes[this.settings.spin.axis]
             this.spinRotationAxis = modelEntity.localRotation.transformVector(
                 new Vec3(localAxis.x, localAxis.y, localAxis.z),
             )

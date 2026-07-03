@@ -132,7 +132,8 @@ function localToWorld(pos) {
     worldMatrix.transformPoint(pos, worldPos)
     return worldPos
 }
-function getSpinAxes(quat) {
+function getSpinAxes(r) {
+    const quat = new Quat().setFromEulerAngles(r.x, r.y, r.z)
     const lx = quat.transformVector(new Vec3(1, 0, 0))
     const ly = quat.transformVector(new Vec3(0, 1, 0))
     const lz = quat.transformVector(new Vec3(0, 0, 1))
@@ -142,34 +143,54 @@ function getSpinAxes(quat) {
         z: { x: lz.x, y: lz.y, z: lz.z },
     }
 }
-function getVisiblePoints({ modelEntity, rotation, removedSplats }) {
-    const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
-    const resource = gsplatInstance.resource
-    const gsplatData = resource.gsplatData
-    const count = gsplatData.numSplats
-    const p = new Vec3()
-    const r = new Quat()
-    const s = new Vec3()
-    const c = new Vec4()
-    const iter = gsplatData.createIter(p, r, s, c)
-    const visibleCenters = []
-    const tmp = new Vec3()
-    const deletedSet = new Set(removedSplats || [])
-    for (let i = 0; i < count; i++) {
-        if (deletedSet.has(i)) continue
-        iter.read(i)
-        if (c.w > OPACITY_THRESHOLD) {
-            if (rotation) {
-                tmp.set(p.x, p.y, p.z)
-                rotation.transformVector(tmp, tmp)
-                visibleCenters.push(tmp.x, tmp.y, tmp.z)
+let visiblePoints = null
+
+async function updateVisiblePoints(removedSplats) {
+    await getVisiblePointsAsync({ modelEntity, removedSplats })
+}
+
+async function getUpdateBoxSize(rotation, removedSplats) {
+    if (!visiblePoints) {
+        await updateVisiblePoints(removedSplats)
+    }
+    const result = await getBoxSize(visiblePoints, rotation)
+    return result
+}
+
+function getVisiblePointsAsync({ modelEntity, removedSplats }, chunkSize = 150000) {
+    return new Promise((resolve) => {
+        const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
+        const gsplatData = gsplatInstance.resource.gsplatData
+        const count = gsplatData.numSplats
+
+        const p = new Vec3()
+        const r = new Quat()
+        const s = new Vec3()
+        const c = new Vec4()
+        const iter = gsplatData.createIter(p, r, s, c)
+
+        const deletedSet = new Set(removedSplats || [])
+        const visibleCenters = []
+        let i = 0
+
+        function step() {
+            const end = Math.min(i + chunkSize, count)
+            for (; i < end; i++) {
+                if (deletedSet.has(i)) continue
+                iter.read(i)
+                if (c.w > OPACITY_THRESHOLD) {
+                    visibleCenters.push(p.x, p.y, p.z)
+                }
+            }
+            if (i < count) {
+                requestAnimationFrame(step)
             } else {
-                visibleCenters.push(p.x, p.y, p.z)
+                visiblePoints = new Float32Array(visibleCenters)
+                resolve(new Float32Array(visibleCenters))
             }
         }
-    }
-    visiblePoints = new Float32Array(visibleCenters)
-    return visiblePoints
+        step()
+    })
 }
 function getModelWeight(modelEntity, removedSplats) {
     const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData

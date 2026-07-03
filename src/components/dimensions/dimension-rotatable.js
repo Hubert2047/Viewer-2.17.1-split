@@ -1,8 +1,8 @@
-class DimensionRotatable {
-    constructor(app, dimensions, onRotate) {
+class BoxRotatable {
+    constructor({app, dimensions, onDragEnd}) {
         this.dimensions = dimensions
         this._app = app
-        this._onRotate = onRotate
+        this._onDragEnd = onDragEnd
         this._quat = new Quat()
         this._syncQuat()
     }
@@ -13,6 +13,9 @@ class DimensionRotatable {
             this.dimensions.rotation.y,
             this.dimensions.rotation.z,
         )
+    }
+    onDragEnd(){
+        if(this._onDragEnd)this._onDragEnd()
     }
     syncFromExternal(dimentions) {
         this.dimensions = dimentions
@@ -44,12 +47,8 @@ class DimensionRotatable {
         if (!this.dimensions) return
         const euler = this._quat.getEulerAngles()
         this.dimensions.rotation = { x: euler.x, y: euler.y, z: euler.z }
-        this._onRotate(this.dimensions.rotation)
     }
     getEuler() {
         return this._quat.getEulerAngles()
-    }
-    onRotate(data) {
-        this._onRotate(data)
     }
 }

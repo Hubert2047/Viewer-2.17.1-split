@@ -822,6 +822,7 @@ function makeDivider() {
 }
 function makeButton({ icon, title, disabled, className, id, onClick, show = true, onHold = false, variant, label }) {
     const btn = document.createElement('button')
+    let iconEl = null
     btn.classList.add('btn', 'flex-center')
     if (id) btn.id = id
     if (className) {
@@ -838,10 +839,10 @@ function makeButton({ icon, title, disabled, className, id, onClick, show = true
             btn.style.color = 'white'
         }
         if (icon) {
-            const iconWrap = document.createElement('span')
-            iconWrap.style.cssText = 'display:flex;align-items:center;width:16px;height:16px;'
-            iconWrap.innerHTML = icon
-            btn.appendChild(iconWrap)
+            iconEl = document.createElement('span')
+            iconEl.style.cssText = 'display:flex;align-items:center;width:16px;height:16px;'
+            iconEl.innerHTML = icon
+            btn.appendChild(iconEl)
         }
         if (label) {
             const labelEl = document.createElement('span')
@@ -881,6 +882,13 @@ function makeButton({ icon, title, disabled, className, id, onClick, show = true
     btn.setShow = (visible) => {
         if (visible) btn.classList.remove('hidden')
         else btn.classList.add('hidden')
+    }
+    btn.updateIcon = (newIcon) => {
+        if (iconEl) {
+            iconEl.innerHTML = newIcon
+        } else {
+            btn.innerHTML = newIcon
+        }
     }
     return btn
 }

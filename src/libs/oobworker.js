@@ -140,13 +140,13 @@ class OOBBWorker {
         this.global.oobbInfo = { finalQuat, posInLocal, size: result.size }
     }
 
-    runOOBB() {
+    async runOOBB() {
         this.global.oobbInfo = null
         const orientPose = settings.orientation.pose
         const orientQuat = orientPose
             ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
             : new Quat(0, 0, 0, 1)
-        const localPoints = getVisiblePoints({
+        const localPoints = await getVisiblePointsAsync({
             modelEntity,
             rotation: orientQuat,
             removedSplats: settings.removedSplats,

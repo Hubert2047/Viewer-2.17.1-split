@@ -106,6 +106,7 @@ const files = [
     { file: 'src/components/orientation/manual.js', preset: 'default' },
     { file: 'src/components/orientation/ground.js', preset: 'default' },
     { file: 'src/components/orientation/orientation.js', preset: 'default' },
+    { file: 'src/components/viewer-section.js', preset: 'default' },
     { file: 'src/components/sidebar.js', preset: 'default' },
     { file: 'src/components/record-video.js', preset: 'default' },
     { file: 'src/main.js', preset: 'engine' },

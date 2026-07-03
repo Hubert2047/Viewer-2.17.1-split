@@ -1,6 +1,7 @@
 function makeDimensionSection(el, global) {
     const { events, settings } = global
     let isEditing = false
+    let dimensionRotatable = null
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
     let canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
@@ -29,6 +30,7 @@ function makeDimensionSection(el, global) {
                 foregroundColor: '#f95f4d',
                 realSize: { x: 0, y: 0, z: 0 },
                 unit: 'cm',
+                type: "dimensions",
             }
             const finalDimension = {
                 ...currentDimensions,
@@ -44,10 +46,9 @@ function makeDimensionSection(el, global) {
             editDimension = { ...finalDimension }
             currentDimensions = { ...finalDimension }
             settings.dimensions = finalDimension
-            calSpinAxesFromDimensions()
             setDimConfigured(true)
             setValues(currentDimensions)
-            events.fire('dimensions:configured', currentDimensions)
+            onDimensionsConfigured()
             renderRealGroup()
             onEdit()
         },
@@ -123,7 +124,7 @@ function makeDimensionSection(el, global) {
             currentDimensions.useMeasurementData = val
             realUnitSelect.setValue(currentDimensions.unit)
             setValues(currentDimensions)
-            events.fire('dimensions:change', currentDimensions)
+            onDimensionsChanged()
             global.dataDirty = true
             renderRealGroup()
         },
@@ -154,7 +155,7 @@ function makeDimensionSection(el, global) {
                     }
                     currentDimensions = { ...currentDimensions, realSize: newReal }
                     setRealValues({ x: newReal.x, y: newReal.y, z: newReal.z })
-                    events.fire('dimensions:change', currentDimensions)
+                    onDimensionsChanged()
                 }
             }
         },
@@ -172,7 +173,7 @@ function makeDimensionSection(el, global) {
         className: 'dimensions-unit',
         onChange: (v) => {
             currentDimensions = { ...currentDimensions, unit: v }
-            events.fire('dimensions:change', currentDimensions)
+            onDimensionsChanged()
             global.dataDirty = true
         },
         name: 'unit',
@@ -213,7 +214,7 @@ function makeDimensionSection(el, global) {
                 currentDimensions = { ...currentDimensions, realSize: { x, y, z } }
             }
             global.dataDirty = true
-            events.fire('dimensions:change', currentDimensions)
+            onDimensionsChanged()
         },
     })
     if (settings.dimensions) setRealValues(settings.dimensions.realSize)
@@ -235,28 +236,6 @@ function makeDimensionSection(el, global) {
     setDisabled(false)
     setDimConfigured(!!settings.dimensions)
     if (settings.dimensions) setValues(settings.dimensions)
-    const handles = [
-        events.on('sidebar:active', () => onCancel()),
-        events.on('sidebar:clicked', ({ id }) => {
-            onCancel()
-            if (id !== 'dimensions') return
-            canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
-            setUseMeasurementChecked(currentDimensions?.useMeasurementData)
-            renderRealGroup()
-        }),
-        events.on('gizmo-rotation:drag-end', async () => {
-            if (!isEditing) return
-            const result = await getUpdateBoxSize(currentDimensions.rotation)
-            currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-            calSpinAxesFromDimensions()
-            events.fire('dimensions:change', currentDimensions)
-        }),
-    ]
-    async function getUpdateBoxSize(rotation) {
-        const points = getVisiblePoints({ modelEntity, removedSplats: settings.removedSplats })
-        const result = await getBoxSize(points, rotation)
-        return result
-    }
     function renderRealGroup() {
         realSizeContent.innerHTML = ''
         const hasDimensions = hasDimensionsData(currentDimensions)
@@ -310,7 +289,8 @@ function makeDimensionSection(el, global) {
                     setDisabled(false)
                     renderBtns()
                     renderRealGroup()
-                    events.fire('dimensions:save', currentDimensions)
+                    global.dimensionsBox.draw(currentDimensions)
+                    global.rotationGizmo.disable()
                 },
             })
             btnRow.appendChild(btnCancel)
@@ -335,12 +315,11 @@ function makeDimensionSection(el, global) {
                     currentDimensions = null
                     setDimConfigured(false)
                     setAutoCalChecked(false)
-                    events.fire('dimensions:configured', null)
+                    onDimensionsConfigured()
                     events.fire('dimensions:delete')
                     events.fire('re-render:control-wrap')
                 },
             })
-
             btnRow.appendChild(btnEdit)
             btnRow.appendChild(btnDelete)
         }
@@ -351,7 +330,21 @@ function makeDimensionSection(el, global) {
         lastInputAxisValue = null
         setDisabled(true)
         renderBtns()
-        events.fire('dimensions:edit', currentDimensions)
+        global.dimensionsBox.draw(currentDimensions)
+        if (!dimensionRotatable) {
+            dimensionRotatable = new BoxRotatable({
+                app: global.app, dimensions: currentDimensions, onDragEnd: async () => {
+                    if (!isEditing) return
+                    const result = await getUpdateBoxSize(currentDimensions.rotation, settings.removedSplats)
+                    currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+                    onDimensionsChanged()
+                }
+            })
+        } else {
+            dimensionRotatable.syncFromExternal(currentDimensions)
+        }
+        global.rotationGizmo.enable(dimensionRotatable)
+        events.fire('re-render:control-wrap')
     }
     function onCancel() {
         if (!isEditing) return
@@ -361,42 +354,51 @@ function makeDimensionSection(el, global) {
         currentDimensions = { ...editDimension }
         renderBtns()
         renderRealGroup()
-        deleteSpinAxes()
-        events.fire('dimensions:cancel')
+        hideDimensions()
+        global.rotationGizmo.disable()
     }
     function setDimConfigured(has) {
         noDimRow.style.display = has ? 'none' : 'flex'
         hasDimWrap.style.display = has ? 'flex' : 'none'
     }
-
-    async function deleteSpinAxes() {
-        let axes = null
-        if (settings.dimensions) {
-            const { x, y, z } = settings.dimensions.rotation
-            const quat = new Quat().setFromEulerAngles(x, y, z)
-            axes = getSpinAxes(quat)
-        } else {
-            if (!global.oobbInfo) {
-                await global.loading.show()
-                await global.oobbInfoPromise
-                global.loading.hide()
-            }
-            axes = getSpinAxes(global.oobbInfo.finalQuat)
+    function hideDimensions() {
+        if (global.dimensionsBox && global.dimensionsBox.show) {
+            global.dimensionsBox.hide()
+            events.fire('re-render:control-wrap')
         }
-        settings.spin = {
-            ...settings.spin,
-            axes,
+        if (global.rotationGizmo) global.rotationGizmo.disable()
+    }
+    function onDimensionsChanged() {
+        if (dimensionRotatable) {
+            dimensionRotatable.syncFromExternal(currentDimensions)
+        }
+        global.dimensionsBox.draw(currentDimensions)
+    }
+    function onDimensionsConfigured() {
+        if (currentDimensions === null) hideDimensions()
+        else {
+            if (!global.dimensionsBox) {
+                const { app, camera, config } = global
+                global.dimensionsBox = dimensionsSetup(app, camera, config)
+            }
+            if (dimensionRotatable) {
+                dimensionRotatable.syncFromExternal(currentDimensions)
+            }
+            global.dimensionsBox.draw(currentDimensions)
+            events.fire('re-render:control-wrap')
         }
     }
-    function calSpinAxesFromDimensions() {
-        if (settings.spin.enabled) {
-            const { x, y, z } = currentDimensions.rotation
-            settings.spin = {
-                ...settings.spin,
-                axes: getSpinAxes(new Quat().setFromEulerAngles(x, y, z)),
-            }
-        }
-    }
+    const handles = [
+        events.on('sidebar:active', () => onCancel()),
+        events.on('sidebar:clicked', ({ id }) => {
+            onCancel()
+            if (id !== 'dimensions') return
+            canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
+            setUseMeasurementChecked(currentDimensions?.useMeasurementData)
+            renderRealGroup()
+        }),
+        events.on('setup-reset', () => hideDimensions())
+    ]
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
     }

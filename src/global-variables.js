@@ -36,7 +36,15 @@ const ICONS = {
         <circle cx="4" cy="6"   r="1"/><circle cx="8" cy="6"   r="1"/>
         <circle cx="4" cy="9.5" r="1"/><circle cx="8" cy="9.5" r="1"/>
         </svg>`,
-    messageEditBtn: `<svg width="16" height="16" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5L11.5 3.5L4.5 10.5H2.5V8.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
+    add: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg> `,
+    cancel:`<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>`,
+    edit: `<svg width="16" height="16" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5L11.5 3.5L4.5 10.5H2.5V8.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
     hintInfo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 16v-4"/>
@@ -180,4 +188,7 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
   <circle cx="12" cy="12" r="9"/>
   <rect x="8.5" y="8.5" width="7" height="7" rx="1" fill="currentColor" stroke="none"/>
 </svg>`,
+check: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M1.5 6.5L4.5 9.5L10.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
 }
