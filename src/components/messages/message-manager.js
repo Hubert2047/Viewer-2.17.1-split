@@ -289,7 +289,6 @@ class MessagesManager {
                 italic: false,
                 align: 'center',
                 content: defaultName,
-                font: 'Lato',
                 background: '#ffffff',
                 backgroundAlpha: 0.8,
                 originWidth,

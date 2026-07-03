@@ -1,53 +1,287 @@
-
-    <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>3D Model Viewer</title>
-    <meta charset="UTF-8">    
-    <meta property="og:description" content=" " />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <base href>
-    <link rel="icon" href="data:," >
-    <link rel="stylesheet" href="viewer.css?v=177">
-    <script>
-        const params = new URLSearchParams(window.location.search)
-        const currentV = params.get('v')
-        if (!currentV) {
-            const now = Date.now()  
-            const url = new URL(window.location.href)
-            url.searchParams.set('v', now)
-            window.location.replace(url.toString())
-        } else {
-            const stored = sessionStorage.getItem('page-v')
-            const now = Date.now()
-            if (!stored) {
-                sessionStorage.setItem('page-v', currentV)
-            } else if (now - parseInt(currentV) > 60000) {
+    <head>
+        <title>3D Model Viewer</title>
+        <meta charset="UTF-8" />
+        <meta property="og:description" content=" " />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <base href />
+        <link rel="icon" href="data:," />
+        <link rel="stylesheet" href="viewer.css?v=177" />
+        <script>
+            const params = new URLSearchParams(window.location.search)
+            const currentV = params.get('v')
+            if (!currentV) {
+                const now = Date.now()
                 const url = new URL(window.location.href)
                 url.searchParams.set('v', now)
-                sessionStorage.setItem('page-v', now)
                 window.location.replace(url.toString())
+            } else {
+                const stored = sessionStorage.getItem('page-v')
+                const now = Date.now()
+                if (!stored) {
+                    sessionStorage.setItem('page-v', currentV)
+                } else if (now - parseInt(currentV) > 60000) {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('v', now)
+                    sessionStorage.setItem('page-v', now)
+                    window.location.replace(url.toString())
+                }
             }
-        }
-    </script>     
-</head>
-<body>
-    <canvas id="application-canvas"></canvas>
-    <div id="ui">
-        <div id="poster"></div>
-        <div id="loadingWrap">
-            <div id="fileSizeInfo"></div>
-            <div id="loadingText"></div>
-            <div id="loadingBar"></div>
+        </script>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <div id="ui">
+            <div id="poster"></div>
+            <div id="loadingWrap">
+                <div id="fileSizeInfo"></div>
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+            </div>
         </div>
-        <div id="loading-overlay">
-            <div class="spinner"></div>
-        </div>            
-    </div>
-    <div id="tooltip"></div>
-</body>
-<script>window.sse = { "settings": {"ref":"","model":"spherical","contentUrl":"models/test8.ply","v":177,"background":{"color":"#FFFFFF"},"initview":{"pose":{"rotation":{"x":0.00005178745602391023,"y":0.02797587100111082,"z":0.999119038058026,"w":-0.03128091670321626},"position":{"x":0.7370303599698279,"y":-0.05149836238791217,"z":0.6592432517003323},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}},"messages":[{"id":"8a680e07-74f7-40e1-8d45-40589c048f00","autoPlay":{"time":1},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-3.7821891260571734,"y":-16.066427460347192,"z":7.330246113727063},"botRight":{"x":-9.909362023322425,"y":-13.900221293907878,"z":6.132779641995954},"fontSize":16},"focus":{"position":{"x":-2.867228500338072,"y":-11.873919726665804,"z":7.114754439259997}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-2.4071501952808774,"y":-12.354211250232302,"z":7.256933805927067},"botRight":{"x":-3.329930380189815,"y":-11.392461313962404,"z":6.985573623345767}},"entityInfo":{"rotation":{"x":0.247403959254523,"y":1.5149123339871682e-17,"z":0.9689124217106447,"w":5.932877479510262e-17},"position":{"x":1.3455936392233445,"y":0,"z":-2.094374221875556},"isFullyInView":true,"distanceScale":1,"focus":{"x":-3.428320246987357,"y":8.85147717100097,"z":-3.6820729784615356},"pitch":0,"yaw":0},"audio":{"show":true,"src":"","fileName":"111 (mp3cut.net).mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":false,"autoPlay":true}},{"id":"e120a2ef-c6bd-41c7-b3fd-52d6986f1f45","autoPlay":{"time":1},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":2.0386411019258865,"y":-14.032278980612734,"z":-9.046064381760328},"botRight":{"x":3.4023579108637936,"y":-10.63786734666854,"z":-15.715393666634062},"fontSize":16},"focus":{"position":{"x":0.37988943435554035,"y":-9.516426697348217,"z":-7.821764302337673}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":0.3601328476627508,"y":-10.168502904475723,"z":-7.30954247687749},"botRight":{"x":0.38511134357430166,"y":-8.869887890105488,"z":-8.339063117511902}},"entityInfo":{"rotation":{"x":-0.5615012953590469,"y":-0.110281042274261,"z":0.8121500398412906,"w":0.11387141788352903},"position":{"x":-6.2423571282624195,"y":-0.8025517060894671,"z":-2.088143207580943},"isFullyInView":true,"distanceScale":1,"focus":{"x":-3.428320246987357,"y":8.85147717100097,"z":-3.6820729784615356},"pitch":0,"yaw":0},"audio":{"show":true,"src":"","fileName":"111 (mp3cut.net).mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":false,"autoPlay":true}},{"id":"542b5808-43ba-4195-ae02-bf26c146c71b","autoPlay":{"time":1},"button":{"title":"message3"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message3","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":7.615564458635086,"y":-11.185937847021373,"z":-2.487941663644424},"botRight":{"x":10.869479693426715,"y":-7.441852822642497,"z":-5.889549677513408},"fontSize":16},"focus":{"position":{"x":5.207214037537188,"y":-10.98450233814313,"z":-5.559000662054981}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":5.069640588644679,"y":-11.460885224411308,"z":-4.8892869605346},"botRight":{"x":5.353029994751905,"y":-10.519569043048772,"z":-6.235179491488836}},"entityInfo":{"rotation":{"x":-0.7158066117423659,"y":-0.15215896060279863,"z":0.13356698811182274,"w":0.6683026297875283},"position":{"x":-0.08964275896430918,"y":16.559897049213216,"z":-12.328065908301898},"isFullyInView":true,"distanceScale":1,"focus":{"x":-3.428320246987357,"y":8.85147717100097,"z":-3.6820729784615356},"pitch":0,"yaw":0}},{"id":"8b772007-001e-44be-a32d-ee1993c2524d","autoPlay":{"time":3},"button":{"title":"message4"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message4","font":"Lato","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-7.1950135156898565,"y":-20.452942826092904,"z":-5.209744076793398},"botRight":{"x":-12.693078570051428,"y":-17.801821751710857,"z":-9.226559348089697},"fontSize":16},"focus":{"position":{"x":-5.822227356547792,"y":-15.830335163264227,"z":-5.36099563552655}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-5.327282599342689,"y":-16.561190063321227,"z":-4.850521722460719},"botRight":{"x":-6.326821977472334,"y":-15.0982057582537,"z":-5.8556030945084165}},"entityInfo":{"rotation":{"x":0.00005178745602391023,"y":0.02797587100111082,"z":0.999119038058026,"w":-0.03128091670321626},"position":{"x":0.7370303599698279,"y":-0.05149836238791217,"z":0.6592432517003323},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}}],"dimensions":{"boxColor":"#f95f4d","background":{"color":"#ffffff","alpha":0.8},"foregroundColor":"#f95f4d","realSize":{"x":0,"y":0,"z":0},"unit":"cm","position":{"x":-0.08261978197465814,"y":-11.55685700662434,"z":2.5623944509625236},"size":{"x":23.2174629976383,"y":23.222788061946634,"z":23.05807322887059},"rotation":{"x":180,"y":44.42000000000001,"z":-180}},"setupStep":4,"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}]} }</script>
-<script src="./viewer.js?v=177"></script>
+        <div id="tooltip"></div>
+    </body>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'spherical',
+                contentUrl: 'models/test8.ply',
+                v: 177,
+                background: { color: '#FFFFFF' },
+                initview: {
+                    pose: {
+                        rotation: {
+                            x: 0.00005178745602391023,
+                            y: 0.02797587100111082,
+                            z: 0.999119038058026,
+                            w: -0.03128091670321626,
+                        },
+                        position: { x: 0.7370303599698279, y: -0.05149836238791217, z: 0.6592432517003323 },
+                        isFullyInView: true,
+                        distanceScale: 1,
+                        focus: { x: 0.23791229864773522, y: 11.74646714481207, z: 1.395249752187996 },
+                        pitch: 0,
+                        yaw: 0,
+                    },
+                },
+                messages: [
+                    {
+                        id: '8a680e07-74f7-40e1-8d45-40589c048f00',
+                        autoPlay: { time: 1 },
+                        button: { title: 'message1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message1',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: -3.7821891260571734, y: -16.066427460347192, z: 7.330246113727063 },
+                            botRight: { x: -9.909362023322425, y: -13.900221293907878, z: 6.132779641995954 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: -2.867228500338072, y: -11.873919726665804, z: 7.114754439259997 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -2.4071501952808774, y: -12.354211250232302, z: 7.256933805927067 },
+                            botRight: { x: -3.329930380189815, y: -11.392461313962404, z: 6.985573623345767 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: 0.247403959254523,
+                                y: 1.5149123339871682e-17,
+                                z: 0.9689124217106447,
+                                w: 5.932877479510262e-17,
+                            },
+                            position: { x: 1.3455936392233445, y: 0, z: -2.094374221875556 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -3.428320246987357, y: 8.85147717100097, z: -3.6820729784615356 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: '111 (mp3cut.net).mp3',
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            autoPlay: true,
+                        },
+                    },
+                    {
+                        id: 'e120a2ef-c6bd-41c7-b3fd-52d6986f1f45',
+                        autoPlay: { time: 1 },
+                        button: { title: 'message2' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message2',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 2.0386411019258865, y: -14.032278980612734, z: -9.046064381760328 },
+                            botRight: { x: 3.4023579108637936, y: -10.63786734666854, z: -15.715393666634062 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 0.37988943435554035, y: -9.516426697348217, z: -7.821764302337673 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 0.3601328476627508, y: -10.168502904475723, z: -7.30954247687749 },
+                            botRight: { x: 0.38511134357430166, y: -8.869887890105488, z: -8.339063117511902 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.5615012953590469,
+                                y: -0.110281042274261,
+                                z: 0.8121500398412906,
+                                w: 0.11387141788352903,
+                            },
+                            position: { x: -6.2423571282624195, y: -0.8025517060894671, z: -2.088143207580943 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -3.428320246987357, y: 8.85147717100097, z: -3.6820729784615356 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: '111 (mp3cut.net).mp3',
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            autoPlay: true,
+                        },
+                    },
+                    {
+                        id: '542b5808-43ba-4195-ae02-bf26c146c71b',
+                        autoPlay: { time: 1 },
+                        button: { title: 'message3' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message3',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 7.615564458635086, y: -11.185937847021373, z: -2.487941663644424 },
+                            botRight: { x: 10.869479693426715, y: -7.441852822642497, z: -5.889549677513408 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 5.207214037537188, y: -10.98450233814313, z: -5.559000662054981 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 5.069640588644679, y: -11.460885224411308, z: -4.8892869605346 },
+                            botRight: { x: 5.353029994751905, y: -10.519569043048772, z: -6.235179491488836 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.7158066117423659,
+                                y: -0.15215896060279863,
+                                z: 0.13356698811182274,
+                                w: 0.6683026297875283,
+                            },
+                            position: { x: -0.08964275896430918, y: 16.559897049213216, z: -12.328065908301898 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -3.428320246987357, y: 8.85147717100097, z: -3.6820729784615356 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                    {
+                        id: '8b772007-001e-44be-a32d-ee1993c2524d',
+                        autoPlay: { time: 3 },
+                        button: { title: 'message4' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message4',
+                            font: 'Lato',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: -7.1950135156898565, y: -20.452942826092904, z: -5.209744076793398 },
+                            botRight: { x: -12.693078570051428, y: -17.801821751710857, z: -9.226559348089697 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: -5.822227356547792, y: -15.830335163264227, z: -5.36099563552655 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -5.327282599342689, y: -16.561190063321227, z: -4.850521722460719 },
+                            botRight: { x: -6.326821977472334, y: -15.0982057582537, z: -5.8556030945084165 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: 0.00005178745602391023,
+                                y: 0.02797587100111082,
+                                z: 0.999119038058026,
+                                w: -0.03128091670321626,
+                            },
+                            position: { x: 0.7370303599698279, y: -0.05149836238791217, z: 0.6592432517003323 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: 0.23791229864773522, y: 11.74646714481207, z: 1.395249752187996 },
+                            pitch: 0,
+                            yaw: 0,
+                        },
+                    },
+                ],
+                dimensions: {
+                    boxColor: '#f95f4d',
+                    background: { color: '#ffffff', alpha: 0.8 },
+                    foregroundColor: '#f95f4d',
+                    realSize: { x: 0, y: 0, z: 0 },
+                    unit: 'cm',
+                    position: { x: -0.08261978197465814, y: -11.55685700662434, z: 2.5623944509625236 },
+                    size: { x: 23.2174629976383, y: 23.222788061946634, z: 23.05807322887059 },
+                    rotation: { x: 180, y: 44.42000000000001, z: -180 },
+                },
+                setupStep: 4,
+                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
+            },
+        }
+    </script>
+    <script src="./viewer.js?v=177"></script>
 </html>
-    
