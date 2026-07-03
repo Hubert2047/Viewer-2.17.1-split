@@ -273,22 +273,7 @@ function makeRecordSection(el, global) {
             outputHeight: Math.round(region.height),
         }
     }
-
     const settingsGroup = makeSectionGroup('Settings')
-
-    // const fpsRow = makeRow({ title: 'Frame Rate' })
-    // const fpsSegment = makeSegmentRow({
-    //     defaultValue: fps,
-    //     options: [
-    //         { label: '30', value: 30 },
-    //         { label: '60', value: 60 },
-    //     ],
-    //     onChange: (value) => {
-    //         fps = value
-    //     },
-    // })
-    // fpsRow.el.appendChild(fpsSegment)
-
     const showRegionRow = makeRow({ title: 'Show Region' })
     const showRegionToggle = makeToggle({
         initialValue: isRegionVisible,
@@ -470,7 +455,6 @@ function makeRecordSection(el, global) {
         heightInput.disabled = disabled
         patternSelect.setDisabled(disabled)
         showRegionToggle.setDisabled(disabled)
-        // fpsSegment.setDisabled(disabled)
     }
     function updatePatternOptions() {
         const hasStory = global.settings.messages?.length > 0
