@@ -7,36 +7,7 @@ function applyPointMapping({ modelEntity, deletedSet }) {
     }
     gsplatComp._instance.sorter.setMapping(new Uint32Array(kept))
 }
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-function updateProgress(loaded, total, initPoster) {
-    const loadingText = document.getElementById('loadingText')
-    const fileSizeInfo = document.getElementById('fileSizeInfo')
-    const loadingBar = document.getElementById('loadingBar')
-    const progress = (loaded / total) * 100
-    if (total > 0) {
-        if (progress === 100) modelLoaded = true
-        const displayProgress = progress
-        const loadedSize = formatFileSize(loaded)
-        const totalSize = formatFileSize(total)
-        if (fileSizeInfo) fileSizeInfo.textContent = `${loadedSize} / ${totalSize}`
-        if (loadingText) loadingText.textContent = `${Math.round(displayProgress)}%`
-        if (loadingBar)
-            loadingBar.style.backgroundImage = `linear-gradient(90deg, #F60 0%, #F60 ${displayProgress}%, white ${displayProgress}%, white 100%)`
-    } else {
-        if (fileSizeInfo) fileSizeInfo.textContent = 'Loading...'
-        if (loadingText) loadingText.textContent = '0%'
-    }
-    if (initPoster) {
-        const poster = document.getElementById('poster')
-        blurPoster(poster, progress)
-    }
-}
+
 function blurPoster(poster, progress) {
     poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
 }
@@ -103,7 +74,7 @@ function showToast(content, opts = {}) {
     }, duration)
 }
 function showNotSupportWebGL() {
-    document.getElementById('loadingWrap').classList.add('hidden')
+    document.getElementById('loading-overlay')?.classList.add('hidden')
     document.body.innerHTML = `
 		<div class="webgl-error">
 		<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5">
@@ -241,7 +212,7 @@ async function exportHtml(name, global) {
     }
 
     const injectedScript = `<script>window.sse = { "settings": ${JSON.stringify(orderedSettings)} }<\/script>`
-    const hasChunk = orderedSettings.hasChunk > 0
+    const hasChunk = orderedSettings.chunkCount > 0
     const template = getHtmlTemplate(newVersion, hasChunk)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
 
@@ -270,8 +241,8 @@ function getHtmlTemplate(version, hasChunk) {
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css?v=${version}" />
-        <link rel="preload" href="viewer.js?v=${version}" as="script" />
+        <link rel="stylesheet" href="./data/viewer.css?v=${version}" />
+        <link rel="preload" href="./data/viewer.js?v=${version}" as="script" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -298,25 +269,26 @@ function getHtmlTemplate(version, hasChunk) {
         <canvas id="application-canvas"></canvas>
         <div id="ui">
             <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loading-overlay">
-                <div class="spinner-wrap">
-                    <svg class="progress-ring" viewBox="0 0 200 200">
-                        <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                        <circle id="progressRingFg" class="progress-ring-fg" cx="100" cy="100" r="86" fill="none" />
-                    </svg>
-                    <span id="spinnerPercent" class="spinner-percent">0%</span>
-                </div>
-            </div>
         </div>
         <div id="tooltip"></div>
+        <div id="spinnerWrap">
+        <svg class="progress-ring" viewBox="0 0 200 200">
+            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+            <circle
+                id="progressRingFg"
+                class="progress-ring-fg"
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke-dasharray="540.35"
+                stroke-dashoffset="540.35" />
+            </svg>
+            <span id="spinnerPercent" class="spinner-percent">0%</span>
+        </div>
     </body>
     <!-- INJECT_SCRIPT -->
-    ${hasChunk ? `<script src="./data/chunk.js?v=${version}"></script>` : `<script src="./data/data.js?v=${version}"></script>`}
+    ${hasChunk ? `<script src="./data/chunk.js?v=${version}"></script>` : `<script src="./data/viewer.js?v=${version}"></script>`}
     </html> 
     `
 }

@@ -18,7 +18,6 @@ const initUI = async (global) => {
     const loading = new LoadingOverlay()
     global.loading = loading
     const tooltip = new Tooltip(document.getElementById('tooltip'))
-    const ui = document.getElementById('ui')
     const dom = [
         'ui',
         'desktopTab',
@@ -26,12 +25,13 @@ const initUI = async (global) => {
         'desktopInfoPanel',
         'touchInfoPanel',
         'buttonsContainer',
-        'loadingText',
-        'loadingBar',
         'tooltip',
         'messageContainer',
         'messageActionGroup',
         'settingsPanel',
+        'spinnerWrap',
+        'spinnerPercent',
+        'progressRingFg',
     ].reduce((acc, id) => {
         acc[id] = document.getElementById(id)
         return acc
@@ -84,8 +84,16 @@ const initUI = async (global) => {
     )
     // Hide loading bar once loaded
     events.on('loaded:changed', () => {
-        document.getElementById('loadingWrap').classList.add('hidden')
+        dom.spinnerWrap?.classList.add('hidden')
         if (sidebar) sidebar.style.visibility = 'visible'
+    })
+    const radius = 86
+    const circumference = 2 * Math.PI * radius
+    events.on('progress:changed', (progress) => {
+        const displayProgress = settings.chunkCount > 0 ? 65 + progress * 0.35 : progress
+        dom.spinnerPercent.textContent = `${Math.round(displayProgress)}%`
+        const offset = circumference * (1 - displayProgress / 100)
+        dom.progressRingFg.style.strokeDashoffset = displayProgress >= 100 ? 0 : offset
     })
     initMeasurement({ global, dom, events })
     initDimensions({ global, events, config })
@@ -3004,7 +3012,7 @@ class Viewer {
                 if (enable) pivotGizmo.enable()
                 else pivotGizmo.disable()
             })
-            if (settings.dimensions) {
+            if (settings.dimensions || global.config.editable) {
                 global.dimensionsBox = dimensionsSetup(app, camera, config)
             }
 
@@ -3417,56 +3425,6 @@ const createImage = (url) => {
     img.src = url
     return img
 }
-function base64ToBlobWithProgress(base64, chunkSize = 1024 * 1024) {
-    return new Promise((resolve) => {
-        const byteChars = atob(base64)
-        const total = byteChars.length
-        let offset = 0
-        const chunks = []
-        function processChunk() {
-            const end = Math.min(offset + chunkSize, total)
-            const sliceLength = end - offset
-            const bytes = new Uint8Array(sliceLength)
-            for (let i = 0; i < sliceLength; i++) {
-                bytes[i] = byteChars.charCodeAt(offset + i)
-            }
-            chunks.push(bytes)
-            offset = end
-            updateProgress(offset, total)
-            if (offset < total) {
-                requestAnimationFrame(processChunk)
-            } else {
-                updateProgress(total, total)
-                const blob = new Blob(chunks, { type: 'application/ply' })
-                resolve(new Response(blob))
-            }
-        }
-        processChunk()
-    })
-}
-const createProgressFetch = (input, initPoster) => {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open('GET', input)
-        xhr.responseType = 'arraybuffer'
-        xhr.onprogress = (e) => {
-            if (e.lengthComputable) {
-                updateProgress(e.loaded, e.total, initPoster)
-            }
-        }
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                updateProgress(xhr.response.byteLength, xhr.response.byteLength, initPoster)
-                const blob = new Blob([xhr.response])
-                resolve(new Response(blob))
-            } else {
-                reject(new Error('HTTP error ' + xhr.status))
-            }
-        }
-        xhr.onerror = () => reject(new Error('Network error'))
-        xhr.send()
-    })
-}
 
 const url = new URL(location.href)
 const posterUrl = url.searchParams.get('poster')
@@ -3482,7 +3440,7 @@ const config = {
     skyboxUrl,
     voxelUrl,
     contentUrl: settings.contentUrl,
-    contents: settings.base64 ? base64ToBlobWithProgress(settings.base64) : createProgressFetch(settings.contentUrl),
+    contents: fetch(settings.base64 ? `data:application/octet-stream;base64,${settings.base64}` : settings.contentUrl),
     noui: url.searchParams.has('noui'),
     test: url.searchParams.has('test'),
     noanim: true,
@@ -3498,8 +3456,6 @@ const config = {
 }
 if (settings.base64) delete settings.base64
 const main = async (canvas, config) => {
-    const loadingOverlay = document.getElementById('loading-overlay')
-    if (loadingOverlay) loadingOverlay.classList.add('hidden')
     const { app, camera } = await createApp(canvas, config)
     // create events
     const events = new EventHandler()
@@ -3552,6 +3508,7 @@ const main = async (canvas, config) => {
     // Initialize user interface
     const dom = initUI(global)
     // Load model
+
     const gsplatLoad = loadGsplat(
         app,
         config,

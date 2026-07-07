@@ -157,7 +157,7 @@ function makeViewerSection(el, global) {
 
     const editAxesBtn = makeButton({
         icon: ICONS.edit,
-        title: "Edit",
+        title: 'Edit',
         onClick: async () => {
             isAxesEdit = true
             updateButtonsVisibility()
@@ -169,7 +169,7 @@ function makeViewerSection(el, global) {
 
     const applyBtn = makeButton({
         icon: ICONS.check,
-        title: "Apply",
+        title: 'Apply',
         show: false,
         onClick: () => {
             settings.spin.rotation = dimensionAxes.rotation
@@ -183,11 +183,12 @@ function makeViewerSection(el, global) {
 
     const cancelBtn = makeButton({
         icon: ICONS.cancel,
-        title: "Cancel",
+        title: 'Cancel',
         show: false,
         onClick: cancelEditAxes,
     })
-    cancelBtn.style.cssText = 'width:30px; height:30px; padding:6px;background-color: rgba(249, 87, 68, 0.18); color:#e05555;;'
+    cancelBtn.style.cssText =
+        'width:30px; height:30px; padding:6px;background-color: rgba(249, 87, 68, 0.18); color:#e05555;;'
 
     groupAxes.appendChild(axisSelect.el)
     groupAxes.appendChild(editAxesBtn)
@@ -273,9 +274,10 @@ function makeViewerSection(el, global) {
                     dimensionAxes = { ...dimensionAxes, size: result.size, position: result.position }
                     spinAxesRotatable.syncFromExternal(dimensionAxes)
                     global.dimensionsBox.draw(dimensionAxes)
-                }
+                },
             })
-        } else {
+        }
+        if (spinAxesRotatable) {
             spinAxesRotatable.syncFromExternal(dimensionAxes)
         }
         global.rotationGizmo.enable(spinAxesRotatable)
@@ -296,7 +298,7 @@ function makeViewerSection(el, global) {
             }
             updateButtonsVisibility()
         }),
-        events.on('setup-reset', () => hideDimensions())
+        events.on('setup-reset', () => hideDimensions()),
     ]
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))

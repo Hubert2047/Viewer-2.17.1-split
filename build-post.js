@@ -167,10 +167,10 @@ function build() {
             const now = new Date()
             const built = now.toDateString() + ' ' + now.toTimeString().split(' ')[0]
             const header = `/**\n * @Software: 3D Model Viewer\n * @PackageVersion: ${pkg.version}\n * @Built: ${built}\n * @Copyright (c) 2025-${new Date().getFullYear()} Ortery Technologies Inc.\n * @All rights reserved.\n */\n`
-            fs.writeFileSync('dist/viewer.js', header + obfuscatedCode + '\n\n' + playcanvasLicense)
+            fs.writeFileSync('dist/data/viewer.js', header + obfuscatedCode + '\n\n' + playcanvasLicense)
 
             const css = fs.readFileSync('src/assets/viewer.css', 'utf8')
-            fs.writeFileSync('dist/viewer.css', minifyCss(css))
+            fs.writeFileSync('dist/data/viewer.css', minifyCss(css))
 
             const chunkSrc = fs.readFileSync(chunkFile, 'utf8')
             const chunkObfuscated = JavaScriptObfuscator.obfuscate(chunkSrc, {
@@ -183,8 +183,8 @@ function build() {
             console.log('✓ Production build: obfuscated + minified CSS')
         } else {
             const js = files.map(({ file }) => fs.readFileSync(file, 'utf8')).join('\n')
-            fs.writeFileSync('dist/viewer.js', js)
-            fs.copyFileSync('src/assets/viewer.css', 'dist/viewer.css')
+            fs.writeFileSync('dist/data/viewer.js', js)
+            fs.copyFileSync('src/assets/viewer.css', 'dist/data/viewer.css')
 
             fs.mkdirSync('dist/data', { recursive: true })
             fs.copyFileSync(chunkFile, 'dist/data/chunk.js')

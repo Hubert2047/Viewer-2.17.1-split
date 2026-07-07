@@ -10,8 +10,8 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="viewer.css" />
-        <link rel="preload" href="viewer.js" as="script" />
+        <link rel="stylesheet" href="./data/viewer.css?v=2" />
+        <link rel="preload" href="./data/viewer.js?v=2" as="script" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -38,25 +38,28 @@
         <canvas id="application-canvas"></canvas>
         <div id="ui">
             <div id="poster"></div>
-            <div id="loadingWrap">
-                <div id="fileSizeInfo"></div>
-                <div id="loadingText"></div>
-                <div id="loadingBar"></div>
-            </div>
-            <div id="loading-overlay">
-                <div class="spinner-wrap">
-                    <svg class="progress-ring" viewBox="0 0 200 200">
-                        <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                        <circle id="progressRingFg" class="progress-ring-fg" cx="100" cy="100" r="86" fill="none" />
-                    </svg>
-                    <span id="spinnerPercent" class="spinner-percent">0%</span>
-                </div>
-            </div>
         </div>
         <div id="tooltip"></div>
+        <div id="spinnerWrap">
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
+            </svg>
+            <span id="spinnerPercent" class="spinner-percent">0%</span>
+        </div>
     </body>
     <script>
-        window.sse = { settings: { ref: '', model: 'spherical', setupStep: 4, chunkCount: 20 } }
+        window.sse = {
+            settings: { ref: '', contentUrl: 'canon.ply', model: 'spherical', v: 2, setupStep: 4, chunkCount: 30 },
+        }
     </script>
-    <script src="./data/chunk.js"></script>
+    <script src="./data/chunk.js?v=2"></script>
 </html>

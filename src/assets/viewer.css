@@ -103,37 +103,7 @@ button {
     background-position: center;
     background-repeat: no-repeat;
 }
-#fileSizeInfo {
-    font-size: 0.875rem;
-    color: #f95744;
-    text-align: center;
-    margin-bottom: 0.25rem;
-    text-shadow: 0 0 4px rgba(0, 0, 0, 0);
-    font-weight: 500;
-}
-#loadingWrap {
-    position: fixed;
-    bottom: 120px;
-    left: 50%;
-    transform: translate(-50%, 0);
-    width: min(380px, 100vw - 32px);
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-}
-#loadingWrap > #loadingText {
-    font-size: 1.125rem;
-    color: #f95744;
-    text-align: center;
-    text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-}
-#loadingWrap > #loadingBar {
-    width: 100%;
-    height: 10px;
-    margin-top: 0.5rem;
-    border-radius: 0.25rem;
-    overflow: hidden;
-}
+
 #controlsWrap {
     position: absolute;
     right: max(16px, env(safe-area-inset-right));
@@ -2232,15 +2202,20 @@ button {
     color: #c53030 !important;
     filter: none !important;
 }
-.spinner-wrap {
-    position: relative;
+#spinnerWrap {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 99999;
 }
 .progress-ring {
-    width: 60px;
-    height: 60px;
+    width: 160px;
+    height: 160px;
     transform: rotate(-90deg);
     shape-rendering: geometricPrecision;
 }
@@ -2250,15 +2225,15 @@ button {
 }
 .progress-ring-fg {
     stroke: #f95744;
-    stroke-width: 20;
     transition: none !important;
+    stroke-width: 20;
     will-change: stroke-dashoffset;
     stroke-linecap: round;
     transition: stroke-dashoffset 0.2s ease;
 }
 .spinner-percent {
     position: absolute;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #f95744;
     font-family: sans-serif;
