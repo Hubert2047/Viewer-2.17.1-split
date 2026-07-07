@@ -298,6 +298,16 @@ function makeViewerSection(el, global) {
             }
             updateButtonsVisibility()
         }),
+        events.on('sidebar:clicked', () => {
+            if (!isAxesEdit) return
+            isAxesEdit = false
+            if (savedRotation) {
+                settings.spin.rotation = savedRotation.clone()
+            }
+            updateButtonsVisibility()
+            global.rotationGizmo.disable()
+            global.dimensionsBox.hide()
+        }),
         events.on('setup-reset', () => hideDimensions()),
     ]
     el.cleanup = () => {
