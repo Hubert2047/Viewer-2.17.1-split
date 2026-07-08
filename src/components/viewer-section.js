@@ -172,10 +172,11 @@ function makeViewerSection(el, global) {
         title: 'Apply',
         show: false,
         onClick: () => {
-            settings.spin.rotation = dimensionAxes.rotation
+            settings.spin.rotation = { ...dimensionAxes.rotation }
             isAxesEdit = false
             exitEditMode()
             updateButtonsVisibility()
+            savedRotation = dimensionAxes.rotation
             global.dataDirty = true
         },
     })
@@ -292,11 +293,13 @@ function makeViewerSection(el, global) {
     }
     const handles = [
         events.on('inputEvent:show-dimensions', async () => {
-            isAxesEdit = false
-            if (savedRotation) {
+            if (!isAxesEdit) return
+            if (savedRotation && isAxesEdit) {
                 settings.spin.rotation = savedRotation
             }
+            isAxesEdit = false
             updateButtonsVisibility()
+            if (global.rotationGizmo) global.rotationGizmo.disable()
         }),
         events.on('sidebar:clicked', () => {
             if (!isAxesEdit) return
