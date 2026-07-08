@@ -250,7 +250,7 @@ function makePivotGroup(global, editGroup) {
 }
 function makePoster(el, global) {
     const { events, settings } = global
-    let editPoster = settings.poster ? { ...settings.poster } : { name: 'poster' }
+    let editPoster = settings.poster.name ? { ...settings.poster } : { name: 'poster' }
     const container = makeSectionWrap()
 
     const capturePictureHint =
@@ -265,7 +265,7 @@ function makePoster(el, global) {
     const filenameRow = makeRow({ title: 'Filename' })
     const filenameInput = makeInput({
         type: 'text',
-        placeholder: 'capture',
+        placeholder: 'poster',
         value: editPoster.name,
         onChange: (value) => {
             editPoster.name = value
@@ -278,7 +278,11 @@ function makePoster(el, global) {
         title: 'Capture',
         className: 'add-btn',
         onClick: () => {
-            handleCapturePicture({ app: global.app, name: editPoster.name })
+            handleCapturePicture({
+                app: global.app,
+                name: editPoster.name,
+            })
+            settings.poster.name = editPoster.name ?? 'poster'
             global.dataDirty = true
         },
     })

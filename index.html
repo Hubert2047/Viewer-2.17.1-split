@@ -10,8 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=4" />
-        <link rel="preload" href="./data/viewer.js?v=4" as="script" />
+        <link rel="stylesheet" href="./data/viewer.css?v=6" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -57,33 +56,7 @@
         </div>
     </body>
     <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'spherical',
-                contentUrl: 'canon.ply',
-                v: 4,
-                dimensions: {
-                    boxColor: '#f95f4d',
-                    background: { color: '#ffffff', alpha: 0.8 },
-                    foregroundColor: '#f95f4d',
-                    realSize: { x: 12, y: 12.0015853433064, z: 11.90946683674146 },
-                    unit: 'cm',
-                    type: 'dimensions',
-                    position: { x: -0.09417921207917379, y: -11.556857006624346, z: 2.568361833583797 },
-                    size: { x: 23.219720459579367, y: 23.222788061946623, z: 23.044540897647302 },
-                    rotation: { x: -179.99999999999997, y: 44.6599999999999, z: 179.99999999999997 },
-                },
-                measurement: {
-                    lineColor: '#f95f4d',
-                    textColor: '#ffffff',
-                    textBackground: { color: '#000000', alpha: 0.8 },
-                    calibration: { useDimensionData: true, unit: 'cm', distance: 0, points: [] },
-                },
-                setupStep: 4,
-                chunkCount: 30,
-            },
-        }
+        window.sse = { settings: { ref: '', model: 'spherical', contentUrl: 'saw.ply', v: 6, setupStep: 4 } }
     </script>
-    <script src="./data/viewer.js?v=4"></script>
+    <script src="./data/viewer.js?v=6"></script>
 </html>

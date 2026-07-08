@@ -19,30 +19,40 @@ function handleCapturePicture({ app, captureSize = 960, name = 'picture', format
     const canvas = device.canvas
     const originalWidth = canvas.width
     const originalHeight = canvas.height
+    const originalAspect = originalWidth / originalHeight
 
-    device.setResolution(captureSize, captureSize)
+    let renderWidth, renderHeight
+    if (originalAspect >= 1) {
+        renderWidth = captureSize
+        renderHeight = Math.round(captureSize / originalAspect)
+    } else {
+        renderHeight = captureSize
+        renderWidth = Math.round(captureSize * originalAspect)
+    }
+
+    device.setResolution(renderWidth, renderHeight)
+
     app.render()
 
-    const pixels = new Uint8Array(captureSize * captureSize * 4)
-    gl.readPixels(0, 0, captureSize, captureSize, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    const pixels = new Uint8Array(renderWidth * renderHeight * 4)
+    gl.readPixels(0, 0, renderWidth, renderHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
 
     const offscreen = document.createElement('canvas')
-    offscreen.width = captureSize
-    offscreen.height = captureSize
+    offscreen.width = renderWidth
+    offscreen.height = renderHeight
     const ctx = offscreen.getContext('2d')
-    const imageData = ctx.createImageData(captureSize, captureSize)
+    const imageData = ctx.createImageData(renderWidth, renderHeight)
 
-    for (let y = 0; y < captureSize; y++) {
-        for (let x = 0; x < captureSize; x++) {
-            const src = ((captureSize - 1 - y) * captureSize + x) * 4
-            const dst = (y * captureSize + x) * 4
+    for (let y = 0; y < renderHeight; y++) {
+        for (let x = 0; x < renderWidth; x++) {
+            const src = ((renderHeight - 1 - y) * renderWidth + x) * 4
+            const dst = (y * renderWidth + x) * 4
             imageData.data[dst] = pixels[src]
             imageData.data[dst + 1] = pixels[src + 1]
             imageData.data[dst + 2] = pixels[src + 2]
             imageData.data[dst + 3] = pixels[src + 3]
         }
     }
-
     ctx.putImageData(imageData, 0, 0)
 
     let dataUrl

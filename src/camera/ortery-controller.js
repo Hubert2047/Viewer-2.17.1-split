@@ -556,7 +556,6 @@ class OtherController {
             targetPosition = this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone()
             targetRotation = this.originEntityRotation ? this.originEntityRotation.clone() : this.baseRotation.clone()
         }
-
         if (isFirstInit) {
             startFocus = targetFocus.clone()
             startDistance = targetDistance
@@ -702,13 +701,10 @@ class OtherController {
         return radius / Math.sin(minFovRad / 2)
     }
     onEnter(camera) {
-        this.pitchRad = degToRad(camera.angles.x)
         let forward
         let distance
         const focusPoint = this.bbox.center.clone()
-
         const isCylindrical = this.originModel === 'cylindrical'
-
         this.minPitch = 0
         this.maxPitch = isCylindrical ? 0 : Math.PI / 2
         if (isCylindrical && this.cylindricalCamPos) {

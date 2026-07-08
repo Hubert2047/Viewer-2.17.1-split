@@ -16,6 +16,7 @@ const defaultSettings = Object.freeze({
         speed: 5,
         rotation: null,
     },
+    poster: { name: '' },
     lockZoomIn: Object.freeze({ value: 11, locked: false }),
     pivot: Object.freeze({ position: null }),
     initview: Object.freeze({ pose: null }),

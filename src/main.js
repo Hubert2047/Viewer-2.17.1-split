@@ -3427,14 +3427,13 @@ const createImage = (url) => {
 }
 
 const url = new URL(location.href)
-const posterUrl = url.searchParams.get('poster')
 const skyboxUrl = url.searchParams.get('skybox')
 const voxelUrl = url.searchParams.get('voxel')
 
 const rawSettings = window?.sse?.settings ?? {}
 if (!rawSettings.contentUrl) rawSettings.contentUrl = 'default.ply'
 const settings = mergeSettings(rawSettings, defaultSettings)
-const hasPoster = !!posterUrl
+const posterUrl = settings.poster.name ? `./images/${settings.poster.name}.png` : ''
 const config = {
     poster: posterUrl && createImage(posterUrl),
     skyboxUrl,
