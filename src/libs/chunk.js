@@ -10,13 +10,14 @@ function loadScript(src) {
         document.body.appendChild(s)
     })
 }
+const CHUNK_COUNT = window.sse.settings.chunkCount
+
 async function boot() {
     const spinnerPercent = document.getElementById('spinnerPercent')
     const progressRingFg = document.getElementById('progressRingFg')
     const radius = 86
     const circumference = 2 * Math.PI * radius
     progressRingFg.style.strokeDasharray = `${circumference} ${circumference}`
-
     const START_PCT = 1
     const CHUNK_MAX_PCT = 65
     const FAKE_CEILING = CHUNK_MAX_PCT - 1
@@ -24,16 +25,13 @@ async function boot() {
     const FAKE_IDLE_MS = 500
     const FAKE_STEP_MIN = 0.2
     const FAKE_STEP_MAX = 0.6
-
     let displayedPct = START_PCT
     let lastRealUpdate = Date.now()
-
     const setProgress = (pct) => {
         spinnerPercent.textContent = Math.round(pct) + '%'
         const offset = circumference * (1 - pct / 100)
         progressRingFg.style.strokeDashoffset = offset
     }
-
     setProgress(displayedPct)
     const fakeTimer = setInterval(() => {
         const idleTime = Date.now() - lastRealUpdate
@@ -43,9 +41,6 @@ async function boot() {
             setProgress(displayedPct)
         }
     }, FAKE_TICK_MS)
-
-    const CHUNK_COUNT = window.sse.settings.chunkCount
-
     window.__orteryChunks = []
     let loaded = 0
     const updateProgress = () => {
@@ -55,19 +50,17 @@ async function boot() {
         displayedPct = Math.max(displayedPct, realPct)
         setProgress(displayedPct)
     }
-
     const tasks = []
     for (let i = 0; i < CHUNK_COUNT; i++) {
         tasks.push(loadScript(`data/data${i}.js`).then(updateProgress))
     }
     await Promise.all(tasks)
-
     clearInterval(fakeTimer)
     displayedPct = CHUNK_MAX_PCT
     setProgress(displayedPct)
 
-    window.sse.settings.base64 = window.__orteryChunks.join('')
+    const base64 = window.__orteryChunks.join('')
     delete window.__orteryChunks
-    await loadScript(window.sse.settings.v ? `./data/viewer.js?v=${window.sse.settings.v}` : './data/viewer.js')
+    return base64
 }
-boot()
+if (CHUNK_COUNT > 0) window.__orteryBootPromise = boot()

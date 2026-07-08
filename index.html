@@ -10,8 +10,8 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=3" />
-        <link rel="preload" href="./data/viewer.js?v=3" as="script" />
+        <link rel="stylesheet" href="./data/viewer.css?v=4" />
+        <link rel="preload" href="./data/viewer.js?v=4" as="script" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -62,22 +62,28 @@
                 ref: '',
                 model: 'spherical',
                 contentUrl: 'canon.ply',
-                v: 3,
+                v: 4,
                 dimensions: {
                     boxColor: '#f95f4d',
                     background: { color: '#ffffff', alpha: 0.8 },
                     foregroundColor: '#f95f4d',
-                    realSize: { x: 0, y: 0, z: 0 },
+                    realSize: { x: 12, y: 12.0015853433064, z: 11.90946683674146 },
                     unit: 'cm',
                     type: 'dimensions',
-                    position: { x: -0.19886479590887438, y: -11.556857006624337, z: 0.8511692670931625 },
-                    size: { x: 23.025567005789917, y: 23.222788061946627, z: 21.83264811305908 },
-                    rotation: { x: 180, y: 13.100000000000007, z: 180 },
+                    position: { x: -0.09417921207917379, y: -11.556857006624346, z: 2.568361833583797 },
+                    size: { x: 23.219720459579367, y: 23.222788061946623, z: 23.044540897647302 },
+                    rotation: { x: -179.99999999999997, y: 44.6599999999999, z: 179.99999999999997 },
+                },
+                measurement: {
+                    lineColor: '#f95f4d',
+                    textColor: '#ffffff',
+                    textBackground: { color: '#000000', alpha: 0.8 },
+                    calibration: { useDimensionData: true, unit: 'cm', distance: 0, points: [] },
                 },
                 setupStep: 4,
                 chunkCount: 30,
             },
         }
     </script>
-    <script src="./data/chunk.js?v=3"></script>
+    <script src="./data/viewer.js?v=4"></script>
 </html>

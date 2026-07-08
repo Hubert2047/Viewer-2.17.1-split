@@ -30,7 +30,7 @@ function makeDimensionSection(el, global) {
                 foregroundColor: '#f95f4d',
                 realSize: { x: 0, y: 0, z: 0 },
                 unit: 'cm',
-                type: "dimensions",
+                type: 'dimensions',
             }
             const finalDimension = {
                 ...currentDimensions,
@@ -289,6 +289,7 @@ function makeDimensionSection(el, global) {
                     setDisabled(false)
                     renderBtns()
                     renderRealGroup()
+                    events.fire('dimensions:change', currentDimensions)
                     global.dimensionsBox.draw(currentDimensions)
                     global.rotationGizmo.disable()
                 },
@@ -333,12 +334,14 @@ function makeDimensionSection(el, global) {
         global.dimensionsBox.draw(currentDimensions)
         if (!dimensionRotatable) {
             dimensionRotatable = new BoxRotatable({
-                app: global.app, dimensions: currentDimensions, onDragEnd: async () => {
+                app: global.app,
+                dimensions: currentDimensions,
+                onDragEnd: async () => {
                     if (!isEditing) return
                     const result = await getUpdateBoxSize(currentDimensions.rotation, settings.removedSplats)
                     currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
                     onDimensionsChanged()
-                }
+                },
             })
         } else {
             dimensionRotatable.syncFromExternal(currentDimensions)
@@ -397,7 +400,7 @@ function makeDimensionSection(el, global) {
             setUseMeasurementChecked(currentDimensions?.useMeasurementData)
             renderRealGroup()
         }),
-        events.on('setup-reset', () => hideDimensions())
+        events.on('setup-reset', () => hideDimensions()),
     ]
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))

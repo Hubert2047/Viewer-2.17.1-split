@@ -2948,7 +2948,7 @@ class Viewer {
             const gsplat = results[0].gsplat
             const collider = results[2]
             const gsplatBbox = gsplat.customAabb
-            const { removedSplats, pivot } = settings
+            const { removedSplats } = settings
             if (removedSplats?.length > 0) {
                 const {
                     bbox: { center, halfExtents },
@@ -3440,7 +3440,6 @@ const config = {
     skyboxUrl,
     voxelUrl,
     contentUrl: settings.contentUrl,
-    contents: fetch(settings.base64 ? `data:application/octet-stream;base64,${settings.base64}` : settings.contentUrl),
     noui: url.searchParams.has('noui'),
     test: url.searchParams.has('test'),
     noanim: true,
@@ -3558,17 +3557,18 @@ if (poster) {
     element.style.filter = 'blur(40px)'
     document.documentElement.style.setProperty('--canvas-opacity', '0')
 }
-async function __orteryInitViewer() {
+
+document.addEventListener('DOMContentLoaded', async () => {
     if (!checkWebGL()) {
         showNotSupportWebGL()
         return
     }
+    if (settings.chunkCount > 0) {
+        const base64 = await window.__orteryBootPromise
+        config.contents = fetch(`data:application/octet-stream;base64,${base64}`)
+    } else {
+        config.contents = fetch(settings.contentUrl)
+    }
     const canvas = document.getElementById('application-canvas')
     await main(canvas, config)
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', __orteryInitViewer)
-} else {
-    __orteryInitViewer()
-}
+})

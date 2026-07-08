@@ -212,8 +212,7 @@ async function exportHtml(name, global) {
     }
 
     const injectedScript = `<script>window.sse = { "settings": ${JSON.stringify(orderedSettings)} }<\/script>`
-    const hasChunk = orderedSettings.chunkCount > 0
-    const template = getHtmlTemplate(newVersion, hasChunk)
+    const template = getHtmlTemplate(newVersion)
     const html = template.replace('<!-- INJECT_SCRIPT -->', injectedScript)
 
     const blob = new Blob([html], { type: 'text/html' })
@@ -227,7 +226,7 @@ async function exportHtml(name, global) {
     URL.revokeObjectURL(url)
     global.dataDirty = false
 }
-function getHtmlTemplate(version, hasChunk) {
+function getHtmlTemplate(version) {
     return `
     <!doctype html>
     <html lang="en">
@@ -242,7 +241,6 @@ function getHtmlTemplate(version, hasChunk) {
         <base href />
         <link rel="icon" href="data:," />
         <link rel="stylesheet" href="./data/viewer.css?v=${version}" />
-        <link rel="preload" href="./data/viewer.js?v=${version}" as="script" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -288,7 +286,7 @@ function getHtmlTemplate(version, hasChunk) {
         </div>
     </body>
     <!-- INJECT_SCRIPT -->
-    ${hasChunk ? `<script src="./data/chunk.js?v=${version}"></script>` : `<script src="./data/viewer.js?v=${version}"></script>`}
+    <script src="./data/viewer.js?v=${version}"></script>
     </html> 
     `
 }
