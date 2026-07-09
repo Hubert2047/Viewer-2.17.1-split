@@ -1,5 +1,6 @@
-<!doctype html>
-<html lang="en">
+
+    <!doctype html>
+    <html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -10,7 +11,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=6" />
+        <link rel="stylesheet" href="./data/viewer.css?v=8" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -40,23 +41,22 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-            <svg class="progress-ring" viewBox="0 0 200 200">
-                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                <circle
-                    id="progressRingFg"
-                    class="progress-ring-fg"
-                    cx="100"
-                    cy="100"
-                    r="86"
-                    fill="none"
-                    stroke-dasharray="540.35"
-                    stroke-dashoffset="540.35" />
+        <svg class="progress-ring" viewBox="0 0 200 200">
+            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+            <circle
+                id="progressRingFg"
+                class="progress-ring-fg"
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke-dasharray="540.35"
+                stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>
-        window.sse = { settings: { ref: '', model: 'spherical', contentUrl: 'saw.ply', v: 6, setupStep: 4 } }
-    </script>
-    <script src="./data/viewer.js?v=6"></script>
-</html>
+    <script>window.sse = { "settings": {"ref":"","model":"spherical","contentUrl":"saw.ply","v":8,"spin":{"enabled":false,"continuous":true,"autoStart":false,"direction":"cw","axis":"y","speed":50,"rotation":{"x":180,"y":13.100000000000007,"z":180}},"messages":[{"id":"8c3a6dc2-e4e3-4cc7-8ffb-e69a493f4f2b","autoPlay":{"time":3},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-3.07150404510291,"y":-19.762234258081353,"z":-8.67675348042457},"botRight":{"x":-1.4727395891619732,"y":-16.33516653831395,"z":-12.903858193549066},"fontSize":16},"focus":{"position":{"x":-5.416169609148472,"y":-16.98635820226076,"z":-7.964484296219691}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-5.401764766530314,"y":-17.65182599767601,"z":-7.564907880713031},"botRight":{"x":-5.440366046444328,"y":-16.327810751746924,"z":-8.374261831081924}},"entityInfo":{"rotation":{"x":-0.6662561968639461,"y":-0.21446808844526918,"z":0.6785360263492526,"w":0.2229237092038205},"position":{"x":1.4331418453090192,"y":2.379668625408904,"z":-5.733377489060916},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}},{"id":"9ce4fe23-09c0-40bf-98a1-abf8dacebbf5","autoPlay":{"time":3},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":8.223926097501007,"y":-6.414714426749789,"z":3.8898089864608307},"botRight":{"x":10.394305763252973,"y":0.01598392419050576,"z":3.545419055192463},"fontSize":16},"focus":{"position":{"x":4.729189634755169,"y":-4.649064110612631,"z":1.5240043259586642}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":4.810954589374436,"y":-5.569442095042567,"z":1.750419305784586},"botRight":{"x":4.657952426109162,"y":-3.736551579725039,"z":1.283240941437441}},"entityInfo":{"rotation":{"x":-0.878230777705621,"y":-0.35080738994157423,"z":0.058116401668195185,"w":0.31979268301526453},"position":{"x":7.672453367780461,"y":4.722352750185869,"z":-4.552206055093436},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}},{"id":"cd80b4f1-3b37-41f2-9582-5902da56d541","autoPlay":{"time":3},"button":{"title":"message3"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message3","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":7.619795161905293,"y":-5.127782481466635,"z":13.35559816266203},"botRight":{"x":8.420547713881213,"y":-0.2107002081329945,"z":15.470020318229537},"fontSize":16},"focus":{"position":{"x":8.57633337420117,"y":-3.303347520643504,"z":10.240282165154332}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":8.42041890095279,"y":-4.0545453354588545,"z":10.275490331980926},"botRight":{"x":8.745052488009897,"y":-2.5608440062678577,"z":10.208784164262443}},"entityInfo":{"rotation":{"x":-0.756923468059256,"y":-0.09301225881034471,"z":-0.49726306295387984,"w":0.41369678441326063},"position":{"x":5.897962005399827,"y":3.156684595241826,"z":-4.4496016218998955},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}},{"id":"a9175cb0-d2ec-4701-b79c-61a7a2cefdd2","autoPlay":{"time":3},"button":{"title":"message4"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message4","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-3.743859401906585,"y":-9.303379964101905,"z":-4.879921125698412},"botRight":{"x":-6.440987147180051,"y":-6.504594255800422,"z":-10.600412294871546},"fontSize":16},"focus":{"position":{"x":-4.839580579136026,"y":-5.190933523162002,"z":-3.0617530147832905}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-4.462207742047456,"y":-5.898891771281865,"z":-2.555179113320203},"botRight":{"x":-5.231059842382255,"y":-4.495027377466666,"z":-3.5614241544770584}},"entityInfo":{"rotation":{"x":0.33171254324705124,"y":0.1275576500986031,"z":-0.9322683693316336,"w":-0.06761303201034742},"position":{"x":0.4547493834939938,"y":0.8090320634422721,"z":-3.111224483447086},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.23791229864773522,"y":11.74646714481207,"z":1.395249752187996},"pitch":0,"yaw":0}}],"setupStep":4} }</script>
+    <script src="./data/viewer.js?v=8"></script>
+    </html> 
+    

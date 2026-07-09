@@ -181,8 +181,8 @@ class OtherController {
                 case 'spin':
                     this.reset({
                         onResetFinished: () => {
+                            this.setSpinSettings()
                             this.isSpin360Loop = false
-                            this.spinSpeed = this.settings.spin.speed
                             this.isRecordSpin = true
                             this.startRecording({
                                 ...data,
