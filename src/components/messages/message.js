@@ -735,7 +735,7 @@ class Messages {
         }
         this.updateProgress()
     }
-    
+
     updateProgress = () => {
         if (!this._audio || !this._audio.duration) return
         const pct = this._audio.currentTime / this._audio.duration

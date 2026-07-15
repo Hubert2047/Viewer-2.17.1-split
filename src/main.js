@@ -2952,7 +2952,7 @@ class Viewer {
             if (removedSplats?.length > 0) {
                 const {
                     bbox: { center, halfExtents },
-                } = calBbox(modelEntity, removedSplats)
+                } = calBbox({ modelEntity, removedSplats })
                 sceneBound.center.copy(center)
                 sceneBound.halfExtents.copy(halfExtents)
                 sceneBound.setFromTransformedAabb(sceneBound, results[0].getWorldTransform())

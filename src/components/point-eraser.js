@@ -12,6 +12,8 @@ function makePointEraser(global) {
     let selectedAlpha = 1
     let unselectedColorHex = '#F95F4D'
     let unselectedAlpha = 1
+    let aabbColor = new Color(1, 0, 0, 1)
+    let currentAabb = null
     if (modelEntity && !currentControl) {
         currentControl = new SelectionController({
             canvas: app.graphicsDevice.canvas,
@@ -22,6 +24,7 @@ function makePointEraser(global) {
             settings,
         })
         applyShaderModes()
+        app.renderNextFrame = true
     }
 
     // ── Remove noise ────────────────────────────────────────
@@ -33,9 +36,9 @@ function makePointEraser(global) {
 
     desGroup.appendChild(hint)
     // ── Point view ────────────────────────────────────────
-    const viewGroup = makeSectionGroup('Point view')
+    const viewGroup = makeSectionGroup('View')
 
-    const splatModeRow = makeRow({ title: 'Point Cloud Mode' })
+    const splatModeRow = makeRow({ title: 'Cloud Mode' })
     const spatModeToggle = makeToggle({
         initialValue: isShowSplatMode,
         onChange: (value) => {
@@ -54,21 +57,6 @@ function makePointEraser(global) {
     //     },
     // })
     // showSplatRow.appendChild(showSplatToggle)
-
-    const pointSizeRow = makeRow({ title: 'Point Size' })
-    const pointSizeInput = makeInput({
-        type: 'number',
-        value: 4,
-        min: 1,
-        max: 20,
-        name: 'slider-number',
-        className: 'small-input',
-        onChange: (v) => {
-            modelEntity.gsplat.material.setParameter('splat_point_size', v)
-            app.renderNextFrame = true
-        },
-    })
-    pointSizeRow.el.appendChild(pointSizeInput)
 
     const { row: backgroundRow } = makeColorPickerDropdown({
         label: 'Background Color',
@@ -90,7 +78,10 @@ function makePointEraser(global) {
             selectedColorHex = `rgb(${r},${g},${b})`
             selectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
+            modelEntity.gsplat.material.setParameter(
+                'splat_selected_color',
+                normalizeColor(selectedColorHex, selectedAlpha),
+            )
             app.renderNextFrame = true
         },
     })
@@ -105,14 +96,16 @@ function makePointEraser(global) {
             unselectedColorHex = `rgb(${r},${g},${b})`
             unselectedAlpha = alpha
             if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
+            modelEntity.gsplat.material.setParameter(
+                'splat_unselected_color',
+                normalizeColor(unselectedColorHex, unselectedAlpha),
+            )
             app.renderNextFrame = true
         },
     })
 
     viewGroup.appendChild(splatModeRow.el)
     // viewGroup.appendChild(showSplatRow)
-    viewGroup.appendChild(pointSizeRow.el)
     viewGroup.appendChild(backgroundRow)
     viewGroup.appendChild(selectedColorRow)
     viewGroup.appendChild(unselectedColorRow)
@@ -167,13 +160,6 @@ function makePointEraser(global) {
         modeRow.appendChild(btn)
         return btn
     })
-    function resetSelection() {
-        events.fire('point-eraser:active', false)
-        activeMode = null
-        if (activeBtn) activeBtn.classList.remove('active')
-        brushSizeRow.setShow(false)
-        currentControl.setMode(null)
-    }
 
     modeGroup.appendChild(modeRow)
 
@@ -192,19 +178,8 @@ function makePointEraser(global) {
         },
     })
     brushSizeRow.el.appendChild(brushInput)
+    brushSizeRow.setShow(false)
     modeGroup.appendChild(brushSizeRow.el)
-
-    // ── Stats ────────────────────────────────────────────────────
-    // const statsGroup = makeSectionGroup('Statistics')
-
-    // const erasedRow = makeRow({ title: 'Erased' })
-    // const erasedVal = document.createElement('span')
-    // erasedVal.classList.add('row-value')
-    // erasedVal.style.color = 'var(--primary)'
-    // erasedVal.textContent = '0'
-    // erasedRow.appendChild(erasedVal)
-
-    // statsGroup.appendChild(erasedRow)
 
     // ── Actions ──────────────────────────────────────────────────
     const actionsGroup = makeSectionGroup('')
@@ -254,6 +229,7 @@ function makePointEraser(global) {
             events.fire('point-eraser:reset')
             updateUndoRedoButtons()
             resetSelection()
+            events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
         },
     })
 
@@ -274,16 +250,22 @@ function makePointEraser(global) {
     container.appendChild(desGroup)
     container.appendChild(viewGroup)
     container.appendChild(modeGroup)
-    // container.appendChild(statsGroup)
     container.appendChild(actionsGroup)
     if (currentControl) updateUndoRedoButtons()
+    function resetSelection() {
+        events.fire('point-eraser:active', false)
+        activeMode = null
+        if (activeBtn) activeBtn.classList.remove('active')
+        brushSizeRow.setShow(false)
+        currentControl.setMode(null)
+    }
     function applyShaderModes() {
         const mat = modelEntity.gsplat.material
 
         if (isShowSplatMode) {
             mat.shaderChunks.glsl.set('gsplatCornerVS', CHUNK_CORNER_POINT)
             mat.shaderChunks.glsl.set('gsplatModifyVS', CHUNK_MODIFY_POINT)
-            mat.setParameter('splat_point_size', 4.0)
+            mat.setParameter('splat_point_size', 5.0)
             mat.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
             mat.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
             if (currentControl) {
@@ -304,17 +286,7 @@ function makePointEraser(global) {
         mat.clearVariants()
         app.renderNextFrame = true
     }
-    const handles = [
-        events.on('inputEvent:redo', onRedo),
-        events.on('inputEvent:undo', onUndo),
-        events.on('model:loaded', onModelLoaded),
-        events.on('point-selection', onPointSelection),
-        events.on('inputEvent:enter', applyDeleteSelectedPoints),
-        events.on('inputEvent:delete', applyDeleteSelectedPoints),
-        events.on('inputEvent:reset-camera', () => {
-            resetSelection()
-        }),
-    ]
+
     function onPointSelection(selectedSet) {
         if (!selectedSet) return
         applyBtn.disabled = selectedSet.size === 0
@@ -333,6 +305,7 @@ function makePointEraser(global) {
             if (currentControl._activeStrategy) {
                 currentControl._activeStrategy._projDirty = true
             }
+            events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
         }
     }
     function onModelLoaded() {
@@ -358,14 +331,136 @@ function makePointEraser(global) {
         undoBtn.disabled = currentControl._historyIndex <= 0
         redoBtn.disabled = currentControl._historyIndex >= currentControl._history.length - 1
     }
+
+    const layers = app.scene.layers
+    const worldLayer = layers.getLayerByName('World')
+    const layerAabbCorners = new Layer({ name: 'AabbCorners' })
+    const worldIndex = layers.getOpaqueIndex(worldLayer)
+    layers.insert(layerAabbCorners, worldIndex)
+    camera.camera.layers = [...camera.camera.layers, layerAabbCorners.id]
+
+    const cornerLineMesh = new Mesh(app.graphicsDevice)
+    let cornerLineMat = new StandardMaterial()
+    cornerLineMat.diffuse = new Color(0, 0, 0)
+    cornerLineMat.blendType = BLEND_NORMAL
+    cornerLineMat.depthTest = true
+    cornerLineMat.depthWrite = true
+    cornerLineMat.useLighting = false
+    cornerLineMat.cull = CULLFACE_NONE
+    cornerLineMat.emissive = aabbColor
+    cornerLineMat.depthBias = -0.1
+    cornerLineMat.slopeDepthBias = -0.1
+    cornerLineMat.alphaToCoverage = true
+    cornerLineMat.update()
+
+    const cornerEntity = new Entity('aabb-corners')
+    app.root.addChild(cornerEntity)
+    const cornerMi = new MeshInstance(cornerLineMesh, cornerLineMat)
+    cornerMi.cull = false
+    cornerEntity.addComponent('render', {
+        layers: [layerAabbCorners.id],
+        meshInstances: [cornerMi],
+    })
+    cornerEntity.enabled = false
+
+    function updateAabb() {
+        const { bbox } = calBbox({ modelEntity, removedSplats: settings.removedSplats, opacityThreshold: -1 })
+        if (!isFinite(bbox.halfExtents.x) || bbox.halfExtents.x < 0) {
+            currentAabb = null
+            return
+        }
+
+        const PADDING_RATIO = 0.02
+        const paddedHalfExtents = new Vec3(
+            bbox.halfExtents.x * (1 + PADDING_RATIO),
+            bbox.halfExtents.y * (1 + PADDING_RATIO),
+            bbox.halfExtents.z * (1 + PADDING_RATIO),
+        )
+
+        currentAabb = {
+            center: bbox.center,
+            halfExtents: paddedHalfExtents,
+        }
+    }
+    function buildCornerPositions() {
+        if (!currentAabb) updateAabb()
+        const { center, halfExtents } = currentAabb
+        if (!center || !halfExtents) return null
+        const worldMat = modelEntity.getWorldTransform()
+        const tp = (v) => {
+            const out = new Vec3()
+            worldMat.transformPoint(v, out)
+            return out
+        }
+        const sizeX = halfExtents.x * 0.2
+        const sizeY = halfExtents.y * 0.2
+        const sizeZ = halfExtents.z * 0.2
+        const pos = []
+        const signs = [-1, 1]
+
+        signs.forEach((sx) => {
+            signs.forEach((sy) => {
+                signs.forEach((sz) => {
+                    const corner = new Vec3(
+                        center.x + sx * halfExtents.x,
+                        center.y + sy * halfExtents.y,
+                        center.z + sz * halfExtents.z,
+                    )
+                    const armX = new Vec3(corner.x - sx * sizeX, corner.y, corner.z)
+                    const armY = new Vec3(corner.x, corner.y - sy * sizeY, corner.z)
+                    const armZ = new Vec3(corner.x, corner.y, corner.z - sz * sizeZ)
+
+                    const wCorner = tp(corner)
+                    const wArmX = tp(armX)
+                    const wArmY = tp(armY)
+                    const wArmZ = tp(armZ)
+
+                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmX.x, wArmX.y, wArmX.z)
+                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmY.x, wArmY.y, wArmY.z)
+                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmZ.x, wArmZ.y, wArmZ.z)
+                })
+            })
+        })
+
+        return pos
+    }
+    function drawAabbCorners() {
+        if (!modelEntity) {
+            cornerEntity.enabled = false
+            return
+        }
+        const pos = buildCornerPositions()
+        if (!pos) {
+            cornerEntity.enabled = false
+            return
+        }
+        cornerEntity.enabled = true
+        cornerLineMesh.setPositions(pos)
+        cornerLineMesh.update(PRIMITIVE_LINES, false)
+    }
+    const handles = [
+        events.on('inputEvent:redo', onRedo),
+        events.on('inputEvent:undo', onUndo),
+        events.on('model:loaded', onModelLoaded),
+        events.on('point-selection', onPointSelection),
+        events.on('point-eraser:deleted-set-changed', updateAabb),
+        events.on('inputEvent:enter', applyDeleteSelectedPoints),
+        events.on('inputEvent:delete', applyDeleteSelectedPoints),
+        events.on('inputEvent:reset-camera', () => {
+            resetSelection()
+        }),
+    ]
+    const updateAabbHandle = app.on('framerender', drawAabbCorners)
     container.cleanup = () => {
+        cornerEntity.enabled = false
+        updateAabbHandle.off()
         handles.forEach((h) => events.offByHandle(h))
         resetSelection()
         currentControl?.destroy()
         isShowSplatMode = false
         isShowSplatRing = false
         applyShaderModes()
-        updateVisiblePoints(settings.removedSplats)
+        setVisiblePoints(settings.removedSplats)
         events.fire('point-eraser:completed')
     }
     return container

@@ -407,7 +407,7 @@ class OtherController {
         this.events.on('point-eraser:commit-delete', (removedSplats) => {
             const {
                 bbox: { center, halfExtents },
-            } = calBbox(modelEntity, removedSplats)
+            } = calBbox({ modelEntity, removedSplats })
             this.syncPivotPoint(center)
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)

@@ -155,19 +155,33 @@ function getSpinAxes(r) {
 }
 let visiblePoints = null
 
-async function updateVisiblePoints(removedSplats) {
-    await getVisiblePointsAsync({ modelEntity, removedSplats })
+async function setVisiblePoints(removedSplats) {
+    visiblePoints = getVisiblePointsAsync({ modelEntity, removedSplats })
 }
-
+function updateVisiblePoints(newVisiblePoints) {
+    visiblePoints = newVisiblePoints
+}
+async function resolveVisiblePoints() {
+    if (visiblePoints instanceof Promise) {
+        visiblePoints = await visiblePoints
+    }
+    return visiblePoints
+}
 async function getUpdateBoxSize(rotation, removedSplats) {
     if (!visiblePoints) {
-        await updateVisiblePoints(removedSplats)
+        await setVisiblePoints(removedSplats)
     }
+    await resolveVisiblePoints()
     const result = await getBoxSize(visiblePoints, rotation)
     return result
 }
 
-function getVisiblePointsAsync({ modelEntity, removedSplats }, chunkSize = 150000) {
+function getVisiblePointsAsync({
+    modelEntity,
+    removedSplats,
+    chunkSize = 150000,
+    opacityThreshold = OPACITY_THRESHOLD,
+}) {
     return new Promise((resolve) => {
         const gsplatInstance = modelEntity.gsplat.instance.meshInstance.gsplatInstance
         const gsplatData = gsplatInstance.resource.gsplatData
@@ -188,14 +202,13 @@ function getVisiblePointsAsync({ modelEntity, removedSplats }, chunkSize = 15000
             for (; i < end; i++) {
                 if (deletedSet.has(i)) continue
                 iter.read(i)
-                if (c.w > OPACITY_THRESHOLD) {
+                if (c.w > opacityThreshold) {
                     visibleCenters.push(p.x, p.y, p.z)
                 }
             }
             if (i < count) {
                 requestAnimationFrame(step)
             } else {
-                visiblePoints = new Float32Array(visibleCenters)
                 resolve(new Float32Array(visibleCenters))
             }
         }
@@ -228,7 +241,7 @@ function getModelWeight(modelEntity, removedSplats) {
 
     return new Vec3(wx / totalWeight, wy / totalWeight, wz / totalWeight)
 }
-function calBbox(modelEntity, removedSplats) {
+function calBbox({ modelEntity, removedSplats, opacityThreshold = OPACITY_THRESHOLD }) {
     const gsplatData = modelEntity.gsplat.instance.meshInstance.gsplatInstance.resource.gsplatData
     const count = gsplatData.numSplats
     const p = new Vec3()
@@ -248,7 +261,7 @@ function calBbox(modelEntity, removedSplats) {
     for (let i = 0; i < count; i++) {
         if (deletedSet.has(i)) continue
         iter.read(i)
-        if (c.w > OPACITY_THRESHOLD) {
+        if (c.w > opacityThreshold) {
             minX = Math.min(minX, p.x)
             maxX = Math.max(maxX, p.x)
             minY = Math.min(minY, p.y)

@@ -151,6 +151,7 @@ class OOBBWorker {
             rotation: orientQuat,
             removedSplats: settings.removedSplats,
         })
+        updateVisiblePoints(localPoints)
         this.global.oobbInfoPromise = this.run(localPoints, orientQuat).then((data) => this._applyResult(data))
     }
     destroy() {

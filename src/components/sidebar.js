@@ -405,6 +405,7 @@ function makeSidebar(global, dom) {
     events.on('model:loaded', async () => oobbWorker.runOOBB(settings))
     events.on('orientation:reset', async () => oobbWorker.runOOBB(settings))
     events.on('orientation:added', async () => oobbWorker.runOOBB(settings))
+    events.on('point-eraser:completed', async () => oobbWorker.runOOBB(settings))
 
     if (!global.settings.setupStep) global.settings.setupStep = 1
 

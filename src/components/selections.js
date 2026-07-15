@@ -724,6 +724,7 @@ class SelectionController {
         this.app.renderNextFrame = true
 
         this.events.fire('point-selection', this._selectedSet)
+        this.events.fire('point-eraser:deleted-set-changed', this.settings.removedSplats)
     }
     _onUndo() {
         if (this._historyIndex <= 0) return
