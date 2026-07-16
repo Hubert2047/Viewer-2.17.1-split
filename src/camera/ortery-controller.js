@@ -416,23 +416,29 @@ class OtherController {
             this.recalBoundingBox(sceneBound)
         })
         this.events.on('point-eraser:completed', () => {
-            this.reset()
+            this.reset({
+                onResetFinished: () => {
+                    this.originEntityPos = modelEntity.localPosition.clone()
+                    this.originEntityRotation = modelEntity.localRotation.clone()
+                },
+            })
         })
         this.events.on('point-eraser:reset', () => {
             const originTransform = new Mat4().setTRS(
-                this.originEntityPos,
-                this.originEntityRotation,
+                this.initialModelPosition,
+                this.initialModelRotation,
                 modelEntity.getLocalScale(),
             )
             const sceneBound = new BoundingBox()
             const gsplatBbox = modelEntity.gsplat.customAabb
             sceneBound.setFromTransformedAabb(gsplatBbox, originTransform)
-            this.centerPivot = sceneBound.center
-            this.baseRotation = this.originEntityRotation.clone()
-            this.basePosition = this.originEntityPos.clone()
+            this.baseRotation = this.initialModelRotation.clone()
+            this.basePosition = this.initialModelPosition.clone()
+            this.originEntityPos = this.initialModelPosition.clone()
+            this.originEntityRotation = this.initialModelRotation.clone()
             this.currentYaw = 0
             this.currentPitch = this.minPitch ?? 0
-            this.centerPivot = sceneBound.center
+            this.centerPivot = sceneBound.center.clone()
             this.recalBoundingBox(sceneBound)
             this.reset()
         })
@@ -602,8 +608,9 @@ class OtherController {
             this.basePosition = this.originEntityPos.clone()
             this.baseRotation = this.originEntityRotation.clone()
         }
+
         this.setupTransition({
-            transitionMode: transitionMode ?? (this.isEditingOrientation ? 'spherical' : this.originModel),
+            transitionMode: transitionMode ?? this.originModel,
             startPose: {
                 focus: startFocus,
                 rotation: modelEntity.localRotation.clone(),
@@ -802,7 +809,10 @@ class OtherController {
         } else {
             this._snapCameraToOrigin = true
             this.lerpPositionY = undefined
-            this.reset({ useInitview: false })
+            this.centerPivot = this.originBboxPivot.clone()
+            this.basePosition = this.originEntityPos.clone()
+            this.baseRotation = this.originEntityRotation.clone()
+            this.reset({ useInitview: false, transitionMode: 'spherical' })
         }
         this.currentYaw = 0
         this.currentPitch = 0
@@ -1406,7 +1416,6 @@ class OtherController {
             pose.distance = 100
             return
         }
-
         const forward = Vec33.FORWARD.clone().transformQuat(this.cameraRotation).normalize()
         const newPos = this.focus.clone().sub(forward.mulScalar(this.distance))
         pose.position = newPos

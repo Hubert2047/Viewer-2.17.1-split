@@ -154,31 +154,17 @@ function getSpinAxes(r) {
     }
 }
 let visiblePoints = null
-
-async function setVisiblePoints(removedSplats) {
-    visiblePoints = getVisiblePointsAsync({ modelEntity, removedSplats })
-}
-function updateVisiblePoints(newVisiblePoints) {
-    visiblePoints = newVisiblePoints
-}
-async function resolveVisiblePoints() {
-    if (visiblePoints instanceof Promise) {
-        visiblePoints = await visiblePoints
-    }
-    return visiblePoints
-}
 async function getUpdateBoxSize(rotation, removedSplats) {
     if (!visiblePoints) {
-        await setVisiblePoints(removedSplats)
+        visiblePoints = await getVisiblePointsAsync({ modelEntity, removedSplats })
     }
-    await resolveVisiblePoints()
-    const result = await getBoxSize(visiblePoints, rotation)
-    return result
+    return getBoxSize(visiblePoints, rotation)
 }
 
 function getVisiblePointsAsync({
     modelEntity,
     removedSplats,
+    rotation,
     chunkSize = 150000,
     opacityThreshold = OPACITY_THRESHOLD,
 }) {
@@ -196,14 +182,20 @@ function getVisiblePointsAsync({
         const deletedSet = new Set(removedSplats || [])
         const visibleCenters = []
         let i = 0
-
+        const tmp = new Vec3()
         function step() {
             const end = Math.min(i + chunkSize, count)
             for (; i < end; i++) {
                 if (deletedSet.has(i)) continue
                 iter.read(i)
                 if (c.w > opacityThreshold) {
-                    visibleCenters.push(p.x, p.y, p.z)
+                    if (rotation) {
+                        tmp.set(p.x, p.y, p.z)
+                        rotation.transformVector(tmp, tmp)
+                        visibleCenters.push(tmp.x, tmp.y, tmp.z)
+                    } else {
+                        visibleCenters.push(p.x, p.y, p.z)
+                    }
                 }
             }
             if (i < count) {

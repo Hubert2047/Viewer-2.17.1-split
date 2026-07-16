@@ -119,7 +119,7 @@ class OOBBWorker {
     run(localPoints, orientQuat) {
         return new Promise((resolve) => {
             this._worker.onmessage = ({ data }) => resolve(data)
-            const buffer = localPoints.buffer
+            const buffer = localPoints.buffer.slice(0)
             this._worker.postMessage(
                 {
                     pointsBuffer: buffer,
@@ -140,7 +140,7 @@ class OOBBWorker {
         this.global.oobbInfo = { finalQuat, posInLocal, size: result.size }
     }
 
-    async runOOBB() {
+    async runOOBB(settings) {
         this.global.oobbInfo = null
         const orientPose = settings.orientation.pose
         const orientQuat = orientPose
@@ -151,7 +151,6 @@ class OOBBWorker {
             rotation: orientQuat,
             removedSplats: settings.removedSplats,
         })
-        updateVisiblePoints(localPoints)
         this.global.oobbInfoPromise = this.run(localPoints, orientQuat).then((data) => this._applyResult(data))
     }
     destroy() {

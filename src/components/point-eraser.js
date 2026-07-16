@@ -31,7 +31,7 @@ function makePointEraser(global) {
     const desGroup = makeSectionGroup('Remove Noise')
 
     const hint = document.createElement('p')
-    hint.textContent = 'Select and delete unwanted points such as floating artifacts or background clutter.'
+    hint.textContent = 'Select and delete unwanted points in the 3D spatial background'
     hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
 
     desGroup.appendChild(hint)
@@ -220,6 +220,7 @@ function makePointEraser(global) {
             settings.removedSplats = []
             applyPointMapping({ modelEntity, deletedSet: new Set() })
             currentControl.clearSelectionStateOnly()
+            currentControl._pushHistory()
             deletedSet = new Set()
             applyBtn.disabled = true
             resetBtn.disabled = true
@@ -460,7 +461,6 @@ function makePointEraser(global) {
         isShowSplatMode = false
         isShowSplatRing = false
         applyShaderModes()
-        setVisiblePoints(settings.removedSplats)
         events.fire('point-eraser:completed')
     }
     return container
