@@ -1216,22 +1216,22 @@ class OtherController {
         if (this.isEditMessage || this.isMeasurementDrag || (this.global.recording && this.recordPattern !== 'none'))
             return
         const [x, y, z] = move
-        if (move[2] !== 0) {
+        if (z !== 0) {
             if (
                 this.model === 'cylindrical' &&
                 Array.isArray(this.settings.cameras) &&
                 this.settings.cameras.length > 0 &&
                 !this.isEditingOrientation
             ) {
-                this.fov = this.clampFov(this.fov + this.fov * move[2] * 0.75)
+                this.fov = this.clampFov(this.fov + this.fov * z * 0.75)
             } else {
-                this.distance = this.clampDistance(this.distance + this.distance * move[2])
+                this.distance = this.clampDistance(this.distance + this.distance * z)
             }
         }
         if (x !== 0 || y !== 0 || z !== 0) {
             if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
-                const deltaY = move[1] * 0.75
-                const deltaX = move[0] * 0.75
+                const deltaX = x * 0.75
+                const deltaY = y * 0.75
 
                 modelEntity.localPosition.y -= deltaY
                 this.basePosition.y -= deltaY
@@ -1251,10 +1251,9 @@ class OtherController {
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
             } else {
-                const speed = this.model === 'cylindrical' ? 2 : 1
-                v$2.copy(this.rightCam).mulScalar(move[0] * speed)
+                v$2.copy(this.rightCam).mulScalar(x)
                 this.focus.add(v$2)
-                v$2.copy(this.upCam).mulScalar(move[1] * speed)
+                v$2.copy(this.upCam).mulScalar(y)
                 this.focus.add(v$2)
             }
             this.events.fire('camera:moved')
