@@ -292,7 +292,8 @@ class RectStrategy extends BaseStrategy {
         this._curY = 0
     }
 
-    onPointerDown(x, y) {
+    onPointerDown(x, y, e) {
+        if (e.button !== 0) return
         this._isDown = true
         this._startX = x
         this._startY = y
@@ -301,6 +302,7 @@ class RectStrategy extends BaseStrategy {
     }
 
     onPointerMove(x, y) {
+        if (!this._isDown) return
         this._curX = x
         this._curY = y
     }
@@ -348,7 +350,8 @@ class LassoStrategy extends BaseStrategy {
         this._points = []
     }
 
-    onPointerDown(x, y) {
+    onPointerDown(x, y, e) {
+        if (e.button !== 0) return
         this._isDown = true
         this._points = [{ x, y }]
     }
