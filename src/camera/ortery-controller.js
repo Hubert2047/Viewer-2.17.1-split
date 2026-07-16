@@ -989,7 +989,6 @@ class OtherController {
             },
             lerpDuration: NORMAL_FADE_TIME,
         })
-        this.events.fire('orientation:reset')
     }
     applyManualOrientation() {
         this.hideHorizontalLine()
