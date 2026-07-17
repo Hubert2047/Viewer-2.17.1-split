@@ -1,5 +1,5 @@
 class MessageEditorUI {
-    isCreatinMessage = false
+    isCreatingMessage = false
     constructor(body, { global, dom }) {
         this.body = body
         this.dom = dom
@@ -19,7 +19,7 @@ class MessageEditorUI {
             this.events.on('message:add-cancelled', () => {
                 document.body.style.cursor = 'default'
                 this.events.fire('message:editing', false)
-                this.isCreatinMessage = false
+                this.isCreatingMessage = false
                 this.updateAddIcon(false)
             }),
             this.events.on('message:update-ui-data', (data) => {
@@ -75,13 +75,13 @@ class MessageEditorUI {
         this.body.appendChild(header)
     }
     onAdd(e) {
-        if (this.isCreatinMessage) {
+        if (this.isCreatingMessage) {
             this.events.fire('message:add-cancelled')
             this.updateAddIcon(false)
             return
         }
         document.body.style.cursor = 'crosshair'
-        this.isCreatinMessage = true
+        this.isCreatingMessage = true
         this.events.fire('message:editing', true)
         this.events.fire('message:selected', null)
 
@@ -89,7 +89,7 @@ class MessageEditorUI {
 
         this.handles.push(
             this.events.on('pointerup', (e) => {
-                if (!this.isCreatinMessage) return
+                if (!this.isCreatingMessage) return
                 const rect = this.dom.ui.getBoundingClientRect()
                 const mouseX = e.clientX - rect.left
                 const mouseY = e.clientY - rect.top
@@ -101,7 +101,7 @@ class MessageEditorUI {
                 })
                 this.events.fire('message:add', { position })
                 document.body.style.cursor = 'default'
-                this.isCreatinMessage = false
+                this.isCreatingMessage = false
                 this.updateAddIcon(false)
             }),
         )

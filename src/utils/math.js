@@ -660,7 +660,12 @@ function mergeSettings(settings, defaultSettings) {
     if (!['cylindrical', 'spherical', 'hemispherical'].includes(merged.model)) {
         merged.model = 'spherical'
     }
-    merged.setupStep = Math.max(Math.min(merged.setupStep, MAX_STEP), MIN_STEP)
+    const { messages, dimensions, measurement, initview, spin } = merged
+    if (messages.length > 0 || !!dimensions || !!measurement || !!initview.pose || spin.enabled) {
+        merged.setupStep = MAX_STEP
+    } else {
+        merged.setupStep = Math.max(Math.min(merged.setupStep, MAX_STEP), MIN_STEP)
+    }
     return merged
 }
 function getOBBInfo(rx, ry, rz, count, points) {

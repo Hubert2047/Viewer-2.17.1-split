@@ -79,10 +79,10 @@ class MessagesManager {
                 this.events.fire('info-panel:rebuild')
             }
             this.messages.push(this.createMessage(data))
-            this.events.fire('message:selected', data)
+            this.events.fire('message:selected', data, { skipTransition: true })
             this.events.fire('message:editing', false)
         })
-        this.events.on('message:selected', (selectedData) => {
+        this.events.on('message:selected', (selectedData, opts = {}) => {
             this.stopAutoPlay()
             if (this.activeData && selectedData === null) this.resetActiveMessageBtnName()
             this.activeData = selectedData
@@ -95,7 +95,7 @@ class MessagesManager {
                 const activeMessage = this.messages.find((h) => h.id === selectedData.id)
                 if (this.global.isAutoPlayMessages) this.stopAutoPlay()
                 if (activeMessage) {
-                    this.setActive(activeMessage, NORMAL_FADE_TIME)
+                    this.setActive(activeMessage, NORMAL_FADE_TIME, { skipTransition: opts.skipTransition }) // 👈
                 }
             }
         })
@@ -336,7 +336,8 @@ class MessagesManager {
         this.events.fire('message:editing', false)
         if (this.global.isAutoPlayMessages) this.stopAutoPlay()
     }
-    setActive(message, lerpDuration = 1.5) {
+    setActive(message, lerpDuration = 1.5, options = {}) {
+        const { skipTransition = false } = options
         if (!message || !modelEntity) return
         if (!this.global.recordActive && this.editable && this.activeMessage && message.id !== this.activeMessage?.id) {
             const data = this.settings.messages.find((i) => i.id === this.activeMessage.data.id)
@@ -346,7 +347,7 @@ class MessagesManager {
         if (this.global.recordActive) message?.hide()
         this.activeMessage?.hide()
         message.resetTime()
-        const isSamePose = this.isSamePose(message)
+        const isSamePose = skipTransition || this.isSamePose(message)
         if (this.dom.messageContainer) {
             const btn = message.button.el
             const container = this.dom.messageContainer
