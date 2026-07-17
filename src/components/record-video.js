@@ -5,7 +5,9 @@ function makeRecordSection(el, global) {
     let isRegionVisible = false
     let filename = 'recording'
     let isRecording = false
-
+    let includeMessage = true
+    let includeAudio = true
+    let quality = 'high'
     const srcCanvas = app.graphicsDevice.canvas
 
     const getCanvasRect = () => srcCanvas.getBoundingClientRect()
@@ -296,6 +298,22 @@ function makeRecordSection(el, global) {
     })
     fileNameRow.el.appendChild(fileNameInput)
 
+    const qualityRow = makeRow({ title: 'Quality', className: 'record-quality' })
+    const qualitySelect = makeSelect({
+        options: [
+            { value: 'standard', label: 'Standard' },
+            { value: 'high', label: 'High' },
+            { value: 'ultra', label: 'Ultra' },
+        ],
+        value: quality,
+        onChange: (v) => {
+            quality = v
+        },
+        name: 'record-quality',
+        className: 'record-quality-select',
+    })
+    qualityRow.el.appendChild(qualitySelect.el)
+
     const regionRow = makeRow({ title: 'Region', className: 'record-region' })
     const regionWrap = document.createElement('div')
     regionWrap.style.cssText = 'display:flex; align-items:center; gap:0.25rem;'
@@ -341,6 +359,13 @@ function makeRecordSection(el, global) {
 
     const widthInputEl = regionWrap.querySelectorAll('.record-region-input')[0]
     const heightInputEl = regionWrap.querySelectorAll('.record-region-input')[1]
+
+    const updateToggleVisibility = () => {
+        const show = pattern === 'story'
+        messageToggleRow.setShow(show)
+        audioToggleRow.setShow(show)
+    }
+
     const patternRow = makeRow({ title: 'Pattern' })
     const patternSelect = makeSelect({
         options: [
@@ -351,17 +376,40 @@ function makeRecordSection(el, global) {
         value: pattern,
         onChange: (v) => {
             pattern = v
+            updateToggleVisibility()
         },
         name: 'record-pattern',
         className: 'record-pattern',
     })
     patternRow.el.appendChild(patternSelect.el)
 
+    const messageToggleRow = makeRow({ title: 'Include Message' })
+    const messageToggle = makeToggle({
+        initialValue: includeMessage,
+        onChange: (value) => {
+            includeMessage = value
+        },
+    })
+    messageToggleRow.el.appendChild(messageToggle)
+
+    const audioToggleRow = makeRow({ title: 'Include Audio' })
+    const audioToggle = makeToggle({
+        initialValue: includeAudio,
+        onChange: (value) => {
+            includeAudio = value
+        },
+    })
+    audioToggleRow.el.appendChild(audioToggle)
+
     settingsGroup.appendChild(fileNameRow.el)
-    // settingsGroup.appendChild(fpsRow.el)
+    settingsGroup.appendChild(qualityRow.el)
     settingsGroup.appendChild(patternRow.el)
+    settingsGroup.appendChild(messageToggleRow.el)
+    settingsGroup.appendChild(audioToggleRow.el)
     settingsGroup.appendChild(regionRow.el)
     settingsGroup.appendChild(showRegionRow.el)
+
+    updateToggleVisibility()
 
     const recordGroup = makeSectionGroup('Record')
     const statusBox = document.createElement('div')
@@ -401,7 +449,15 @@ function makeRecordSection(el, global) {
         className: 'primary',
         onClick: () => {
             global.dataDirty = true
-            events.fire('record-setup', { fps, filename, region: getActualRegion(), pattern })
+            events.fire('record-setup', {
+                fps,
+                filename,
+                region: getActualRegion(),
+                pattern,
+                quality,
+                includeAudio: pattern !== 'story' ? false : includeAudio,
+                includeMessage: pattern !== 'story' ? false : includeMessage,
+            })
             startBtn.disabled = true
         },
     })
@@ -454,12 +510,14 @@ function makeRecordSection(el, global) {
         widthInput.disabled = disabled
         heightInput.disabled = disabled
         patternSelect.setDisabled(disabled)
+        qualitySelect.setDisabled(disabled)
         showRegionToggle.setDisabled(disabled)
+        messageToggle.setDisabled(disabled)
+        audioToggle.setDisabled(disabled)
     }
     function updatePatternOptions() {
         const hasStory = global.settings.messages?.length > 0
         const hasSpin = global.settings.spin?.enabled
-
         patternSelect.setOptions([
             { value: 'none', label: 'None' },
             { value: 'spin', label: 'One Full Spin', disabled: !hasSpin },

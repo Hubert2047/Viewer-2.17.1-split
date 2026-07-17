@@ -944,6 +944,7 @@ function makeSelect({ options: _options, value, onChange, className, name } = {}
     let options = _options
     let current = value
     let isOpen = false
+    let hasMeasured = false
 
     const wrap = document.createElement('div')
     wrap.classList.add('sd-wrap')
@@ -969,6 +970,43 @@ function makeSelect({ options: _options, value, onChange, className, name } = {}
     dropdown.style.display = 'none'
     document.body.appendChild(dropdown)
 
+    function applyFixedLabelWidth() {
+        if (hasMeasured) return
+        if (!label.isConnected) return
+
+        const measureWrap = document.createElement('div')
+        measureWrap.className = 'sd-wrap'
+        measureWrap.style.cssText = 'position:fixed;visibility:hidden;top:-9999px;left:-9999px;'
+
+        const measureTrigger = document.createElement('div')
+        measureTrigger.className = 'sd-trigger'
+
+        const measureLabel = document.createElement('span')
+        measureLabel.className = 'sd-label'
+
+        const measureArrow = document.createElement('span')
+        measureArrow.className = 'sd-arrow'
+        measureArrow.textContent = '▾'
+
+        measureTrigger.appendChild(measureLabel)
+        measureTrigger.appendChild(measureArrow)
+        measureWrap.appendChild(measureTrigger)
+        document.body.appendChild(measureWrap)
+
+        let max = 0
+        for (const opt of options) {
+            const lbl = typeof opt === 'object' ? opt.label : opt
+            measureLabel.textContent = lbl
+            max = Math.max(max, measureLabel.scrollWidth)
+        }
+
+        measureWrap.remove()
+        if (max > 0) {
+            label.style.minWidth = max + 'px'
+            hasMeasured = true
+        }
+    }
+
     function renderLabel() {
         const found = options.find((o) => (typeof o === 'object' ? o.value : o) === String(current))
         label.textContent = found ? (typeof found === 'object' ? found.label : found) : ''
@@ -986,6 +1024,7 @@ function makeSelect({ options: _options, value, onChange, className, name } = {}
     }
 
     function openDropdown() {
+        applyFixedLabelWidth()
         dropdown.innerHTML = ''
         options.forEach((opt) => {
             const val = typeof opt === 'object' ? opt.value : opt
@@ -1006,7 +1045,7 @@ function makeSelect({ options: _options, value, onChange, className, name } = {}
             })
             dropdown.appendChild(item)
         })
-        dropdown.style.display = 'block'
+        dropdown.style.display = 'flex'
         requestAnimationFrame(positionDropdown)
         arrow.style.transform = 'rotate(180deg)'
         trigger.classList.add('sd-open')
@@ -1044,10 +1083,25 @@ function makeSelect({ options: _options, value, onChange, className, name } = {}
     const getValue = () => current
     const setOptions = (newOptions) => {
         options = newOptions
+        hasMeasured = false
         renderLabel()
+        applyFixedLabelWidth()
         if (isOpen) openDropdown()
     }
+
     renderLabel()
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        requestAnimationFrame(() => requestAnimationFrame(applyFixedLabelWidth))
+    } else {
+        window.addEventListener(
+            'DOMContentLoaded',
+            () => {
+                requestAnimationFrame(applyFixedLabelWidth)
+            },
+            { once: true },
+        )
+    }
 
     return { el: wrap, setValue, getValue, setDisabled, setOptions }
 }
@@ -1066,12 +1120,10 @@ function makeTabs({ tabs, width = 100, height = 100, className, onTabChange }) {
     content.className = 'tab-content'
 
     const render = (index) => {
-        // clear active UI
         header.querySelectorAll('.tab-btn').forEach((btn, i) => {
             btn.classList.toggle('active', i === index)
         })
 
-        // clear content
         content.innerHTML = ''
         const tab = tabs[index]
 

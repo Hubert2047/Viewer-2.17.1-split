@@ -81,7 +81,7 @@ class Messages {
             e.preventDefault()
         })
     }
-    createAudioBtn(checkAutoPlay = false) {
+    createAudioBtn() {
         if (this._audioBtn) this._audioBtn.remove()
         if (!this.data.audio?.fileName) return
         if (!this.data.audio?.show) return
@@ -175,7 +175,7 @@ class Messages {
             }
             this._isPlaying = false
             if (this.data.audio?.fileName && this.data.audio?.show) {
-                this.createAudioBtn(true)
+                this.createAudioBtn()
             }
             return
         }
@@ -342,7 +342,6 @@ class Messages {
         this.textContentSpan.style.fontWeight = this.data.text.bold ? 'bold' : 'normal'
         this.textContentSpan.style.fontStyle = this.data.text.italic ? 'italic' : 'normal'
         this.div.style.backgroundColor = transparentColor(this.data.text.background, this.data.text.backgroundAlpha)
-        // this.div.style.fontFamily = `"${this.data.text.font}", sans-serif`
         if (this.data.text.originHeight) {
             let fontSize = this.data.text.fontSize || 14
             const fontScaleX = width / this.data.text.originWidth
@@ -389,7 +388,10 @@ class Messages {
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'block'
                 this.dot.style.display = 'block'
-                if (this._audioBtnWrapper && this.data.audio?.show) this._audioBtnWrapper.style.display = 'block'
+                const audioEnabled = this._audioRecordEnabled !== false
+                if (this._audioBtnWrapper) {
+                    this._audioBtnWrapper.style.display = this.data.audio?.show && audioEnabled ? 'block' : 'none'
+                }
             }
 
             let scaleWidth = Math.max(100, Math.min(width, this.data.text.originWidth * this.messageMaxScale))
@@ -506,7 +508,6 @@ class Messages {
             this.div.style.visibility = 'visible'
         }
     }
-
     addDotDragEvents() {
         let startX = 0,
             startY = 0
@@ -716,10 +717,16 @@ class Messages {
         this.div.style.display = 'flex'
         this.lineSvg.style.display = 'block'
         this.dot.style.display = 'block'
-        if (this._audioBtnWrapper && this.data.audio?.show) this._audioBtnWrapper.style.display = 'block'
-        else this._audioBtnWrapper.style.display = 'none'
+
+        const audioEnabled = this._audioRecordEnabled !== false
+
+        if (this._audioBtnWrapper) {
+            this._audioBtnWrapper.style.display = this.data.audio?.show && audioEnabled ? 'block' : 'none'
+        }
+
         if (this.button) this.button.setActiveColor()
-        if (this.data.audio?.autoPlay && this._audio && !this._isPlaying && this.data.audio?.show) {
+
+        if (audioEnabled && this.data.audio?.autoPlay && this._audio && !this._isPlaying && this.data.audio?.show) {
             this._audio.play().catch()
             this._isPlaying = true
             if (this._audioBtn) {
@@ -733,6 +740,7 @@ class Messages {
         } else {
             if (this._audio) this.pauseAudio()
         }
+
         this.updateProgress()
     }
 
@@ -754,7 +762,35 @@ class Messages {
             this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
         }
     }
+    setAudioRecordEnabled(enabled) {
+        this._audioRecordEnabled = enabled
+        if (this._audioBtnWrapper) {
+            this._audioBtnWrapper.style.display = enabled ? (this.data.audio?.show ? 'block' : 'none') : 'none'
+        }
+        if (!enabled && this._audio && this._isPlaying) {
+            this._audio.pause()
+            this._isPlaying = false
+            if (this._audioBtn) {
+                this._audioBtn.classList.remove('playing')
+                this._audioBtn.innerHTML = this._ringsvg() + this._iconMuted()
+                this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
+            }
+        }
+    }
+    setLiveHidden(hidden) {
+        this.div.style.display = hidden ? 'none' : 'flex'
+        this.lineSvg.style.display = hidden ? 'none' : 'block'
+        this.dot.style.display = hidden ? 'none' : 'block'
 
+        const audioEnabled = this._audioRecordEnabled !== false
+        if (this._audioBtnWrapper) {
+            this._audioBtnWrapper.style.display = hidden
+                ? 'none'
+                : this.data.audio?.show && audioEnabled
+                  ? 'block'
+                  : 'none'
+        }
+    }
     hide() {
         this.isDisplay = false
         this.div.style.display = 'none'

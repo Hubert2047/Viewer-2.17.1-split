@@ -1,4 +1,7 @@
 const v$2 = new Vec33()
+const QUALITY_BITS_PER_PIXEL = { standard: 0.07, high: 0.1, ultra: 0.15 }
+const MIN_BITRATE = 2_500_000
+const MAX_BITRATE = 20_000_000
 class OtherController {
     focus = new Vec33()
     cameraRotation = new Quat3()
@@ -76,11 +79,18 @@ class OtherController {
         if (this.model === 'spherical') {
         }
     }
-    startRecording({ fps = 60, filename, region, onStarted }) {
+    startRecording({
+        fps = 60,
+        filename,
+        region,
+        onStarted,
+        includeAudio = false,
+        includeMessage = false,
+        quality = 'high',
+    }) {
         const srcCanvas = this.app.graphicsDevice.canvas
-
         const cropCanvas = document.createElement('canvas')
-        const ctx = cropCanvas.getContext('2d', { alpha: false, desynchronized: true })
+        const ctx = cropCanvas.getContext('2d', { alpha: false })
 
         const desiredWidth = region?.outputWidth ?? region?.width ?? srcCanvas.width
         const desiredHeight = region?.outputHeight ?? region?.height ?? srcCanvas.height
@@ -98,14 +108,46 @@ class OtherController {
         this.global.recording = true
         this.events.fire('record-start')
 
-        const stream = cropCanvas.captureStream()
+        const probeStream = cropCanvas.captureStream(0)
+        const probeTrack = probeStream.getVideoTracks()[0]
+        const supportsManualFrame = typeof probeTrack.requestFrame === 'function'
+
+        let videoStream
+        if (supportsManualFrame) {
+            videoStream = probeStream
+        } else {
+            probeTrack.stop()
+            videoStream = cropCanvas.captureStream(fps)
+        }
+        const videoTrack = videoStream.getVideoTracks()[0]
+
+        this._includeAudio = includeAudio
+        let combinedStream = videoStream
+
+        if (includeAudio) {
+            this._recordAudioCtx = new (window.AudioContext || window.webkitAudioContext)()
+            const destination = this._recordAudioCtx.createMediaStreamDestination()
+            this._recordAudioDestination = destination
+            this._recordAudioSources = new Map()
+
+            const silentOsc = this._recordAudioCtx.createOscillator()
+            const silentGain = this._recordAudioCtx.createGain()
+            silentGain.gain.value = 0
+            silentOsc.connect(silentGain).connect(destination)
+            silentOsc.start()
+            this._silentOsc = silentOsc
+
+            combinedStream = new MediaStream([...videoStream.getVideoTracks(), ...destination.stream.getAudioTracks()])
+        }
 
         let accumulator = 0
         const frameInterval = 1 / fps
-
         const drawFrame = () => {
             const r = getRegion()
             ctx.drawImage(srcCanvas, r.x, r.y, r.width, r.height, 0, 0, cropCanvas.width, cropCanvas.height)
+            if (includeMessage && this.global.recordPattern === 'story')
+                this.drawActiveMessage(ctx, cropCanvas, srcCanvas, r)
+            if (supportsManualFrame) videoTrack.requestFrame()
         }
         this._drawFrame = drawFrame
 
@@ -115,6 +157,7 @@ class OtherController {
                 drawFrame()
                 accumulator -= frameInterval
             }
+            if (this._includeAudio) this.connectActiveMessageAudio()
         }
         const onFrameEnd = () => {
             if (this.global.recording) {
@@ -128,14 +171,30 @@ class OtherController {
             this.app.off('postrender', onPostRender)
             this.app.off('frameend', onFrameEnd)
             this._drawFrame = null
+            this._silentOsc?.stop()
+            this._silentOsc = null
+            this._recordAudioSources?.forEach((node) => node.disconnect())
+            this._recordAudioSources?.clear()
+            this._recordAudioSources = null
+            this._recordAudioDestination = null
+            this._recordAudioCtx?.close()
+            this._recordAudioCtx = null
         }
 
-        const mimeTypes = ['video/webm;codecs=vp8', 'video/webm']
+        const hasAudioTrack = combinedStream.getAudioTracks().length > 0
+        const mimeTypes = hasAudioTrack
+            ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm']
+            : ['video/webm;codecs=vp8', 'video/webm']
         const mimeType = mimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) || ''
-        const options = { videoBitsPerSecond: 12_000_000 }
+        const bitsPerPixel = QUALITY_BITS_PER_PIXEL[quality] ?? QUALITY_BITS_PER_PIXEL.high
+        const targetBitrate = Math.round(desiredWidth * desiredHeight * fps * bitsPerPixel)
+        const videoBitsPerSecond = Math.min(MAX_BITRATE, Math.max(MIN_BITRATE, targetBitrate))
+
+        const options = { videoBitsPerSecond }
+        if (mimeType) options.mimeType = mimeType
         if (mimeType) options.mimeType = mimeType
 
-        this.mediaRecorder = new MediaRecorder(stream, options)
+        this.mediaRecorder = new MediaRecorder(combinedStream, options)
         const chunks = []
         this.mediaRecorder.ondataavailable = (e) => {
             if (e.data.size) chunks.push(e.data)
@@ -155,25 +214,245 @@ class OtherController {
         }
         this.mediaRecorder.start(500)
     }
+    connectActiveMessageAudio() {
+        const mm = this.global.messagesManager
+        const audioEl = mm?.activeMessage?._audio
+        if (!audioEl || !this._recordAudioDestination) return
+        if (this._recordAudioSources.has(audioEl)) return
+        try {
+            const source = this._recordAudioCtx.createMediaElementSource(audioEl)
+            source.connect(this._recordAudioDestination)
+            source.connect(this._recordAudioCtx.destination)
+            this._recordAudioSources.set(audioEl, source)
+        } catch (e) {
+            console.error('[PROD] createMediaElementSource error:', e)
+        }
+    }
+
     stopRecording({ discard = false } = {}) {
         if (this._stopPostRender) {
             this._stopPostRender()
             this._stopPostRender = null
         }
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            if (discard) {
-                this.mediaRecorder.onstop = null
-            }
+            if (discard) this.mediaRecorder.onstop = null
             this.mediaRecorder.stop()
         }
+        this._includeAudio = false
         this.global.recording = false
+        this.global.recordPattern = null
+
+        const activeMessage = this.global.messagesManager?.activeMessage
+        if (activeMessage) {
+            activeMessage.setAudioRecordEnabled(true)
+            activeMessage.setLiveHidden(false)
+        }
+
         this.events.fire('record-end')
+    }
+    drawActiveMessage(ctx, cropCanvas, srcCanvas, region) {
+        const mm = this.global.messagesManager
+        const message = mm?.activeMessage
+        if (!message || !message.isDisplay) return
+        if (mm.isTranslating) return
+        if (message.div.style.display === 'none') return
+        const containerRect = mm.dom.ui.getBoundingClientRect()
+        if (!containerRect.width || !containerRect.height) return
+
+        const scaleToSrcX = srcCanvas.width / containerRect.width
+        const scaleToSrcY = srcCanvas.height / containerRect.height
+        const scaleToCropX = cropCanvas.width / region.width
+        const scaleToCropY = cropCanvas.height / region.height
+        const scaleLenX = scaleToSrcX * scaleToCropX
+        const scaleLenY = scaleToSrcY * scaleToCropY
+        const toCanvas = (cssX, cssY) => ({
+            x: (cssX * scaleToSrcX - region.x) * scaleToCropX,
+            y: (cssY * scaleToSrcY - region.y) * scaleToCropY,
+        })
+        const relRect = (rect) => ({
+            left: rect.left - containerRect.left,
+            top: rect.top - containerRect.top,
+            width: rect.width,
+            height: rect.height,
+        })
+
+        const rootFontSize = 18
+
+        const divRect = relRect(message.div.getBoundingClientRect())
+        const boxTL = toCanvas(divRect.left, divRect.top)
+        const boxW = divRect.width * scaleLenX
+        const boxH = divRect.height * scaleLenY
+        const textData = message.data.text
+
+        ctx.save()
+        ctx.fillStyle = transparentColor(textData.background, textData.backgroundAlpha)
+        roundRectPath(ctx, boxTL.x, boxTL.y, boxW, boxH, 0.1875 * rootFontSize * scaleLenX)
+        ctx.fill()
+        ctx.restore()
+
+        ctx.save()
+        const fontSize = (parseFloat(message.div.style.fontSize) || textData.fontSize || 16) * scaleLenY
+        const fontWeight = textData.bold ? 'bold' : 'normal'
+        const fontStyle = textData.italic ? 'italic' : 'normal'
+        ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = textData.color || '#000'
+        ctx.textBaseline = 'top'
+        const padding = 0.5 * rootFontSize * scaleLenX
+        const maxTextWidth = Math.max(0, boxW - padding * 2)
+        const lines = wrapCanvasText(ctx, textData.content, maxTextWidth)
+        const lineHeight = fontSize * 1.3
+        let textY = boxTL.y + (boxH - lines.length * lineHeight) / 2
+        ctx.textAlign = textData.align === 'left' ? 'left' : textData.align === 'right' ? 'right' : 'center'
+        const textX =
+            textData.align === 'left'
+                ? boxTL.x + padding
+                : textData.align === 'right'
+                  ? boxTL.x + boxW - padding
+                  : boxTL.x + boxW / 2
+        for (const line of lines) {
+            ctx.fillText(line, textX, textY)
+            textY += lineHeight
+        }
+        ctx.restore()
+
+        if (message.dot.style.display !== 'none') {
+            const dotRect = relRect(message.dot.getBoundingClientRect())
+            const dotTL = toCanvas(dotRect.left, dotRect.top)
+            const dotW = dotRect.width * scaleLenX
+            const dotH = dotRect.height * scaleLenY
+            const cx = dotTL.x + dotW / 2
+            const cy = dotTL.y + dotH / 2
+            const { style, stroke, strokeColor } = message.data.dot
+            ctx.save()
+            ctx.beginPath()
+            ctx.ellipse(cx, cy, Math.max(dotW, 0) / 2, Math.max(dotH, 0) / 2, 0, 0, Math.PI * 2)
+            if (style === 'circle') {
+                ctx.strokeStyle = strokeColor
+                ctx.lineWidth = Math.max(1, stroke * scaleLenX)
+                ctx.stroke()
+            } else {
+                ctx.fillStyle = strokeColor
+                ctx.fill()
+            }
+            ctx.restore()
+
+            if (message.line.style.display !== 'none') {
+                const x1 = parseFloat(message.line.getAttribute('x1'))
+                const y1 = parseFloat(message.line.getAttribute('y1'))
+                const x2 = parseFloat(message.line.getAttribute('x2'))
+                const y2 = parseFloat(message.line.getAttribute('y2'))
+                if (!Number.isNaN(x1) && !Number.isNaN(x2)) {
+                    const p1 = toCanvas(x1 - containerRect.left, y1 - containerRect.top)
+                    const p2 = toCanvas(x2 - containerRect.left, y2 - containerRect.top)
+                    ctx.save()
+                    ctx.strokeStyle = message.data.dot.strokeColor
+                    ctx.lineWidth = Math.max(1, scaleLenX)
+                    ctx.beginPath()
+                    ctx.moveTo(p1.x, p1.y)
+                    ctx.lineTo(p2.x, p2.y)
+                    ctx.stroke()
+                    ctx.restore()
+                }
+            }
+        }
+
+        if (message._audioBtn && message.data.audio?.show && message._audioBtnWrapper.style.display !== 'none') {
+            const btnRect = relRect(message._audioBtn.getBoundingClientRect())
+            const btnTL = toCanvas(btnRect.left, btnRect.top)
+            const bw = btnRect.width * scaleLenX
+            const bh = btnRect.height * scaleLenY
+            const cx = btnTL.x + bw / 2
+            const cy = btnTL.y + bh / 2
+            const boxSize = Math.min(bw, bh)
+
+            ctx.save()
+            ctx.beginPath()
+            ctx.ellipse(cx, cy, bw / 2, bh / 2, 0, 0, Math.PI * 2)
+            ctx.fillStyle = transparentColor(message.data.audio.bgColor, message.data.audio.bgAlpha)
+            ctx.fill()
+            ctx.restore()
+
+            const ringScale = boxSize / 36
+            const ringR = 16 * ringScale
+            ctx.save()
+            ctx.beginPath()
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2)
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+            ctx.lineWidth = 4.5 * ringScale
+            ctx.stroke()
+
+            ctx.beginPath()
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2)
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+            ctx.lineWidth = 3 * ringScale
+            ctx.stroke()
+
+            const pct =
+                message._audio && message._audio.duration ? message._audio.currentTime / message._audio.duration : 0
+            if (pct > 0) {
+                const startAngle = -Math.PI / 2
+                const endAngle = startAngle + Math.PI * 2 * pct
+                ctx.beginPath()
+                ctx.arc(cx, cy, ringR, startAngle, endAngle)
+                ctx.strokeStyle = '#4CAF50'
+                ctx.lineWidth = 2.5 * ringScale
+                ctx.lineCap = 'round'
+                ctx.stroke()
+            }
+            ctx.restore()
+
+            const iconScale = boxSize / 28
+            ctx.save()
+            ctx.translate(cx - 7 * iconScale, cy - 7 * iconScale)
+            ctx.scale(iconScale, iconScale)
+            ctx.strokeStyle = message.data.audio.iconColor
+            ctx.lineWidth = 1.2
+            ctx.lineJoin = 'round'
+            ctx.lineCap = 'round'
+
+            ctx.beginPath()
+            ctx.moveTo(2, 5)
+            ctx.lineTo(4.5, 5)
+            ctx.lineTo(7.5, 2.5)
+            ctx.lineTo(7.5, 11.5)
+            ctx.lineTo(4.5, 9)
+            ctx.lineTo(2, 9)
+            ctx.closePath()
+            ctx.stroke()
+
+            if (message._isPlaying) {
+                ctx.beginPath()
+                ctx.moveTo(9.5, 5)
+                ctx.bezierCurveTo(10.3, 5.6, 10.8, 6.2, 10.8, 7)
+                ctx.bezierCurveTo(10.8, 7.8, 10.3, 8.4, 9.5, 9)
+                ctx.stroke()
+
+                ctx.beginPath()
+                ctx.moveTo(11, 3.8)
+                ctx.bezierCurveTo(12.3, 4.7, 13, 5.8, 13, 7)
+                ctx.bezierCurveTo(13, 8.2, 12.3, 9.3, 11, 10.2)
+                ctx.stroke()
+            } else {
+                ctx.beginPath()
+                ctx.moveTo(10, 4.5)
+                ctx.lineTo(12.5, 9.5)
+                ctx.stroke()
+
+                ctx.beginPath()
+                ctx.moveTo(12.5, 4.5)
+                ctx.lineTo(10, 9.5)
+                ctx.stroke()
+            }
+            ctx.restore()
+        }
     }
     listenEvents() {
         this.events.on('record-setup', (data) => {
-            const { pattern } = data
+            const { pattern, includeMessage = false, includeAudio = false } = data
             this.events.fire('hide-ui')
-            this.recordPattern = pattern
+            this.global.recordPattern = pattern
+            this.global.recordIncludeMessage = includeMessage
+            this.global.recordIncludeAudio = includeAudio
             switch (pattern) {
                 case 'none':
                     this.startRecording(data)
@@ -873,6 +1152,7 @@ class OtherController {
 
     spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity || this._autoRotating) return
+
         this.global.isSpin360 = true
         this.events.fire('re-render:control-wrap')
         this.updateModelRotation()
@@ -882,7 +1162,6 @@ class OtherController {
         const startPosition = modelEntity.localPosition.clone()
         const startYaw = this.currentYaw
         let rotated = 0
-        let finished = false
         const tick = (dt) => {
             if (!this._autoRotating) return
             const baseRate = this.global.recording ? this.spinSpeed * 0.06 * dt : this.spinSpeed * 0.001
@@ -952,7 +1231,6 @@ class OtherController {
                     this.hemisphericalRot(this.currentYaw, this.currentPitch)
                     break
             }
-
             if (rotated >= totalAngle && this.isSpin360Loop) {
                 rotated -= totalAngle
             }
@@ -1223,7 +1501,11 @@ class OtherController {
     }
 
     move(move, rotate) {
-        if (this.isEditMessage || this.isMeasurementDrag || (this.global.recording && this.recordPattern !== 'none'))
+        if (
+            this.isEditMessage ||
+            this.isMeasurementDrag ||
+            (this.global.recording && this.global.recordPattern !== 'none')
+        )
             return
         const [x, y, z] = move
         if (z !== 0) {

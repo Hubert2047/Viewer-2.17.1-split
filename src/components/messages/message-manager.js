@@ -3,6 +3,7 @@ class MessagesManager {
     translatingId
     constructor({ global, dom, tooltip }) {
         this.global = global
+        this.global.messagesManager = this
         this.camera = global.camera.camera
         this.events = global.events
         this.editable = global.config.editable
@@ -227,10 +228,10 @@ class MessagesManager {
             const nextData = this.settings.messages[nextIdx]
             this.events.fire('message:selected', JSON.parse(JSON.stringify(nextData)))
         })
-        this.events.on('record-section:active', () => {
-            if (this.activeMessage) this.activeMessage.hide()
-        })
-        this.events.on('message:goto-first', ({ onReady } = {}) => {
+
+        this.events.on('message:goto-first', ({ onReady, hideMessages = false } = {}) => {
+            if (hideMessages) this.hideAllMessages()
+
             if (this.messages.length === 0) {
                 onReady?.()
                 return
@@ -344,7 +345,7 @@ class MessagesManager {
             this.activeMessage.data = JSON.parse(JSON.stringify(data))
             this.activeMessage.update(true, this.activeMessage.data.button.title)
         }
-        if (this.global.recordActive) message?.hide()
+        if (this.global.recording && this.global.recordPattern !== 'story') message?.hide()
         this.activeMessage?.hide()
         message.resetTime()
         const isSamePose = skipTransition || this.isSamePose(message)
@@ -388,13 +389,16 @@ class MessagesManager {
         return false
     }
     updateMessage(message) {
-        if (this.global.recordActive) {
+        const isStoryRecording = this.global.recording && this.global.recordPattern === 'story'
+        if (this.global.recording && !isStoryRecording) {
             message.hide()
             if (message.button) message.button.setActiveColor()
-        } else {
-            message.show()
-            message.update()
+            return
         }
+        message.setAudioRecordEnabled(!isStoryRecording || !!this.global.recordIncludeAudio)
+        message.show()
+        message.update()
+        message.setLiveHidden(isStoryRecording && !this.global.recordIncludeMessage)
     }
     autoPlay({ onFinished, loop = true, hideMessages = false } = {}) {
         if (this.messages.length === 0) return
@@ -459,10 +463,13 @@ class MessagesManager {
         if (this.editor) this.editor.render(this.settings.messages, this.activeData)
     }
     update() {
-        if (this.isTranslating || this.global.recordActive) return
+        if (this.isTranslating) return
+        const isStoryRecording = this.global.recording && this.global.recordPattern === 'story'
+        if (this.global.recording && !isStoryRecording) return
         this.messages.forEach((h) => {
             if (h.id === this.activeMessage?.id) {
                 h.update()
+                h.setLiveHidden(isStoryRecording && !this.global.recordIncludeMessage)
             }
         })
     }

@@ -201,6 +201,12 @@ async function exportHtml(name, global) {
     const strippedSettings = stripDefaults({
         ...copySettings,
         v: newVersion,
+        messages: copySettings.messages.map((m) => {
+            if (m.audio) {
+                return { ...m, audio: { ...m.audio, src: '' } }
+            }
+            return m
+        }),
         setupStep,
     })
     delete strippedSettings.ref
@@ -563,6 +569,40 @@ function checkPerformance(app, global) {
             }
         }
     })
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+    const radius = Math.max(0, Math.min(r, w / 2, h / 2))
+    ctx.beginPath()
+    ctx.moveTo(x + radius, y)
+    ctx.lineTo(x + w - radius, y)
+    ctx.arcTo(x + w, y, x + w, y + radius, radius)
+    ctx.lineTo(x + w, y + h - radius)
+    ctx.arcTo(x + w, y + h, x + w - radius, y + h, radius)
+    ctx.lineTo(x + radius, y + h)
+    ctx.arcTo(x, y + h, x, y + h - radius, radius)
+    ctx.lineTo(x, y + radius)
+    ctx.arcTo(x, y, x + radius, y, radius)
+    ctx.closePath()
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+    const paragraphs = String(text ?? '').split('\n')
+    const lines = []
+    for (const paragraph of paragraphs) {
+        const words = paragraph.split(' ')
+        let current = ''
+        for (const word of words) {
+            const test = current ? `${current} ${word}` : word
+            if (current && ctx.measureText(test).width > maxWidth) {
+                lines.push(current)
+                current = word
+            } else {
+                current = test
+            }
+        }
+        lines.push(current)
+    }
+    return lines
 }
 function transparentColor(color, alpha = 0.5) {
     if (!color) return ''
