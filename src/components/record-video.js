@@ -395,7 +395,25 @@ function makeRecordSection(el, global) {
     const audioToggleRow = makeRow({ title: 'Include Audio' })
     const audioToggle = makeToggle({
         initialValue: includeAudio,
-        onChange: (value) => {
+        onChange: async (value) => {
+            if (value) {
+                const unusable = await getUnusableAudioMessages(global)
+                if (unusable.length > 0) {
+                    const html = buildToastHtml([
+                        { text: 'Audio failed to load for ' },
+                        ...unusable.flatMap((m, i) => [
+                            { text: m.data.button.title, bold: true },
+                            { text: i < unusable.length - 1 ? ', ' : '' },
+                        ]),
+                        { text: '. Please re-select the file(s) in the Messages tab.' },
+                    ])
+
+                    showToast('', { html, duration: 8000, type: 'warning' })
+                    audioToggle.setValue(false)
+                    includeAudio = false
+                    return
+                }
+            }
             includeAudio = value
         },
     })
@@ -524,8 +542,31 @@ function makeRecordSection(el, global) {
             { value: 'story', label: 'One Full Story', disabled: !hasStory },
         ])
     }
+    async function isMessageAudioUsable(message) {
+        const audio = message.data.audio
+        if (!audio?.fileName || !audio?.show) return true
+
+        const src = audio.src || `./audios/${audio.fileName}`
+        if (src.startsWith('blob:')) return true
+
+        try {
+            const res = await fetch(src, { method: 'HEAD' })
+            return res.ok
+        } catch (e) {
+            return false
+        }
+    }
+
+    async function getUnusableAudioMessages(global) {
+        const mm = global.messagesManager
+        if (!mm) return []
+        const checks = await Promise.all(
+            mm.messages.map(async (m) => ({ message: m, usable: await isMessageAudioUsable(m) })),
+        )
+        return checks.filter((r) => !r.usable).map((r) => r.message)
+    }
     const handles = [
-        events.on('sidebar:clicked', ({ id, open }) => {
+        events.on('sidebar:clicked', async ({ id, open }) => {
             if (id !== 'record' && global.recordActive) {
                 cancelRecordingWithoutDownload()
                 unmountOverlay()
@@ -537,6 +578,13 @@ function makeRecordSection(el, global) {
                 updatePatternOptions()
                 mountOverlay()
                 events.fire('record-section:active')
+                if (includeAudio) {
+                    const unusable = await getUnusableAudioMessages(global)
+                    if (unusable.length > 0) {
+                        includeAudio = false
+                        audioToggle.setValue(false)
+                    }
+                }
             } else unmountOverlay()
         }),
         events.on('record-start', () => {

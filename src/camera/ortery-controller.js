@@ -371,9 +371,12 @@ class OtherController {
             ctx.fillStyle = transparentColor(message.data.audio.bgColor, message.data.audio.bgAlpha)
             ctx.fill()
             ctx.restore()
-
-            const ringScale = boxSize / 36
+            const ringEl = message._audioBtn.querySelector('.audio-ring-svg')
+            const ringRect = ringEl ? relRect(ringEl.getBoundingClientRect()) : btnRect
+            const ringBoxSize = Math.min(ringRect.width, ringRect.height) * scaleLenX
+            const ringScale = ringBoxSize / 36
             const ringR = 16 * ringScale
+
             ctx.save()
             ctx.beginPath()
             ctx.arc(cx, cy, ringR, 0, Math.PI * 2)
@@ -421,17 +424,31 @@ class OtherController {
             ctx.stroke()
 
             if (message._isPlaying) {
-                ctx.beginPath()
-                ctx.moveTo(9.5, 5)
-                ctx.bezierCurveTo(10.3, 5.6, 10.8, 6.2, 10.8, 7)
-                ctx.bezierCurveTo(10.8, 7.8, 10.3, 8.4, 9.5, 9)
-                ctx.stroke()
+                const elapsed = message._playAnimStart ? (performance.now() - message._playAnimStart) / 1000 : 0
+                const w1 = getWaveAnim(elapsed, 0)
+                const w2 = getWaveAnim(elapsed, 0.45)
 
-                ctx.beginPath()
-                ctx.moveTo(11, 3.8)
-                ctx.bezierCurveTo(12.3, 4.7, 13, 5.8, 13, 7)
-                ctx.bezierCurveTo(13, 8.2, 12.3, 9.3, 11, 10.2)
-                ctx.stroke()
+                ctx.save()
+                ctx.globalAlpha = w1.opacity
+                drawFromOrigin(ctx, 9, 7, w1.scale, () => {
+                    ctx.beginPath()
+                    ctx.moveTo(9.5, 5)
+                    ctx.bezierCurveTo(10.3, 5.6, 10.8, 6.2, 10.8, 7)
+                    ctx.bezierCurveTo(10.8, 7.8, 10.3, 8.4, 9.5, 9)
+                    ctx.stroke()
+                })
+                ctx.restore()
+
+                ctx.save()
+                ctx.globalAlpha = w2.opacity
+                drawFromOrigin(ctx, 12, 7, w2.scale, () => {
+                    ctx.beginPath()
+                    ctx.moveTo(11, 3.8)
+                    ctx.bezierCurveTo(12.3, 4.7, 13, 5.8, 13, 7)
+                    ctx.bezierCurveTo(13, 8.2, 12.3, 9.3, 11, 10.2)
+                    ctx.stroke()
+                })
+                ctx.restore()
             } else {
                 ctx.beginPath()
                 ctx.moveTo(10, 4.5)
@@ -939,7 +956,7 @@ class OtherController {
             this.settings.initview = { pose }
         }
         if (isShowToast)
-            showToast('✓ Initial view updated', {
+            showToast('Initial view updated', {
                 duration: 1000,
                 type: 'success',
             })
@@ -955,7 +972,7 @@ class OtherController {
         }
 
         this.reset()
-        showToast('✓ Switched to default view', {
+        showToast('Switched to default view', {
             duration: 1000,
             type: 'success',
         })

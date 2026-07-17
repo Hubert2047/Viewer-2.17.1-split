@@ -1,6 +1,5 @@
-
-    <!doctype html>
-    <html lang="en">
+<!doctype html>
+<html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -11,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=14" />
+        <link rel="stylesheet" href="./data/viewer.css?v=19" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -41,22 +40,169 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-        <svg class="progress-ring" viewBox="0 0 200 200">
-            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-            <circle
-                id="progressRingFg"
-                class="progress-ring-fg"
-                cx="100"
-                cy="100"
-                r="86"
-                fill="none"
-                stroke-dasharray="540.35"
-                stroke-dashoffset="540.35" />
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/noise.ply","v":14,"spin":{"enabled":true,"continuous":true,"autoStart":false,"direction":"cw","axis":"y","speed":5,"rotation":null},"messages":[{"id":"92535ead-c9b0-4c7d-a3dd-b67c558a2df1","autoPlay":{"time":12.4},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-2.2630087487943653,"y":-27.14132943381694,"z":-4.094430063677152},"botRight":{"x":-2.4784872446125963,"y":-24.287756827282337,"z":-12.237716799199791},"fontSize":16},"focus":{"position":{"x":-1.6372711964513158,"y":-21.66894982572581,"z":-2.9848218550551318}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-1.7109297825781487,"y":-22.507762453057534,"z":-2.1480039512947426},"botRight":{"x":-1.579578695202811,"y":-20.829284613050277,"z":-3.8222207947939544}},"entityInfo":{"rotation":{"x":-0.41596162839565626,"y":-2.5470303839143062e-17,"z":0.9093821659249943,"w":5.568359793508657e-17},"position":{"x":0.4306711821926471,"y":-7.105427357601002e-15,"z":0.8192160578049746},"isFullyInView":true,"distanceScale":1,"focus":{"x":-0.6801562309265116,"y":17.47927515208721,"z":0.880378246307373},"pitch":0,"yaw":-0.8580000000000219},"audio":{"show":true,"src":"","fileName":"111 (mp3cut.net).mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":false,"autoPlay":true}},{"id":"124a8279-72ed-4823-910c-251c40ebf4b7","autoPlay":{"time":3},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":3.508089488143548,"y":-19.53660830500562,"z":-11.566476725299033},"botRight":{"x":10.36619912637387,"y":-17.203214933931974,"z":-12.363625011774557},"fontSize":16},"focus":{"position":{"x":2.5735438815069327,"y":-14.859961658831345,"z":-11.550966028484751}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":1.8730571044473523,"y":-15.559582235403312,"z":-11.49988544159071},"botRight":{"x":3.271643745185928,"y":-14.163046118715291,"z":-11.621176157123681}},"entityInfo":{"rotation":{"x":-0.9242246253441777,"y":-5.659243645604546e-17,"z":0.38184923976278157,"w":2.3381522461617033e-17},"position":{"x":-0.5405704317858161,"y":-7.105427357601002e-15,"z":1.9840965798135526},"isFullyInView":true,"distanceScale":1,"focus":{"x":-0.6801562309265116,"y":17.47927515208721,"z":0.880378246307373},"pitch":0,"yaw":-2.3580000000000236}},{"id":"d4903f5b-7932-462e-9476-682e21a0f40d","autoPlay":{"time":3},"button":{"title":"message3"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message3","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":4.232156837030329,"y":-24.87830092985193,"z":3.7299000428999864},"botRight":{"x":5.643310851707136,"y":-22.062713682432754,"z":11.785312870776655},"fontSize":16},"focus":{"position":{"x":3.6660927762101565,"y":-19.371499174187793,"z":2.6869753670393637}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":3.6027409969912982,"y":-20.205886844359764,"z":1.8543385507614039},"botRight":{"x":3.7523521564478424,"y":-18.53645177047109,"z":3.5167589654411353}},"entityInfo":{"rotation":{"x":0.9396454736853197,"y":5.753669108410127e-17,"z":0.34214965115091245,"w":2.095062375556742e-17},"position":{"x":-1.7671477060366478,"y":-7.105427357601002e-15,"z":1.1172914964165526},"isFullyInView":true,"distanceScale":1,"focus":{"x":-0.6801562309265116,"y":17.47927515208721,"z":0.880378246307373},"pitch":0,"yaw":2.443185307179556}}],"setupStep":4,"removedSplats":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,181510,181511,181512,181513,181514,181515,181516,181517,181518,181519,181520,181521,181522,181523,181524,181525,181526,181527,181528,181529,181530,181531,181532,181533,181534,181535,181536,181537,181538,181539,181540,181541,181542,181543,181544,181545,181546,181547,181548,181549,181550,181551,181552,181553,181554,181555,181556,181557,181558,181559,181560,181561,181562,181563,181564,181565,181566,181567,181568,181569,181570,181571,181572,181573,181574,181575,181576,181577,181578,181579,181580,181581,181582,181583,181584,181585,181586,181587,181588,181589,181590,181591,181592,181593,181594],"chunkCount":0} }</script>
-    <script src="./data/viewer.js?v=14"></script>
-    </html> 
-    
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'cylindrical',
+                contentUrl: 'models/noise.ply',
+                v: 19,
+                initview: {
+                    pose: {
+                        rotation: {
+                            x: -0.5842860174075044,
+                            y: -3.577720005023275e-17,
+                            z: 0.8115478111991169,
+                            w: 4.9692971467001954e-17,
+                        },
+                        position: { x: 0.3705112629174597, y: 0, z: 1.2461324977099126 },
+                        isFullyInView: true,
+                        distanceScale: 1,
+                        focus: { x: -0.6801562309265116, y: 17.47927515208721, z: 0.880378246307373 },
+                        pitch: 0,
+                        yaw: -1.2479999999999976,
+                    },
+                },
+                messages: [
+                    {
+                        id: '10ca3a2b-bc0f-4ca9-a288-594a0f57d4b4',
+                        autoPlay: { time: 3 },
+                        button: { title: 'message1' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message1',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: -2.486419427825253, y: -27.441232405208225, z: -1.3104224561051379 },
+                            botRight: { x: 0.9477031557041662, y: -24.675254128895617, z: -8.733047002624042 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: -2.387389858641477, y: -22.017574477320515, z: -0.03093501355130357 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: -2.825038405587417, y: -22.836886957195887, z: 0.6719313865763918 },
+                            botRight: { x: -1.9681769085449905, y: -21.194906345539895, z: -0.7452025350459308 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.5842860174075044,
+                                y: -3.577720005023275e-17,
+                                z: 0.8115478111991169,
+                                w: 4.9692971467001954e-17,
+                            },
+                            position: { x: 0.3705112629174597, y: 0, z: 1.2461324977099126 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -0.6801562309265116, y: 17.47927515208721, z: 0.880378246307373 },
+                            pitch: 0,
+                            yaw: -1.2479999999999976,
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: '111.mp3',
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            autoPlay: true,
+                        },
+                    },
+                    {
+                        id: '94ac1128-32ae-4e80-bba2-152604098c06',
+                        autoPlay: { time: 66.2 },
+                        button: { title: 'message2' },
+                        text: {
+                            color: 'black',
+                            bold: false,
+                            italic: false,
+                            align: 'center',
+                            content: 'message2',
+                            background: '#ffffff',
+                            backgroundAlpha: 0.8,
+                            originWidth: 150,
+                            originHeight: 50,
+                            topLeft: { x: 8.196661773653162, y: -22.077717761052984, z: -5.991320873704469 },
+                            botRight: { x: 14.032306492833195, y: -19.61101322110243, z: -1.6499019504610484 },
+                            fontSize: 16,
+                        },
+                        focus: { position: { x: 7.31723113622877, y: -17.18458331256141, z: -6.4675863510479985 } },
+                        dot: {
+                            style: 'circle',
+                            strokeColor: '#D8D8D8',
+                            stroke: 1,
+                            size: 30,
+                            topLeft: { x: 6.734520221261048, y: -17.94150766937649, z: -6.950430600970224 },
+                            botRight: { x: 7.91213368960331, y: -16.42838862043484, z: -6.000688720406552 },
+                        },
+                        entityInfo: {
+                            rotation: {
+                                x: -0.9992858038692868,
+                                y: -6.118860805709559e-17,
+                                z: 0.03778732836961795,
+                                w: 2.31380653680913e-18,
+                            },
+                            position: { x: 0.2682551314772939, y: 0, z: 1.6232270124655108 },
+                            isFullyInView: true,
+                            distanceScale: 1,
+                            focus: { x: -0.6801562309265116, y: 17.47927515208721, z: 0.880378246307373 },
+                            pitch: 0,
+                            yaw: -3.065999999999999,
+                        },
+                        audio: {
+                            show: true,
+                            src: '',
+                            fileName: '333.mp3',
+                            bgColor: '#000000',
+                            bgAlpha: 0.8,
+                            iconColor: '#ffffff',
+                            volume: 1,
+                            loop: false,
+                            autoPlay: false,
+                        },
+                    },
+                ],
+                setupStep: 4,
+                removedSplats: [
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                    27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+                    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+                    77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 181510, 181511, 181512, 181513, 181514,
+                    181515, 181516, 181517, 181518, 181519, 181520, 181521, 181522, 181523, 181524, 181525, 181526,
+                    181527, 181528, 181529, 181530, 181531, 181532, 181533, 181534, 181535, 181536, 181537, 181538,
+                    181539, 181540, 181541, 181542, 181543, 181544, 181545, 181546, 181547, 181548, 181549, 181550,
+                    181551, 181552, 181553, 181554, 181555, 181556, 181557, 181558, 181559, 181560, 181561, 181562,
+                    181563, 181564, 181565, 181566, 181567, 181568, 181569, 181570, 181571, 181572, 181573, 181574,
+                    181575, 181576, 181577, 181578, 181579, 181580, 181581, 181582, 181583, 181584, 181585, 181586,
+                    181587, 181588, 181589, 181590, 181591, 181592, 181593, 181594,
+                ],
+                chunkCount: 0,
+            },
+        }
+    </script>
+    <script src="./data/viewer.js?v=19"></script>
+</html>

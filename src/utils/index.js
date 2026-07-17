@@ -1,3 +1,15 @@
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function buildToastHtml(segments) {
+    return segments
+        .map((seg) => {
+            const escaped = escapeHtml(seg.text)
+            return seg.bold ? `<b>${escaped}</b>` : escaped
+        })
+        .join('')
+}
 function applyPointMapping({ modelEntity, deletedSet }) {
     const gsplatComp = modelEntity.gsplat
     const numSplats = gsplatComp.resource.numSplats
@@ -7,7 +19,25 @@ function applyPointMapping({ modelEntity, deletedSet }) {
     }
     gsplatComp._instance.sorter.setMapping(new Uint32Array(kept))
 }
+function getWaveAnim(elapsedSec, delaySec) {
+    const duration = 0.9
+    const t = ((((elapsedSec - delaySec) % duration) + duration) % duration) / duration
+    if (t <= 0.6) {
+        const p = t / 0.6
+        return { scale: 0.6 + 0.7 * p, opacity: 1 - 0.3 * p }
+    }
+    const p = (t - 0.6) / 0.4
+    return { scale: 1.3 + 0.3 * p, opacity: 0.7 - 0.7 * p }
+}
 
+function drawFromOrigin(ctx, originX, originY, scale, draw) {
+    ctx.save()
+    ctx.translate(originX, originY)
+    ctx.scale(scale, scale)
+    ctx.translate(-originX, -originY)
+    draw()
+    ctx.restore()
+}
 function blurPoster(poster, progress) {
     poster.style.filter = `blur(${Math.floor((100 - progress) * 0.4)}px)`
 }
@@ -46,6 +76,7 @@ function normalizeColor(input, alpha = 1) {
     }
     return [...rgb, alpha]
 }
+
 function showToast(content, opts = {}) {
     const duration = typeof opts.duration === 'number' ? opts.duration : 1500
     const type = opts.type || 'default'
@@ -55,23 +86,53 @@ function showToast(content, opts = {}) {
         toast.id = 'toast'
         document.body.appendChild(toast)
     }
-    toast.textContent = content
-    if (content.length === 1) {
-        toast.classList.add('char')
-    } else {
-        toast.classList.remove('char')
-    }
-    toast.classList.remove('success', 'warning', 'error')
 
-    if (type === 'success') toast.classList.add('success')
-    else if (type === 'warning') toast.classList.add('warning')
-    else if (type === 'error') toast.classList.add('error')
+    const isChar = !opts.html && content.length === 1
+    toast.classList.toggle('char', isChar)
+    toast.classList.remove('success', 'warning', 'error')
+    if (type === 'success' || type === 'warning' || type === 'error') {
+        toast.classList.add(type)
+    }
+
+    toast.innerHTML = ''
+
+    if (isChar) {
+        toast.textContent = content
+    } else {
+        if (ICONS[type]) {
+            const icon = document.createElement('div')
+            icon.className = 'toast-icon'
+            icon.innerHTML = ICONS[type]
+            toast.appendChild(icon)
+        }
+
+        const text = document.createElement('div')
+        text.className = 'toast-text'
+        if (opts.html) {
+            text.innerHTML = opts.html
+        } else {
+            text.textContent = content
+        }
+        toast.appendChild(text)
+
+        const closeBtn = document.createElement('div')
+        closeBtn.className = 'toast-close'
+        closeBtn.innerHTML = ICONS.cancel
+        closeBtn.addEventListener('click', () => hideToast(toast))
+        toast.appendChild(closeBtn)
+    }
+
     toast.classList.add('show')
     if (toast._hideTimeout) clearTimeout(toast._hideTimeout)
-    toast._hideTimeout = setTimeout(() => {
-        toast.classList.remove('show')
-        toast._removeTimeout = setTimeout(() => {}, 300)
-    }, duration)
+    toast._hideTimeout = setTimeout(() => hideToast(toast), duration)
+}
+
+function hideToast(toast) {
+    toast.classList.remove('show')
+    if (toast._hideTimeout) {
+        clearTimeout(toast._hideTimeout)
+        toast._hideTimeout = null
+    }
 }
 function showNotSupportWebGL() {
     document.getElementById('loading-overlay')?.classList.add('hidden')

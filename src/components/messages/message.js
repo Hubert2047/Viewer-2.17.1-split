@@ -121,6 +121,7 @@ class Messages {
                     } else {
                         this._audio.play().catch()
                         this._isPlaying = true
+                        this._playAnimStart = performance.now()
                         btn.classList.add('playing')
                         btn.innerHTML = this._ringsvg() + this._iconPlaying()
                         this._progressRing = btn.querySelector('.audio-progress-ring')
@@ -729,6 +730,7 @@ class Messages {
         if (audioEnabled && this.data.audio?.autoPlay && this._audio && !this._isPlaying && this.data.audio?.show) {
             this._audio.play().catch()
             this._isPlaying = true
+            this._playAnimStart = performance.now()
             if (this._audioBtn) {
                 this._audioBtn.classList.add('playing')
                 this._audioBtn.innerHTML = this._ringsvg() + this._iconPlaying()

@@ -40,7 +40,7 @@ const ICONS = {
                 <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg> `,
-    cancel:`<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    cancel: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             <line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`,
@@ -188,7 +188,10 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
   <circle cx="12" cy="12" r="9"/>
   <rect x="8.5" y="8.5" width="7" height="7" rx="1" fill="currentColor" stroke="none"/>
 </svg>`,
-check: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    check: `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path d="M1.5 6.5L4.5 9.5L10.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`,
+    success: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4L16 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    warning: `<svg viewBox="0 0 20 20" fill="none"><path d="M10 3l8 14H2L10 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 8v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="14.5" r="0.9" fill="currentColor"/></svg>`,
+    error: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
 }
