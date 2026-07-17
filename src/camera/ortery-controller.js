@@ -306,9 +306,10 @@ class OtherController {
         this.events.on('viewer:save-initview', () => this.saveInitview())
         this.events.on('viewer:remove-saved-view', () => this.removeInitview())
         this.events.on('viewer:lock-zoom-in', (value) => {
+            const isCylindrical = this.model === 'cylindrical' && !!this.cylindricalCamPos
             const lockZoomIn = {
                 locked: value,
-                value: value ? this.getDistanceScale(this.originModel === 'cylindrical') : this.minDistance,
+                value: value ? this.getDistanceScale(isCylindrical) : this.minDistance,
             }
             this.settings.lockZoomIn = lockZoomIn
         })
@@ -1226,12 +1227,7 @@ class OtherController {
             return
         const [x, y, z] = move
         if (z !== 0) {
-            if (
-                this.model === 'cylindrical' &&
-                Array.isArray(this.settings.cameras) &&
-                this.settings.cameras.length > 0 &&
-                !this.isEditingOrientation
-            ) {
+            if (this.model === 'cylindrical' && !!this.cylindricalCamPos && !this.isEditingOrientation) {
                 this.fov = this.clampFov(this.fov + this.fov * z * 0.75)
             } else {
                 this.distance = this.clampDistance(this.distance + this.distance * z)
