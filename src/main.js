@@ -3023,7 +3023,9 @@ class Viewer {
             const { instance } = gsplat
             if (instance) {
                 // kick off gsplat sorting immediately now that camera is in position
-                instance.sort(camera)
+                app.once('update', () => {
+                    instance.sort(camera)
+                })
                 // listen for sorting updates to trigger first frame events
                 instance.sorter?.on('updated', () => {
                     // request frame render when sorting changes
