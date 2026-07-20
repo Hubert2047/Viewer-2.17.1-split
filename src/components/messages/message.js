@@ -101,9 +101,13 @@ class Messages {
                 btn.style.color = this.data.audio.iconColor
                 btn.style.backgroundColor = transparentColor(this.data.audio.bgColor, this.data.audio.bgAlpha)
 
-                btn.innerHTML = this._ringsvg() + this._iconMuted()
+                btn.innerHTML =
+                    this._ringsvg() +
+                    `<span class="audio-icon">${this._isPlaying ? this._iconPlaying() : this._iconMuted()}</span>`
+                if (this._isPlaying) btn.classList.add('playing')
                 this._progressRing = btn.querySelector('.audio-progress-ring')
-                this._audio.addEventListener('timeupdate', this.updateProgress)
+
+                this._attachAudioListeners()
 
                 btn.addEventListener('pointerdown', (e) => {
                     e.stopPropagation()
@@ -112,31 +116,16 @@ class Messages {
                     if (this._isPlaying) {
                         this._audio.pause()
                         this._isPlaying = false
-                        if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
-                        btn.classList.remove('playing')
-                        btn.innerHTML = this._ringsvg() + this._iconMuted()
-                        this._progressRing = btn.querySelector('.audio-progress-ring')
                         this._audio.removeEventListener('timeupdate', this.updateProgress)
-                        this._audio.addEventListener('timeupdate', this.updateProgress)
+                        this._setAudioIconState(false)
+                        this.events.fire('message:audio-user-paused', this.data.id)
                     } else {
                         this._audio.play().catch()
                         this._isPlaying = true
                         this._playAnimStart = performance.now()
-                        btn.classList.add('playing')
-                        btn.innerHTML = this._ringsvg() + this._iconPlaying()
-                        this._progressRing = btn.querySelector('.audio-progress-ring')
                         this._audio.removeEventListener('timeupdate', this.updateProgress)
                         this._audio.addEventListener('timeupdate', this.updateProgress)
-                    }
-                })
-
-                this._audio.addEventListener('ended', () => {
-                    if (!this.data.audio.loop) {
-                        this._isPlaying = false
-                        if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
-                        btn.classList.remove('playing')
-                        btn.innerHTML = this._ringsvg() + this._iconMuted()
-                        this._progressRing = btn.querySelector('.audio-progress-ring')
+                        this._setAudioIconState(true)
                     }
                 })
 
@@ -203,6 +192,7 @@ class Messages {
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
             this._isPlaying = false
+            this._attachAudioListeners()
         } else {
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
@@ -731,21 +721,34 @@ class Messages {
             this._audio.play().catch()
             this._isPlaying = true
             this._playAnimStart = performance.now()
-            if (this._audioBtn) {
-                this._audioBtn.classList.add('playing')
-                this._audioBtn.innerHTML = this._ringsvg() + this._iconPlaying()
-                this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
-                this._audio.addEventListener('timeupdate', () => {
-                    this.updateProgress()
-                })
-            }
+            this._setAudioIconState(true)
+            this._audio.removeEventListener('timeupdate', this.updateProgress)
+            this._audio.addEventListener('timeupdate', this.updateProgress)
         } else {
             if (this._audio) this.pauseAudio()
         }
 
         this.updateProgress()
     }
-
+    _setAudioIconState(isPlaying, resetRing = false) {
+        if (!this._audioBtn) return
+        const iconEl = this._audioBtn.querySelector('.audio-icon')
+        if (isPlaying) {
+            this._audioBtn.classList.add('playing')
+            if (iconEl) iconEl.innerHTML = this._iconPlaying()
+            this._audio.removeEventListener('timeupdate', this.updateProgress)
+            this._audio.addEventListener('timeupdate', this.updateProgress)
+        } else {
+            this._audioBtn.classList.remove('playing')
+            if (iconEl) iconEl.innerHTML = this._iconMuted()
+            this._audio.removeEventListener('timeupdate', this.updateProgress)
+            if (resetRing) {
+                if (this._progressRing) this._progressRing.style.strokeDashoffset = this.circumference
+            } else {
+                this.updateProgress()
+            }
+        }
+    }
     updateProgress = () => {
         if (!this._audio || !this._audio.duration) return
         const pct = this._audio.currentTime / this._audio.duration
@@ -758,11 +761,24 @@ class Messages {
         this._audio.pause()
         this._isPlaying = false
         this._audio.removeEventListener('timeupdate', this.updateProgress)
-        if (this._audioBtn) {
-            this._audioBtn.classList.remove('playing')
-            this._audioBtn.innerHTML = this._ringsvg() + this._iconMuted()
-            this._progressRing = this._audioBtn.querySelector('.audio-progress-ring')
+        this._setAudioIconState(false)
+    }
+    _attachAudioListeners() {
+        if (!this._audio) return
+
+        this._audio.removeEventListener('timeupdate', this.updateProgress)
+        this._audio.addEventListener('timeupdate', this.updateProgress)
+
+        this._audio.removeEventListener('ended', this._onAudioEnded)
+        this._onAudioEnded = () => {
+            if (!this.data.audio.loop) {
+                this._isPlaying = false
+                this._audio.removeEventListener('timeupdate', this.updateProgress)
+                this._audio.currentTime = 0
+                this._setAudioIconState(false, true)
+            }
         }
+        this._audio.addEventListener('ended', this._onAudioEnded)
     }
     setAudioRecordEnabled(enabled) {
         this._audioRecordEnabled = enabled

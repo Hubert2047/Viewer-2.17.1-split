@@ -202,6 +202,9 @@ class MessagesManager {
             if (this.global.isAutoPlayMessages) this.stopAutoPlay()
             else this.startAutoPlay()
         })
+        this.events.on('message:audio-user-paused', () => {
+            if (this.global.isAutoPlayMessages) this.stopAutoPlay({ hideMessages: true })
+        })
         this.events.on('message:message-btns', () => {
             this.showMessageNavigation(!this.global.isShowMessageNavigation)
         })
