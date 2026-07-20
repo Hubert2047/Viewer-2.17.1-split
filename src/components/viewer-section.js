@@ -324,9 +324,15 @@ function makeInitViewGroup(events, settings, global) {
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row')
 
-    const btnSave = document.createElement('button')
-    btnSave.classList.add('btn', 'initview-btn')
-    btnSave.textContent = 'Save current view'
+    const btnSave = makeButton({
+        title: 'Save current view',
+        className: 'initview-btn',
+        onClick: () => {
+            events.fire('viewer:save-initview')
+            updateState(true)
+            global.dataDirty = true
+        },
+    })
     function updateState(hasPose) {
         if (hasPose) {
             btnSave.classList.add('active')
@@ -337,21 +343,16 @@ function makeInitViewGroup(events, settings, global) {
         }
     }
 
-    btnSave.onclick = () => {
-        events.fire('viewer:save-initview')
-        updateState(true)
-        global.dataDirty = true
-    }
-
-    const btnDefault = document.createElement('button')
-    btnDefault.classList.add('btn', 'initview-btn')
-    btnDefault.textContent = 'Default view'
-    btnDefault.onclick = () => {
-        updateState(false)
-        if (!settings.initview.pose) return
-        events.fire('viewer:remove-saved-view')
-        global.dataDirty = true
-    }
+    const btnDefault = makeButton({
+        title: 'Default view',
+        className: 'initview-btn',
+        onClick: () => {
+            updateState(false)
+            if (!settings.initview.pose) return
+            events.fire('viewer:remove-saved-view')
+            global.dataDirty = true
+        },
+    })
 
     btnRow.appendChild(btnSave)
     btnRow.appendChild(btnDefault)
