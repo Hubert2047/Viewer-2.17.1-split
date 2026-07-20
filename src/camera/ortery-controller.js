@@ -107,18 +107,7 @@ class OtherController {
 
         this.global.recording = true
         this.events.fire('record-start')
-
-        const probeStream = cropCanvas.captureStream(0)
-        const probeTrack = probeStream.getVideoTracks()[0]
-        const supportsManualFrame = typeof probeTrack.requestFrame === 'function'
-
-        let videoStream
-        if (supportsManualFrame) {
-            videoStream = probeStream
-        } else {
-            probeTrack.stop()
-            videoStream = cropCanvas.captureStream(fps)
-        }
+        const videoStream = cropCanvas.captureStream()
         const videoTrack = videoStream.getVideoTracks()[0]
 
         this._includeAudio = includeAudio
@@ -147,7 +136,6 @@ class OtherController {
             ctx.drawImage(srcCanvas, r.x, r.y, r.width, r.height, 0, 0, cropCanvas.width, cropCanvas.height)
             if (includeMessage && this.global.recordPattern === 'story')
                 this.drawActiveMessage(ctx, cropCanvas, srcCanvas, r)
-            if (supportsManualFrame) videoTrack.requestFrame()
         }
         this._drawFrame = drawFrame
 
@@ -173,12 +161,23 @@ class OtherController {
             this._drawFrame = null
             this._silentOsc?.stop()
             this._silentOsc = null
+
+            const capturedAudioEls = this._recordAudioSources ? [...this._recordAudioSources.keys()] : []
+
             this._recordAudioSources?.forEach((node) => node.disconnect())
             this._recordAudioSources?.clear()
             this._recordAudioSources = null
             this._recordAudioDestination = null
             this._recordAudioCtx?.close()
             this._recordAudioCtx = null
+
+            if (capturedAudioEls.length) {
+                this.global.messagesManager?.messages?.forEach((m) => {
+                    if (capturedAudioEls.includes(m._audio)) {
+                        m.refreshAudio(true)
+                    }
+                })
+            }
         }
 
         const hasAudioTrack = combinedStream.getAudioTracks().length > 0
@@ -191,7 +190,6 @@ class OtherController {
         const videoBitsPerSecond = Math.min(MAX_BITRATE, Math.max(MIN_BITRATE, targetBitrate))
 
         const options = { videoBitsPerSecond }
-        if (mimeType) options.mimeType = mimeType
         if (mimeType) options.mimeType = mimeType
 
         this.mediaRecorder = new MediaRecorder(combinedStream, options)
@@ -285,6 +283,10 @@ class OtherController {
         const textData = message.data.text
 
         ctx.save()
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)'
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 4 * scaleLenY
+        ctx.shadowBlur = 12 * scaleLenY
         ctx.fillStyle = transparentColor(textData.background, textData.backgroundAlpha)
         roundRectPath(ctx, boxTL.x, boxTL.y, boxW, boxH, 0.1875 * rootFontSize * scaleLenX)
         ctx.fill()

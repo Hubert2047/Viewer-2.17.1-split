@@ -390,7 +390,6 @@ function makeExportSection(el, global) {
         onClick: () => {
             const filename = 'index.html'
             exportHtml(filename, global)
-            // exportPly(modelEntity, global.settings.removedSplats)
         },
     })
 

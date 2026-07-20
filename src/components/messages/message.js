@@ -157,6 +157,7 @@ class Messages {
         if (rebuild) {
             if (this._audio) {
                 this._audio.pause()
+                this._audio.removeEventListener('timeupdate', this.updateProgress)
                 this._audio = null
             }
             if (this._audioBtn) {
@@ -169,9 +170,11 @@ class Messages {
             }
             return
         }
+
         if (!this.data.audio || !this.data.audio?.fileName) {
             if (this._audio) {
                 this._audio.pause()
+                this._audio.removeEventListener('timeupdate', this.updateProgress)
                 this._audio = null
             }
             if (this._audioBtn) {
@@ -181,18 +184,21 @@ class Messages {
             this._isPlaying = false
             return
         }
+
         const src = this.data.audio.src || `./audios/${this.data.audio.fileName}`
         const shouldRecreate = !this._audio || this._audio.src !== src
 
         if (shouldRecreate) {
             if (this._audio) {
                 this._audio.pause()
+                this._audio.removeEventListener('timeupdate', this.updateProgress)
             }
             this._audio = new Audio(src)
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
             this._isPlaying = false
             this._attachAudioListeners()
+            this._setAudioIconState(false, true)
         } else {
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false

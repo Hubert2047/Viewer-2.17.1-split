@@ -224,7 +224,9 @@ button {
     display: flex;
     flex-direction: column;
     border-left: 0.5px solid rgba(0, 0, 0, 0.1);
+    scrollbar-width: thin;
 }
+
 .sidebar-header {
     padding: 0.875rem 1rem;
     font-size: 0.875rem;
@@ -287,6 +289,24 @@ button {
     max-height: calc(100vh - 265px);
     overflow-y: auto;
     border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+    scrollbar-width: thin;
+}
+.sidebar,
+.section-body {
+    scrollbar-width: thin;
+}
+.sidebar::-webkit-scrollbar,
+.section-body::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-thumb,
+.section-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+.sidebar::-webkit-scrollbar-track,
+.section-body::-webkit-scrollbar-track {
+    background: transparent;
 }
 #messageContainer {
     display: flex;
@@ -685,7 +705,7 @@ button {
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1;
-    max-width: 166px;
+    max-width: 148px;
 }
 .volume-wrap {
     display: flex;
@@ -748,8 +768,8 @@ button {
 .message-audio-btn {
     overflow: visible;
     position: absolute;
-    top: -0.75rem;
-    right: -0.75rem;
+    top: -12px;
+    right: -12px;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -775,8 +795,8 @@ button {
 
 .audio-ring-svg {
     position: absolute;
-    top: -0.25rem;
-    left: -0.25rem;
+    top: -4px;
+    left: -4px;
     width: 36px;
     height: 36px;
 }
