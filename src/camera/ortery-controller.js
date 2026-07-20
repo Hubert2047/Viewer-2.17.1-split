@@ -934,7 +934,6 @@ class OtherController {
                     this.centerPivot = localToWorld(this.settings.pivot.position)
                     this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
                 }
-                this.syncHierarchyAndRender()
                 onResetFinished?.()
             },
             lerpDuration: NORMAL_FADE_TIME,
@@ -1116,7 +1115,139 @@ class OtherController {
 
         this.updateModelRotation()
     }
+    resetOrientation() {
+        this.settings.orientation.pose = null
+        this.settings.initview.pose = null
+        this.baseRotation = this.initialModelRotation.clone()
+        this.basePosition = this.initialModelPosition.clone()
+        this.originEntityRotation = this.initialModelRotation.clone()
+        this.originEntityPos = this.initialModelPosition.clone()
 
+        const euler = this.baseRotation.getEulerAngles()
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
+        this.setupTransition({
+            transitionMode: 'spherical',
+            startPose: {
+                focus: this.focus.clone(),
+                rotation: modelEntity.localRotation.clone(),
+                position: modelEntity.localPosition.clone(),
+                fov: this.fov,
+                distance: this.distance,
+            },
+            targetPose: {
+                focus: this.resetPose.focus.clone(),
+                rotation: this.initialModelRotation.clone(),
+                position: this.initialModelPosition.clone(),
+                distance: this.resetPose.distance,
+                fov: this.resetPose.fov,
+                yaw: 0,
+                pitch: 0,
+            },
+            lerpDuration: NORMAL_FADE_TIME,
+        })
+    }
+    applyManualOrientation() {
+        this.hideHorizontalLine()
+        this.baseRotation = modelEntity.localRotation.clone()
+        const offsetFromPivot = modelEntity.localPosition.clone().sub(this.centerPivot)
+        this.centerPivot = this.originBboxPivot.clone()
+        this.basePosition = this.originBboxPivot.clone().add(offsetFromPivot)
+        modelEntity.localPosition.copy(this.basePosition)
+        this.originEntityRotation = this.baseRotation.clone()
+        this.originEntityPos = this.basePosition.clone()
+        const euler = this.baseRotation.getEulerAngles()
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
+        this.settings.orientation.pose = {
+            rotation: this.baseRotation,
+            position: this.basePosition,
+        }
+        this.clearPrevEditOrientation()
+        this.reset({
+            onResetFinished: () => {
+                this.saveInitview({ isShowToast: false, defaultDistance: true })
+                this.events.fire('orientation:added')
+            },
+        })
+    }
+    applyGroundPlaneOrientation(points) {
+        const localNormal = fitPlaneNormal(points)
+        const normalInWorld = new Vec3()
+        this.initialModelRotation.transformVector(localNormal, normalInWorld)
+        normalInWorld.normalize()
+
+        const pickCentroid = new Vec3(
+            (points[0].x + points[1].x + points[2].x) / 3,
+            (points[0].y + points[1].y + points[2].y) / 3,
+            (points[0].z + points[1].z + points[2].z) / 3,
+        )
+        const pickCentroidWorld = new Vec3()
+        this.initialModelRotation.transformVector(pickCentroid, pickCentroidWorld)
+        const weight = getModelWeight(modelEntity, this.settings.removedSplats)
+        const modelCentroid = localToWorld(weight)
+        const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
+        if (normalInWorld.dot(toModelCenter) > 0) {
+            normalInWorld.mulScalar(-1)
+        }
+
+        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
+        const newBaseRotation = new Quat()
+        newBaseRotation.mul2(correctionQuat, this.initialModelRotation)
+
+        const currentPosition = modelEntity.localPosition.clone()
+        const centerPivot = this.centerPivot.clone()
+        const { x, y, z } = centerPivot.clone().sub(currentPosition)
+        const currentRotation = modelEntity.localRotation.clone()
+        const invCurrentRot = currentRotation.clone().invert()
+        const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
+        const rotatedOffsetToPivot = new Vec33(x, y, z).transformQuat(deltaQuat)
+        const newPosition = centerPivot.clone().sub(rotatedOffsetToPivot)
+
+        this.baseRotation = newBaseRotation
+        this.basePosition = newPosition
+        this.originEntityRotation = this.baseRotation
+        this.originEntityPos = this.basePosition
+        this.centerPivot = centerPivot
+
+        this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
+
+        this.clearPrevEditOrientation()
+
+        const euler = newBaseRotation.getEulerAngles()
+        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
+
+        this.hemisphericalRot(this.currentYaw, this.minPitch)
+        const targetPosition = modelEntity.localPosition.clone()
+        const targetRotation = modelEntity.localRotation.clone()
+        const startPose = {
+            focus: this.focus.clone(),
+            position: currentPosition,
+            rotation: currentRotation,
+            distance: this.distance,
+            yaw: this.currentYaw,
+            pitch: this.currentPitch,
+            fov: this.fov,
+        }
+        const targetPose = {
+            focus: this.centerPivot.clone(),
+            position: targetPosition,
+            rotation: targetRotation,
+            distance: this.distance,
+            yaw: this.currentYaw,
+            pitch: this.minPitch,
+            fov: this.fov,
+        }
+        this.setupTransition({
+            transitionMode: 'spherical',
+            targetPose,
+            startPose,
+            lerpDuration: NORMAL_FADE_TIME,
+            onTransitionFinished: () => {
+                this.saveInitview({ isShowToast: false, defaultDistance: true })
+                this.currentPitch = this.minPitch
+            },
+        })
+        this.events.fire('orientation:added')
+    }
     cancelOrientation() {
         this.hideHorizontalLine()
         if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
@@ -1166,7 +1297,6 @@ class OtherController {
             )
         }
     }
-
     spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity || this._autoRotating) return
 
@@ -1254,144 +1384,6 @@ class OtherController {
             this.syncHierarchyAndRender()
         }
         this._autoRotateTick = tick
-    }
-    resetOrientation() {
-        this.settings.orientation.pose = null
-        this.settings.initview.pose = null
-        this.baseRotation = this.initialModelRotation.clone()
-        this.basePosition = this.initialModelPosition.clone()
-        this.originEntityRotation = this.initialModelRotation.clone()
-        this.originEntityPos = this.initialModelPosition.clone()
-
-        const euler = this.baseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-        this.setupTransition({
-            transitionMode: 'spherical',
-            startPose: {
-                focus: this.focus.clone(),
-                rotation: modelEntity.localRotation.clone(),
-                position: modelEntity.localPosition.clone(),
-                fov: this.fov,
-                distance: this.distance,
-            },
-            targetPose: {
-                focus: this.resetPose.focus.clone(),
-                rotation: this.initialModelRotation.clone(),
-                position: this.initialModelPosition.clone(),
-                distance: this.resetPose.distance,
-                fov: this.resetPose.fov,
-                yaw: 0,
-                pitch: 0,
-            },
-            lerpDuration: NORMAL_FADE_TIME,
-        })
-    }
-    applyManualOrientation() {
-        this.hideHorizontalLine()
-        this.baseRotation = modelEntity.localRotation.clone()
-
-        const offsetFromPivot = modelEntity.localPosition.clone().sub(this.centerPivot)
-        this.centerPivot = this.originBboxPivot.clone()
-        this.basePosition = this.originBboxPivot.clone().add(offsetFromPivot)
-
-        modelEntity.localPosition.copy(this.basePosition)
-
-        this.originEntityRotation = this.baseRotation.clone()
-        this.originEntityPos = this.basePosition.clone()
-
-        const euler = this.baseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-
-        this.settings.orientation.pose = {
-            rotation: this.baseRotation,
-            position: this.basePosition,
-        }
-
-        this.clearPrevEditOrientation()
-        this.hemisphericalRot(this.currentYaw, 0)
-        this.currentPitch = 0
-        this.syncHierarchyAndRender()
-        this.saveInitview({ isShowToast: false, defaultDistance: true })
-        this.events.fire('orientation:added')
-    }
-    applyGroundPlaneOrientation(points) {
-        const localNormal = fitPlaneNormal(points)
-        const normalInWorld = new Vec3()
-        this.initialModelRotation.transformVector(localNormal, normalInWorld)
-        normalInWorld.normalize()
-
-        const pickCentroid = new Vec3(
-            (points[0].x + points[1].x + points[2].x) / 3,
-            (points[0].y + points[1].y + points[2].y) / 3,
-            (points[0].z + points[1].z + points[2].z) / 3,
-        )
-        const pickCentroidWorld = new Vec3()
-        this.initialModelRotation.transformVector(pickCentroid, pickCentroidWorld)
-        const weight = getModelWeight(modelEntity, this.settings.removedSplats)
-        const modelCentroid = localToWorld(weight)
-        const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
-        if (normalInWorld.dot(toModelCenter) > 0) {
-            normalInWorld.mulScalar(-1)
-        }
-
-        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
-        const newBaseRotation = new Quat()
-        newBaseRotation.mul2(correctionQuat, this.initialModelRotation)
-
-        const currentPosition = modelEntity.localPosition.clone()
-        const centerPivot = this.centerPivot.clone()
-        const { x, y, z } = centerPivot.clone().sub(currentPosition)
-        const currentRotation = modelEntity.localRotation.clone()
-        const invCurrentRot = currentRotation.clone().invert()
-        const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
-        const rotatedOffsetToPivot = new Vec33(x, y, z).transformQuat(deltaQuat)
-        const newPosition = centerPivot.clone().sub(rotatedOffsetToPivot)
-
-        this.baseRotation = newBaseRotation
-        this.basePosition = newPosition
-        this.originEntityRotation = this.baseRotation
-        this.originEntityPos = this.basePosition
-        this.centerPivot = centerPivot
-
-        this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
-
-        this.clearPrevEditOrientation()
-
-        const euler = newBaseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-
-        this.hemisphericalRot(this.currentYaw, this.minPitch)
-        const targetPosition = modelEntity.localPosition.clone()
-        const targetRotation = modelEntity.localRotation.clone()
-        const startPose = {
-            focus: this.focus.clone(),
-            position: currentPosition,
-            rotation: currentRotation,
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.currentPitch,
-            fov: this.fov,
-        }
-        const targetPose = {
-            focus: this.centerPivot.clone(),
-            position: targetPosition,
-            rotation: targetRotation,
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.minPitch,
-            fov: this.fov,
-        }
-        this.setupTransition({
-            transitionMode: 'spherical',
-            targetPose,
-            startPose,
-            lerpDuration: NORMAL_FADE_TIME,
-            onTransitionFinished: () => {
-                this.saveInitview({ isShowToast: false, defaultDistance: true })
-                this.currentPitch = this.minPitch
-            },
-        })
-        this.events.fire('orientation:added')
     }
     lerp(a, b, t) {
         return a + (b - a) * t
