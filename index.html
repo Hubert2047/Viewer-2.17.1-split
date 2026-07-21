@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=31" />
+        <link rel="stylesheet" href="./data/viewer.css?v=33" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -59,105 +59,43 @@
         window.sse = {
             settings: {
                 ref: '',
-                model: 'cylindrical',
-                contentUrl: 'models/lu.ply',
-                v: 31,
-                messages: [
-                    {
-                        id: 'cd28f5b0-0f68-40b3-a23f-5bcbcfdda5e2',
-                        autoPlay: { time: 3 },
-                        button: { title: 'message1' },
-                        text: {
-                            color: 'black',
-                            bold: false,
-                            italic: false,
-                            align: 'center',
-                            content: 'message1',
-                            background: '#ffffff',
-                            backgroundAlpha: 0.8,
-                            originWidth: 150,
-                            originHeight: 50,
-                            topLeft: { x: -4.987824888082881, y: -24.472674080236423, z: -5.435742134577374 },
-                            botRight: { x: -12.180376005612201, y: -21.220752659521207, z: -11.124795390536661 },
-                            fontSize: 16,
-                        },
-                        focus: { position: { x: -3.533068211054349, y: -18.31368637742461, z: -5.24377271757767 } },
-                        dot: {
-                            style: 'circle',
-                            strokeColor: '#D8D8D8',
-                            stroke: 1,
-                            size: 30,
-                            topLeft: { x: -2.9960842436473007, y: -19.075253308284452, z: -4.702807882877714 },
-                            botRight: { x: -4.081730907055819, y: -17.55015617360072, z: -5.769554320752391 },
-                        },
-                        entityInfo: {
-                            rotation: { x: 0, y: 0, z: 1, w: 6.123233995736766e-17 },
-                            position: { x: 0, y: 0, z: 0 },
-                            isFullyInView: true,
-                            distanceScale: 1,
-                            focus: { x: 0.19690564135056973, y: 11.62744922355126, z: 1.6340747848332091 },
-                            pitch: 0,
-                            yaw: 0,
-                        },
-                        audio: {
-                            show: true,
-                            src: '',
-                            fileName: 'alexguz-funk-amp-breakbeat-541097.mp3',
-                            bgColor: '#000000',
-                            bgAlpha: 0.8,
-                            iconColor: '#ffffff',
-                            volume: 1,
-                            loop: false,
-                            autoPlay: false,
-                        },
-                    },
-                    {
-                        id: '4fa3a6a0-1073-445a-9646-da31586a862e',
-                        autoPlay: { time: 3 },
-                        button: { title: 'message2' },
-                        text: {
-                            color: 'black',
-                            bold: false,
-                            italic: false,
-                            align: 'center',
-                            content: 'message2',
-                            background: '#ffffff',
-                            backgroundAlpha: 0.8,
-                            originWidth: 150,
-                            originHeight: 50,
-                            topLeft: { x: -7.187937047058172, y: -21.336809880879855, z: -7.896160460686218 },
-                            botRight: { x: -8.31503323045543, y: -18.043986324324177, z: -16.999626627875468 },
-                            fontSize: 16,
-                        },
-                        focus: { position: { x: -6.48128948635221, y: -15.069504825921346, z: -6.696677028999745 } },
-                        dot: {
-                            style: 'circle',
-                            strokeColor: '#D8D8D8',
-                            stroke: 1,
-                            size: 30,
-                            topLeft: { x: -6.465579373326235, y: -16.02885742413948, z: -5.74457481835754 },
-                            botRight: { x: -6.523088119084257, y: -14.110618406187983, z: -7.644921349088742 },
-                        },
-                        entityInfo: {
-                            rotation: {
-                                x: -0.3995262493497383,
-                                y: -2.4463927122075216e-17,
-                                z: 0.9167217549946826,
-                                w: 5.613301814814911e-17,
-                            },
-                            position: { x: 1.2598348132962083, y: 0, z: 0.37743091744263557 },
-                            isFullyInView: true,
-                            distanceScale: 1,
-                            focus: { x: 0.19690564135056973, y: 11.62744922355126, z: 1.6340747848332091 },
-                            pitch: 0,
-                            yaw: -0.8219999999999992,
-                        },
-                    },
-                ],
+                model: 'spherical',
+                contentUrl: 'models/noise.ply',
+                v: 33,
+                dimensions: {
+                    boxColor: '#f95f4d',
+                    background: { color: '#ffffff', alpha: 0.8 },
+                    foregroundColor: '#f95f4d',
+                    realSize: { x: 12, y: 11.991090361905535, z: 15.476193739440083 },
+                    unit: 'cm',
+                    type: 'dimensions',
+                    position: { x: -0.8767202622059205, y: -16.747791036163747, z: 0.7455817793714392 },
+                    size: { x: 27.52107370400543, y: 27.373897843875753, z: 35.32987690438353 },
+                    rotation: { x: -90.51728143016037, y: -1.4096206231192414, z: 173.7983666429482 },
+                },
+                measurement: {
+                    lineColor: '#f95f4d',
+                    textColor: '#ffffff',
+                    textBackground: { color: '#000000', alpha: 0.8 },
+                    calibration: { useDimensionData: true, unit: 'cm', distance: 0, points: [] },
+                },
                 setupStep: 4,
-                chunkCount: 0,
+                removedSplats: [
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                    27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+                    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+                    77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 181510, 181511, 181512, 181513, 181514,
+                    181515, 181516, 181517, 181518, 181519, 181520, 181521, 181522, 181523, 181524, 181525, 181526,
+                    181527, 181528, 181529, 181530, 181531, 181532, 181533, 181534, 181535, 181536, 181537, 181538,
+                    181539, 181540, 181541, 181542, 181543, 181544, 181545, 181546, 181547, 181548, 181549, 181550,
+                    181551, 181552, 181553, 181554, 181555, 181556, 181557, 181558, 181559, 181560, 181561, 181562,
+                    181563, 181564, 181565, 181566, 181567, 181568, 181569, 181570, 181571, 181572, 181573, 181574,
+                    181575, 181576, 181577, 181578, 181579, 181580, 181581, 181582, 181583, 181584, 181585, 181586,
+                    181587, 181588, 181589, 181590, 181591, 181592, 181593, 181594,
+                ],
+                chunkCount: 30,
             },
         }
     </script>
-    <script src="./data/viewer.js?v=31"></script>
+    <script src="./data/viewer.js?v=33"></script>
 </html>

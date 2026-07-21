@@ -325,6 +325,38 @@ function makeDimensionSection(el, global) {
             btnRow.appendChild(btnDelete)
         }
     }
+    async function onBoxEndDrag() {
+        if (!isEditing) return
+        const oldSize = currentDimensions.size
+        const result = await getUpdateBoxSize(currentDimensions.rotation, settings.removedSplats)
+        currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
+
+        if (currentDimensions.useMeasurementData && canUseMeasurementData) {
+            currentDimensions = { ...currentDimensions, ...calRealSizeFromMeasurement(result.size) }
+            setRealValues(currentDimensions.realSize)
+        } else if (autoCalc) {
+            let refAxis = lastChangedAxis
+            let refValue = lastInputAxisValue
+            if (!refAxis) {
+                const real = currentDimensions.realSize || {}
+                refAxis = ['x', 'y', 'z'].find((axis) => real[axis])
+                refValue = refAxis ? real[refAxis] : null
+            }
+            const oldBoxVal = refAxis ? oldSize[refAxis] : null
+            if (refAxis && refValue && oldBoxVal) {
+                const ratio = refValue / oldBoxVal
+                const newReal = {
+                    x: refAxis === 'x' ? refValue : result.size.x * ratio,
+                    y: refAxis === 'y' ? refValue : result.size.y * ratio,
+                    z: refAxis === 'z' ? refValue : result.size.z * ratio,
+                }
+                currentDimensions = { ...currentDimensions, realSize: newReal }
+                setRealValues(newReal)
+            }
+        }
+
+        onDimensionsChanged()
+    }
     function onEdit() {
         isEditing = true
         lastChangedAxis = null
@@ -336,16 +368,12 @@ function makeDimensionSection(el, global) {
             dimensionRotatable = new BoxRotatable({
                 app: global.app,
                 dimensions: currentDimensions,
-                onDragEnd: async () => {
-                    if (!isEditing) return
-                    const result = await getUpdateBoxSize(currentDimensions.rotation, settings.removedSplats)
-                    currentDimensions = { ...currentDimensions, size: result.size, position: result.position }
-                    onDimensionsChanged()
-                },
+                onDragEnd: onBoxEndDrag,
             })
         } else {
-            dimensionRotatable.syncFromExternal(currentDimensions)
+            dimensionRotatable.setDragEnd(onBoxEndDrag)
         }
+        dimensionRotatable.syncFromExternal(currentDimensions)
         global.rotationGizmo.enable(dimensionRotatable)
         events.fire('re-render:control-wrap')
     }

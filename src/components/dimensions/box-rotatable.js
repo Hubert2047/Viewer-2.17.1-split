@@ -1,10 +1,13 @@
 class BoxRotatable {
-    constructor({app, dimensions, onDragEnd}) {
+    constructor({ app, dimensions, onDragEnd }) {
         this.dimensions = dimensions
         this._app = app
         this._onDragEnd = onDragEnd
         this._quat = new Quat()
         this._syncQuat()
+    }
+    setDragEnd(func) {
+        this._onDragEnd = func
     }
     _syncQuat() {
         if (!this.dimensions) return
@@ -14,8 +17,8 @@ class BoxRotatable {
             this.dimensions.rotation.z,
         )
     }
-    onDragEnd(){
-        if(this._onDragEnd)this._onDragEnd()
+    onDragEnd() {
+        if (this._onDragEnd) this._onDragEnd()
     }
     syncFromExternal(dimentions) {
         this.dimensions = dimentions

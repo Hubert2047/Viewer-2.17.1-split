@@ -88,7 +88,7 @@ const files = [
     { file: 'src/libs/oobworker.js', preset: 'engine' },
     { file: 'src/components/rotation-gizmo.js', preset: 'default' },
     { file: 'src/components/entity-rotatable.js', preset: 'default' },
-    { file: 'src/components/dimensions/dimension-rotatable.js', preset: 'default' },
+    { file: 'src/components/dimensions/box-rotatable.js', preset: 'default' },
     { file: 'src/components/position-gizmo.js', preset: 'default' },
     { file: 'src/components/loading.js', preset: 'default' },
     { file: 'src/components/ground-plane-picker.js', preset: 'default' },

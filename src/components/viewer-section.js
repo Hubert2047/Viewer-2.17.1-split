@@ -249,6 +249,14 @@ function makeViewerSection(el, global) {
         applyBtn.setShow(isAxesEdit)
         cancelBtn.setShow(isAxesEdit)
     }
+    async function onBoxDragEnd() {
+        if (!isAxesEdit) return
+        const result = await getUpdateBoxSize(dimensionAxes.rotation, settings.removedSplats)
+        settings.spin.rotation = dimensionAxes.rotation
+        dimensionAxes = { ...dimensionAxes, size: result.size, position: result.position }
+        spinAxesRotatable.syncFromExternal(dimensionAxes)
+        global.dimensionsBox.draw(dimensionAxes)
+    }
     async function enterEditMode() {
         if (settings.spin.rotation) {
             const { x, y, z } = settings.spin.rotation
@@ -268,19 +276,12 @@ function makeViewerSection(el, global) {
             spinAxesRotatable = new BoxRotatable({
                 app: global.app,
                 dimensionAxes: dimensionAxes,
-                onDragEnd: async () => {
-                    if (!isAxesEdit) return
-                    const result = await getUpdateBoxSize(dimensionAxes.rotation, settings.removedSplats)
-                    settings.spin.rotation = dimensionAxes.rotation
-                    dimensionAxes = { ...dimensionAxes, size: result.size, position: result.position }
-                    spinAxesRotatable.syncFromExternal(dimensionAxes)
-                    global.dimensionsBox.draw(dimensionAxes)
-                },
+                onDragEnd: onBoxDragEnd,
             })
+        } else {
+            spinAxesRotatable.setDragEnd(onBoxDragEnd)
         }
-        if (spinAxesRotatable) {
-            spinAxesRotatable.syncFromExternal(dimensionAxes)
-        }
+        spinAxesRotatable.syncFromExternal(dimensionAxes)
         global.rotationGizmo.enable(spinAxesRotatable)
         global.dimensionsBox.draw(dimensionAxes)
     }
