@@ -170,7 +170,7 @@ function build() {
             fs.writeFileSync('dist/data/viewer.js', header + obfuscatedCode + '\n\n' + playcanvasLicense)
 
             const css = fs.readFileSync('src/assets/viewer.css', 'utf8')
-            fs.writeFileSync('dist/data/viewer.css', minifyCss(css))
+            fs.writeFileSync('dist/data/viewer.css', header + minifyCss(css))
 
             console.log('✓ Production build: obfuscated + minified CSS')
         } else {

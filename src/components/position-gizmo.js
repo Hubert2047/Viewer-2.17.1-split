@@ -129,7 +129,7 @@ class PointGizmo {
             this._dotDragging = true
             this._prevMouse = { x: e.clientX, y: e.clientY }
             document.body.style.cursor = 'grabbing'
-            this._onDragStart?.() 
+            this._onDragStart?.()
         })
         dot.addEventListener('pointermove', (e) => {
             if (!this._dotDragging) return
@@ -141,7 +141,7 @@ class PointGizmo {
             this._dotDragging = false
             dot.setAttribute('r', cfg.dotRadius)
             document.body.style.cursor = ''
-            this._onDragEnd?.()   
+            this._onDragEnd?.()
             if (this._localPos) this._onEnd?.({ x: this._localPos.x, y: this._localPos.y, z: this._localPos.z })
         })
         if (!this._showAxes) {
@@ -291,19 +291,15 @@ class PointGizmo {
         const worldPos = this._getWorldPos()
         if (!worldPos) return
 
-        const rect = this._canvas.getBoundingClientRect()
-        const dpr = this._canvas.width / rect.width
-
         const cam = this._camEntity.camera
         const camPos = this._camEntity.getPosition()
-
         const depth = new Vec3().sub2(worldPos, camPos).length()
 
         const tmp = new Vec3()
         cam.worldToScreen(worldPos, tmp)
 
-        const tx = tmp.x + dx * dpr
-        const ty = tmp.y + dy * dpr
+        const tx = tmp.x + dx
+        const ty = tmp.y + dy
 
         const newWorld = new Vec3()
         cam.screenToWorld(tx, ty, depth, newWorld)
