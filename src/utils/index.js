@@ -399,8 +399,8 @@ function makeControlBotGroup(global, tooltip, dom) {
     const buttons = [
         ['startSpin', 'startSpin', 'Start Spin (S)', hasSpin, showStartSpin, '360spin-start'],
         ['stopSpin', 'stopSpin', 'Stop Spin (S)', hasSpin, !showStartSpin, '360spin-stop'],
-        ['resetCamera', 'resetCamera', 'Reset Camera (R)', true, true, 'inputEvent:reset-camera'],
-        ['measure', 'measure', 'Measurement (M)', hasMeasurement, hasMeasurement, 'inputEvent:toggle-measure'],
+        ['resetCamera', 'resetCamera', 'Reset Camera (R)', true, true, 'inputEvent:r'],
+        ['measure', 'measure', 'Measurement (M)', hasMeasurement, hasMeasurement, 'inputEvent:m'],
         [
             'showDimension',
             'showDimension',
@@ -1100,14 +1100,14 @@ function initDimensions({ global, events, config }) {
     events.on('dimensions:color-change', (dim) => {
         global.dimensionsBox.updateColorOnly(dim)
     })
-    events.on('dimensions:toggle-show', () => {
+    events.on('inputEvent:d', () => {
         if (!global.settings.dimensions) return
         if (!global.dimensionsBox?.show) showDimensions({ global })
         else hideDimensions({ global })
     })
 }
 function initMeasurement({ global, dom, events }) {
-    events.on('inputEvent:toggle-measure', () => {
+    events.on('inputEvent:m', () => {
         if (!global.settings.measurement) return
         if (!global.measureTool) {
             global.measureTool = new MeasureTool(global)

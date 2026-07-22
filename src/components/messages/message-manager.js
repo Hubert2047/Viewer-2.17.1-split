@@ -198,14 +198,14 @@ class MessagesManager {
             this.editor = editor
             this.updateUIPanel()
         })
-        this.events.on('message:toggle-play', () => {
+        this.events.on('inputEvent:p', () => {
             if (this.global.isAutoPlayMessages) this.stopAutoPlay()
             else this.startAutoPlay()
         })
         this.events.on('message:audio-user-paused', () => {
             if (this.global.isAutoPlayMessages) this.stopAutoPlay({ hideMessages: true })
         })
-        this.events.on('message:message-btns', () => {
+        this.events.on('inputEvent:t', () => {
             this.showMessageNavigation(!this.global.isShowMessageNavigation)
         })
         this.events.on('ortery:rotate', () => this.hideAllMessages())

@@ -1611,35 +1611,16 @@ class InputController {
                     }
                     event.preventDefault()
                 }
-            } else if (!event.ctrlKey && !event.altKey && !event.metaKey) {
-                switch (event.key) {
-                    case 'Enter':
-                        events.fire('inputEvent:enter', event)
-                        event.preventDefault()
-                        break
-                    case 'p':
-                        events.fire('message:toggle-play')
-                        break
-                    case 's':
-                        events.fire('spin:toggle-play')
-                        break
-                    case 'd':
-                        events.fire('dimensions:toggle-show')
-                        break
-                    case 't':
-                        events.fire('message:message-btns')
-                        break
-                    case 'r':
-                        events.fire('inputEvent:reset-camera', event)
-                        break
-                    case 'm':
-                        events.fire('inputEvent:toggle-measure', event)
-                        break
-                    case 'Delete':
-                        events.fire('inputEvent:delete', event)
-                        event.preventDefault()
-                        break
-                }
+            } else if (
+                !event.ctrlKey &&
+                !event.altKey &&
+                !event.metaKey &&
+                ['Enter', 'p', 'l', 'b', 'e', 's', 'd', 't', 'r', 'm', ' '].includes(event.key)
+            ) {
+                const KEY_ALIASES = { ' ': 'space' }
+                const keyName = KEY_ALIASES[event.key] ?? event.key
+                events.fire(`inputEvent:${keyName}`, event)
+                event.preventDefault()
             }
         })
         const activatePointerLock = () => {

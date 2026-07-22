@@ -527,7 +527,7 @@ class OtherController {
             if (this.isRecordStory) this.events.fire('message:stop-auto', { hideMessages: true })
             this.stopRecording({ discard })
         })
-        this.events.on('spin:toggle-play', () => {
+        this.events.on('inputEvent:s', () => {
             if (!this.global.settings.spin.enabled) return
             if (!this.global.isSpin360) {
                 this.spin360({ model: this.originModel })
@@ -535,7 +535,7 @@ class OtherController {
                 this.stopSpin360()
             }
         })
-        this.events.on('inputEvent:reset-camera', () => {
+        this.events.on('inputEvent:r', () => {
             this.reset()
         })
         this.events.on('measurement:drag', (isDrag) => {
@@ -760,6 +760,7 @@ class OtherController {
         }
         this.originDistance = distance
         this.originFocus = sceneBound.center.clone()
+        this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
         this.originFov = fov
         this.resetPose = {
@@ -1547,9 +1548,10 @@ class OtherController {
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
             } else {
-                v$2.copy(this.rightCam).mulScalar(x)
+                const extraSpeed = this.originModel === 'cylindrical' && !!this.cylindricalCamPos ? 1.35 : 1
+                v$2.copy(this.rightCam).mulScalar(x * extraSpeed)
                 this.focus.add(v$2)
-                v$2.copy(this.upCam).mulScalar(y)
+                v$2.copy(this.upCam).mulScalar(y * extraSpeed)
                 this.focus.add(v$2)
             }
             this.events.fire('camera:moved')

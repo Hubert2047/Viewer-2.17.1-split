@@ -113,12 +113,12 @@ function makePointEraser(global) {
     // ── Selection mode ───────────────────────────────────────────
     const selectionHint = `
   <div class="hint-row">
-    1.<span><kbd>Delete</kbd> / <kbd>Enter</kbd></span>
-    <span>Delete selected points</span>
-  </div>
-  <div class="hint-row">
-    2.<span><kbd>Esc</kbd></span>
+    1.<span><kbd>Esc</kbd></span>
     <span>Deselect points</span>
+  </div>
+   <div class="hint-row">
+    2.<span><kbd>Delete</kbd> / <kbd>Space</kbd></span>
+    <span>Delete selected points</span>
   </div>
 `
 
@@ -131,47 +131,40 @@ function makePointEraser(global) {
             id: 'rect',
             label: 'Rect',
             icon: ICONS.rect,
+            title: 'Rect (E)',
         },
         {
             id: 'lasso',
             label: 'Lasso',
             icon: ICONS.lasso,
+            title: 'Lasso (L)',
         },
         {
             id: 'polygon',
             label: 'Polygon',
             icon: ICONS.polygon,
+            title: 'Polygon (P)',
         },
         {
             id: 'brush',
             label: 'Brush',
             icon: ICONS.brush,
+            title: 'Brush (B)',
         },
     ]
 
     let activeMode = null
     let activeBtn = null
-    const modeBtns = modes.map(({ id, label, icon }) => {
+    const modeBtns = modes.map(({ id, label, icon, title }) => {
         const btn = document.createElement('button')
         btn.classList.add('tool-mode-btn')
         btn.dataset.mode = id
         btn.innerHTML = `${icon}<span>${label}</span>`
-        btn.onclick = () => {
-            if (activeMode === id) {
-                resetSelection()
-            } else {
-                activeBtn = btn
-                events.fire('point-eraser:active', true)
-                activeMode = id
-                modeBtns.forEach((b) => b.classList.toggle('active', b.dataset.mode === id))
-                brushSizeRow.setShow(id === 'brush')
-                currentControl.setMode(id)
-            }
-        }
+        btn.title = title
+        btn.onclick = () => selectMode(id)
         modeRow.appendChild(btn)
         return btn
     })
-
     modeGroup.appendChild(modeRow)
 
     // ── Brush size ───────────────────────────────────────────────
@@ -264,6 +257,19 @@ function makePointEraser(global) {
     container.appendChild(modeGroup)
     container.appendChild(actionsGroup)
     if (currentControl) updateUndoRedoButtons()
+    function selectMode(id) {
+        if (!currentControl) return
+        if (activeMode === id) {
+            resetSelection()
+            return
+        }
+        activeBtn = modeBtns.find((b) => b.dataset.mode === id) ?? null
+        events.fire('point-eraser:active', true)
+        activeMode = id
+        modeBtns.forEach((b) => b.classList.toggle('active', b.dataset.mode === id))
+        brushSizeRow.setShow(id === 'brush')
+        currentControl.setMode(id)
+    }
     function resetSelection() {
         events.fire('point-eraser:active', false)
         activeMode = null
@@ -456,14 +462,18 @@ function makePointEraser(global) {
         events.on('model:loaded', onModelLoaded),
         events.on('point-selection', onPointSelection),
         events.on('point-eraser:deleted-set-changed', updateAabb),
-        events.on('inputEvent:enter', applyDeleteSelectedPoints),
-        events.on('inputEvent:delete', applyDeleteSelectedPoints),
-        events.on('inputEvent:reset-camera', () => {
+        events.on('inputEvent:Enter', applyDeleteSelectedPoints),
+        events.on('inputEvent:space', applyDeleteSelectedPoints),
+        events.on('inputEvent:r', () => {
             resetSelection()
         }),
         events.on('inputEvent:esc', () => {
             events.fire('point-eraser:cancel')
         }),
+        events.on('inputEvent:e', () => selectMode('rect')),
+        events.on('inputEvent:b', () => selectMode('brush')),
+        events.on('inputEvent:p', () => selectMode('polygon')),
+        events.on('inputEvent:l', () => selectMode('lasso')),
     ]
     const updateAabbHandle = app.on('framerender', drawAabbCorners)
     container.cleanup = () => {

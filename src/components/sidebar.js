@@ -237,7 +237,7 @@ function makePivotGroup(global, editGroup) {
     renderBtns()
     setPivotConfigured(!!settings.pivot.position)
     const handles = [
-        events.on('inputEvent:reset-camera', onCancel),
+        events.on('inputEvent:r', onCancel),
         events.on('pivot:positionsynced', ({ x, y, z }) => {
             setInputValues({ x, y, z })
             currrentPivotPos = { x, y, z }
