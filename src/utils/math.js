@@ -652,11 +652,34 @@ function quatFromTo(from, to) {
     q.setFromAxisAngle(axis, angle)
     return q
 }
-function mergeSettings(settings, defaultSettings) {
-    const merged = {
-        ...JSON.parse(JSON.stringify(defaultSettings)),
-        ...settings,
+function isObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function deepMerge(defaultObj, targetObj) {
+    if (!isObject(defaultObj) || !isObject(targetObj)) {
+        return targetObj === undefined ? defaultObj : targetObj
     }
+
+    const result = {}
+
+    const keys = new Set([...Object.keys(defaultObj), ...Object.keys(targetObj)])
+
+    for (const key of keys) {
+        const defaultValue = defaultObj[key]
+        const targetValue = targetObj[key]
+
+        if (isObject(defaultValue) && isObject(targetValue)) {
+            result[key] = deepMerge(defaultValue, targetValue)
+        } else {
+            result[key] = targetValue === undefined ? structuredClone(defaultValue) : targetValue
+        }
+    }
+
+    return result
+}
+function mergeSettings(settings, defaultSettings) {
+    const merged = deepMerge(defaultSettings, settings)
     if (!['cylindrical', 'spherical', 'hemispherical'].includes(merged.model)) {
         merged.model = 'spherical'
     }
