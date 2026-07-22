@@ -200,4 +200,67 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
           <line x1="15" y1="12" x2="15" y2="12"/>
           <line x1="15" y1="18" x2="15" y2="18"/>
         </svg>`,
+    stepRemoveNoise: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+  <path d="M22 21H7"/>
+  <path d="m5 11 9 9"/>
+</svg>`,
+    stepPivotPoint: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+  <line x1="13.71" y1="3.99" x2="18.08" y2="6.51"/>
+  <line x1="19.79" y1="9.48" x2="19.79" y2="14.52"/>
+  <line x1="18.08" y1="17.49" x2="13.71" y2="20.01"/>
+  <line x1="10.29" y1="20.01" x2="5.92" y2="17.49"/>
+  <line x1="4.21" y1="14.52" x2="4.21" y2="9.48"/>
+  <line x1="5.92" y1="6.51" x2="10.29" y2="3.99"/>
+  <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/>
+</svg>`,
+    stepOrientation: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <polyline points="5 9 2 12 5 15"/>
+  <polyline points="9 5 12 2 15 5"/>
+  <polyline points="15 19 12 22 9 19"/>
+  <polyline points="19 9 22 12 19 15"/>
+  <line x1="2" y1="12" x2="22" y2="12"/>
+  <line x1="12" y1="2" x2="12" y2="22"/>
+</svg>`,
+    export: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/>
+  <polyline points="7 9 12 4 17 9"/>
+  <line x1="12" y1="4" x2="12" y2="15"/>
+</svg>`,
+    sectionViewer: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="3" y1="8" x2="21" y2="8"/>
+  <circle cx="9" cy="8" r="2.2" fill="currentColor"/>
+  <line x1="3" y1="16" x2="21" y2="16"/>
+  <circle cx="15" cy="16" r="2.2" fill="currentColor"/>
+</svg>`,
+    sectionMessages: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>
+  <circle cx="8.5" cy="10.5" r="0.6" fill="currentColor" stroke="none"/>
+  <circle cx="12" cy="10.5" r="0.6" fill="currentColor" stroke="none"/>
+  <circle cx="15.5" cy="10.5" r="0.6" fill="currentColor" stroke="none"/>
+</svg>`,
+    sectionDimensions: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/>
+  <path d="m3.3 7 8.7 5 8.7-5"/>
+  <path d="M12 22V12"/>
+</svg>`,
+    sectionRecord: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="2" y="6" width="14" height="12" rx="2"/>
+  <path d="m22 8-6 4 6 4V8Z"/>
+</svg>`,
+    sectionMeasurement: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4"/>
+  <path d="M7.5 10.5 10 13"/>
+  <path d="M10.5 7.5 13 10"/>
+  <path d="M13.5 4.5 16 7"/>
+  <path d="M4.5 13.5 7 16"/>
+</svg>`,
 }

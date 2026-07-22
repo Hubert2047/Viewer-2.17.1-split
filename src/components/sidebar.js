@@ -523,7 +523,16 @@ function makeSidebar(global, dom) {
     }
 
     const isFinalStep = () => global.settings.setupStep === totalSteps
-
+    function getModelStepIcon(step) {
+        switch (step) {
+            case 1:
+                return ICONS.stepRemoveNoise
+            case 2:
+                return ICONS.stepPivotPoint
+            default:
+                return ICONS.stepOrientation
+        }
+    }
     function renderModelStep() {
         contentArea.cleanup = () => {
             modelSection.cleanup?.()
@@ -535,12 +544,14 @@ function makeSidebar(global, dom) {
             classname: 'model-section',
             body: (el) => makeModelSection(el, global),
             global,
+            icon: getModelStepIcon(global.settings.setupStep),
         })
         const exportSection = makeSection({
             id: 'export',
             title: 'Export',
             classname: 'export-section',
             body: (el) => makeExportSection(el, global),
+            icon: ICONS.export,
             global,
         })
         contentArea.appendChild(modelSection)
@@ -567,6 +578,7 @@ function makeSidebar(global, dom) {
             classname: 'viewer-setting-section',
             body: (el) => makeViewerSection(el, global),
             global,
+            icon: ICONS.sectionViewer,
         })
         const messageSection = makeSection({
             id: 'message',
@@ -574,6 +586,7 @@ function makeSidebar(global, dom) {
             classname: 'message-section',
             body: (el) => makeMessagesSection(el, global, dom),
             global,
+            icon: ICONS.sectionMessages,
         })
         const dimensionsSection = makeSection({
             id: 'dimensions',
@@ -581,6 +594,7 @@ function makeSidebar(global, dom) {
             classname: 'dimension-section',
             body: (el) => makeDimensionSection(el, global, dom),
             global,
+            icon: ICONS.sectionDimensions,
         })
         const measurementSection = makeSection({
             id: 'measurement',
@@ -588,6 +602,7 @@ function makeSidebar(global, dom) {
             classname: 'measurement-section',
             body: (el) => makeMeasurementSection(el, global),
             global,
+            icon: ICONS.sectionMeasurement,
         })
         // const posterSection = makeSection({
         //     id: 'poster',
@@ -602,12 +617,14 @@ function makeSidebar(global, dom) {
             classname: 'record-section',
             body: (el) => makeRecordSection(el, global),
             global,
+            icon: ICONS.sectionRecord,
         })
         const exportSection = makeSection({
             id: 'export',
             title: 'Export',
             classname: 'export-section',
             body: (el) => makeExportSection(el, global),
+            icon: ICONS.export,
             global,
         })
         contentArea.appendChild(viewerSection)

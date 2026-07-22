@@ -1,6 +1,7 @@
 :root {
     --canvas-opacity: 1;
     --primary: #f95f4d;
+    --secondary: #7c8ea5;
     --primary-hover: #e14c3a;
     --primary-soft: rgba(249, 95, 77, 0.12);
 
@@ -266,6 +267,14 @@ button {
 }
 .section-icon-prefix {
     height: 20px;
+    display: flex;
+    color: #7c8ea5;
+    justify-content: center;
+    align-items: center;
+    margin-right: 0.25rem;
+}
+.section-header.active .section-icon-prefix {
+    color: inherit;
 }
 .section-header:hover {
     background: rgba(0, 0, 0, 0.04);
