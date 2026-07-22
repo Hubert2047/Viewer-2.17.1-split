@@ -215,6 +215,7 @@ class MessageEditorUI {
 
         actions.appendChild(editBtn)
         actions.appendChild(delBtn)
+        row.appendChild(handle)
         row.appendChild(name)
         row.appendChild(actions)
         return { row, headerTitle: name }
@@ -352,7 +353,7 @@ class MessageEditorUI {
         messageGroup.appendChild(styleField)
 
         const dotGrid = this.makeGrid(3)
-        const sizeField = this.makeField('Size (px)')
+        const sizeField = this.makeField('Size')
         sizeField.appendChild(
             makeInput({
                 type: 'number',

@@ -119,7 +119,6 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
             stroke="currentColor" 
             stroke-width="1.2" 
             stroke-linecap="round"/>
-    
     <path d="M15.5 7H18.5V4" 
             fill="none" 
             stroke="currentColor" 
@@ -136,7 +135,6 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
             stroke="currentColor" 
             stroke-width="1.2" 
             stroke-linecap="round"/>
-    
     <path d="M15.5 7H18.5V4" 
             fill="none" 
             stroke="currentColor" 
@@ -146,7 +144,6 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
     
     <path d="M10.27 8.61C9.64 8.21 8.87 8.61 8.87 9.3V14.7C8.87 15.39 9.64 15.79 10.27 15.39L15.39 12.61C15.91 12.28 15.91 11.72 15.39 11.39L10.27 8.61Z" 
       fill="currentColor"/>
-    
     </svg>`,
     showMessageButton: `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
   <path d="M4 20h2.5l1-3h9l1 3H20L13.5 4h-3L4 20zm4.6-5 2.4-6.4L13.4 15H8.6z"/>
@@ -194,4 +191,13 @@ stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin=
     success: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4L16 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     warning: `<svg viewBox="0 0 20 20" fill="none"><path d="M10 3l8 14H2L10 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 8v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="14.5" r="0.9" fill="currentColor"/></svg>`,
     error: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/><path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    messageDragHandle: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="9" y1="6" x2="9" y2="6"/>
+          <line x1="9" y1="12" x2="9" y2="12"/>
+          <line x1="9" y1="18" x2="9" y2="18"/>
+          <line x1="15" y1="6" x2="15" y2="6"/>
+          <line x1="15" y1="12" x2="15" y2="12"/>
+          <line x1="15" y1="18" x2="15" y2="18"/>
+        </svg>`,
 }

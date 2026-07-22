@@ -351,13 +351,7 @@ button {
     width: 28px;
     padding: 0;
 }
-.message-drag-handle {
-    cursor: grab;
-    padding: 0 0.25rem;
-    color: #aaa;
-    display: flex;
-    align-items: center;
-}
+
 .message-drag-handle:active {
     cursor: grabbing;
 }
@@ -399,6 +393,7 @@ button {
 }
 .message-header {
     display: flex;
+    cursor: grab;
     justify-content: space-between;
     align-items: center;
     gap: 0.25rem;
@@ -410,6 +405,11 @@ button {
     max-width: 100%;
     flex: 1;
     word-break: break-word;
+}
+.message-drag-handle {
+    color: #aaa;
+    display: flex;
+    align-items: center;
 }
 .message-header-actions {
     display: flex;
