@@ -16,6 +16,9 @@ class MessageEditorUI {
     }
     listenEvents() {
         this.handles = [
+            this.events.on('inputEvent:esc', () => {
+                this.events.fire('message:add-cancelled')
+            }),
             this.events.on('message:add-cancelled', () => {
                 document.body.style.cursor = 'default'
                 this.events.fire('message:editing', false)

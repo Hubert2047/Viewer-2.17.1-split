@@ -111,7 +111,18 @@ function makePointEraser(global) {
     viewGroup.appendChild(unselectedColorRow)
 
     // ── Selection mode ───────────────────────────────────────────
-    const modeGroup = makeSectionGroup('Selection mode')
+    const selectionHint = `
+  <div class="hint-row">
+    1.<span><kbd>Delete</kbd> / <kbd>Enter</kbd></span>
+    <span>Delete selected points</span>
+  </div>
+  <div class="hint-row">
+    2.<span><kbd>Esc</kbd></span>
+    <span>Deselect points</span>
+  </div>
+`
+
+    const modeGroup = makeSectionGroup('Selection mode', selectionHint)
     const modeRow = document.createElement('div')
     modeRow.classList.add('btn-row')
 
@@ -449,6 +460,9 @@ function makePointEraser(global) {
         events.on('inputEvent:delete', applyDeleteSelectedPoints),
         events.on('inputEvent:reset-camera', () => {
             resetSelection()
+        }),
+        events.on('inputEvent:esc', () => {
+            events.fire('point-eraser:cancel')
         }),
     ]
     const updateAabbHandle = app.on('framerender', drawAabbCorners)

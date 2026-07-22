@@ -614,6 +614,7 @@ class SelectionController {
     }
 
     _upload(selectedSet) {
+        const prevSize = this._selectedSet.size
         const pixels = this._stateTex.lock()
         pixels.set(this._stateData)
         this._stateTex.unlock()
@@ -621,7 +622,9 @@ class SelectionController {
         this.gsplatComp.material.setParameter('splatState', this._stateTex)
         this.gsplatComp.material.setParameter('splatStateSize', new Float32Array([this.texWidth, this.texHeight]))
         this.app.renderNextFrame = true
-        if (selectedSet) this._pushHistory()
+        if (selectedSet && !(prevSize === 0 && selectedSet.size === 0)) {
+            this._pushHistory()
+        }
         this.events.fire('point-selection', selectedSet)
     }
 
@@ -664,19 +667,26 @@ class SelectionController {
     }
 
     _onCancel() {
-        this._clearSelection()
-    }
+        if (this._selectedSet.size === 0) return
 
-    _clearSelection() {
-        this._selectedSet.forEach((i) => {
-            const tx = i % this.texWidth
-            const ty = Math.floor(i / this.texWidth)
-            this._stateData[ty * this.texWidth + tx] = 0
-        })
-        this._selectedSet.clear()
-        this._upload()
-    }
+        if (this._historyIndex > 0) {
+            this._history.splice(this._historyIndex, 1)
+            this._historyIndex--
+        }
 
+        const snap = this._history[this._historyIndex]
+        this._stateData.set(snap.stateData)
+        this._selectedSet = new Set(snap.selectedSet)
+
+        const pixels = this._stateTex.lock()
+        pixels.set(this._stateData)
+        this._stateTex.unlock()
+        this.gsplatComp.material.setParameter('splatState', this._stateTex)
+        this.gsplatComp.material.setParameter('splatStateSize', new Float32Array([this.texWidth, this.texHeight]))
+        this.app.renderNextFrame = true
+
+        this.events.fire('point-selection', this._selectedSet)
+    }
     setActive(v) {
         this._active = v
         if (!v) this._clearOverlay()

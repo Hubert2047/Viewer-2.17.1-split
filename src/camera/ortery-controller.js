@@ -1530,14 +1530,12 @@ class OtherController {
             if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
                 const deltaX = x * 0.75
                 const deltaY = y * 0.75
-
                 modelEntity.localPosition.y -= deltaY
                 this.basePosition.y -= deltaY
                 this.centerPivot.y -= deltaY
                 if (this.cachePositionY !== undefined) {
                     this.cachePositionY -= deltaY
                 }
-
                 const rightOffset = this.rightCam.clone().mulScalar(deltaX)
                 modelEntity.localPosition.x -= rightOffset.x
                 modelEntity.localPosition.z -= rightOffset.z

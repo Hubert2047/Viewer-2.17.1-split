@@ -552,7 +552,7 @@ function makeSectionWrap(otps = {}) {
     }
     return container
 }
-const makeSectionGroup = (title, hint) => {
+function makeSectionGroup(title, hint) {
     const group = document.createElement('div')
     group.classList.add('section-group')
     if (title) {

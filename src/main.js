@@ -1593,7 +1593,7 @@ class InputController {
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
                 return
             if (event.key === 'Escape') {
-                events.fire('message:add-cancelled')
+                events.fire('inputEvent:esc')
                 if (recentlyExitedWalk);
                 else if (state.cameraMode === 'walk' && state.gamingControls && state.inputMode === 'desktop') {
                     state.gamingControls = false
