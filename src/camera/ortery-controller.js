@@ -760,7 +760,7 @@ class OtherController {
         }
         this.originDistance = distance
         this.originFocus = sceneBound.center.clone()
-        this.focus.copy(sceneBound.center)
+        // this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
         this.originFov = fov
         this.resetPose = {

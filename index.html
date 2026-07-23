@@ -1,6 +1,5 @@
-
-    <!doctype html>
-    <html lang="en">
+<!doctype html>
+<html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -11,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=36" />
+        <link rel="stylesheet" href="./data/viewer.css?v=38" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -41,22 +40,34 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-        <svg class="progress-ring" viewBox="0 0 200 200">
-            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-            <circle
-                id="progressRingFg"
-                class="progress-ring-fg"
-                cx="100"
-                cy="100"
-                r="86"
-                fill="none"
-                stroke-dasharray="540.35"
-                stroke-dashoffset="540.35" />
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/dress_noise.ply","v":36,"setupStep":2,"removedSplats":[0,267123,267125,268701,482301,1,2,267124,482300,499999],"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}],"chunkCount":0} }</script>
-    <script src="./data/viewer.js?v=36"></script>
-    </html> 
-    
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'cylindrical',
+                contentUrl: 'models/360_noise.ply',
+                v: 38,
+                setupStep: 1,
+                // removedSplats: [0, 7, 455807, 455809, 455804, 455805, 455806, 455808, 1, 2, 3, 4, 5, 6, 8, 3474],
+                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
+                chunkCount: 0,
+            },
+        }
+    </script>
+    <script src="./data/viewer.js?v=38"></script>
+</html>

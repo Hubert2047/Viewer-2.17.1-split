@@ -313,6 +313,7 @@ function makePointEraser(global) {
         global.dataDirty = true
     }
     function applyDeleteSelectedPoints() {
+        if (applyBtn.disabled) return
         if (deletedSet.size > 0) {
             applyPointMapping({ modelEntity, deletedSet })
             settings.removedSplats = [...deletedSet]
