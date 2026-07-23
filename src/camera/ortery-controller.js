@@ -36,6 +36,7 @@ class OtherController {
     maxFov = 100
     minFov = 5
     spinDirection = 'cw'
+    panFovScale = 1
 
     constructor({ global, bbox }) {
         this.global = global
@@ -48,6 +49,7 @@ class OtherController {
         this.model = settings.model
         this.initialModelRotation = modelEntity.localRotation.clone()
         this.initialModelPosition = modelEntity.localPosition.clone()
+        this.initialModelWorldTransform = modelEntity.getWorldTransform().clone()
         if (this.settings.orientation.pose) {
             const { rotation: r, position: p } = this.settings.orientation.pose
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
@@ -707,12 +709,15 @@ class OtherController {
             const {
                 bbox: { center, halfExtents },
             } = calBbox({ modelEntity, removedSplats })
+
             this.syncPivotPoint(center)
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
+            const originalFitCenter = new Vec3()
+            this.initialModelWorldTransform.transformPoint(center, originalFitCenter)
             sceneBound.setFromTransformedAabb(sceneBound, modelEntity.getWorldTransform())
-            this.recalBoundingBox(sceneBound)
+            this.recalBoundingBox({ sceneBound, originalFitCenter, originalFitHalfExtents: halfExtents })
         })
         this.events.on('point-eraser:completed', () => {
             this.reset({
@@ -738,11 +743,11 @@ class OtherController {
             this.currentYaw = 0
             this.currentPitch = this.minPitch ?? 0
             this.centerPivot = sceneBound.center.clone()
-            this.recalBoundingBox(sceneBound)
+            this.recalBoundingBox({ sceneBound })
             this.reset()
         })
     }
-    recalBoundingBox(sceneBound) {
+    recalBoundingBox({ sceneBound, originalFitCenter, originalFitHalfExtents }) {
         this.bbox = sceneBound
         let distance = this.getDeafultDistance(sceneBound.halfExtents)
         const result = new Camera()
@@ -753,16 +758,18 @@ class OtherController {
             this.cameraEntity.setPosition(this.cylindricalCamPos)
             distance = this.cylindricalCamPos.distance(sceneBound.center)
             fov = this.calFitFOV()
+            const originalFitFov = this.calFitFOV(originalFitCenter, originalFitHalfExtents)
+            this.panFovScale = originalFitFov / fov + 0.35
             forward = sceneBound.center.clone().sub(this.cylindricalCamPos).normalize()
+            this.originFov = fov
         } else {
             forward = sceneBound.center.clone().sub(result.position).normalize()
+            this.originDistance = distance
             fov = this.fov
         }
-        this.originDistance = distance
         this.originFocus = sceneBound.center.clone()
-        // this.focus.copy(sceneBound.center)
+        this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
-        this.originFov = fov
         this.resetPose = {
             ...result,
             distance,
@@ -1548,7 +1555,7 @@ class OtherController {
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
             } else {
-                const extraSpeed = this.originModel === 'cylindrical' && !!this.cylindricalCamPos ? 1.35 : 1
+                const extraSpeed = this.originModel === 'cylindrical' && !!this.cylindricalCamPos ? this.panFovScale : 1
                 v$2.copy(this.rightCam).mulScalar(x * extraSpeed)
                 this.focus.add(v$2)
                 v$2.copy(this.upCam).mulScalar(y * extraSpeed)
@@ -1823,11 +1830,11 @@ class OtherController {
         }
         this.lastLineDistance = undefined
     }
-    calFitFOV() {
+    calFitFOV(center, half) {
         if (!this.bbox) return this.fov
         const cameraPos = this.cameraEntity.getPosition()
-        const bboxCenter = this.bbox.center.clone()
-        const halfExtents = this.bbox.halfExtents
+        const bboxCenter = center ? center : this.bbox.center.clone()
+        const halfExtents = half ? half : this.bbox.halfExtents
 
         const forward = new Vec3().sub2(bboxCenter, cameraPos).normalize()
         const worldUp = new Vec3(0, 1, 0)
