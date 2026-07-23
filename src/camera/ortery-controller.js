@@ -33,7 +33,7 @@ class OtherController {
     isSpin360Loop = false
     spinSpeed = 5
     fov = 50
-    maxFov = 100
+    maxFov = 120
     minFov = 5
     spinDirection = 'cw'
     panFovScale = 1
@@ -49,7 +49,6 @@ class OtherController {
         this.model = settings.model
         this.initialModelRotation = modelEntity.localRotation.clone()
         this.initialModelPosition = modelEntity.localPosition.clone()
-        this.initialModelWorldTransform = modelEntity.getWorldTransform().clone()
         if (this.settings.orientation.pose) {
             const { rotation: r, position: p } = this.settings.orientation.pose
             this.baseRotation = new Quat(r.x, r.y, r.z, r.w)
@@ -78,8 +77,6 @@ class OtherController {
         this.originModel = this.model
         this.originBboxPivot = this.bbox.center.clone()
         this.listenEvents()
-        if (this.model === 'spherical') {
-        }
     }
     startRecording({
         fps = 60,
@@ -709,15 +706,12 @@ class OtherController {
             const {
                 bbox: { center, halfExtents },
             } = calBbox({ modelEntity, removedSplats })
-
             this.syncPivotPoint(center)
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
-            const originalFitCenter = new Vec3()
-            this.initialModelWorldTransform.transformPoint(center, originalFitCenter)
             sceneBound.setFromTransformedAabb(sceneBound, modelEntity.getWorldTransform())
-            this.recalBoundingBox({ sceneBound, originalFitCenter, originalFitHalfExtents: halfExtents })
+            this.recalBoundingBox({ sceneBound })
         })
         this.events.on('point-eraser:completed', () => {
             this.reset({
@@ -747,7 +741,7 @@ class OtherController {
             this.reset()
         })
     }
-    recalBoundingBox({ sceneBound, originalFitCenter, originalFitHalfExtents }) {
+    recalBoundingBox({ sceneBound }) {
         this.bbox = sceneBound
         let distance = this.getDeafultDistance(sceneBound.halfExtents)
         const result = new Camera()
@@ -758,8 +752,6 @@ class OtherController {
             this.cameraEntity.setPosition(this.cylindricalCamPos)
             distance = this.cylindricalCamPos.distance(sceneBound.center)
             fov = this.calFitFOV()
-            const originalFitFov = this.calFitFOV(originalFitCenter, originalFitHalfExtents)
-            this.panFovScale = originalFitFov / fov + 0.35
             forward = sceneBound.center.clone().sub(this.cylindricalCamPos).normalize()
             this.originFov = fov
         } else {
@@ -908,6 +900,7 @@ class OtherController {
             }
 
             this.syncHierarchyAndRender()
+            onResetFinished?.()
             return
         }
         this.isResetting = true
@@ -1038,7 +1031,11 @@ class OtherController {
             focus: focusPoint,
         }
         this.originCameraPosition = this.cameraEntity.position.clone()
-        this.reset()
+        this.reset({
+            onResetFinished: () => {
+                this.events.fire('ortery:initialized')
+            },
+        })
     }
     onExit() {}
     applyInertia() {
@@ -1175,6 +1172,16 @@ class OtherController {
         this.reset({
             onResetFinished: () => {
                 this.saveInitview({ isShowToast: false, defaultDistance: true })
+                // const isCylindrical = this.originModel === 'cylindrical' && this.cylindricalCamPos
+                // this.settings.initview = {
+                //     rotation: this.baseRotation.clone(),
+                //     position: modelEntity.localPosition.clone(),
+                //     isFullyInView: this.isFullyVisibleInCamera(isCylindrical),
+                //     distanceScale: 1,
+                //     focus: this.focus.clone(),
+                //     pitch: this.currentPitch,
+                //     yaw: this.currentYaw,
+                // }
                 this.events.fire('orientation:added')
             },
         })
@@ -1555,10 +1562,9 @@ class OtherController {
                 this.updateModelRotation()
                 this.syncHierarchyAndRender()
             } else {
-                const extraSpeed = this.originModel === 'cylindrical' && !!this.cylindricalCamPos ? this.panFovScale : 1
-                v$2.copy(this.rightCam).mulScalar(x * extraSpeed)
+                v$2.copy(this.rightCam).mulScalar(x)
                 this.focus.add(v$2)
-                v$2.copy(this.upCam).mulScalar(y * extraSpeed)
+                v$2.copy(this.upCam).mulScalar(y)
                 this.focus.add(v$2)
             }
             this.events.fire('camera:moved')
@@ -1830,11 +1836,11 @@ class OtherController {
         }
         this.lastLineDistance = undefined
     }
-    calFitFOV(center, half) {
+    calFitFOV() {
         if (!this.bbox) return this.fov
         const cameraPos = this.cameraEntity.getPosition()
-        const bboxCenter = center ? center : this.bbox.center.clone()
-        const halfExtents = half ? half : this.bbox.halfExtents
+        const bboxCenter = this.bbox.center.clone()
+        const halfExtents = this.bbox.halfExtents
 
         const forward = new Vec3().sub2(bboxCenter, cameraPos).normalize()
         const worldUp = new Vec3(0, 1, 0)

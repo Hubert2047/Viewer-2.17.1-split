@@ -1615,7 +1615,7 @@ class InputController {
                 !event.ctrlKey &&
                 !event.altKey &&
                 !event.metaKey &&
-                ['Enter', 'p', 'l', 'b', 'e', 's', 'd', 't', 'r', 'm', ' '].includes(event.key)
+                ['Delete', 'p', 'l', 'b', 'e', 's', 'd', 't', 'r', 'm', ' '].includes(event.key)
             ) {
                 const KEY_ALIASES = { ' ': 'space' }
                 const keyName = KEY_ALIASES[event.key] ?? event.key

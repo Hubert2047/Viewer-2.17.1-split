@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=46" />
+        <link rel="stylesheet" href="./data/viewer.css?v=56" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -59,14 +59,15 @@
         window.sse = {
             settings: {
                 ref: '',
-                model: 'cylindrical',
-                contentUrl: 'models/360_noise.ply',
-                v: 46,
-                setupStep: 1,
+                model: 'hemispherical',
+                contentUrl: 'models/dress_noise.ply',
+                v: 56,
+                setupStep: 3,
+                removedSplats: [0, 1, 2, 267123, 267124, 267125, 268701, 482300, 482301, 499999],
                 cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
                 chunkCount: 0,
             },
         }
     </script>
-    <script src="./data/viewer.js?v=46"></script>
+    <script src="./data/viewer.js?v=56"></script>
 </html>

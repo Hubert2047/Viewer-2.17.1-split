@@ -463,7 +463,7 @@ function makePointEraser(global) {
         events.on('model:loaded', onModelLoaded),
         events.on('point-selection', onPointSelection),
         events.on('point-eraser:deleted-set-changed', updateAabb),
-        events.on('inputEvent:Enter', applyDeleteSelectedPoints),
+        events.on('inputEvent:Delete', applyDeleteSelectedPoints),
         events.on('inputEvent:space', applyDeleteSelectedPoints),
         events.on('inputEvent:r', () => {
             resetSelection()
@@ -475,6 +475,9 @@ function makePointEraser(global) {
         events.on('inputEvent:b', () => selectMode('brush')),
         events.on('inputEvent:p', () => selectMode('polygon')),
         events.on('inputEvent:l', () => selectMode('lasso')),
+        events.on('ortery:initialized', () => {
+            events.fire('point-eraser:commit-delete', [])
+        }),
     ]
     const updateAabbHandle = app.on('framerender', drawAabbCorners)
     container.cleanup = () => {
