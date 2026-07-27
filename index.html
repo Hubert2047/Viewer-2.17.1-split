@@ -1,5 +1,6 @@
-<!doctype html>
-<html lang="en">
+
+    <!doctype html>
+    <html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -10,7 +11,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=56" />
+        <link rel="stylesheet" href="./data/viewer.css?v=61" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -40,34 +41,22 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-            <svg class="progress-ring" viewBox="0 0 200 200">
-                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                <circle
-                    id="progressRingFg"
-                    class="progress-ring-fg"
-                    cx="100"
-                    cy="100"
-                    r="86"
-                    fill="none"
-                    stroke-dasharray="540.35"
-                    stroke-dashoffset="540.35" />
+        <svg class="progress-ring" viewBox="0 0 200 200">
+            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+            <circle
+                id="progressRingFg"
+                class="progress-ring-fg"
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke-dasharray="540.35"
+                stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'hemispherical',
-                contentUrl: 'models/dress_noise.ply',
-                v: 56,
-                setupStep: 3,
-                removedSplats: [0, 1, 2, 267123, 267124, 267125, 268701, 482300, 482301, 499999],
-                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
-                chunkCount: 0,
-            },
-        }
-    </script>
-    <script src="./data/viewer.js?v=56"></script>
-</html>
+    <script>window.sse = { "settings": {"ref":"","model":"hemispherical","contentUrl":"models/dress_noise.ply","v":61,"pivot":{"position":{"x":0.1225570860036741,"y":-7.406716000610741,"z":0.22663314956121175}},"initview":{"pose":{"rotation":{"x":-0.005999289016770872,"y":0.010542376221584033,"z":0.9998695041883151,"w":-0.010669649905635152},"position":{"x":0.4904118815195383,"y":26.177842676696667,"z":-2.089412357561185},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.3149231699801404,"y":52.85839635346776,"z":-2.1282833842135345},"pitch":0,"yaw":0}},"orientation":{"pose":{"rotation":{"x":-0.005999289016770872,"y":0.010542376221584033,"z":0.9998695041883151,"w":-0.010669649905635152},"position":{"x":0.4904118815195383,"y":26.177842676696667,"z":-2.089412357561185}}},"setupStep":4,"removedSplats":[0,1,2,267123,267124,267125,268701,482300,482301,499999],"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}],"chunkCount":0} }</script>
+    <script src="./data/viewer.js?v=61"></script>
+    </html> 
+    

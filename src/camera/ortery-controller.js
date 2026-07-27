@@ -1158,7 +1158,7 @@ class OtherController {
         this.baseRotation = modelEntity.localRotation.clone()
         const offsetFromPivot = modelEntity.localPosition.clone().sub(this.centerPivot)
         this.centerPivot = this.originBboxPivot.clone()
-        this.basePosition = this.originBboxPivot.clone().add(offsetFromPivot)
+        this.basePosition = this.centerPivot.clone().add(offsetFromPivot)
         modelEntity.localPosition.copy(this.basePosition)
         this.originEntityRotation = this.baseRotation.clone()
         this.originEntityPos = this.basePosition.clone()
@@ -1172,18 +1172,9 @@ class OtherController {
         this.reset({
             onResetFinished: () => {
                 this.saveInitview({ isShowToast: false, defaultDistance: true })
-                // const isCylindrical = this.originModel === 'cylindrical' && this.cylindricalCamPos
-                // this.settings.initview = {
-                //     rotation: this.baseRotation.clone(),
-                //     position: modelEntity.localPosition.clone(),
-                //     isFullyInView: this.isFullyVisibleInCamera(isCylindrical),
-                //     distanceScale: 1,
-                //     focus: this.focus.clone(),
-                //     pitch: this.currentPitch,
-                //     yaw: this.currentYaw,
-                // }
                 this.events.fire('orientation:added')
             },
+            useInitview: false,
         })
     }
     applyGroundPlaneOrientation(points) {
