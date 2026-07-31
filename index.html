@@ -1,6 +1,5 @@
-
-    <!doctype html>
-    <html lang="en">
+<!doctype html>
+<html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -41,22 +40,32 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-        <svg class="progress-ring" viewBox="0 0 200 200">
-            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-            <circle
-                id="progressRingFg"
-                class="progress-ring-fg"
-                cx="100"
-                cy="100"
-                r="86"
-                fill="none"
-                stroke-dasharray="540.35"
-                stroke-dashoffset="540.35" />
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>window.sse = { "settings": {"ref":"","model":"hemispherical","contentUrl":"models/dress_noise.ply","v":61,"pivot":{"position":{"x":0.1225570860036741,"y":-7.406716000610741,"z":0.22663314956121175}},"initview":{"pose":{"rotation":{"x":-0.005999289016770872,"y":0.010542376221584033,"z":0.9998695041883151,"w":-0.010669649905635152},"position":{"x":0.4904118815195383,"y":26.177842676696667,"z":-2.089412357561185},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.3149231699801404,"y":52.85839635346776,"z":-2.1282833842135345},"pitch":0,"yaw":0}},"orientation":{"pose":{"rotation":{"x":-0.005999289016770872,"y":0.010542376221584033,"z":0.9998695041883151,"w":-0.010669649905635152},"position":{"x":0.4904118815195383,"y":26.177842676696667,"z":-2.089412357561185}}},"setupStep":4,"removedSplats":[0,1,2,267123,267124,267125,268701,482300,482301,499999],"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}],"chunkCount":0} }</script>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'hemispherical',
+                contentUrl: 'models/hemi.ply',
+                v: 61,
+                setupStep: 4,
+                chunkCount: 30,
+            },
+        }
+    </script>
     <script src="./data/viewer.js?v=61"></script>
-    </html> 
-    
+</html>

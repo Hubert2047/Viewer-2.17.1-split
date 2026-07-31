@@ -78,6 +78,7 @@ class MeasureTool {
             }),
             events.on('setup-reset', () => {
                 this.deactivate()
+                this.resetCalib()
             }),
         ]
     }
@@ -397,7 +398,7 @@ class MeasureTool {
             removedSplats: this.settings.removedSplats,
         })
         if (!localPt) {
-            showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
+            showToast('Please click again!', { duration: 1000, type: 'warning' })
             return
         }
         this._points.push(localPt)
@@ -471,7 +472,7 @@ class MeasureTool {
             removedSplats: this.settings.removedSplats,
         })
         if (!localPt) {
-            showToast('Please click a point on the model!', { duration: 1000, type: 'warning' })
+            showToast('Please click again!', { duration: 1000, type: 'warning' })
             return
         }
 

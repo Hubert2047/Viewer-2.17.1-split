@@ -244,7 +244,11 @@ function makeMeasurementSection(el, global) {
     // ── Display group ──
     const displayGroup = makeSectionGroup('Display')
 
-    const { row: lineColorRow, setDisabled: setLineColorDisabled } = makeColorPickerDropdown({
+    const {
+        row: lineColorRow,
+        setDisabled: setLineColorDisabled,
+        setColor: setLineColor,
+    } = makeColorPickerDropdown({
         label: 'Line Color',
         color: currentMeasurement?.lineColor ?? '#f95f4d',
         debounceMs: 0,
@@ -255,7 +259,11 @@ function makeMeasurementSection(el, global) {
         },
     })
 
-    const { row: textColorRow, setDisabled: setTextColorDisabled } = makeColorPickerDropdown({
+    const {
+        row: textColorRow,
+        setDisabled: setTextColorDisabled,
+        setColor: setTextColor,
+    } = makeColorPickerDropdown({
         label: 'Text Color',
         color: currentMeasurement?.textColor ?? '#ffffff',
         debounceMs: 0,
@@ -265,7 +273,11 @@ function makeMeasurementSection(el, global) {
             global.dataDirty = true
         },
     })
-    const { row: backgroundRow, setDisabled: setBackgroundDisabled } = makeColorPickerDropdown({
+    const {
+        row: backgroundRow,
+        setDisabled: setBackgroundDisabled,
+        setColor: setBackgroundColor,
+    } = makeColorPickerDropdown({
         label: 'Text Background',
         color: currentMeasurement?.textBackground.color ?? '#000000',
         alpha: currentMeasurement?.textBackground.alpha ?? 0.8,
@@ -294,6 +306,10 @@ function makeMeasurementSection(el, global) {
 
     const setValues = (m) => {
         if (!m) return
+        setLineColor(m.lineColor)
+        setTextColor(m.textColor)
+        setBackgroundColor(m.textBackground.color, m.textBackground.alpha)
+        if (global.measureTool) global.measureTool.setConfig(m)
         if (m.calibration) {
             calibDistanceInput.value = m.calibration.distance
             calibUnitSelect.setValue(m.calibration.unit)
@@ -418,7 +434,11 @@ function makeMeasurementSection(el, global) {
                     currentMeasurement = null
                     calibState = 'idle'
                     calibPoints = []
-                    global.measureTool.deactivate()
+                    if (global.measureTool) {
+                        global.measureTool.deactivate()
+                        global.measureTool.setConfig(settings.measurement)
+                    }
+                    setValues(settings.measurement)
                     events.fire('re-render:control-wrap')
                     setConfigured(false)
                 },
@@ -456,7 +476,7 @@ function makeMeasurementSection(el, global) {
         }),
         events.on('dimensions:delete', () => {
             if (!hasCalibrationData(currentMeasurement?.calibration)) {
-              if(global.measureTool)  global.measureTool.deactivate()
+                if (global.measureTool) global.measureTool.deactivate()
             }
         }),
         events.on('measurement:calibration-picked', (points) => {
@@ -472,11 +492,11 @@ function makeMeasurementSection(el, global) {
             else setPointBValues(pos)
             calibPoints[idx] = pos
         }),
+        events.on('setup-reset', () => {
+            onCancel()
+        }),
     ]
     el.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
-        if (global.measureTool) {
-            global.measureTool.cleanup()
-        }
     }
 }
