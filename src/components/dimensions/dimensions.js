@@ -60,7 +60,11 @@ function makeDimensionSection(el, global) {
     const hasDimWrap = makeSectionWrap()
     const displayGroup = makeSectionGroup('display')
 
-    const { row: boxColorGroup, setDisabled: setBoxColorDisabled } = makeColorPickerDropdown({
+    const {
+        row: boxColorGroup,
+        setDisabled: setBoxColorDisabled,
+        setColor: setBoxColor,
+    } = makeColorPickerDropdown({
         label: 'Box Color',
         color: currentDimensions?.boxColor || '#f95f4d',
         debounceMs: 0,
@@ -71,7 +75,11 @@ function makeDimensionSection(el, global) {
         },
     })
 
-    const { row: textColor, setDisabled: setTextColorDisabled } = makeColorPickerDropdown({
+    const {
+        row: textColor,
+        setDisabled: setTextColorDisabled,
+        setColor: setTextColorValue,
+    } = makeColorPickerDropdown({
         label: 'Text Color',
         color: currentDimensions?.foregroundColor || '#f95f4d',
         debounceMs: 0,
@@ -82,7 +90,11 @@ function makeDimensionSection(el, global) {
         },
     })
 
-    const { row: backgroundColor, setDisabled: setBackgroundDisabled } = makeColorPickerDropdown({
+    const {
+        row: backgroundColor,
+        setDisabled: setBackgroundDisabled,
+        setColor: setBackgroundColorValue,
+    } = makeColorPickerDropdown({
         label: 'Text Background',
         color: currentDimensions?.background.color || '#ffffff',
         alpha: currentDimensions?.background.alpha ?? 0.8,
@@ -250,6 +262,9 @@ function makeDimensionSection(el, global) {
     function setValues(dim) {
         if (!dim) return
         setRealValues(dim.realSize)
+        setBoxColor(dim.boxColor)
+        setTextColorValue(dim.foregroundColor)
+        setBackgroundColorValue(dim.background.color, dim.background.alpha)
     }
 
     function setDisabled(on) {
@@ -316,6 +331,12 @@ function makeDimensionSection(el, global) {
                     currentDimensions = null
                     setDimConfigured(false)
                     setAutoCalChecked(false)
+                    setValues({
+                        realSize: { x: 0, y: 0, z: 0 },
+                        boxColor: '#f95f4d',
+                        foregroundColor: '#f95f4d',
+                        background: { color: '#ffffff', alpha: 0.8 },
+                    })
                     onDimensionsConfigured()
                     events.fire('dimensions:delete')
                     events.fire('re-render:control-wrap')
