@@ -706,11 +706,20 @@ class OtherController {
             const {
                 bbox: { center, halfExtents },
             } = calBbox({ modelEntity, removedSplats })
+
+            const restTransform = new Mat4().setTRS(
+                this.originEntityPos ?? this.initialModelPosition,
+                this.originEntityRotation ?? this.initialModelRotation,
+                modelEntity.getLocalScale(),
+            )
+
+            this.localBboxCenter = center.clone()
             this.syncPivotPoint(center)
+
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
-            sceneBound.setFromTransformedAabb(sceneBound, modelEntity.getWorldTransform())
+            sceneBound.setFromTransformedAabb(sceneBound, restTransform)
             this.recalBoundingBox({ sceneBound })
         })
         this.events.on('point-eraser:completed', () => {
@@ -860,6 +869,13 @@ class OtherController {
             targetPitch = 0
             targetPosition = this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone()
             targetRotation = this.originEntityRotation ? this.originEntityRotation.clone() : this.baseRotation.clone()
+            if (this.localBboxCenter) {
+                const targetTransform = new Mat4().setTRS(targetPosition, targetRotation, modelEntity.getLocalScale())
+                targetFocus = new Vec3()
+                targetTransform.transformPoint(this.localBboxCenter, targetFocus)
+            } else {
+                targetFocus = pose.focus.clone()
+            }
         }
         if (isFirstInit) {
             startFocus = targetFocus.clone()
@@ -935,6 +951,9 @@ class OtherController {
                 this.updateModelRotation()
                 if (this.settings.pivot.position) {
                     this.centerPivot = localToWorld(this.settings.pivot.position)
+                    this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
+                } else if (this.localBboxCenter) {
+                    this.centerPivot = localToWorld(this.localBboxCenter)
                     this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
                 }
                 onResetFinished?.()

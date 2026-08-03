@@ -448,6 +448,7 @@ function makePointEraser(global) {
             cornerEntity.enabled = false
             return
         }
+        updateCameraFarClipForAabb()
         const pos = buildCornerPositions()
         if (!pos) {
             cornerEntity.enabled = false
@@ -456,6 +457,14 @@ function makePointEraser(global) {
         cornerEntity.enabled = true
         cornerLineMesh.setPositions(pos)
         cornerLineMesh.update(PRIMITIVE_LINES, false)
+    }
+    function updateCameraFarClipForAabb() {
+        if (!currentAabb) return
+        const camPos = camera.getPosition()
+        const distToCenter = camPos.distance(currentAabb.center)
+        const radius = currentAabb.halfExtents.length()
+        const required = distToCenter + radius
+        camera.camera.farClip = Math.max(1000, required * 1.2)
     }
     const handles = [
         events.on('inputEvent:redo', onRedo),
@@ -481,6 +490,7 @@ function makePointEraser(global) {
     ]
     const updateAabbHandle = app.on('framerender', drawAabbCorners)
     container.cleanup = () => {
+        camera.camera.farClip = 1000
         cornerEntity.enabled = false
         updateAabbHandle.off()
         handles.forEach((h) => events.offByHandle(h))
