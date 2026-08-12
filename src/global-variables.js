@@ -4,10 +4,9 @@ const AUTO_PLAY_LERP_TIME = 1.5
 const NORMAL_FADE_TIME = 0.5
 const revision = 'b60756b'
 let modelEntity = null
-const isMobile =
-    new RegExp('Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', 'i').test(navigator.userAgent) ||
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0
+const isMobile = new RegExp('Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', 'i').test(
+    navigator.userAgent,
+)
 const LARGE_AUDIO_THRESHOLD_MB = 2
 const OPACITY_THRESHOLD = 0.1
 const MIN_STEP = 1
