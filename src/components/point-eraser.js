@@ -403,6 +403,7 @@ function makePointEraser(global) {
     }
     function buildCornerPositions() {
         if (!currentAabb) updateAabb()
+        if (!currentAabb) return
         const { center, halfExtents } = currentAabb
         if (!center || !halfExtents) return null
         const worldMat = modelEntity.getWorldTransform()

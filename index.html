@@ -1,6 +1,5 @@
-
-    <!doctype html>
-    <html lang="en">
+<!doctype html>
+<html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -41,22 +40,31 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-        <svg class="progress-ring" viewBox="0 0 200 200">
-            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-            <circle
-                id="progressRingFg"
-                class="progress-ring-fg"
-                cx="100"
-                cy="100"
-                r="86"
-                fill="none"
-                stroke-dasharray="540.35"
-                stroke-dashoffset="540.35" />
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>window.sse = { "settings": {"ref":"","model":"spherical","contentUrl":"models/360_noise.ply","v":62,"pivot":{"position":{"x":-0.2359417595926312,"y":-18.744064449748482,"z":0.15838702199015217}},"initview":{"pose":{"rotation":{"x":-0.24577675090564874,"y":-0.028148511384960127,"z":0.9688789910520306,"w":-0.00865740833463874},"position":{"x":0.9134266766794559,"y":0.7973953157207525,"z":-0.7719251652186965},"isFullyInView":true,"distanceScale":1.450571968,"focus":{"x":0.707399964332583,"y":20.2565895318985,"z":0.6859881281852722},"pitch":0,"yaw":0}},"orientation":{"pose":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0.23572910567991157,"y":0.7562625505813791,"z":0.26380054787350526}}},"setupStep":4,"removedSplats":[455809,0,7,455804,455805,455806,455807,455808,1,2,3,4,5,6,8,3474],"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}],"chunkCount":0} }</script>
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'spherical',
+                contentUrl: 'models/360_noise.ply',
+                v: 62,
+                chunkCount: 0,
+            },
+        }
+    </script>
     <script src="./data/viewer.js?v=62"></script>
-    </html> 
-    
+</html>
