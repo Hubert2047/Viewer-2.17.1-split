@@ -315,6 +315,14 @@ function makePointEraser(global) {
     function applyDeleteSelectedPoints() {
         if (applyBtn.disabled) return
         if (deletedSet.size > 0) {
+            const totalSplats = modelEntity.gsplat.resource.numSplats
+            if (deletedSet.size >= totalSplats) {
+                showToast('Cannot delete all points — at least one point must remain.', {
+                    type: 'warning',
+                    duration: 2500,
+                })
+                return
+            }
             applyPointMapping({ modelEntity, deletedSet })
             settings.removedSplats = [...deletedSet]
             currentControl.clearSelectionStateOnly()

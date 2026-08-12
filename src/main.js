@@ -2929,6 +2929,7 @@ class Viewer {
             const gsplat = results[0].gsplat
             const collider = results[2]
             const gsplatBbox = gsplat.customAabb
+            // Trong Viewer, ngay khi đọc gsplatBbox lúc load
             const { removedSplats } = settings
             if (removedSplats?.length > 0) {
                 const {

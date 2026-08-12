@@ -706,16 +706,16 @@ class OtherController {
             const {
                 bbox: { center, halfExtents },
             } = calBbox({ modelEntity, removedSplats })
-
+            if (!isFinite(center.x) || !isFinite(halfExtents.x) || halfExtents.x < 0) {
+                return
+            }
             const restTransform = new Mat4().setTRS(
                 this.originEntityPos ?? this.initialModelPosition,
                 this.originEntityRotation ?? this.initialModelRotation,
                 modelEntity.getLocalScale(),
             )
-
             this.localBboxCenter = center.clone()
             this.syncPivotPoint(center)
-
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
@@ -746,6 +746,7 @@ class OtherController {
             this.currentYaw = 0
             this.currentPitch = this.minPitch ?? 0
             this.centerPivot = sceneBound.center.clone()
+            this.localBboxCenter = null
             this.recalBoundingBox({ sceneBound })
             this.reset()
         })
@@ -769,7 +770,6 @@ class OtherController {
             fov = this.fov
         }
         this.originFocus = sceneBound.center.clone()
-        this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
         this.resetPose = {
             ...result,
