@@ -1602,6 +1602,8 @@ class InputController {
                 } else {
                     events.fire('inputEvent', 'cancel', event)
                 }
+            } else if (event.key === 'Control') {
+                events.fire('inputEvent:ctrl', true)
             } else if (event.ctrlKey && !event.altKey && !event.metaKey) {
                 if (event.key === 'z' || event.key === 'Z') {
                     if (event.shiftKey) {
@@ -1622,6 +1624,15 @@ class InputController {
                 events.fire(`inputEvent:${keyName}`, event)
                 event.preventDefault()
             }
+        })
+        window.addEventListener('keyup', (event) => {
+            if (event.key === 'Control') {
+                events.fire('inputEvent:ctrl', false)
+            }
+        })
+
+        window.addEventListener('blur', () => {
+            events.fire('inputEvent:ctrl', false)
         })
         const activatePointerLock = () => {
             this._desktopInput._pointerLock = true

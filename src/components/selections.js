@@ -497,6 +497,7 @@ class SelectionController {
         this.events = events
         this.app = app
         this._brushRadius = 24
+        this._ctrlActive = false
         const res = gsplatComp.resource
         this.centers = res.centers
         this.numSplats = res.numSplats
@@ -568,7 +569,7 @@ class SelectionController {
         const cvs = this.canvas
 
         this._onPointerDown = (e) => {
-            if (!this._active || !this._activeStrategy) return
+            if (!this._active || !this._activeStrategy || this._ctrlActive) return
             const { x, y } = this._rel(e)
             cvs.setPointerCapture(e.pointerId)
             this._activeStrategy.onPointerDown(x, y, e)
@@ -576,14 +577,14 @@ class SelectionController {
         }
 
         this._onPointerMove = (e) => {
-            if (!this._active || !this._activeStrategy) return
+            if (!this._active || !this._activeStrategy || this._ctrlActive) return
             const { x, y } = this._rel(e)
             this._activeStrategy.onPointerMove(x, y, e)
             this._redraw()
         }
 
         this._onPointerUp = (e) => {
-            if (!this._active || !this._activeStrategy) return
+            if (!this._active || !this._activeStrategy || this._ctrlActive) return
             const { x, y } = this._rel(e)
             this._activeStrategy.onPointerUp(x, y, e)
             this._redraw()
@@ -640,6 +641,13 @@ class SelectionController {
             this.events.on('point-eraser:commit-delete', () => this._pushHistory()),
             this.events.on('camera:moved', () => {
                 if (this._activeStrategy) this._activeStrategy._projDirty = true
+            }),
+            this.events.on('point-eraser:ctrl-active', (active) => {
+                this._ctrlActive = active
+                if (active) {
+                    this._activeStrategy?.onPointerLeave?.()
+                    this._clearOverlay()
+                }
             }),
         ]
     }

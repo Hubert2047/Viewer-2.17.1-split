@@ -37,7 +37,7 @@ class OtherController {
     minFov = 5
     spinDirection = 'cw'
     panFovScale = 1
-
+    isCtrlActive = false
     constructor({ global, bbox }) {
         this.global = global
         const { app, events, camera, settings, model } = global
@@ -547,6 +547,9 @@ class OtherController {
         this.events.on('point-eraser:active', (active) => {
             this.isPointEraserActive = active
         })
+        this.events.on('point-eraser:ctrl-active', (active) => {
+            this.isCtrlActive = active
+        })
         this.events.on('message:editing', (isEdit) => {
             this.isEditMessage = isEdit
             this.stopSpin360()
@@ -720,6 +723,7 @@ class OtherController {
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
             sceneBound.setFromTransformedAabb(sceneBound, restTransform)
+            const oldOriginDistance = this.originDistance
             this.recalBoundingBox({ sceneBound })
         })
         this.events.on('point-eraser:completed', () => {
@@ -770,6 +774,7 @@ class OtherController {
             fov = this.fov
         }
         this.originFocus = sceneBound.center.clone()
+        this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
         this.resetPose = {
             ...result,
@@ -1026,10 +1031,33 @@ class OtherController {
         return radius / Math.sin(minFovRad / 2)
     }
     onEnter(camera) {
-        let forward
         let distance
-        const focusPoint = this.bbox.center.clone()
         const isCylindrical = this.originModel === 'cylindrical'
+        if (!(isCylindrical && this.cylindricalCamPos)) {
+            distance = this.getDeafultDistance()
+        }
+        const {
+            bbox: { center, halfExtents },
+        } = calBbox({
+            modelEntity,
+            removedSplats: this.settings.removedSplats,
+        })
+        if (isFinite(center.x) && isFinite(halfExtents.x) && halfExtents.x >= 0) {
+            const restTransform = new Mat4().setTRS(
+                this.originEntityPos ?? this.initialModelPosition,
+                this.originEntityRotation ?? this.initialModelRotation,
+                modelEntity.getLocalScale(),
+            )
+            const sceneBound = new BoundingBox()
+            sceneBound.center.copy(center)
+            sceneBound.halfExtents.copy(halfExtents)
+            sceneBound.setFromTransformedAabb(sceneBound, restTransform)
+            this.bbox = sceneBound
+        }
+        let forward
+
+        const focusPoint = this.bbox.center.clone()
+
         this.minPitch = 0
         this.maxPitch = isCylindrical ? 0 : Math.PI / 2
         if (isCylindrical && this.cylindricalCamPos) {
@@ -1039,7 +1067,6 @@ class OtherController {
             distance = this.cylindricalCamPos.distance(this.bbox.center)
         } else {
             forward = focusPoint.clone().sub(camera.position).normalize()
-            distance = this.getDeafultDistance()
         }
         this.maxDistance = Math.max(distance, this.maxDistance)
         this.resetPose = {
@@ -1579,7 +1606,7 @@ class OtherController {
             }
             this.events.fire('camera:moved')
         }
-        if (this.isPointEraserActive) return
+        if (this.isPointEraserActive && !this.isCtrlActive) return
         const isZooming = z !== 0
         const isPanning = x !== 0 || y !== 0
         let didRotate = false

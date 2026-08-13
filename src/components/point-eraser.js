@@ -7,6 +7,7 @@ function makePointEraser(global) {
     let isShowSplatRing = false
     let deletedSet = new Set(settings.removedSplats)
     let currentControl = null
+    let currentSelectedSet = new Set()
     let backgroundColor = settings.background.color
     let selectedColorHex = '#FFD900'
     let selectedAlpha = 1
@@ -226,7 +227,9 @@ function makePointEraser(global) {
             currentControl.clearSelectionStateOnly()
             currentControl._pushHistory()
             deletedSet = new Set()
-            applyBtn.disabled = true
+            currentSelectedSet = new Set()
+            keepBtn.disabled = true
+            deleteBtn.disabled = true
             resetBtn.disabled = true
             if (currentControl._activeStrategy) {
                 currentControl._activeStrategy._projDirty = true
@@ -238,17 +241,24 @@ function makePointEraser(global) {
         },
     })
 
-    const applyBtn = makeButton({
-        title: 'Apply',
+    const deleteBtn = makeButton({
+        title: 'Delete',
         disabled: true,
         className: 'confirm-btn',
         onClick: applyDeleteSelectedPoints,
+    })
+    const keepBtn = makeButton({
+        title: 'Keep',
+        disabled: true,
+        className: 'confirm-btn',
+        onClick: applyKeepSelectedPoints,
     })
 
     btnRow.appendChild(undoBtn)
     btnRow.appendChild(redoBtn)
     btnRow.appendChild(spacer)
-    btnRow.appendChild(applyBtn)
+    btnRow.appendChild(keepBtn)
+    btnRow.appendChild(deleteBtn)
     btnRow.appendChild(resetBtn)
     actionsGroup.appendChild(btnRow)
 
@@ -307,13 +317,54 @@ function makePointEraser(global) {
 
     function onPointSelection(selectedSet) {
         if (!selectedSet) return
-        applyBtn.disabled = selectedSet.size === 0
+        currentSelectedSet = selectedSet
+        keepBtn.disabled = selectedSet.size === 0
+        deleteBtn.disabled = selectedSet.size === 0
         deletedSet = new Set([...settings.removedSplats, ...selectedSet])
         updateUndoRedoButtons()
         global.dataDirty = true
     }
+
+    // Keep = giữ lại các điểm đang được select, xoá toàn bộ điểm KHÔNG được select
+    function applyKeepSelectedPoints() {
+        if (keepBtn.disabled) return
+        if (currentSelectedSet.size === 0) return
+
+        const totalSplats = modelEntity.gsplat.resource.numSplats
+
+        // deletedSet mới = tất cả các điểm không nằm trong selection hiện tại
+        // (đã bao gồm luôn các điểm đã xoá từ trước, vì worker loại chúng ra khỏi
+        // vòng lặp select nên chúng chắc chắn không có trong currentSelectedSet)
+        const newDeletedSet = new Set()
+        for (let i = 0; i < totalSplats; i++) {
+            if (!currentSelectedSet.has(i)) newDeletedSet.add(i)
+        }
+
+        if (newDeletedSet.size >= totalSplats) {
+            showToast('Cannot delete all points — at least one point must remain.', {
+                type: 'warning',
+                duration: 2500,
+            })
+            return
+        }
+
+        applyPointMapping({ modelEntity, deletedSet: newDeletedSet })
+        settings.removedSplats = [...newDeletedSet]
+        currentControl.clearSelectionStateOnly()
+        events.fire('point-eraser:commit-delete', settings.removedSplats)
+
+        keepBtn.disabled = true
+        deleteBtn.disabled = true
+        resetBtn.disabled = settings.removedSplats.length === 0
+
+        if (currentControl._activeStrategy) {
+            currentControl._activeStrategy._projDirty = true
+        }
+        events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
+    }
+
     function applyDeleteSelectedPoints() {
-        if (applyBtn.disabled) return
+        if (deleteBtn.disabled) return
         if (deletedSet.size > 0) {
             const totalSplats = modelEntity.gsplat.resource.numSplats
             if (deletedSet.size >= totalSplats) {
@@ -327,7 +378,8 @@ function makePointEraser(global) {
             settings.removedSplats = [...deletedSet]
             currentControl.clearSelectionStateOnly()
             events.fire('point-eraser:commit-delete', settings.removedSplats)
-            applyBtn.disabled = true
+            keepBtn.disabled = true
+            deleteBtn.disabled = true
             resetBtn.disabled = settings.removedSplats.length === 0
             if (currentControl._activeStrategy) {
                 currentControl._activeStrategy._projDirty = true
@@ -480,6 +532,9 @@ function makePointEraser(global) {
         events.on('inputEvent:undo', onUndo),
         events.on('model:loaded', onModelLoaded),
         events.on('point-selection', onPointSelection),
+        events.on('inputEvent:ctrl', (active) => {
+            events.fire('point-eraser:ctrl-active', active)
+        }),
         events.on('point-eraser:deleted-set-changed', updateAabb),
         events.on('inputEvent:Delete', applyDeleteSelectedPoints),
         events.on('inputEvent:space', applyDeleteSelectedPoints),
