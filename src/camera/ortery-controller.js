@@ -712,18 +712,21 @@ class OtherController {
             if (!isFinite(center.x) || !isFinite(halfExtents.x) || halfExtents.x < 0) {
                 return
             }
-            const restTransform = new Mat4().setTRS(
-                this.originEntityPos ?? this.initialModelPosition,
-                this.originEntityRotation ?? this.initialModelRotation,
-                modelEntity.getLocalScale(),
-            )
+            const originPos = this.originEntityPos ?? this.initialModelPosition
+            const originRot = this.originEntityRotation ?? this.initialModelRotation
+            const restTransform = new Mat4().setTRS(originPos, originRot, modelEntity.getLocalScale())
+
             this.localBboxCenter = center.clone()
-            this.syncPivotPoint(center)
+
+            const worldCenter = new Vec3()
+            restTransform.transformPoint(center, worldCenter)
+            this.centerPivot = worldCenter
+            this.basePosition = originPos.clone()
+
             const sceneBound = new BoundingBox()
             sceneBound.center.copy(center)
             sceneBound.halfExtents.copy(halfExtents)
             sceneBound.setFromTransformedAabb(sceneBound, restTransform)
-            const oldOriginDistance = this.originDistance
             this.recalBoundingBox({ sceneBound })
         })
         this.events.on('point-eraser:completed', () => {
@@ -735,29 +738,35 @@ class OtherController {
             })
         })
         this.events.on('point-eraser:reset', () => {
-            const originTransform = new Mat4().setTRS(
-                this.initialModelPosition,
-                this.initialModelRotation,
-                modelEntity.getLocalScale(),
-            )
-            const sceneBound = new BoundingBox()
-            const gsplatBbox = modelEntity.gsplat.customAabb
-            sceneBound.setFromTransformedAabb(gsplatBbox, originTransform)
             this.baseRotation = this.initialModelRotation.clone()
             this.basePosition = this.initialModelPosition.clone()
             this.originEntityPos = this.initialModelPosition.clone()
             this.originEntityRotation = this.initialModelRotation.clone()
             this.currentYaw = 0
             this.currentPitch = this.minPitch ?? 0
-            this.centerPivot = sceneBound.center.clone()
             this.localBboxCenter = null
+
+            const { bbox } = calBbox({ modelEntity, removedSplats: [] })
+            const restTransform = new Mat4().setTRS(
+                this.originEntityPos,
+                this.originEntityRotation,
+                modelEntity.getLocalScale(),
+            )
+            const sceneBound = new BoundingBox()
+            sceneBound.center.copy(bbox.center)
+            sceneBound.halfExtents.copy(bbox.halfExtents)
+            sceneBound.setFromTransformedAabb(sceneBound, restTransform)
+
+            this.centerPivot = sceneBound.center.clone()
+            this.basePosition = this.originEntityPos.clone()
+
             this.recalBoundingBox({ sceneBound })
             this.reset()
         })
     }
     recalBoundingBox({ sceneBound }) {
         this.bbox = sceneBound
-        let distance = this.getDeafultDistance(sceneBound.halfExtents)
+        let distance = this.getDeafultDistance()
         const result = new Camera()
         result.look(new Vec3(2, 0, 2).normalize().mulScalar(distance).add(sceneBound.center), sceneBound.center)
         let forward, fov
@@ -774,7 +783,6 @@ class OtherController {
             fov = this.fov
         }
         this.originFocus = sceneBound.center.clone()
-        this.focus.copy(sceneBound.center)
         this.originBboxPivot = sceneBound.center.clone()
         this.resetPose = {
             ...result,
@@ -1015,10 +1023,13 @@ class OtherController {
         }
         this.getPose(camera)
     }
-    getDeafultDistance() {
-        const aspect = this.app.graphicsDevice.width / this.app.graphicsDevice.height
+    getDeafultDistance(canonicalWidth) {
+        const width = canonicalWidth ?? this.app.graphicsDevice.width
+        const height = this.app.graphicsDevice.height
+        const aspect = width / height
+
         let verticalFovRad
-        if (this.app.graphicsDevice.width > this.app.graphicsDevice.height) {
+        if (width > height) {
             const hFovRad = (this.fov * Math.PI) / 180
             verticalFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect)
         } else {
@@ -1026,6 +1037,7 @@ class OtherController {
         }
         const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect)
         const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
+
         const { x, y, z } = this.bbox.halfExtents
         const radius = Math.sqrt(x * x + y * y + z * z)
         return radius / Math.sin(minFovRad / 2)
@@ -1034,7 +1046,9 @@ class OtherController {
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         if (!(isCylindrical && this.cylindricalCamPos)) {
-            distance = this.getDeafultDistance()
+            const realDistance = this.getDeafultDistance()
+            const cappedDistance = this.getDeafultDistance(1000)
+            distance = Math.min(realDistance, cappedDistance)
         }
         const {
             bbox: { center, halfExtents },
