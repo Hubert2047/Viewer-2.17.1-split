@@ -1,6 +1,6 @@
 function makeManualPanel(events, global) {
     const panel = document.createElement('div')
-    panel.style.cssText = 'display:none; flex-direction:column; gap:10px;'
+    panel.style.cssText = 'display:flex; flex-direction:column; gap:10px;'
 
     const hint = document.createElement('p')
     hint.style.cssText = `
@@ -9,9 +9,9 @@ function makeManualPanel(events, global) {
     color: var(--text-main);
 `
     hint.textContent =
-        'The red line marks the ground. Align the bottom of the model flat on it — spin it around to check every angle. You can drag with left click to rotate, right click to adjust the height, or use the Height and Lean buttons to fine-tune until it looks right.'
-
-    const spinRow = makeRow({ title: 'Auto Spin 360°' })
+        'Adjust the object’s position so it rests level on the red line (ground). Use your mouse or the fine tune tools to make adjustments. Spin the object 360 to confirm it looks right from every angle. Press Apply to Set Ground.'
+    hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
+    const spinRow = makeRow({ title: 'Spin 360°' })
     const spinRight = document.createElement('div')
     spinRight.style.cssText = 'display:flex; align-items:center; gap:6px;'
 
@@ -34,7 +34,7 @@ function makeManualPanel(events, global) {
 
     const startSpin = makeButton({
         icon: ICONS.startPlay,
-        title: 'Auto Spin 360°',
+        title: 'Spin 360°',
         className: 'orientation-btn',
         onClick: () => {
             updateSpinState(false)
@@ -47,7 +47,7 @@ function makeManualPanel(events, global) {
     })
     const stopSpin = makeButton({
         icon: ICONS.stopPlay,
-        title: 'Auto Spin 360°',
+        title: 'Spin 360°',
         className: 'orientation-btn hidden',
         onClick: () => {
             updateSpinState(true)
@@ -70,8 +70,8 @@ function makeManualPanel(events, global) {
             startSpin.classList.add('hidden')
         }
     }
-    const yawStepInput = makeInput({ type: 'number', value: 5, step: 1, min: 0, className: 'orientation-step-input' })
-    const getYawStep = () => parseFloat(yawStepInput.value) || 5
+    const yawStepInput = makeInput({ type: 'number', value: 45, step: 1, min: 0, className: 'orientation-step-input' })
+    const getYawStep = () => parseFloat(yawStepInput.value) || 45
     // ── Yaw row
     const yawRow = makeRow({ title: 'Spin' })
     const yawRight = document.createElement('div')
@@ -107,7 +107,7 @@ function makeManualPanel(events, global) {
     const yPosStepInput = makeInput({
         type: 'number',
         value: 0.5,
-        step: 0.5,
+        step: 0.1,
         min: 0,
         className: 'orientation-step-input',
     })
@@ -148,12 +148,12 @@ function makeManualPanel(events, global) {
     // ── Pitch ──
     const pitchStepInput = makeInput({
         type: 'number',
-        value: 0.5,
+        value: 1,
         step: 0.1,
         min: 0,
         className: 'orientation-step-input',
     })
-    const getPitchStep = () => parseFloat(pitchStepInput.value) || 5
+    const getPitchStep = () => parseFloat(pitchStepInput.value) || 1
 
     const pitchRow = makeRow({ title: 'Tilt Up / Down' })
     const pitchRight = document.createElement('div')
@@ -229,9 +229,7 @@ function makeManualPanel(events, global) {
     panel.appendChild(yPosRow.el)
     panel.appendChild(pitchRow.el)
     panel.appendChild(rollRow.el)
-    const handles = [
-        events.on('ortery:stop-spin', () => updateSpinState(true)),
-    ]
+    const handles = [events.on('ortery:stop-spin', () => updateSpinState(true))]
     function clean() {
         handles.forEach((h) => events.offByHandle(h))
     }

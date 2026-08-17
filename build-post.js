@@ -105,7 +105,6 @@ const files = [
     { file: 'src/components/messages/message-manager.js', preset: 'default' },
     { file: 'src/components/messages/message-editor-ui.js', preset: 'default' },
     { file: 'src/components/orientation/manual.js', preset: 'default' },
-    { file: 'src/components/orientation/ground.js', preset: 'default' },
     { file: 'src/components/orientation/orientation.js', preset: 'default' },
     { file: 'src/components/viewer-section.js', preset: 'default' },
     { file: 'src/components/sidebar.js', preset: 'default' },

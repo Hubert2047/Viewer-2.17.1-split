@@ -667,9 +667,8 @@ class OtherController {
             this.syncHierarchyAndRender()
         })
         this.events.on('orientation:reset', () => this.resetOrientation())
-        this.events.on('orientation:groundplane', (points) => this.applyGroundPlaneOrientation(points))
         this.events.on('orientation:manual-apply', () => this.applyManualOrientation())
-        this.events.on('orientation:switch-method', (currentMethod) => this.editOrientation(currentMethod))
+        this.events.on('orientation:edit', () => this.editOrientation())
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:eulersynced', () => this.updateModelRotation())
 
@@ -1136,9 +1135,7 @@ class OtherController {
         this.inertiaVelY = 0
         this.transitionMode = transitionMode ?? this.originModel
     }
-    editOrientation(currentMethod) {
-        const prevMethod = this.orientationEditMethod
-
+    editOrientation() {
         if (!this.isEditingOrientation) {
             this._preEditBasePosition = this.basePosition.clone()
             this._preEditCenterPivot = this.centerPivot.clone()
@@ -1149,37 +1146,20 @@ class OtherController {
         }
 
         this.isEditingOrientation = true
-        this.orientationEditMethod = currentMethod
 
-        if (prevMethod) {
-            if (prevMethod === 'manual') this.hideHorizontalLine()
-            this.centerPivot = this._preEditCenterPivot.clone()
-            this.basePosition = this._preEditBasePosition.clone()
-            this.baseRotation = this._preEditBaseRotation.clone()
-            this.focus.copy(this._preEditFocus)
+        const currentPosition = modelEntity.localPosition.clone()
+        const currentRotation = modelEntity.localRotation.clone()
+        this.updateModelRotation()
+
+        this.centerPivot = this._preEditCenterPivot.clone()
+        this.basePosition = this._preEditBasePosition.clone()
+        this.baseRotation = this._preEditBaseRotation.clone()
+
+        if (this.targetPose) {
+            this.startPose.position = currentPosition
+            this.startPose.rotation = currentRotation
         }
 
-        if (currentMethod === 'manual') {
-            const currentPosition = modelEntity.localPosition.clone()
-            const currentRotation = modelEntity.localRotation.clone()
-            this.updateModelRotation()
-
-            this.centerPivot = this._preEditCenterPivot.clone()
-            this.basePosition = this._preEditBasePosition.clone()
-            this.baseRotation = this._preEditBaseRotation.clone()
-
-            if (this.targetPose) {
-                this.startPose.position = currentPosition
-                this.startPose.rotation = currentRotation
-            }
-        } else {
-            this._snapCameraToOrigin = true
-            this.lerpPositionY = undefined
-            this.centerPivot = this.originBboxPivot.clone()
-            this.basePosition = this.originEntityPos.clone()
-            this.baseRotation = this.originEntityRotation.clone()
-            this.reset({ useInitview: false, transitionMode: 'spherical' })
-        }
         this.currentYaw = 0
         this.currentPitch = 0
 
@@ -1240,85 +1220,6 @@ class OtherController {
             useInitview: false,
         })
     }
-    applyGroundPlaneOrientation(points) {
-        const localNormal = fitPlaneNormal(points)
-        const normalInWorld = new Vec3()
-        this.initialModelRotation.transformVector(localNormal, normalInWorld)
-        normalInWorld.normalize()
-
-        const pickCentroid = new Vec3(
-            (points[0].x + points[1].x + points[2].x) / 3,
-            (points[0].y + points[1].y + points[2].y) / 3,
-            (points[0].z + points[1].z + points[2].z) / 3,
-        )
-        const pickCentroidWorld = new Vec3()
-        this.initialModelRotation.transformVector(pickCentroid, pickCentroidWorld)
-        const weight = getModelWeight(modelEntity, this.settings.removedSplats)
-        const modelCentroid = localToWorld(weight)
-        const toModelCenter = new Vec3().copy(modelCentroid).sub(pickCentroidWorld).normalize()
-        if (normalInWorld.dot(toModelCenter) > 0) {
-            normalInWorld.mulScalar(-1)
-        }
-
-        const correctionQuat = quatFromTo(normalInWorld, new Vec3(0, -1, 0))
-        const newBaseRotation = new Quat()
-        newBaseRotation.mul2(correctionQuat, this.initialModelRotation)
-
-        const currentPosition = modelEntity.localPosition.clone()
-        const centerPivot = this.centerPivot.clone()
-        const { x, y, z } = centerPivot.clone().sub(currentPosition)
-        const currentRotation = modelEntity.localRotation.clone()
-        const invCurrentRot = currentRotation.clone().invert()
-        const deltaQuat = new Quat().mul2(newBaseRotation, invCurrentRot)
-        const rotatedOffsetToPivot = new Vec33(x, y, z).transformQuat(deltaQuat)
-        const newPosition = centerPivot.clone().sub(rotatedOffsetToPivot)
-
-        this.baseRotation = newBaseRotation
-        this.basePosition = newPosition
-        this.originEntityRotation = this.baseRotation
-        this.originEntityPos = this.basePosition
-        this.centerPivot = centerPivot
-
-        this.settings.orientation.pose = { rotation: newBaseRotation, position: newPosition }
-
-        this.clearPrevEditOrientation()
-
-        const euler = newBaseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
-
-        this.hemisphericalRot(this.currentYaw, this.minPitch)
-        const targetPosition = modelEntity.localPosition.clone()
-        const targetRotation = modelEntity.localRotation.clone()
-        const startPose = {
-            focus: this.focus.clone(),
-            position: currentPosition,
-            rotation: currentRotation,
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.currentPitch,
-            fov: this.fov,
-        }
-        const targetPose = {
-            focus: this.centerPivot.clone(),
-            position: targetPosition,
-            rotation: targetRotation,
-            distance: this.distance,
-            yaw: this.currentYaw,
-            pitch: this.minPitch,
-            fov: this.fov,
-        }
-        this.setupTransition({
-            transitionMode: 'spherical',
-            targetPose,
-            startPose,
-            lerpDuration: NORMAL_FADE_TIME,
-            onTransitionFinished: () => {
-                this.saveInitview({ isShowToast: false, defaultDistance: true })
-                this.currentPitch = this.minPitch
-            },
-        })
-        this.events.fire('orientation:added')
-    }
     cancelOrientation() {
         this.hideHorizontalLine()
         if (this._preEditCenterPivot) this.centerPivot = this._preEditCenterPivot.clone()
@@ -1344,7 +1245,6 @@ class OtherController {
         this._preEditEntityPosition = null
         this._preEditEntityRotation = null
         this.isEditingOrientation = false
-        this.orientationEditMethod = undefined
     }
     stopSpin360() {
         if (!this._autoRotating) return
@@ -1596,7 +1496,7 @@ class OtherController {
             }
         }
         if (x !== 0 || y !== 0 || z !== 0) {
-            if (this.isEditingOrientation && this.orientationEditMethod === 'manual') {
+            if (this.isEditingOrientation) {
                 const deltaX = x * 0.75
                 const deltaY = y * 0.75
                 modelEntity.localPosition.y -= deltaY
@@ -1758,10 +1658,8 @@ class OtherController {
     }
 
     getPose(pose, dt = 1 / 60) {
-        const isManualOrientation = this.isEditingOrientation && this.orientationEditMethod === 'manual'
         pose.distance = this.distance
-
-        if (!isManualOrientation && this.originModel === 'cylindrical' && this.cylindricalCamPos) {
+        if (!this.isEditingOrientation && this.originModel === 'cylindrical' && this.cylindricalCamPos) {
             pose.position = this.cylindricalCamPos
             const dir = new Vec3().sub2(this.focus, pose.position).normalize()
             const pitchRad = Math.asin(dir.y)
@@ -1782,7 +1680,7 @@ class OtherController {
             return
         }
 
-        if (isManualOrientation) {
+        if (this.isEditingOrientation) {
             const speed = 1 - Math.pow(0.00000001, dt)
 
             if (this.lerpPositionY === undefined) this.lerpPositionY = pose.position.y
@@ -1837,8 +1735,7 @@ class OtherController {
         this.cameraEntity.camera.layers = [...this.cameraEntity.camera.layers, layerBBox.id]
         const lineMesh = new Mesh(this.app.graphicsDevice)
         const lineMat = new StandardMaterial()
-        const color = new Color()
-        color.fromString('#f71a02')
+        const color = new Color(1, 0, 0)
         lineMat.emissive = color
         lineMat.cull = CULLFACE_NONE
         lineMat.useLighting = false

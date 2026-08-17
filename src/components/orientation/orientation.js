@@ -1,76 +1,62 @@
 function makeOrientationGroup(global, editGroup) {
     const { events, settings } = global
-    const group = makeSectionGroup('transform')
+    const container = makeSectionWrap()
     editGroup.register('orientation', { cancel: () => onCancelOrientation() })
 
     let isEditing = false
-    let currentMethod = 'ground'
 
-    const container = document.createElement('div')
-    container.classList.add('orientation-btn-wrap')
+    // ── Description ──────────────────────────────────────
+    const descGroup = makeSectionGroup('Set Ground')
 
-    const { row: readonlyRotationRow, setValues: setReadonlyValues } = makeVec3Inputs({
-        title: 'Rotation',
-        disabled: true,
-        onChange: () => {},
+    const hint = document.createElement('p')
+    hint.textContent =
+        'If the model does not currently stand upright on the ground, use this step to adjust its position and rotation so it rests level. If it already looks correctly grounded, you can skip this step — no adjustment is needed.'
+    hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
+    descGroup.appendChild(hint)
+
+    // ── Orientation control ───────────────────────────────
+    const orientGroup = makeSectionGroup('')
+
+    const noGroundRow = document.createElement('div')
+    noGroundRow.classList.add('no-configured-row')
+    const noGroundText = document.createElement('span')
+    noGroundText.textContent = 'No ground configured'
+    const createBtn = makeButton({
+        title: 'Create',
+        className: 'add-btn',
+        onClick: () => {
+            editGroup.startEdit('orientation')
+            isEditing = true
+            events.fire('orientation:edit', 'manual')
+            renderOrientBtns()
+        },
     })
+    noGroundRow.appendChild(noGroundText)
+    noGroundRow.appendChild(createBtn)
 
-    if (settings.orientation.pose) {
-        const { rotation: r } = settings.orientation.pose
-        setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
-    } else if (modelEntity) {
-        const r = global.cameraManager.controllers.ortery.initialModelRotation
-        setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
-    }
+    const hasGroundWrap = document.createElement('div')
+    hasGroundWrap.classList.add('pivot-row')
 
     const { panel: manualPanel, clean: manualClean } = makeManualPanel(events, global)
-    const { panel: groundPanel, stopPicking, getPoints, MAX_POINTS } = makeGroundPanel(events, global)
 
     const methodWrap = document.createElement('div')
     methodWrap.style.cssText = 'display:none; flex-direction:column; gap:12px;'
-
-    const methodRow = makeRow({ title: 'Method' })
-    const methodBtns = makeSegmentRow({
-        options: [
-            { label: 'Ground plane', value: 'ground' },
-            { label: 'Manual', value: 'manual' },
-        ],
-        defaultValue: 'ground',
-        className: 'orientation-method-btns',
-        onChange: (val) => switchMethod(val),
-    })
-    methodRow.el.appendChild(methodBtns)
-
-    const switchMethod = (method) => {
-        currentMethod = method
-        manualPanel.style.display = method === 'manual' ? 'flex' : 'none'
-        groundPanel.style.display = method === 'ground' ? 'flex' : 'none'
-        if (method === 'manual') {
-            stopPicking()
-        } else {
-        }
-        events.fire('orientation:switch-method', currentMethod)
-    }
-    methodWrap.appendChild(methodRow.el)
     methodWrap.appendChild(manualPanel)
-    methodWrap.appendChild(groundPanel)
 
     const orientBtnRow = document.createElement('div')
     orientBtnRow.classList.add('btn-row')
 
+    const setGroundConfigured = (has) => {
+        noGroundRow.style.display = has ? 'none' : 'flex'
+        hasGroundWrap.style.display = has ? 'flex' : 'none'
+    }
+
     const onCancelOrientation = () => {
         if (!isEditing) return
         isEditing = false
-        stopPicking()
         methodWrap.style.display = 'none'
-        currentMethod = 'ground'
-        methodBtns.setValue('ground')
-        if (settings.orientation.pose) {
-            const { rotation: r } = settings.orientation.pose
-            setReadonlyValues(new Quat(r.x, r.y, r.z, r.w).getEulerAngles())
-        } else {
-            setReadonlyValues(modelEntity.getLocalEulerAngles(new Vec3()))
-        }
+        descGroup.style.display = 'flex'
+        setGroundConfigured(!!settings.orientation.pose)
         renderOrientBtns()
         events.fire('orientation:cancel')
     }
@@ -78,7 +64,8 @@ function makeOrientationGroup(global, editGroup) {
     const renderOrientBtns = () => {
         orientBtnRow.innerHTML = ''
         if (isEditing) {
-            readonlyRotationRow.style.display = 'none'
+            descGroup.style.display = 'none'
+            setGroundConfigured(true)
             methodWrap.style.display = 'flex'
 
             const btnCancel = makeButton({ title: 'Cancel', className: 'cancel-btn', onClick: onCancelOrientation })
@@ -86,21 +73,10 @@ function makeOrientationGroup(global, editGroup) {
                 className: 'confirm-btn',
                 title: 'Apply',
                 onClick: () => {
-                    if (currentMethod === 'ground') {
-                        const pts = getPoints()
-                        if (pts.length < MAX_POINTS) {
-                            showToast('Not enough points selected!', { duration: 1000, type: 'warning' })
-                            return
-                        }
-                        stopPicking()
-                        events.fire('orientation:groundplane', pts)
-                    } else {
-                        events.fire('orientation:manual-apply')
-                    }
+                    events.fire('orientation:manual-apply')
                     isEditing = false
-                    currentMethod = 'ground'
-                    methodBtns.setValue('ground')
                     methodWrap.style.display = 'none'
+                    descGroup.style.display = 'flex'
                     renderOrientBtns()
                 },
             })
@@ -108,8 +84,8 @@ function makeOrientationGroup(global, editGroup) {
             orientBtnRow.appendChild(btnCancel)
             orientBtnRow.appendChild(btnSave)
         } else {
-            readonlyRotationRow.style.display = 'flex'
             methodWrap.style.display = 'none'
+            setGroundConfigured(!!settings.orientation.pose)
 
             const btnEdit = makeButton({
                 className: 'edit-btn',
@@ -117,47 +93,49 @@ function makeOrientationGroup(global, editGroup) {
                 onClick: () => {
                     editGroup.startEdit('orientation')
                     isEditing = true
-                    switchMethod(currentMethod)
-                    events.fire('orientation:edit', currentMethod)
+                    events.fire('orientation:edit', 'manual')
                     renderOrientBtns()
                 },
             })
             const btnDelete = makeButton({
-                title: 'Reset',
-                icon: ICONS.reset,
-                className: 'reset-btn',
+                title: 'Delete',
+                icon: ICONS.trash,
+                className: 'delete-btn',
                 onClick: async () => {
                     const ok = await global.confirmDialog.ask({
-                        title: 'Reset Transform',
-                        message: 'This will reset your current transform settings. Do you want to reset?',
+                        title: 'Delete Ground Point',
+                        message: 'This will reset your current transform settings. Do you want to continue?',
                         variant: 'delete',
                         position: 'top',
-                        confirmText: 'Reset',
+                        confirmText: 'Delete',
                     })
                     if (ok) {
                         events.fire('orientation:reset')
+                        setGroundConfigured(false)
                         renderOrientBtns()
                     }
                 },
             })
             orientBtnRow.appendChild(btnEdit)
-            if (settings.orientation.pose) orientBtnRow.appendChild(btnDelete)
+            orientBtnRow.appendChild(btnDelete)
         }
     }
 
-    container.appendChild(readonlyRotationRow)
-    container.appendChild(methodWrap)
-    container.appendChild(orientBtnRow)
-    group.appendChild(container)
+    hasGroundWrap.appendChild(orientBtnRow)
+
+    orientGroup.appendChild(noGroundRow)
+    orientGroup.appendChild(methodWrap)
+    orientGroup.appendChild(hasGroundWrap)
+
+    container.appendChild(descGroup)
+    container.appendChild(orientGroup)
 
     renderOrientBtns()
-    const handles = [
-        events.on('orientation:aligned-model', ({ x, y, z }) => setReadonlyValues({ x, y, z })),
-        events.on('next-step', () => onCancelOrientation()),
-    ]
-    group.cleanup = () => {
+    setGroundConfigured(!!settings.orientation.pose)
+    const handles = [events.on('next-step', () => onCancelOrientation())]
+    container.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
         manualClean()
     }
-    return group
+    return container
 }
