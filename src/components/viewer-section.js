@@ -72,7 +72,10 @@ function makeViewerSection(el, global) {
 
     const spinGroup = makeSectionGroup('Spin')
     const spinEnabledRow = makeRow({ title: 'Enabled' })
-
+    if (!settings.spin.enable) {
+        settings.spin.enabled = true
+        events.fire('re-render:control-wrap', true)
+    }
     const spinEnabledToggleEl = makeToggle({
         initialValue: settings.spin.enabled,
         onChange: async (value) => {
@@ -108,7 +111,7 @@ function makeViewerSection(el, global) {
         type: 'number',
         value: settings.spin.speed,
         min: 1,
-        max: 999,
+        max: 100,
         name: 'slider-number',
         className: 'small-input',
         onChange: (v) => {
@@ -207,7 +210,7 @@ function makeViewerSection(el, global) {
     })
     spinContinuousRow.el.appendChild(spinContinuousToggleEl)
 
-    const spinOnStartRow = makeRow({ title: 'Auto Start', show: settings.spin.enabled })
+    const spinOnStartRow = makeRow({ title: 'Auto Rotate', show: settings.spin.enabled })
     const spinOnStartToggleEl = makeToggle({
         initialValue: settings.spin.autoStart,
         onChange: (value) => {
@@ -323,10 +326,10 @@ function makeInitViewGroup(events, settings, global) {
     wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
 
     const btnRow = document.createElement('div')
-    btnRow.classList.add('btn-row')
+    btnRow.classList.add('btn-row', 'initview-btn-row')
 
     const btnSave = makeButton({
-        title: 'Save current view',
+        title: 'Save initial view',
         className: 'initview-btn',
         onClick: () => {
             events.fire('viewer:save-initview')
@@ -355,85 +358,85 @@ function makeInitViewGroup(events, settings, global) {
         },
     })
 
-    const btnPreview = makeButton({
-        title: 'Preview',
-        className: 'initview-btn',
-        onClick: () => openPreview(global),
-    })
+    // const btnPreview = makeButton({
+    //     title: 'Preview',
+    //     className: 'initview-btn',
+    //     onClick: () => openPreview(global),
+    // })
 
     btnRow.appendChild(btnSave)
     btnRow.appendChild(btnDefault)
-    btnRow.appendChild(btnPreview)
+    // btnRow.appendChild(btnPreview)
     updateState(!!settings.initview.pose)
 
     wrap.appendChild(btnRow)
     return wrap
 }
-function buildPreviewHtml(global) {
-    const { settings } = global
-    const baseHref = new URL('.', window.location.href.split('?')[0]).href
-    const previewSettings = { ...settings, ref: '' }
-    const settingsJson = JSON.stringify(previewSettings)
+// function buildPreviewHtml(global) {
+//     const { settings } = global
+//     const baseHref = new URL('.', window.location.href.split('?')[0]).href
+//     const previewSettings = { ...settings, ref: '' }
+//     const settingsJson = JSON.stringify(previewSettings)
 
-    return `<!doctype html>
-<html lang="en">
-<head>
-<title>3D Model Viewer - Preview</title>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<base href="${baseHref}" />
-<link rel="icon" href="data:," />
-<link rel="stylesheet" href="./data/viewer.css?v=${settings.v}" />
+//     return `<!doctype html>
+// <html lang="en">
+// <head>
+// <title>3D Model Viewer - Preview</title>
+// <meta charset="UTF-8" />
+// <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+// <base href="${baseHref}" />
+// <link rel="icon" href="data:," />
+// <link rel="stylesheet" href="./data/viewer.css?v=${settings.v}" />
 
-<script>
-    (function() {
-        try {
-            const url = new URL(window.location.href);
-            if (url.searchParams.has('ref')) {
-                url.searchParams.delete('ref');
-                window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-            }
-        } catch(e) {
-            console.error('Failed to clean URL:', e);
-        }
-    })();
-</script>
+// <script>
+//     (function() {
+//         try {
+//             const url = new URL(window.location.href);
+//             if (url.searchParams.has('ref')) {
+//                 url.searchParams.delete('ref');
+//                 window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+//             }
+//         } catch(e) {
+//             console.error('Failed to clean URL:', e);
+//         }
+//     })();
+// </script>
 
-</head>
-<body>
-<canvas id="application-canvas"></canvas>
-<div id="ui">
-<div id="poster"></div>
-</div>
-<div id="tooltip"></div>
-<div id="spinnerWrap">
-<svg class="progress-ring" viewBox="0 0 200 200">
-<circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-<circle
-id="progressRingFg"
-class="progress-ring-fg"
-cx="100"
-cy="100"
-r="86"
-fill="none"
-stroke-dasharray="540.35"
-stroke-dashoffset="540.35" />
-</svg>
-<span id="spinnerPercent" class="spinner-percent">0%</span>
-</div>
-</body>
-<script>window.sse = { "settings": ${settingsJson} }</script>
-<script src="./data/viewer.js?v=${settings.v}"></script>
-</html>`
-}
-function openPreview(global) {
-    const html = buildPreviewHtml(global)
-    const previewWindow = window.open('', '_blank')
-    if (!previewWindow) {
-        showToast('Please allow pop-ups to preview.', { duration: 2000, type: 'warning' })
-        return
-    }
-    previewWindow.document.open()
-    previewWindow.document.write(html)
-    previewWindow.document.close()
-}
+// </head>
+// <body>
+// <canvas id="application-canvas"></canvas>
+// <div id="ui">
+// <div id="poster"></div>
+// </div>
+// <div id="tooltip"></div>
+// <div id="spinnerWrap">
+// <svg class="progress-ring" viewBox="0 0 200 200">
+// <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+// <circle
+// id="progressRingFg"
+// class="progress-ring-fg"
+// cx="100"
+// cy="100"
+// r="86"
+// fill="none"
+// stroke-dasharray="540.35"
+// stroke-dashoffset="540.35" />
+// </svg>
+// <span id="spinnerPercent" class="spinner-percent">0%</span>
+// </div>
+// </body>
+// <script>window.sse = { "settings": ${settingsJson} }</script>
+// <script src="./data/viewer.js?v=${settings.v}"></script>
+// </html>`
+// }
+// function openPreview(global) {
+//     const html = buildPreviewHtml(global)
+//     const previewWindow = window.open('', '_blank')
+//     if (!previewWindow) {
+//         showToast('Please allow pop-ups to preview.', { duration: 2000, type: 'warning' })
+//         return
+//     }
+//     previewWindow.document.open()
+//     previewWindow.document.write(html)
+//     previewWindow.document.close()
+// }

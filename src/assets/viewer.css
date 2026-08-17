@@ -1395,7 +1395,7 @@ button {
     background: rgba(220, 60, 60, 0.25);
 }
 .initview-btn {
-    padding: 4px;
+    padding: 8px 12px;
     font-size: 0.8125rem;
 }
 .btn-row .initview-btn.active {
@@ -1411,7 +1411,14 @@ button {
     background: rgba(0, 0, 0, 0.05);
     color: rgba(0, 0, 0, 0.6);
 }
-
+.btn-row.initview-btn-row {
+    flex-wrap: wrap;
+}
+.btn-row.initview-btn-row .initview-btn {
+    flex: 0 1 auto;
+    white-space: nowrap;
+    min-width: 4.5rem;
+}
 .md-overlay {
     position: fixed;
     inset: 0;

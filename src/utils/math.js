@@ -683,7 +683,10 @@ function mergeSettings(settings, defaultSettings) {
     if (!['cylindrical', 'spherical', 'hemispherical'].includes(merged.model)) {
         merged.model = 'spherical'
     }
-    const { messages, dimensions, measurement, initview, spin } = merged
+    const { messages, dimensions, measurement, initview, spin, removedSplats } = merged
+    if (removedSplats.length > 0) {
+        merged.setupStep = Math.max(merged.setupStep, 2)
+    }
     if (messages.length > 0 || !!dimensions || !!measurement || !!initview.pose || spin.enabled) {
         merged.setupStep = MAX_STEP
     } else {
