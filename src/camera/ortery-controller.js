@@ -1042,13 +1042,17 @@ class OtherController {
         const radius = Math.sqrt(x * x + y * y + z * z)
         return radius / Math.sin(minFovRad / 2)
     }
+    getFramingDistance() {
+        const realDistance = this.getDeafultDistance()
+        const cappedDistance = this.getDeafultDistance(1000)
+
+        return Math.min(realDistance, cappedDistance)
+    }
     onEnter(camera) {
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         if (!(isCylindrical && this.cylindricalCamPos)) {
-            const realDistance = this.getDeafultDistance()
-            const cappedDistance = this.getDeafultDistance(1000)
-            distance = Math.min(realDistance, cappedDistance)
+            distance = this.settings.setupStep === 1 ? this.getFramingDistance() : this.getDeafultDistance()
         }
         const {
             bbox: { center, halfExtents },
@@ -1068,9 +1072,8 @@ class OtherController {
             sceneBound.setFromTransformedAabb(sceneBound, restTransform)
             this.bbox = sceneBound
         }
-        let forward
-
         const focusPoint = this.bbox.center.clone()
+        let forward
 
         this.minPitch = 0
         this.maxPitch = isCylindrical ? 0 : Math.PI / 2

@@ -1604,6 +1604,8 @@ class InputController {
                 }
             } else if (event.key === 'Control') {
                 events.fire('inputEvent:ctrl', true)
+            } else if (event.key === 'Shift') {
+                events.fire('inputEvent:shift', true)
             } else if (event.ctrlKey && !event.altKey && !event.metaKey) {
                 if (event.key === 'z' || event.key === 'Z') {
                     if (event.shiftKey) {
@@ -1612,6 +1614,12 @@ class InputController {
                         events.fire('inputEvent:undo')
                     }
                     event.preventDefault()
+                } else if (event.key === 'i' || event.key === 'I') {
+                    events.fire('inputEvent:invert')
+                    event.preventDefault()
+                } else if (event.key === 'd' || event.key === 'D') {
+                    events.fire('inputEvent:deselect')
+                    event.preventDefault()
                 }
             } else if (
                 !event.ctrlKey &&
@@ -1619,20 +1627,22 @@ class InputController {
                 !event.metaKey &&
                 ['Delete', 'p', 'l', 'b', 'e', 's', 'd', 't', 'r', 'm', ' '].includes(event.key)
             ) {
-                const KEY_ALIASES = { ' ': 'space' }
-                const keyName = KEY_ALIASES[event.key] ?? event.key
-                events.fire(`inputEvent:${keyName}`, event)
+                const key = event.key === 'Backspace' ? 'Delete' : event.key
+                events.fire(`inputEvent:${key}`, event)
                 event.preventDefault()
             }
         })
         window.addEventListener('keyup', (event) => {
             if (event.key === 'Control') {
                 events.fire('inputEvent:ctrl', false)
+            } else if (event.key === 'Shift') {
+                events.fire('inputEvent:shift', false)
             }
         })
 
         window.addEventListener('blur', () => {
             events.fire('inputEvent:ctrl', false)
+            events.fire('inputEvent:shift', false)
         })
         const activatePointerLock = () => {
             this._desktopInput._pointerLock = true
@@ -2940,7 +2950,6 @@ class Viewer {
             const gsplat = results[0].gsplat
             const collider = results[2]
             const gsplatBbox = gsplat.customAabb
-            // Trong Viewer, ngay khi đọc gsplatBbox lúc load
             const { removedSplats } = settings
             if (removedSplats?.length > 0) {
                 const {

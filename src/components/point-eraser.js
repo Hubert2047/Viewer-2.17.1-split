@@ -5,13 +5,14 @@ function makePointEraser(global) {
     let isPointerDown = false
     let isShowSplatMode = false
     let isShowSplatRing = false
+    let showAabbBox = true
     let deletedSet = new Set(settings.removedSplats)
     let currentControl = null
     let currentSelectedSet = new Set()
     let backgroundColor = settings.background.color
     let selectedColorHex = '#FFD900'
     let selectedAlpha = 1
-    let unselectedColorHex = '#F95F4D'
+    // let unselectedColorHex = '#F95F4D'
     let unselectedAlpha = 1
     let aabbColor = new Color(1, 0, 0, 1)
     let currentAabb = null
@@ -32,22 +33,37 @@ function makePointEraser(global) {
     const desGroup = makeSectionGroup('Remove Noise')
 
     const hint = document.createElement('p')
-    hint.textContent = 'Select and delete unwanted points in the 3D spatial background'
+    hint.textContent =
+        'Stray points can push the bounding box out. Delete them so the box tightly wraps your model — skip if it already fits.'
     hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
 
     desGroup.appendChild(hint)
+
+    const aabbBoxRow = makeRow({ title: 'Show Bounding Box' })
+    // const aabbBoxToggle = makeToggle({
+    //     initialValue: showAabbBox,
+    //     onChange: (value) => {
+    //         showAabbBox = value
+    //         if (!showAabbBox) {
+    //             cornerEntity.enabled = false
+    //         }
+    //         app.renderNextFrame = true
+    //     },
+    // })
+    // aabbBoxRow.el.appendChild(aabbBoxToggle)
+    // desGroup.appendChild(aabbBoxRow.el)
     // ── Point view ────────────────────────────────────────
     const viewGroup = makeSectionGroup('View')
 
-    const splatModeRow = makeRow({ title: 'Cloud Mode' })
-    const spatModeToggle = makeToggle({
-        initialValue: isShowSplatMode,
-        onChange: (value) => {
-            isShowSplatMode = value
-            applyShaderModes()
-        },
-    })
-    splatModeRow.el.appendChild(spatModeToggle)
+    // const splatModeRow = makeRow({ title: 'Cloud Mode' })
+    // const spatModeToggle = makeToggle({
+    //     initialValue: isShowSplatMode,
+    //     onChange: (value) => {
+    //         isShowSplatMode = value
+    //         applyShaderModes()
+    //     },
+    // })
+    // splatModeRow.el.appendChild(spatModeToggle)
 
     // const showSplatRow = makeRow({ title: 'Splat Outline' })
     // const showSplatToggle = makeToggle({
@@ -87,39 +103,51 @@ function makePointEraser(global) {
         },
     })
 
-    const { row: unselectedColorRow } = makeColorPickerDropdown({
-        label: 'Unselected Color',
-        color: unselectedColorHex,
-        alpha: unselectedAlpha,
-        hasAlpha: true,
-        debounceMs: 0,
-        onChange: ({ r, g, b, alpha }) => {
-            unselectedColorHex = `rgb(${r},${g},${b})`
-            unselectedAlpha = alpha
-            if (!modelEntity?.gsplat?.material) return
-            modelEntity.gsplat.material.setParameter(
-                'splat_unselected_color',
-                normalizeColor(unselectedColorHex, unselectedAlpha),
-            )
-            app.renderNextFrame = true
-        },
-    })
+    // const { row: unselectedColorRow } = makeColorPickerDropdown({
+    //     label: 'Unselected Color',
+    //     color: unselectedColorHex,
+    //     alpha: unselectedAlpha,
+    //     hasAlpha: true,
+    //     debounceMs: 0,
+    //     onChange: ({ r, g, b, alpha }) => {
+    //         unselectedColorHex = `rgb(${r},${g},${b})`
+    //         unselectedAlpha = alpha
+    //         if (!modelEntity?.gsplat?.material) return
+    //         modelEntity.gsplat.material.setParameter(
+    //             'splat_unselected_color',
+    //             normalizeColor(unselectedColorHex, unselectedAlpha),
+    //         )
+    //         app.renderNextFrame = true
+    //     },
+    // })
 
-    viewGroup.appendChild(splatModeRow.el)
+    // viewGroup.appendChild(splatModeRow.el)
     // viewGroup.appendChild(showSplatRow)
     viewGroup.appendChild(backgroundRow)
     viewGroup.appendChild(selectedColorRow)
-    viewGroup.appendChild(unselectedColorRow)
+    // viewGroup.appendChild(unselectedColorRow)
 
     // ── Selection mode ───────────────────────────────────────────
     const selectionHint = `
   <div class="hint-row">
-    1.<span><kbd>Esc</kbd></span>
+    1.<span><kbd>Ctrl</kbd> + <kbd>D</kbd></span>
     <span>Deselect points</span>
   </div>
    <div class="hint-row">
-    2.<span><kbd>Delete</kbd> / <kbd>Space</kbd></span>
+    2.<span><kbd>Delete</kbd></span>
     <span>Delete selected points</span>
+  </div>
+  <div class="hint-row">
+    3.<span><kbd>Ctrl</kbd> + <kbd>I</kbd></span>
+    <span>Invert selection</span>
+  </div>
+  <div class="hint-row">
+    4.<span><kbd>Shift</kbd> + drag</span>
+    <span>Add to current selection</span>
+  </div>
+  <div class="hint-row">
+    5.<span><kbd>Ctrl</kbd> + drag</span>
+    <span>Move model</span>
   </div>
 `
 
@@ -210,7 +238,7 @@ function makePointEraser(global) {
     const resetBtn = makeButton({
         title: 'Reset',
         disabled: settings.removedSplats.length === 0,
-        className: 'reset-btn',
+        className: 'icon-circle-btn',
         icon: ICONS.reset,
         onClick: async () => {
             const ok = await global.confirmDialog.ask({
@@ -228,7 +256,6 @@ function makePointEraser(global) {
             currentControl._pushHistory()
             deletedSet = new Set()
             currentSelectedSet = new Set()
-            keepBtn.disabled = true
             deleteBtn.disabled = true
             resetBtn.disabled = true
             if (currentControl._activeStrategy) {
@@ -247,19 +274,12 @@ function makePointEraser(global) {
         className: 'confirm-btn',
         onClick: applyDeleteSelectedPoints,
     })
-    const keepBtn = makeButton({
-        title: 'Keep',
-        disabled: true,
-        className: 'confirm-btn',
-        onClick: applyKeepSelectedPoints,
-    })
 
     btnRow.appendChild(undoBtn)
     btnRow.appendChild(redoBtn)
-    btnRow.appendChild(spacer)
-    btnRow.appendChild(keepBtn)
-    btnRow.appendChild(deleteBtn)
     btnRow.appendChild(resetBtn)
+    btnRow.appendChild(spacer)
+    btnRow.appendChild(deleteBtn)
     actionsGroup.appendChild(btnRow)
 
     container.appendChild(desGroup)
@@ -295,7 +315,7 @@ function makePointEraser(global) {
             mat.shaderChunks.glsl.set('gsplatModifyVS', CHUNK_MODIFY_POINT)
             mat.setParameter('splat_point_size', 5.0)
             mat.setParameter('splat_selected_color', normalizeColor(selectedColorHex, selectedAlpha))
-            mat.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
+            // mat.setParameter('splat_unselected_color', normalizeColor(unselectedColorHex, unselectedAlpha))
             if (currentControl) {
                 currentControl._upload()
             }
@@ -318,23 +338,15 @@ function makePointEraser(global) {
     function onPointSelection(selectedSet) {
         if (!selectedSet) return
         currentSelectedSet = selectedSet
-        keepBtn.disabled = selectedSet.size === 0
         deleteBtn.disabled = selectedSet.size === 0
         deletedSet = new Set([...settings.removedSplats, ...selectedSet])
         updateUndoRedoButtons()
         global.dataDirty = true
     }
 
-    // Keep = giữ lại các điểm đang được select, xoá toàn bộ điểm KHÔNG được select
     function applyKeepSelectedPoints() {
-        if (keepBtn.disabled) return
         if (currentSelectedSet.size === 0) return
-
         const totalSplats = modelEntity.gsplat.resource.numSplats
-
-        // deletedSet mới = tất cả các điểm không nằm trong selection hiện tại
-        // (đã bao gồm luôn các điểm đã xoá từ trước, vì worker loại chúng ra khỏi
-        // vòng lặp select nên chúng chắc chắn không có trong currentSelectedSet)
         const newDeletedSet = new Set()
         for (let i = 0; i < totalSplats; i++) {
             if (!currentSelectedSet.has(i)) newDeletedSet.add(i)
@@ -353,7 +365,6 @@ function makePointEraser(global) {
         currentControl.clearSelectionStateOnly()
         events.fire('point-eraser:commit-delete', settings.removedSplats)
 
-        keepBtn.disabled = true
         deleteBtn.disabled = true
         resetBtn.disabled = settings.removedSplats.length === 0
 
@@ -378,7 +389,6 @@ function makePointEraser(global) {
             settings.removedSplats = [...deletedSet]
             currentControl.clearSelectionStateOnly()
             events.fire('point-eraser:commit-delete', settings.removedSplats)
-            keepBtn.disabled = true
             deleteBtn.disabled = true
             resetBtn.disabled = settings.removedSplats.length === 0
             if (currentControl._activeStrategy) {
@@ -386,6 +396,17 @@ function makePointEraser(global) {
             }
             events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
         }
+    }
+    function applyInverseSelection() {
+        if (!currentControl) return
+        const totalSplats = modelEntity.gsplat.resource.numSplats
+        const alreadyRemoved = new Set(settings.removedSplats)
+        const inverted = new Set()
+        for (let i = 0; i < totalSplats; i++) {
+            if (alreadyRemoved.has(i)) continue
+            if (!currentSelectedSet.has(i)) inverted.add(i)
+        }
+        currentControl.setSelectedIndices(inverted)
     }
     function onModelLoaded() {
         currentControl = new SelectionController({
@@ -461,7 +482,7 @@ function makePointEraser(global) {
             halfExtents: paddedHalfExtents,
         }
     }
-    function buildCornerPositions() {
+    function buildBoxPositions() {
         if (!currentAabb) updateAabb()
         if (!currentAabb) return
         const { center, halfExtents } = currentAabb
@@ -472,53 +493,64 @@ function makePointEraser(global) {
             worldMat.transformPoint(v, out)
             return out
         }
-        const sizeX = halfExtents.x * 0.2
-        const sizeY = halfExtents.y * 0.2
-        const sizeZ = halfExtents.z * 0.2
-        const pos = []
-        const signs = [-1, 1]
 
+        const signs = [-1, 1]
+        const corners = []
         signs.forEach((sx) => {
             signs.forEach((sy) => {
                 signs.forEach((sz) => {
-                    const corner = new Vec3(
-                        center.x + sx * halfExtents.x,
-                        center.y + sy * halfExtents.y,
-                        center.z + sz * halfExtents.z,
+                    corners.push(
+                        tp(
+                            new Vec3(
+                                center.x + sx * halfExtents.x,
+                                center.y + sy * halfExtents.y,
+                                center.z + sz * halfExtents.z,
+                            ),
+                        ),
                     )
-                    const armX = new Vec3(corner.x - sx * sizeX, corner.y, corner.z)
-                    const armY = new Vec3(corner.x, corner.y - sy * sizeY, corner.z)
-                    const armZ = new Vec3(corner.x, corner.y, corner.z - sz * sizeZ)
-
-                    const wCorner = tp(corner)
-                    const wArmX = tp(armX)
-                    const wArmY = tp(armY)
-                    const wArmZ = tp(armZ)
-
-                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmX.x, wArmX.y, wArmX.z)
-                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmY.x, wArmY.y, wArmY.z)
-                    pos.push(wCorner.x, wCorner.y, wCorner.z, wArmZ.x, wArmZ.y, wArmZ.z)
                 })
             })
+        })
+        const edges = [
+            [0, 1],
+            [0, 2],
+            [0, 4],
+            [1, 3],
+            [1, 5],
+            [2, 3],
+            [2, 6],
+            [3, 7],
+            [4, 5],
+            [4, 6],
+            [5, 7],
+            [6, 7],
+        ]
+
+        const pos = []
+        edges.forEach(([a, b]) => {
+            const pa = corners[a]
+            const pb = corners[b]
+            pos.push(pa.x, pa.y, pa.z, pb.x, pb.y, pb.z)
         })
 
         return pos
     }
     function drawAabbCorners() {
-        if (!modelEntity) {
+        if (!modelEntity || !showAabbBox) {
             cornerEntity.enabled = false
             return
         }
+        const pos = buildBoxPositions()
         updateCameraFarClipForAabb()
-        const pos = buildCornerPositions()
         if (!pos) {
             cornerEntity.enabled = false
             return
         }
         cornerEntity.enabled = true
         cornerLineMesh.setPositions(pos)
-        cornerLineMesh.update(PRIMITIVE_LINES, false)
+        cornerLineMesh.update(PRIMITIVE_LINES, true)
     }
+
     function updateCameraFarClipForAabb() {
         if (!currentAabb) return
         const camPos = camera.getPosition()
@@ -535,13 +567,13 @@ function makePointEraser(global) {
         events.on('inputEvent:ctrl', (active) => {
             events.fire('point-eraser:ctrl-active', active)
         }),
+        events.on('inputEvent:invert', () => applyInverseSelection()),
         events.on('point-eraser:deleted-set-changed', updateAabb),
         events.on('inputEvent:Delete', applyDeleteSelectedPoints),
-        events.on('inputEvent:space', applyDeleteSelectedPoints),
         events.on('inputEvent:r', () => {
             resetSelection()
         }),
-        events.on('inputEvent:esc', () => {
+        events.on('inputEvent:deselect', () => {
             events.fire('point-eraser:cancel')
         }),
         events.on('inputEvent:e', () => selectMode('rect')),

@@ -96,7 +96,19 @@ class SelectionWorker {
     }
 }
 class BaseStrategy {
-    constructor({ centers, numSplats, texWidth, texHeight, camera, stateData, onChanged, gsplatComp, getDeletedSet }) {
+    constructor({
+        centers,
+        numSplats,
+        texWidth,
+        texHeight,
+        camera,
+        stateData,
+        onChanged,
+        gsplatComp,
+        getDeletedSet,
+        getSelectedSet,
+        isAdditive,
+    }) {
         this.centers = centers
         this.numSplats = numSplats
         this.texWidth = texWidth
@@ -107,6 +119,8 @@ class BaseStrategy {
         this.gsplatComp = gsplatComp
         this._screenPositions = new Float32Array(numSplats * 2)
         this._projDirty = true
+        this.getSelectedSet = getSelectedSet
+        this.isAdditive = isAdditive
         this.getDeletedSet = getDeletedSet
         this._worker = new SelectionWorker()
     }
@@ -147,8 +161,21 @@ class BaseStrategy {
             payload,
             deletedMask,
         )
-        this._stateData.set(stateData)
-        this.onChanged(new Set(selectedArr))
+
+        const additive = this.isAdditive ? this.isAdditive() : false
+
+        if (additive) {
+            for (let i = 0; i < this._stateData.length; i++) {
+                if (stateData[i]) this._stateData[i] = 255
+            }
+            const prevSelected = this.getSelectedSet ? this.getSelectedSet() : new Set()
+            const merged = new Set(prevSelected)
+            for (const idx of selectedArr) merged.add(idx)
+            this.onChanged(merged)
+        } else {
+            this._stateData.set(stateData)
+            this.onChanged(new Set(selectedArr))
+        }
     }
 
     destroy() {
@@ -532,6 +559,8 @@ class SelectionController {
             gsplatComp: this.gsplatComp,
             overlay: this._overlay,
             getDeletedSet: () => new Set(this.settings.removedSplats || []),
+            getSelectedSet: () => new Set(this._selectedSet),
+            isAdditive: () => this._shiftActive,
             onChanged: (selectedSet) => this._upload(selectedSet),
         }
         this._pushHistory()
@@ -648,6 +677,9 @@ class SelectionController {
                     this._activeStrategy?.onPointerLeave?.()
                     this._clearOverlay()
                 }
+            }),
+            this.events.on('inputEvent:shift', (active) => {
+                this._shiftActive = active
             }),
         ]
     }
@@ -766,6 +798,16 @@ class SelectionController {
         this._stateTex.unlock()
         this.gsplatComp.material.setParameter('splatState', this._stateTex)
         this.app.renderNextFrame = true
+    }
+    setSelectedIndices(selectedSet) {
+        this._stateData.fill(0)
+        for (const i of selectedSet) {
+            if (i < 0 || i >= this.numSplats) continue
+            const tx = i % this.texWidth
+            const ty = Math.floor(i / this.texWidth)
+            this._stateData[ty * this.texWidth + tx] = 255
+        }
+        this._upload(new Set(selectedSet))
     }
     resetHistory() {
         this._historyIndex = -1
