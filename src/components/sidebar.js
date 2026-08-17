@@ -91,48 +91,49 @@ function makeSection({ id, title, body: renderBody, classname = '', global, icon
 }
 function makePivotGroup(global, editGroup) {
     const { events, settings } = global
-    const group = makeSectionGroup('Pivot Point')
+    const container = makeSectionWrap()
     editGroup.register('pivot', {
         cancel: () => {
             onCancel()
         },
     })
+
     let editPivotPos = settings.pivot.position
     let currrentPivotPos = null
     let isEditing = false
-    const container = document.createElement('div')
-    container.classList.add('section-wrap')
-    const {
-        row: positionRow,
-        setDisabled: setInputsDisabled,
-        setValues: setInputValues,
-    } = makeVec3Inputs({
-        title: 'Position',
-        disabled: true,
-        onChange: ({ x, y, z }) => {
-            if (!isEditing) return
-            global.dataDirty = true
-            events.fire('pivot:positionsynced', { x, y, z })
-        },
-    })
-    if (settings.pivot.position) {
-        setInputValues(settings.pivot.position)
-    }
+    let isNewPivot = false
+
+    // ── Description ──────────────────────────────────────
+    const descGroup = makeSectionGroup('Set Pivot Point')
+
+    const hint = document.createElement('p')
+    hint.textContent =
+        'This sets the center point the model rotates around. If the current rotation already looks correct, you can skip this step — adding a pivot point is optional.'
+    hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
+    descGroup.appendChild(hint)
+
+    // ── Pivot control ─────────────────────────────────────
+    const pivotGroup = makeSectionGroup('')
+
     const noPivotRow = document.createElement('div')
     noPivotRow.classList.add('no-configured-row')
     const noPivotText = document.createElement('span')
-    noPivotText.textContent = 'No pivot configured'
-    const addBtn = document.createElement('button')
-    addBtn.classList.add('add-btn')
-    addBtn.textContent = '+ Add'
-    addBtn.onclick = () => {
-        const weight = getModelWeight(modelEntity, settings.removedSplats)
-        settings.pivot.position = { x: weight.x, y: weight.y, z: weight.z }
-        setPivotConfigured(true)
-        editPivotPos = weight
-        global.dataDirty = true
-        events.fire('pivot:positionsynced', weight)
-    }
+    noPivotText.textContent = 'No pivot point configured'
+    const addBtn = makeButton({
+        title: 'Create',
+        className: 'add-btn',
+        onClick: () => {
+            const weight = getModelWeight(modelEntity, settings.removedSplats)
+            const pos = { x: weight.x, y: weight.y, z: weight.z }
+
+            isNewPivot = true
+            editPivotPos = pos
+            setPivotConfigured(true) / events.fire('pivot:positionsynced', pos)
+
+            onEdit(pos)
+            events.fire('pivot:edit')
+        },
+    })
     noPivotRow.appendChild(noPivotText)
     noPivotRow.appendChild(addBtn)
 
@@ -147,20 +148,32 @@ function makePivotGroup(global, editGroup) {
         editGroup.startEdit('pivot')
         isEditing = true
         editPivotPos = { x, y, z }
-        setInputsDisabled(false)
         renderBtns()
         events.fire('pivot:enable-edit', { position: { x, y, z }, enable: true })
     }
+
     const onCancel = () => {
         if (!isEditing) return
-        setInputsDisabled(true)
-        if (editPivotPos) {
-            events.fire('pivot:positionsynced', editPivotPos)
+
+        if (isNewPivot) {
+            editPivotPos = null
+            currrentPivotPos = null
+            isNewPivot = false
+            setPivotConfigured(false)
+            events.fire('pivot:delete')
+        } else {
+            editPivotPos = settings.pivot.position
+            if (editPivotPos) {
+                events.fire('pivot:positionsynced', editPivotPos)
+            }
+            events.fire('pivot:cancel')
         }
-        events.fire('pivot:cancel')
+
+        events.fire('pivot:enable-edit', { enable: false })
         isEditing = false
         renderBtns()
     }
+
     const onDelete = async () => {
         const ok = await global.confirmDialog.ask({
             position: 'top',
@@ -177,6 +190,7 @@ function makePivotGroup(global, editGroup) {
         events.fire('pivot:delete')
         renderBtns()
     }
+
     const renderBtns = () => {
         btnRow.innerHTML = ''
         if (isEditing) {
@@ -188,8 +202,10 @@ function makePivotGroup(global, editGroup) {
                     const { x, y, z } = currrentPivotPos
                     editPivotPos = { x, y, z }
                     settings.pivot.position = { x, y, z }
+                    global.dataDirty = true
+                    isNewPivot = false
                     isEditing = false
-                    setInputsDisabled(true)
+                    events.fire('pivot:enable-edit', { enable: false })
                     renderBtns()
                     events.fire('pivot:save')
                 },
@@ -202,6 +218,7 @@ function makePivotGroup(global, editGroup) {
                 title: 'Edit',
                 className: 'edit-btn',
                 onClick: () => {
+                    isNewPivot = false
                     onEdit(editPivotPos)
                     events.fire('pivot:edit')
                 },
@@ -218,35 +235,31 @@ function makePivotGroup(global, editGroup) {
         }
     }
 
-    hasPivotWrap.appendChild(positionRow)
     hasPivotWrap.appendChild(btnRow)
 
     const setPivotConfigured = (has) => {
         noPivotRow.style.display = has ? 'none' : 'flex'
         hasPivotWrap.style.display = has ? 'flex' : 'none'
     }
-    if (settings.pivotPos) {
-        const p = settings.pivotPos
-        setInputValues({ x: p.x, y: p.y, z: p.z })
-    }
 
-    container.appendChild(noPivotRow)
-    container.appendChild(hasPivotWrap)
-    group.appendChild(container)
+    pivotGroup.appendChild(noPivotRow)
+    pivotGroup.appendChild(hasPivotWrap)
+
+    container.appendChild(descGroup)
+    container.appendChild(pivotGroup)
 
     renderBtns()
     setPivotConfigured(!!settings.pivot.position)
     const handles = [
         events.on('inputEvent:r', onCancel),
         events.on('pivot:positionsynced', ({ x, y, z }) => {
-            setInputValues({ x, y, z })
             currrentPivotPos = { x, y, z }
         }),
     ]
-    group.cleanup = () => {
+    container.cleanup = () => {
         handles.forEach((h) => events.offByHandle(h))
     }
-    return group
+    return container
 }
 function makePoster(el, global) {
     const { events, settings } = global
