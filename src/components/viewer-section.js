@@ -37,7 +37,7 @@ function makeViewerSection(el, global) {
     })
     autoHideUIRow.el.appendChild(autoHideUIToggleEl)
 
-    const lockZoomInRow = makeRow({ title: 'Lock Zoom In' })
+    const lockZoomInRow = makeRow({ title: 'Set Max Zoom' })
     const lockZoomInToggleEl = makeToggle({
         initialValue: settings.lockZoomIn.locked,
         onChange: (value) => {
@@ -53,7 +53,7 @@ function makeViewerSection(el, global) {
     generalGroup.appendChild(lockZoomInRow.el)
     //iniview
     const initviewHint =
-        'Set the camera angle that viewers see when the model first loads. Rotate to your preferred angle, then click Save current view. Click Default view to reset.'
+        'Set the initial viewing angle. Rotate the object to the preferred angle and click “Save initial view”'
 
     const initviewGroup = makeSectionGroup('Initial View', initviewHint)
     initviewGroup.appendChild(makeInitViewGroup(events, settings, global))
@@ -345,7 +345,7 @@ function makeInitViewGroup(events, settings, global) {
     }
 
     const btnDefault = makeButton({
-        title: 'Default view',
+        title: 'Reset',
         className: 'initview-btn',
         onClick: () => {
             updateState(false)
@@ -355,10 +355,85 @@ function makeInitViewGroup(events, settings, global) {
         },
     })
 
+    const btnPreview = makeButton({
+        title: 'Preview',
+        className: 'initview-btn',
+        onClick: () => openPreview(global),
+    })
+
     btnRow.appendChild(btnSave)
     btnRow.appendChild(btnDefault)
+    btnRow.appendChild(btnPreview)
     updateState(!!settings.initview.pose)
 
     wrap.appendChild(btnRow)
     return wrap
+}
+function buildPreviewHtml(global) {
+    const { settings } = global
+    const baseHref = new URL('.', window.location.href.split('?')[0]).href
+    const previewSettings = { ...settings, ref: '' }
+    const settingsJson = JSON.stringify(previewSettings)
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+<title>3D Model Viewer - Preview</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<base href="${baseHref}" />
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="./data/viewer.css?v=${settings.v}" />
+
+<script>
+    (function() {
+        try {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('ref')) {
+                url.searchParams.delete('ref');
+                window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+            }
+        } catch(e) {
+            console.error('Failed to clean URL:', e);
+        }
+    })();
+</script>
+
+</head>
+<body>
+<canvas id="application-canvas"></canvas>
+<div id="ui">
+<div id="poster"></div>
+</div>
+<div id="tooltip"></div>
+<div id="spinnerWrap">
+<svg class="progress-ring" viewBox="0 0 200 200">
+<circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+<circle
+id="progressRingFg"
+class="progress-ring-fg"
+cx="100"
+cy="100"
+r="86"
+fill="none"
+stroke-dasharray="540.35"
+stroke-dashoffset="540.35" />
+</svg>
+<span id="spinnerPercent" class="spinner-percent">0%</span>
+</div>
+</body>
+<script>window.sse = { "settings": ${settingsJson} }</script>
+<script src="./data/viewer.js?v=${settings.v}"></script>
+</html>`
+}
+function openPreview(global) {
+    const html = buildPreviewHtml(global)
+    const previewWindow = window.open('', '_blank')
+    if (!previewWindow) {
+        showToast('Please allow pop-ups to preview.', { duration: 2000, type: 'warning' })
+        return
+    }
+    previewWindow.document.open()
+    previewWindow.document.write(html)
+    previewWindow.document.close()
 }

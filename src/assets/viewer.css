@@ -1394,6 +1394,10 @@ button {
 .add-btn.cancel-mode:hover {
     background: rgba(220, 60, 60, 0.25);
 }
+.initview-btn {
+    padding: 4px;
+    font-size: 0.8125rem;
+}
 .btn-row .initview-btn.active {
     background-color: var(--primary);
     color: white;
