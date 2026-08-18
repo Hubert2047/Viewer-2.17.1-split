@@ -1159,11 +1159,17 @@ function makeVec3Inputs({
     defaultValues = { x: 0, y: 0, z: 0 },
     disabled = true,
     step = '1',
+    axisLabels,
     onChange,
     onFocus,
 } = {}) {
     const AXIS = ['x', 'y', 'z']
     const COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
+    const LABELS = {
+        x: axisLabels?.x ?? 'X',
+        y: axisLabels?.y ?? 'Y',
+        z: axisLabels?.z ?? 'Z',
+    }
     const inputEls = {}
 
     const row = document.createElement('div')
@@ -1175,7 +1181,7 @@ function makeVec3Inputs({
 
         const label = document.createElement('span')
         label.classList.add('axis-label')
-        label.textContent = axis.toUpperCase()
+        label.textContent = LABELS[axis]
         label.style.color = COLORS[axis]
 
         const input = document.createElement('input')

@@ -2,6 +2,7 @@ function makeDimensionSection(el, global) {
     const { events, settings } = global
     let isEditing = false
     let dimensionRotatable = null
+    let isNewDimension = false
     let editDimension = settings.dimensions ?? null
     let currentDimensions = settings.dimensions ?? null
     let canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
@@ -31,21 +32,15 @@ function makeDimensionSection(el, global) {
                 realSize: { x: 0, y: 0, z: 0 },
                 unit: 'cm',
                 type: 'dimensions',
-            }
-            const finalDimension = {
-                ...currentDimensions,
                 position: { x: posInLocal.x, y: posInLocal.y, z: posInLocal.z },
                 size,
                 rotation: { x: finalEuler.x, y: finalEuler.y, z: finalEuler.z },
             }
             if (canUseMeasurementData) {
-                finalDimension.useMeasurementData = true
+                currentDimensions.useMeasurementData = true
                 setUseMeasurementChecked(true)
             }
-            global.dataDirty = true
-            editDimension = { ...finalDimension }
-            currentDimensions = { ...finalDimension }
-            settings.dimensions = finalDimension
+            isNewDimension = true
             setDimConfigured(true)
             setValues(currentDimensions)
             onDimensionsConfigured()
@@ -65,7 +60,7 @@ function makeDimensionSection(el, global) {
         setDisabled: setBoxColorDisabled,
         setColor: setBoxColor,
     } = makeColorPickerDropdown({
-        label: 'Box Color',
+        label: 'Box color',
         color: currentDimensions?.boxColor || '#f95f4d',
         debounceMs: 0,
         onChange: ({ hex }) => {
@@ -80,7 +75,7 @@ function makeDimensionSection(el, global) {
         setDisabled: setTextColorDisabled,
         setColor: setTextColorValue,
     } = makeColorPickerDropdown({
-        label: 'Text Color',
+        label: 'Text color',
         color: currentDimensions?.foregroundColor || '#f95f4d',
         debounceMs: 0,
         onChange: ({ hex }) => {
@@ -95,7 +90,7 @@ function makeDimensionSection(el, global) {
         setDisabled: setBackgroundDisabled,
         setColor: setBackgroundColorValue,
     } = makeColorPickerDropdown({
-        label: 'Text Background',
+        label: 'Text background',
         color: currentDimensions?.background.color || '#ffffff',
         alpha: currentDimensions?.background.alpha ?? 0.8,
         hasAlpha: true,
@@ -130,7 +125,8 @@ function makeDimensionSection(el, global) {
             if (val) {
                 currentDimensions = { ...currentDimensions, ...calRealSizeFromMeasurement(currentDimensions.size) }
             } else {
-                const { realSize, unit } = settings.dimensions
+                const source = editDimension ?? currentDimensions
+                const { realSize, unit } = source
                 currentDimensions = { ...currentDimensions, realSize, unit }
             }
             currentDimensions.useMeasurementData = val
@@ -150,7 +146,7 @@ function makeDimensionSection(el, global) {
         setDisabled: setAutoCalcDisabled,
         setChecked: setAutoCalChecked,
     } = makeCheckbox({
-        label: 'Auto Calculate',
+        label: 'Auto calculate',
         checked: false,
         disabled: true,
         onChange: (val) => {
@@ -180,6 +176,7 @@ function makeDimensionSection(el, global) {
             { value: 'cm', label: 'cm' },
             { value: 'm', label: 'm' },
             { value: 'inch', label: 'inch' },
+            { value: 'feet', label: 'Feet' },
         ],
         value: settings.dimensions?.unit || 'cm',
         className: 'dimensions-unit',
@@ -200,6 +197,7 @@ function makeDimensionSection(el, global) {
         setValuesPartial: setRealValuesPartial,
     } = makeVec3Inputs({
         title: 'Size',
+        axisLabels: { x: 'Dimension A', y: 'Dimension B', z: 'Dimension C' },
         step: 0.1,
         onChange: ({ x, y, z, changedAxis }) => {
             lastChangedAxis = changedAxis
@@ -301,6 +299,7 @@ function makeDimensionSection(el, global) {
                     editDimension = { ...currentDimensions }
                     settings.dimensions = { ...currentDimensions }
                     isEditing = false
+                    isNewDimension = false
                     setDisabled(false)
                     renderBtns()
                     renderRealGroup()
@@ -402,6 +401,24 @@ function makeDimensionSection(el, global) {
         if (!isEditing) return
         isEditing = false
         setDisabled(false)
+
+        if (isNewDimension) {
+            isNewDimension = false
+            currentDimensions = null
+            editDimension = null
+            settings.dimensions = null
+            setAutoCalChecked(false)
+            autoCalc = false
+            lastChangedAxis = null
+            lastInputAxisValue = null
+            setDimConfigured(false)
+            renderBtns()
+            renderRealGroup()
+            hideDimensions()
+            global.rotationGizmo.disable()
+            return
+        }
+
         if (editDimension) setValues(editDimension)
         currentDimensions = { ...editDimension }
         renderBtns()

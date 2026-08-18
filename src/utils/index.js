@@ -687,6 +687,7 @@ function transparentColor(color, alpha = 0.5) {
 }
 function dimensionsSetup(app, camera, config) {
     let currentDim = null
+    const AXIS_COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     const layers = app.scene.layers
     const worldLayer = layers.getLayerByName('World')
     const layerBBox = new Layer({ name: 'BBox' })
@@ -881,7 +882,20 @@ function dimensionsSetup(app, camera, config) {
                 const value = realSize[axis]
                 const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
                 const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
-                return config.editable ? `${axis}: ${mainText}` : mainText
+                if (!config.editable) return mainText
+                return `${getDimensionLabel(axis)}: ${mainText}`
+            // const fullText = `${getDimensionLabel(axis)}: ${mainText}`
+            // return `<span style="color:${AXIS_COLORS[axis]}">${fullText}</span>`
+        }
+    }
+    function getDimensionLabel(axis) {
+        switch (axis) {
+            case 'x':
+                return 'Dimension A'
+            case 'y':
+                return 'Dimension B'
+            default:
+                return 'Dimension C'
         }
     }
     const updateLabels = (corners, dim) => {
@@ -903,8 +917,9 @@ function dimensionsSetup(app, camera, config) {
             const dy = edgeScreen.y - screenCenterY
             const len = Math.sqrt(dx * dx + dy * dy) || 1
             const { line, dot, label } = elements[axis]
-            label.textContent = getLabelText(dim, axis)
+            label.innerHTML = getLabelText(dim, axis)
             label.style.display = 'block'
+            label.style.fontSize = config.editable ? '14px' : '16px'
             label.style.left = '-9999px'
             label.style.top = '-9999px'
             const lw = label.offsetWidth
