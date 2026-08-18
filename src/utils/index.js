@@ -884,18 +884,16 @@ function dimensionsSetup(app, camera, config) {
                 const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
                 if (!config.editable) return mainText
                 return `${getDimensionLabel(axis)}: ${mainText}`
-            // const fullText = `${getDimensionLabel(axis)}: ${mainText}`
-            // return `<span style="color:${AXIS_COLORS[axis]}">${fullText}</span>`
         }
     }
     function getDimensionLabel(axis) {
         switch (axis) {
             case 'x':
-                return 'Dimension A'
+                return 'Size A'
             case 'y':
-                return 'Dimension B'
+                return 'Size B'
             default:
-                return 'Dimension C'
+                return 'Size C'
         }
     }
     const updateLabels = (corners, dim) => {

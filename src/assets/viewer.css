@@ -541,6 +541,7 @@ button {
 .message-field.embed {
     gap: 0px;
 }
+
 .message-audio-duration-row {
     display: none;
     align-items: center;

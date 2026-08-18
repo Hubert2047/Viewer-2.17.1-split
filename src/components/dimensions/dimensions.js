@@ -197,7 +197,7 @@ function makeDimensionSection(el, global) {
         setValuesPartial: setRealValuesPartial,
     } = makeVec3Inputs({
         title: 'Size',
-        axisLabels: { x: 'Dimension A', y: 'Dimension B', z: 'Dimension C' },
+        axisLabels: { x: 'A', y: 'B', z: 'C' },
         step: 0.1,
         onChange: ({ x, y, z, changedAxis }) => {
             lastChangedAxis = changedAxis

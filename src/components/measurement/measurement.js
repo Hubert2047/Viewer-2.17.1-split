@@ -3,6 +3,7 @@ function makeMeasurementSection(el, global) {
     let editMeasurement = settings.measurement ? { ...settings.measurement } : null
     let currentMeasurement = editMeasurement ? { ...editMeasurement } : null
     let isEditing = false
+    let isNewMeasurement = false
     let calibState = currentMeasurement?.calibration?.points.length >= 2 ? 'picked' : 'idle'
     let calibPoints = currentMeasurement?.calibration.points ?? []
     let canUseDimensionData = hasDimensionsData(settings.dimensions)
@@ -29,7 +30,7 @@ function makeMeasurementSection(el, global) {
             },
         }
         calibState = 'idle'
-        editMeasurement = { ...currentMeasurement }
+        isNewMeasurement = true
         settings.measurement = { ...currentMeasurement }
         setConfigured(true)
         setValues(currentMeasurement)
@@ -85,8 +86,6 @@ function makeMeasurementSection(el, global) {
             calibState = 'picking'
             calibPoints = []
             calibDistanceInput.value = ''
-            setPointAValues({ x: 0, y: 0, z: 0 })
-            setPointBValues({ x: 0, y: 0, z: 0 })
             renderCalib()
             events.fire('measurement:calibration-pick-start')
             global.dataDirty = true
@@ -124,38 +123,8 @@ function makeMeasurementSection(el, global) {
     pickedBadge.appendChild(rePick)
     pickedBadge.appendChild(deleteCalibrationBtn)
 
-    // ── Point A / B Vec3 inputs ──
-    const {
-        row: pointARow,
-        setValues: setPointAValues,
-        setDisabled: setPointADisabled,
-    } = makeVec3Inputs({
-        title: 'Point A',
-        step: 0.1,
-        onChange: ({ x, y, z }) => {
-            if (!isEditing) return
-            events.fire('measurement:calibration-set-input-point', { idx: 0, pos: { x, y, z } })
-            if (calibPoints.length >= 1) calibPoints[0] = { x, y, z }
-            global.dataDirty = true
-        },
-    })
-
-    const {
-        row: pointBRow,
-        setValues: setPointBValues,
-        setDisabled: setPointBDisabled,
-    } = makeVec3Inputs({
-        title: 'Point B',
-        step: 0.1,
-        onChange: ({ x, y, z }) => {
-            if (!isEditing) return
-            events.fire('measurement:calibration-set-input-point', { idx: 1, pos: { x, y, z } })
-            if (calibPoints.length >= 2) calibPoints[1] = { x, y, z }
-            global.dataDirty = true
-        },
-    })
     // distance input row
-    const distanceRow = makeRow({ title: 'Real Distance', className: 'real-distance' })
+    const distanceRow = makeRow({ title: 'Real distance', className: 'real-distance' })
     const calibDistanceInput = makeInput({
         type: 'number',
         value: currentMeasurement?.calibration?.distance,
@@ -228,10 +197,6 @@ function makeMeasurementSection(el, global) {
             calibContent.appendChild(pickingBadge)
         } else if (calibState === 'picked') {
             calibContent.appendChild(pickedBadge)
-            setPointADisabled(!isEditing)
-            setPointBDisabled(!isEditing)
-            calibContent.appendChild(pointARow)
-            calibContent.appendChild(pointBRow)
             calibDistanceInput.disabled = !isEditing
             calibUnitSelect.setDisabled(!isEditing)
             distanceRow.setDisabled(!isEditing)
@@ -249,7 +214,7 @@ function makeMeasurementSection(el, global) {
         setDisabled: setLineColorDisabled,
         setColor: setLineColor,
     } = makeColorPickerDropdown({
-        label: 'Line Color',
+        label: 'Line color',
         color: currentMeasurement?.lineColor ?? '#f95f4d',
         debounceMs: 0,
         onChange: ({ hex }) => {
@@ -264,7 +229,7 @@ function makeMeasurementSection(el, global) {
         setDisabled: setTextColorDisabled,
         setColor: setTextColor,
     } = makeColorPickerDropdown({
-        label: 'Text Color',
+        label: 'Text color',
         color: currentMeasurement?.textColor ?? '#ffffff',
         debounceMs: 0,
         onChange: ({ hex }) => {
@@ -278,7 +243,7 @@ function makeMeasurementSection(el, global) {
         setDisabled: setBackgroundDisabled,
         setColor: setBackgroundColor,
     } = makeColorPickerDropdown({
-        label: 'Text Background',
+        label: 'Text background',
         color: currentMeasurement?.textBackground.color ?? '#000000',
         alpha: currentMeasurement?.textBackground.alpha ?? 0.8,
         hasAlpha: true,
@@ -315,8 +280,6 @@ function makeMeasurementSection(el, global) {
             calibUnitSelect.setValue(m.calibration.unit)
             setUseDimChecked(m.calibration.useDimensionData)
             if (m.calibration?.points.length >= 2) {
-                setPointAValues(m.calibration.points[0])
-                setPointBValues(m.calibration.points[1])
                 calibState = 'picked'
             } else {
                 calibState = 'idle'
@@ -351,11 +314,29 @@ function makeMeasurementSection(el, global) {
     const onCancel = () => {
         if (!isEditing) return
         isEditing = false
+        setDisabled(false)
+
+        if (isNewMeasurement) {
+            isNewMeasurement = false
+            currentMeasurement = null
+            editMeasurement = null
+            settings.measurement = null
+            calibState = 'idle'
+            calibPoints = []
+            if (global.measureTool) {
+                global.measureTool.deactivate()
+            }
+            setConfigured(false)
+            renderBtns()
+            renderCalib()
+            events.fire('measurement:calibration-cancel')
+            global.isEditMeasurement = false
+            events.fire('re-render:control-wrap')
+            return
+        }
+
         calibState = currentMeasurement.calibration.points.length >= 2 ? 'picked' : 'idle'
         calibPoints = []
-        setPointAValues({ x: 0, y: 0, z: 0 })
-        setPointBValues({ x: 0, y: 0, z: 0 })
-        setDisabled(false)
         if (editMeasurement) setValues(editMeasurement)
         currentMeasurement = { ...editMeasurement }
         renderBtns()
@@ -483,13 +464,9 @@ function makeMeasurementSection(el, global) {
             if (points.length < 2) return
             calibPoints = points
             calibState = 'picked'
-            setPointAValues(points[0])
-            setPointBValues(points[1])
             renderCalib()
         }),
         events.on('measurement:calibration-point-moved', ({ idx, pos }) => {
-            if (idx === 0) setPointAValues(pos)
-            else setPointBValues(pos)
             calibPoints[idx] = pos
         }),
         events.on('setup-reset', () => {
