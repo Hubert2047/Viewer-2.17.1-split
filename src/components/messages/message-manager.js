@@ -249,6 +249,7 @@ class MessagesManager {
                 entityInfo: first.data.entityInfo,
                 lerpDuration: AUTO_PLAY_LERP_TIME,
                 onTransitionFinished: () => onReady?.(),
+                onTransitionCancelled: () => onReady?.(),
             })
         })
     }
@@ -386,7 +387,11 @@ class MessagesManager {
             entityInfo: message.data.entityInfo,
             lerpDuration,
             onTransitionFinished: () => {
+                this.isTranslating = false
+                if (this.activeMessage?.id !== message.id) return
                 this.updateMessage(message)
+            },
+            onTransitionCancelled: () => {
                 this.isTranslating = false
             },
         })
@@ -425,6 +430,7 @@ class MessagesManager {
                             entityInfo: first.data.entityInfo,
                             lerpDuration: AUTO_PLAY_LERP_TIME,
                             onTransitionFinished: () => onFinished?.(this),
+                            onTransitionCancelled: () => onReady?.(),
                         })
                     }
                 } else {

@@ -2,7 +2,7 @@ function makeRecordSection(el, global) {
     const { events, app } = global
     const container = makeSectionWrap()
     let fps = 60
-    let isRegionVisible = false
+    let isRegionVisible = true
     let filename = 'recording'
     let isRecording = false
     let includeMessage = true
@@ -42,6 +42,7 @@ function makeRecordSection(el, global) {
     let dimLeft = null
     let dimRight = null
     let sizeLabel = null
+    let dragHandleEl = null
     let dragState = null
     let pattern = 'none'
 
@@ -189,22 +190,20 @@ function makeRecordSection(el, global) {
             overflow:hidden; z-index:1001; pointer-events:none;
             background:transparent;
         `
-
         const makeDim = () => {
             const d = document.createElement('div')
-            d.style.cssText = 'position:absolute; background:rgba(0,0,0,0.45); pointer-events:auto;'
+            d.style.cssText = 'position:absolute; background:rgba(0,0,0,0.45); pointer-events:none;'
             return d
         }
         dimTop = makeDim()
         dimBottom = makeDim()
         dimLeft = makeDim()
         dimRight = makeDim()
-
         frame = document.createElement('div')
         frame.style.cssText = `
             position:absolute; border:1px solid var(--primary);
             background:transparent;
-            cursor:move; box-sizing:border-box; pointer-events:auto;
+            box-sizing:border-box; pointer-events:none;
         `
         sizeLabel = document.createElement('div')
         sizeLabel.style.cssText = `
@@ -213,21 +212,41 @@ function makeRecordSection(el, global) {
             padding:1px 6px; border-radius:0.25rem; pointer-events:none;
         `
         frame.appendChild(sizeLabel)
-
         handleDefs.forEach(({ dir, cursor, top, left }) => {
             const h = document.createElement('div')
             h.style.cssText = `
                 position:absolute; width:9px; height:9px; background:var(--primary);
                 border-radius:2px; transform:translate(-50%,-50%);
                 top:${top}; left:${left}; cursor:${cursor};
+                pointer-events:auto;
             `
             h.addEventListener('pointerdown', (e) => onPointerDown(e, dir))
             frame.appendChild(h)
         })
 
-        frame.addEventListener('pointerdown', (e) => {
-            if (e.target === frame || e.target === sizeLabel) onPointerDown(e, 'move')
-        })
+        dragHandleEl = document.createElement('div')
+        dragHandleEl.style.cssText = `
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:28px; height:28px;
+    background:var(--primary); color:#fff;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    user-select:none;
+    cursor:move; pointer-events:auto;
+    box-shadow:0 1px 6px rgba(0,0,0,0.5);
+`
+        dragHandleEl.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="5 9 2 12 5 15"></polyline>
+        <polyline points="9 5 12 2 15 5"></polyline>
+        <polyline points="15 19 12 22 9 19"></polyline>
+        <polyline points="19 9 22 12 19 15"></polyline>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <line x1="12" y1="2" x2="12" y2="22"></line>
+    </svg>
+`
+        dragHandleEl.addEventListener('pointerdown', (e) => onPointerDown(e, 'move'))
+        frame.appendChild(dragHandleEl)
 
         overlayRoot.appendChild(dimTop)
         overlayRoot.appendChild(dimBottom)
@@ -259,6 +278,7 @@ function makeRecordSection(el, global) {
             frame = null
             dimTop = dimBottom = dimLeft = dimRight = null
             sizeLabel = null
+            dragHandleEl = null
         }
     }
 

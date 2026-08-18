@@ -672,38 +672,42 @@ class OtherController {
         this.events.on('orientation:cancel', () => this.cancelOrientation())
         this.events.on('orientation:eulersynced', () => this.updateModelRotation())
 
-        this.events.on('ortery-controller:transition', ({ entityInfo, lerpDuration, onTransitionFinished }) => {
-            const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch, isFullyInView } = entityInfo
-            const startPose = {
-                focus: this.focus.clone(),
-                position: new Vec3(
-                    modelEntity.localPosition.x,
-                    modelEntity.localPosition.y,
-                    modelEntity.localPosition.z,
-                ),
-                rotation: modelEntity.localRotation.clone(),
-                distance: this.distance,
-                fov: this.fov,
-                yaw: this.currentYaw,
-                pitch: this.currentPitch,
-            }
-            const targetPose = {
-                focus: new Vec3(f.x, f.y, f.z),
-                position: new Vec3(p.x, p.y, p.z),
-                rotation: new Quat(r.x, r.y, r.z, r.w),
-                distance: this.clampDistance(this.getActualDistance(d, isFullyInView)),
-                fov: this.clampFov(this.getActualFov(d, isFullyInView)),
-                yaw,
-                pitch,
-            }
-            this.setupTransition({
-                targetPose,
-                startPose,
-                lerpDuration,
-                onTransitionFinished,
-                transitionMode: this.originModel,
-            })
-        })
+        this.events.on(
+            'ortery-controller:transition',
+            ({ entityInfo, onTransitionCancelled, lerpDuration, onTransitionFinished }) => {
+                const { position: p, focus: f, rotation: r, distanceScale: d, yaw, pitch, isFullyInView } = entityInfo
+                const startPose = {
+                    focus: this.focus.clone(),
+                    position: new Vec3(
+                        modelEntity.localPosition.x,
+                        modelEntity.localPosition.y,
+                        modelEntity.localPosition.z,
+                    ),
+                    rotation: modelEntity.localRotation.clone(),
+                    distance: this.distance,
+                    fov: this.fov,
+                    yaw: this.currentYaw,
+                    pitch: this.currentPitch,
+                }
+                const targetPose = {
+                    focus: new Vec3(f.x, f.y, f.z),
+                    position: new Vec3(p.x, p.y, p.z),
+                    rotation: new Quat(r.x, r.y, r.z, r.w),
+                    distance: this.clampDistance(this.getActualDistance(d, isFullyInView)),
+                    fov: this.clampFov(this.getActualFov(d, isFullyInView)),
+                    yaw,
+                    pitch,
+                }
+                this.setupTransition({
+                    targetPose,
+                    startPose,
+                    lerpDuration,
+                    onTransitionFinished,
+                    onTransitionCancelled,
+                    transitionMode: this.originModel,
+                })
+            },
+        )
         this.events.on('point-eraser:commit-delete', (removedSplats) => {
             const {
                 bbox: { center, halfExtents },
@@ -1125,10 +1129,18 @@ class OtherController {
         }
         this.syncHierarchyAndRender()
     }
-    setupTransition({ targetPose, startPose, onTransitionFinished, lerpDuration, transitionMode }) {
+    setupTransition({
+        targetPose,
+        startPose,
+        onTransitionFinished,
+        onTransitionCancelled,
+        lerpDuration,
+        transitionMode,
+    }) {
         this.targetPose = targetPose
         this.startPose = startPose
         this.onTransitionFinished = onTransitionFinished
+        this.onTransitionCancelled = onTransitionCancelled
         this.lerpTime = 0
         this.lerpDuration = lerpDuration
         this.inertiaVelX = 0
@@ -1156,8 +1168,13 @@ class OtherController {
         this.baseRotation = this._preEditBaseRotation.clone()
 
         if (this.targetPose) {
-            this.startPose.position = currentPosition
-            this.startPose.rotation = currentRotation
+            const cancelCb = this.onTransitionCancelled
+            this.targetPose = null
+            this.startPose = null
+            this.onTransitionFinished = null
+            this.onTransitionCancelled = null
+            this.isResetting = false
+            cancelCb?.()
         }
 
         this.currentYaw = 0
@@ -1416,6 +1433,7 @@ class OtherController {
         if (t >= 1 && this.onTransitionFinished) {
             const cb = this.onTransitionFinished
             this.onTransitionFinished = null
+            this.onTransitionCancelled = null
             cb()
         }
     }
