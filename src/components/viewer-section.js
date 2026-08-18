@@ -325,118 +325,72 @@ function makeInitViewGroup(events, settings, global) {
     const wrap = document.createElement('div')
     wrap.style.cssText = 'display:flex; flex-direction:column; gap:8px;'
 
+    // --- Status row ---
+    const statusRow = document.createElement('div')
+    statusRow.classList.add('flex-center')
+    statusRow.style.cssText = 'justify-content:space-between; align-items:center;'
+
+    const statusBadge = document.createElement('div')
+    statusBadge.classList.add('flex-center')
+    statusBadge.style.cssText = 'gap:6px; font-size:12px;'
+
+    const statusDot = document.createElement('span')
+    statusDot.style.cssText = 'width:6px; height:6px; border-radius:50%; display:inline-block;'
+
+    const statusText = document.createElement('span')
+
+    function updateStatus() {
+        const isCustom = !!settings.initview.pose
+        statusDot.style.backgroundColor = isCustom ? '#4dd0a3' : '#9aa0a6'
+        statusText.textContent = isCustom ? 'Custom' : 'Original'
+        statusText.style.color = isCustom ? '#4dd0a3' : '#9aa0a6'
+    }
+    updateStatus()
+
+    statusBadge.appendChild(statusDot)
+    statusBadge.appendChild(statusText)
+
+    const eyeBtn = makeButton({
+        title: 'Preview',
+        icon: ICONS.eye,
+        onClick: () => {
+            events.fire('inputEvent:r')
+        },
+    })
+    eyeBtn.style.cssText = 'width:26px; height:26px; padding:5px;'
+
+    statusRow.appendChild(statusBadge)
+    statusRow.appendChild(eyeBtn)
+
     const btnRow = document.createElement('div')
     btnRow.classList.add('btn-row', 'initview-btn-row')
 
     const btnSave = makeButton({
         title: 'Save initial view',
         className: 'initview-btn',
+        variant: 'a',
         onClick: () => {
             events.fire('viewer:save-initview')
-            updateState(true)
             global.dataDirty = true
+            updateStatus()
         },
     })
-    function updateState(hasPose) {
-        if (hasPose) {
-            btnSave.classList.add('active')
-            btnDefault.classList.remove('active')
-        } else {
-            btnDefault.classList.add('active')
-            btnSave.classList.remove('active')
-        }
-    }
 
     const btnDefault = makeButton({
         title: 'Reset',
         className: 'initview-btn',
         onClick: () => {
-            updateState(false)
             if (!settings.initview.pose) return
             events.fire('viewer:remove-saved-view')
             global.dataDirty = true
+            updateStatus()
         },
     })
 
-    // const btnPreview = makeButton({
-    //     title: 'Preview',
-    //     className: 'initview-btn',
-    //     onClick: () => openPreview(global),
-    // })
-
     btnRow.appendChild(btnSave)
     btnRow.appendChild(btnDefault)
-    // btnRow.appendChild(btnPreview)
-    updateState(!!settings.initview.pose)
 
+    wrap.appendChild(statusRow)
     wrap.appendChild(btnRow)
     return wrap
 }
-// function buildPreviewHtml(global) {
-//     const { settings } = global
-//     const baseHref = new URL('.', window.location.href.split('?')[0]).href
-//     const previewSettings = { ...settings, ref: '' }
-//     const settingsJson = JSON.stringify(previewSettings)
-
-//     return `<!doctype html>
-// <html lang="en">
-// <head>
-// <title>3D Model Viewer - Preview</title>
-// <meta charset="UTF-8" />
-// <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-// <base href="${baseHref}" />
-// <link rel="icon" href="data:," />
-// <link rel="stylesheet" href="./data/viewer.css?v=${settings.v}" />
-
-// <script>
-//     (function() {
-//         try {
-//             const url = new URL(window.location.href);
-//             if (url.searchParams.has('ref')) {
-//                 url.searchParams.delete('ref');
-//                 window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-//             }
-//         } catch(e) {
-//             console.error('Failed to clean URL:', e);
-//         }
-//     })();
-// </script>
-
-// </head>
-// <body>
-// <canvas id="application-canvas"></canvas>
-// <div id="ui">
-// <div id="poster"></div>
-// </div>
-// <div id="tooltip"></div>
-// <div id="spinnerWrap">
-// <svg class="progress-ring" viewBox="0 0 200 200">
-// <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-// <circle
-// id="progressRingFg"
-// class="progress-ring-fg"
-// cx="100"
-// cy="100"
-// r="86"
-// fill="none"
-// stroke-dasharray="540.35"
-// stroke-dashoffset="540.35" />
-// </svg>
-// <span id="spinnerPercent" class="spinner-percent">0%</span>
-// </div>
-// </body>
-// <script>window.sse = { "settings": ${settingsJson} }</script>
-// <script src="./data/viewer.js?v=${settings.v}"></script>
-// </html>`
-// }
-// function openPreview(global) {
-//     const html = buildPreviewHtml(global)
-//     const previewWindow = window.open('', '_blank')
-//     if (!previewWindow) {
-//         showToast('Please allow pop-ups to preview.', { duration: 2000, type: 'warning' })
-//         return
-//     }
-//     previewWindow.document.open()
-//     previewWindow.document.write(html)
-//     previewWindow.document.close()
-// }

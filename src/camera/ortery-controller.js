@@ -1005,7 +1005,7 @@ class OtherController {
         }
 
         this.reset()
-        showToast('Switched to default view', {
+        showToast('Switched to original view', {
             duration: 1000,
             type: 'success',
         })
