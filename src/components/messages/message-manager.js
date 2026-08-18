@@ -209,6 +209,7 @@ class MessagesManager {
             this.showMessageNavigation(!this.global.isShowMessageNavigation)
         })
         this.events.on('ortery:rotate', () => this.hideAllMessages())
+        this.events.on('ortery:zoom', () => this.hideAllMessages())
         this.events.on('360spin-start', () => {
             this.stopAutoPlay()
             this.hideAllMessages()

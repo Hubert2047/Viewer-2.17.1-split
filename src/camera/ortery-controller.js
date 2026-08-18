@@ -1481,12 +1481,7 @@ class OtherController {
     }
 
     move(move, rotate) {
-        if (
-            this.isEditMessage ||
-            this.isMeasurementDrag ||
-            (this.global.recording && this.global.recordPattern !== 'none')
-        )
-            return
+        if (this.isMeasurementDrag || (this.global.recording && this.global.recordPattern !== 'none')) return
         const [x, y, z] = move
         if (z !== 0) {
             if (this.model === 'cylindrical' && !!this.cylindricalCamPos && !this.isEditingOrientation) {
@@ -1564,6 +1559,9 @@ class OtherController {
         }
         if (didRotate) {
             this.events.fire('ortery:rotate')
+        }
+        if (isZooming) {
+            this.events.fire('ortery:zoom')
         }
         if (isZooming || isPanning || didRotate) {
             this.events.fire('ortery:interaction')

@@ -1,5 +1,6 @@
-<!doctype html>
-<html lang="en">
+
+    <!doctype html>
+    <html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -10,7 +11,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=72" />
+        <link rel="stylesheet" href="./data/viewer.css?v=76" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -40,33 +41,22 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-            <svg class="progress-ring" viewBox="0 0 200 200">
-                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                <circle
-                    id="progressRingFg"
-                    class="progress-ring-fg"
-                    cx="100"
-                    cy="100"
-                    r="86"
-                    fill="none"
-                    stroke-dasharray="540.35"
-                    stroke-dashoffset="540.35" />
+        <svg class="progress-ring" viewBox="0 0 200 200">
+            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+            <circle
+                id="progressRingFg"
+                class="progress-ring-fg"
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke-dasharray="540.35"
+                stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'hemispherical',
-                contentUrl: 'models/360_noise.ply',
-                v: 72,
-                setupStep: 3,
-                removedSplats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 3474, 455804, 455805, 455806, 455807, 455808, 455809],
-                chunkCount: 0,
-            },
-        }
-    </script>
-    <script src="./data/viewer.js?v=72"></script>
-</html>
+    <script>window.sse = { "settings": {"ref":"","model":"hemispherical","contentUrl":"models/360_noise.ply","v":76,"spin":{"enabled":true,"continuous":false,"autoStart":false,"direction":"cw","axis":"y","speed":5,"rotation":null},"messages":[{"id":"a8ffeb8c-eb06-49ed-8eab-df8eb3d72ab0","autoPlay":{"time":3},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","background":"#ffffff","backgroundAlpha":0.8,"originWidth":165.99999627454326,"originHeight":50.00000271952888,"topLeft":{"x":6.000092217944358,"y":-13.426096445778278,"z":-5.806987377926255},"botRight":{"x":11.75010308246883,"y":-11.291362211889954,"z":-11.078662648188176},"fontSize":16},"focus":{"position":{"x":-2.496253077447296,"y":-0.44200943708599993,"z":-4.118247125148599}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-3.0209398333237214,"y":-1.0665268938205161,"z":-3.5935209979375937},"botRight":{"x":-1.9836294152424938,"y":0.17102688039189906,"z":-4.652297098048944}},"entityInfo":{"rotation":{"x":-0.8075581004050281,"y":-4.9448672139326723e-17,"z":0.5897880250312163,"w":3.6114100851495904e-17},"position":{"x":1.017366216834409,"y":0,"z":0.10135687704554708},"isFullyInView":true,"distanceScale":1,"focus":{"x":0.47167086601257563,"y":19.500326991081238,"z":0.42218756675720215},"pitch":0,"yaw":-1.8799999999997077},"audio":{"show":true,"src":"","fileName":"333.mp3","bgColor":"#000000","bgAlpha":0.8,"iconColor":"#ffffff","volume":1,"loop":false,"autoPlay":false}}],"setupStep":4,"removedSplats":[0,1,2,3,4,5,6,7,8,3474,455804,455805,455806,455807,455808,455809],"chunkCount":0} }</script>
+    <script src="./data/viewer.js?v=76"></script>
+    </html> 
+    

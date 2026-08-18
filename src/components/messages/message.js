@@ -90,6 +90,7 @@ class Messages {
         let src = this.data.audio.src ? this.data.audio.src : `./audios/${this.data.audio.fileName}`
 
         this._audio = new Audio(src)
+        this._audioSrcKey = src
         this._audio.volume = this.data.audio.volume ?? 1
         this._audio.loop = this.data.audio.loop ?? false
 
@@ -160,6 +161,7 @@ class Messages {
                 this._audio.removeEventListener('timeupdate', this.updateProgress)
                 this._audio = null
             }
+            this._audioSrcKey = null
             if (this._audioBtn) {
                 this._audioBtn.remove()
                 this._audioBtn = null
@@ -177,6 +179,7 @@ class Messages {
                 this._audio.removeEventListener('timeupdate', this.updateProgress)
                 this._audio = null
             }
+            this._audioSrcKey = null
             if (this._audioBtn) {
                 this._audioBtn.remove()
                 this._audioBtn = null
@@ -186,7 +189,7 @@ class Messages {
         }
 
         const src = this.data.audio.src || `./audios/${this.data.audio.fileName}`
-        const shouldRecreate = !this._audio || this._audio.src !== src
+        const shouldRecreate = !this._audio || this._audioSrcKey !== src
 
         if (shouldRecreate) {
             if (this._audio) {
@@ -194,6 +197,7 @@ class Messages {
                 this._audio.removeEventListener('timeupdate', this.updateProgress)
             }
             this._audio = new Audio(src)
+            this._audioSrcKey = src
             this._audio.volume = this.data.audio.volume ?? 1
             this._audio.loop = this.data.audio.loop ?? false
             this._isPlaying = false
@@ -277,6 +281,10 @@ class Messages {
 
     updateLine(focusScreenPos, forceUpdate = false) {
         if (this.dotDragging && !forceUpdate) return
+        if (this.div.style.display === 'none' || this.dot.style.display === 'none') {
+            this.line.style.display = 'none'
+            return
+        }
         const divRect = this.div.getBoundingClientRect()
         const cx = divRect.left + divRect.width / 2
         const cy = divRect.top + divRect.height / 2
@@ -371,16 +379,22 @@ class Messages {
                 focusScreenPos.y - dotHeight / 2 < 0 ||
                 focusScreenPos.x - dotWidth / 2 < 0
             if (dotPartiallyOutside) {
+                this._offScreen = true
                 this.div.style.display = 'none'
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'none'
+                this.line.style.display = 'none'
                 this.dot.style.display = 'none'
                 if (this._audioBtnWrapper) this._audioBtnWrapper.style.display = 'none'
+                if (this._audio && this._isPlaying) {
+                    this.pauseAudio()
+                }
                 delete this.initialDx
                 delete this.initialDy
                 delete this.div.hasAdjusted
                 return
             } else {
+                this._offScreen = false
                 this.div.style.display = 'flex'
                 this.div.style.visibility = 'hidden'
                 this.lineSvg.style.display = 'block'
@@ -718,7 +732,8 @@ class Messages {
         const audioEnabled = this._audioRecordEnabled !== false
 
         if (this._audioBtnWrapper) {
-            this._audioBtnWrapper.style.display = this.data.audio?.show && audioEnabled ? 'block' : 'none'
+            this._audioBtnWrapper.style.display =
+                !this._offScreen && this.data.audio?.show && audioEnabled ? 'block' : 'none'
         }
 
         if (this.button) this.button.setActiveColor()
@@ -789,7 +804,8 @@ class Messages {
     setAudioRecordEnabled(enabled) {
         this._audioRecordEnabled = enabled
         if (this._audioBtnWrapper) {
-            this._audioBtnWrapper.style.display = enabled ? (this.data.audio?.show ? 'block' : 'none') : 'none'
+            this._audioBtnWrapper.style.display =
+                !this._offScreen && enabled && this.data.audio?.show ? 'block' : 'none'
         }
         if (!enabled && this._audio && this._isPlaying) {
             this._audio.pause()
@@ -808,11 +824,8 @@ class Messages {
 
         const audioEnabled = this._audioRecordEnabled !== false
         if (this._audioBtnWrapper) {
-            this._audioBtnWrapper.style.display = hidden
-                ? 'none'
-                : this.data.audio?.show && audioEnabled
-                  ? 'block'
-                  : 'none'
+            this._audioBtnWrapper.style.display =
+                hidden || this._offScreen ? 'none' : this.data.audio?.show && audioEnabled ? 'block' : 'none'
         }
     }
     hide() {

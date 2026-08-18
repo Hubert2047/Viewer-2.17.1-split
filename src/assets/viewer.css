@@ -330,9 +330,8 @@ button {
 }
 .message-row {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
-    justify-content: space-between;
-    flex-wrap: wrap;
 }
 .message {
     display: none;
@@ -530,16 +529,17 @@ button {
     flex-direction: column;
     gap: 0.25rem;
 }
+.message-field-row {
+    flex-direction: row;
+}
+.message-field-row .message-label {
+    min-width: 180px;
+}
 .message-field .cpd-trigger {
     width: 100%;
 }
 .message-field.embed {
     gap: 0px;
-}
-.elapsed-time {
-    flex-direction: row;
-    align-items: center;
-    gap: 102px;
 }
 .message-audio-duration-row {
     display: none;
@@ -1395,7 +1395,7 @@ button {
     background: rgba(220, 60, 60, 0.25);
 }
 .initview-btn {
-    padding: 8px 12px;
+    padding: 0.5rem;
     font-size: 0.8125rem;
 }
 .btn-row .initview-btn.active {
@@ -1411,14 +1411,7 @@ button {
     background: rgba(0, 0, 0, 0.05);
     color: rgba(0, 0, 0, 0.6);
 }
-.btn-row.initview-btn-row {
-    flex-wrap: wrap;
-}
-.btn-row.initview-btn-row .initview-btn {
-    flex: 0 1 auto;
-    white-space: nowrap;
-    min-width: 4.5rem;
-}
+
 .md-overlay {
     position: fixed;
     inset: 0;
