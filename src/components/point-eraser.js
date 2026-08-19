@@ -364,7 +364,6 @@ function makePointEraser(global) {
         applyPointMapping({ modelEntity, deletedSet: newDeletedSet })
         settings.removedSplats = [...newDeletedSet]
         currentControl.clearSelectionStateOnly()
-        events.fire('point-eraser:commit-delete', settings.removedSplats)
 
         deleteBtn.disabled = true
         resetBtn.disabled = settings.removedSplats.length === 0
@@ -372,6 +371,7 @@ function makePointEraser(global) {
         if (currentControl._activeStrategy) {
             currentControl._activeStrategy._projDirty = true
         }
+        events.fire('point-eraser:commit-delete', settings.removedSplats)
         events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
     }
 
@@ -389,14 +389,23 @@ function makePointEraser(global) {
             applyPointMapping({ modelEntity, deletedSet })
             settings.removedSplats = [...deletedSet]
             currentControl.clearSelectionStateOnly()
-            events.fire('point-eraser:commit-delete', settings.removedSplats)
             deleteBtn.disabled = true
             resetBtn.disabled = settings.removedSplats.length === 0
             if (currentControl._activeStrategy) {
                 currentControl._activeStrategy._projDirty = true
             }
+            events.fire('point-eraser:commit-delete', settings.removedSplats)
             events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
         }
+    }
+    function syncAfterHistoryChange() {
+        updateUndoRedoButtons()
+        deletedSet = new Set(settings.removedSplats)
+        deleteBtn.disabled = true
+        resetBtn.disabled = settings.removedSplats.length === 0
+
+        events.fire('point-eraser:bbox-recalc', settings.removedSplats)
+        events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
     }
     function applyInverseSelection() {
         if (!currentControl) return
@@ -423,9 +432,11 @@ function makePointEraser(global) {
     }
     function onUndo() {
         events.fire('point-eraser:undo')
+        syncAfterHistoryChange()
     }
     function onRedo() {
         events.fire('point-eraser:redo')
+        syncAfterHistoryChange()
     }
     function updateUndoRedoButtons() {
         if (!currentControl) return
@@ -581,9 +592,6 @@ function makePointEraser(global) {
         events.on('inputEvent:b', () => selectMode('brush')),
         events.on('inputEvent:p', () => selectMode('polygon')),
         events.on('inputEvent:l', () => selectMode('lasso')),
-        events.on('ortery:initialized', () => {
-            events.fire('point-eraser:commit-delete', [])
-        }),
     ]
     const updateAabbHandle = app.on('framerender', drawAabbCorners)
     container.cleanup = () => {

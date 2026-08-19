@@ -281,6 +281,12 @@ function makeViewerSection(el, global) {
             const result = await getUpdateBoxSize(r, settings.removedSplats)
             dimensionAxes = { ...dimensionAxes, rotation: r, size: result.size, position: result.position }
         } else {
+            if (!global.oobbInfo) {
+                await global.loading.show()
+                await global.oobbInfoPromise
+                global.loading.hide()
+            }
+            if (!global.oobbInfo) return
             const { finalQuat, posInLocal, size } = global.oobbInfo
             const r = finalQuat.getEulerAngles()
             dimensionAxes = { ...dimensionAxes, rotation: r, size, position: posInLocal }

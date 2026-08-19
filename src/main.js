@@ -2979,8 +2979,9 @@ class Viewer {
             }
             this.cameraManager = new CameraManager(global, sceneBound, collider)
             global.cameraManager = this.cameraManager
+            events.fire('camera-manager:ready')
             global.rotationGizmo = new RotationGizmo(app, camera, events)
-            const pivotDot = new PivotDot(app, camera, modelEntity)
+            const pivotDot = new PivotDot(app, camera)
             const pivotGizmo = new PointGizmo(app, camera, modelEntity, {
                 onMove: (pos) => {
                     events.fire('pivot:positionsynced', pos)

@@ -10,6 +10,7 @@ function buildToastHtml(segments) {
         })
         .join('')
 }
+
 function applyPointMapping({ modelEntity, deletedSet }) {
     const gsplatComp = modelEntity.gsplat
     const numSplats = gsplatComp.resource.numSplats

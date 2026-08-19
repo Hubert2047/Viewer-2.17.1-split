@@ -12,7 +12,7 @@ function makePivotGroup(global, editGroup) {
     let isEditing = false
     let isNewPivot = false
 
-    const pivotDot = (global.pivotDot ??= new PivotDot(global.app, global.camera, modelEntity))
+    const pivotDot = (global.pivotDot ??= new PivotDot(global.app, global.camera))
 
     const refreshPivotDot = () => {
         pivotDot.setPivot(settings.pivot.position ?? global.currentLocalBboxCenter)

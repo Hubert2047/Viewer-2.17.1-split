@@ -480,6 +480,23 @@ function makeSidebar(global, dom) {
         contentArea.appendChild(exportSection)
     }
 
+    function renderLoadingPlaceholder() {
+        contentArea.cleanup?.()
+        contentArea.cleanup = null
+        contentArea.innerHTML = ''
+        stepBadge.style.display = 'none'
+        backBtn.style.display = 'none'
+        nextBtn.style.display = 'none'
+        progressWrap.style.display = 'none'
+        backToSetupModelBtn.style.display = 'none'
+
+        const placeholder = document.createElement('div')
+        placeholder.classList.add('sidebar-loading-placeholder')
+        placeholder.style.cssText = 'padding:16px; color:#8c9fb4; font-size:13px; text-align:center;'
+        placeholder.textContent = 'Loading model…'
+        contentArea.appendChild(placeholder)
+    }
+
     function renderStep() {
         const step = global.settings.setupStep
         contentArea.cleanup?.()
@@ -508,6 +525,16 @@ function makeSidebar(global, dom) {
             renderModelStep()
         }
     }
-    renderStep()
+
+    if (global.cameraManager) {
+        renderStep()
+    } else {
+        renderLoadingPlaceholder()
+        const handle = events.on('camera-manager:ready', () => {
+            events.offByHandle(handle)
+            renderStep()
+        })
+    }
+
     return sidebar
 }

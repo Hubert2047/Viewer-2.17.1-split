@@ -129,6 +129,7 @@ class OOBBWorker {
             )
         })
     }
+
     _applyResult({ result, orientQuat: oq }) {
         const invOrientQuat = new Quat(oq.x, oq.y, oq.z, oq.w).clone().invert()
         const posInLocal = new Vec3()
@@ -140,19 +141,28 @@ class OOBBWorker {
         this.global.oobbInfo = { finalQuat, posInLocal, size: result.size }
     }
 
-    async runOOBB(settings) {
+    runOOBB(settings) {
         this.global.oobbInfo = null
-        const orientPose = settings.orientation.pose
-        const orientQuat = orientPose
-            ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
-            : new Quat(0, 0, 0, 1)
-        const localPoints = await getVisiblePointsAsync({
-            modelEntity,
-            rotation: orientQuat,
-            removedSplats: settings.removedSplats,
-        })
-        this.global.oobbInfoPromise = this.run(localPoints, orientQuat).then((data) => this._applyResult(data))
+
+        const promise = (async () => {
+            const orientPose = settings.orientation.pose
+            const orientQuat = orientPose
+                ? new Quat(orientPose.rotation.x, orientPose.rotation.y, orientPose.rotation.z, orientPose.rotation.w)
+                : new Quat(0, 0, 0, 1)
+
+            const localPoints = await getVisiblePointsAsync({
+                modelEntity,
+                rotation: orientQuat,
+                removedSplats: settings.removedSplats,
+            })
+            const data = await this.run(localPoints, orientQuat)
+            this._applyResult(data)
+        })()
+
+        this.global.oobbInfoPromise = promise
+        return promise
     }
+
     destroy() {
         this._worker.terminate()
         URL.revokeObjectURL(this._url)

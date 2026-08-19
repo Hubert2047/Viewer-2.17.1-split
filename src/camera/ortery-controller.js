@@ -20,7 +20,7 @@ class OtherController {
     maxPitch = Math.PI / 2
     model = 'spherical'
     minDistance = 11
-    maxDistance = 300
+    maxDistance = 200
     resetPose = null
     inertiaVelX = 0
     inertiaVelY = 0
@@ -591,8 +591,9 @@ class OtherController {
         this.events.on('spin-speed', (v) => (this.spinSpeed = v))
         this.events.on('spin-continuous', (v) => (this.isSpin360Loop = v))
         this.events.on('spin-axis', (v) => {
-            if (this.originModel === 'spherical' && this.settings.spin.rotation) {
-                const axes = getSpinAxes(this.settings.spin.rotation)
+            if (this.originModel === 'spherical') {
+                const rotation = this.settings.spin.rotation ?? this.getDefaultSpinRotation()
+                const axes = getSpinAxes(rotation)
                 const localAxis = axes[v]
                 this.spinRotationAxis = modelEntity.localRotation.transformVector(
                     new Vec3(localAxis.x, localAxis.y, localAxis.z),
@@ -709,31 +710,9 @@ class OtherController {
                 })
             },
         )
-        this.events.on('point-eraser:commit-delete', (removedSplats) => {
-            const {
-                bbox: { center, halfExtents },
-            } = calBbox({ modelEntity, removedSplats })
-            if (!isFinite(center.x) || !isFinite(halfExtents.x) || halfExtents.x < 0) {
-                return
-            }
-            const originPos = this.originEntityPos ?? this.initialModelPosition
-            const originRot = this.originEntityRotation ?? this.initialModelRotation
-            const restTransform = new Mat4().setTRS(originPos, originRot, modelEntity.getLocalScale())
+        this.events.on('point-eraser:commit-delete', (removedSplats) => this.recalcBboxAndPivot(removedSplats))
+        this.events.on('point-eraser:bbox-recalc', (removedSplats) => this.recalcBboxAndPivot(removedSplats))
 
-            this.localBboxCenter = center.clone()
-            this.currentLocalBboxCenter = center.clone()
-
-            const worldCenter = new Vec3()
-            restTransform.transformPoint(center, worldCenter)
-            this.centerPivot = worldCenter
-            this.basePosition = originPos.clone()
-
-            const sceneBound = new BoundingBox()
-            sceneBound.center.copy(center)
-            sceneBound.halfExtents.copy(halfExtents)
-            sceneBound.setFromTransformedAabb(sceneBound, restTransform)
-            this.recalBoundingBox({ sceneBound })
-        })
         this.events.on('point-eraser:completed', () => {
             this.reset({
                 onResetFinished: () => {
@@ -773,10 +752,35 @@ class OtherController {
             this.reset()
         })
     }
+    recalcBboxAndPivot(removedSplats) {
+        const {
+            bbox: { center, halfExtents },
+        } = calBbox({ modelEntity, removedSplats })
+        if (!isFinite(center.x) || !isFinite(halfExtents.x) || halfExtents.x < 0) {
+            return
+        }
+        const originPos = this.originEntityPos ?? this.initialModelPosition
+        const originRot = this.originEntityRotation ?? this.initialModelRotation
+        const restTransform = new Mat4().setTRS(originPos, originRot, modelEntity.getLocalScale())
+
+        this.localBboxCenter = center.clone()
+        this.currentLocalBboxCenter = center.clone()
+
+        const worldCenter = new Vec3()
+        restTransform.transformPoint(center, worldCenter)
+        this.centerPivot = worldCenter
+        this.basePosition = originPos.clone()
+
+        const sceneBound = new BoundingBox()
+        sceneBound.center.copy(center)
+        sceneBound.halfExtents.copy(halfExtents)
+        sceneBound.setFromTransformedAabb(sceneBound, restTransform)
+        this.recalBoundingBox({ sceneBound })
+    }
     recalBoundingBox({ sceneBound, type }) {
         this.bbox = sceneBound
-        let distance = this.getDeafultDistance()
-        const newMaxDistance = (type === 'reset' ? this.framingDistance : distance) * 4
+        let distance = this.getDeafultDistance(this.bbox.halfExtents)
+        const newMaxDistance = Math.max(this.getOutBoxDistance() * 4, 300)
         if (this.hasCalculated) {
             this.maxDistance = Math.max(newMaxDistance, this.distance)
             this._pendingMaxDistance = newMaxDistance
@@ -1051,7 +1055,7 @@ class OtherController {
         this.getPose(camera)
         this.global.currentLocalBboxCenter = this.currentLocalBboxCenter
     }
-    getDeafultDistance(canonicalWidth) {
+    getDeafultDistance(halfExtents, canonicalWidth) {
         const width = canonicalWidth ?? this.app.graphicsDevice.width
         const height = this.app.graphicsDevice.height
         const aspect = width / height
@@ -1066,23 +1070,30 @@ class OtherController {
         const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect)
         const minFovRad = Math.min(verticalFovRad, horizontalFovRad)
 
-        const { x, y, z } = this.bbox.halfExtents
+        const { x, y, z } = halfExtents
         const radius = Math.sqrt(x * x + y * y + z * z)
         return radius / Math.sin(minFovRad / 2)
     }
+    getOutBoxDistance() {
+        const {
+            bbox: { center, halfExtents },
+        } = calBbox({
+            modelEntity,
+            opacityThreshold: -1,
+            removedSplats: this.settings.removedSplats,
+        })
+        return this.getDeafultDistance(halfExtents, 1000)
+    }
     getFramingDistance() {
-        const realDistance = this.getDeafultDistance()
-        const cappedDistance = this.getDeafultDistance(1000)
+        const realDistance = this.getDeafultDistance(this.bbox.halfExtents)
+        const cappedDistance = this.getDeafultDistance(this.bbox.halfExtents, 1000)
         return Math.min(realDistance, cappedDistance)
     }
     onEnter(camera) {
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
-        if (!(isCylindrical && this.cylindricalCamPos)) {
-            const dd = this.getDeafultDistance()
-            distance = this.settings.setupStep === 1 && dd > 1000 ? this.getFramingDistance() : dd
-            this.framingDistance = distance
-        }
+        const dd = this.getDeafultDistance(this.bbox.halfExtents)
+        distance = this.settings.setupStep === 1 && dd > 1000 ? this.getFramingDistance() : dd
         const {
             bbox: { center, halfExtents },
         } = calBbox({
@@ -1126,7 +1137,7 @@ class OtherController {
         this.originCameraPosition = this.cameraEntity.position.clone()
         this.reset({
             onResetFinished: () => {
-                this.events.fire('ortery:initialized')
+                if (this.global.config.editable) this.recalcBboxAndPivot()
             },
         })
     }
@@ -1297,13 +1308,20 @@ class OtherController {
         this.events.fire('ortery:stop-spin')
         this.events.fire('re-render:control-wrap')
     }
+    getDefaultSpinRotation() {
+        if (this.global.oobbInfo?.finalQuat) {
+            return this.global.oobbInfo.finalQuat.getEulerAngles()
+        }
+        return new Vec3(0, 0, 0)
+    }
     setSpinSettings() {
         this.isSpin360Loop = this.settings.spin.continuous
         this.spinSpeed = this.settings.spin.speed
         this.spinDirection = this.settings.spin.direction
-        if (this.originModel === 'spherical' && this.settings.spin.rotation) {
-            const axes = getSpinAxes(this.settings.spin.rotation)
-            const localAxis = axes[this.settings.spin.axis]
+        if (this.originModel === 'spherical') {
+            const rotation = this.settings.spin.rotation ?? this.getDefaultSpinRotation()
+            const axes = getSpinAxes(rotation)
+            const localAxis = axes[this.settings.spin.axis || 'y']
             this.spinRotationAxis = modelEntity.localRotation.transformVector(
                 new Vec3(localAxis.x, localAxis.y, localAxis.z),
             )
@@ -1311,7 +1329,9 @@ class OtherController {
     }
     spin360({ onStop, model = 'axis' } = {}) {
         if (!modelEntity || this._autoRotating) return
-
+        if (model === 'spherical' && !this.spinRotationAxis) {
+            this.setSpinSettings()
+        }
         this.global.isSpin360 = true
         this.events.fire('re-render:control-wrap')
         this.updateModelRotation()

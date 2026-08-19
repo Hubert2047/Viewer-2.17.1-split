@@ -5,11 +5,10 @@ class PivotDot {
     _ring = null
     _pivotLocal = null
 
-    constructor(app, camEntity, modelEntity) {
+    constructor(app, camEntity) {
         this._app = app
         this._camEntity = camEntity
         this._canvas = app.graphicsDevice.canvas
-        this._modelEntity = modelEntity
         this._buildSVG()
         this._svg.style.display = 'none'
     }
@@ -106,8 +105,8 @@ class PivotDot {
     }
 
     _update() {
-        if (!this._enabled || !this._pivotLocal) return
-        const worldMatrix = this._modelEntity.getWorldTransform()
+        if (!this._enabled || !this._pivotLocal || !modelEntity) return
+        const worldMatrix = modelEntity.getWorldTransform()
         const worldPos = new Vec3()
         worldMatrix.transformPoint(this._pivotLocal, worldPos)
         const s = this._w2s(worldPos)
