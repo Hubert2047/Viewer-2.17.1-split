@@ -212,9 +212,9 @@ function makeViewerSection(el, global) {
 
     const spinOnStartRow = makeRow({ title: 'Auto Rotate', show: settings.spin.enabled })
     const spinOnStartToggleEl = makeToggle({
-        initialValue: settings.spin.autoStart,
+        initialValue: settings.spin.autoRotate,
         onChange: (value) => {
-            settings.spin.autoStart = value
+            settings.spin.autoRotate = value
             global.dataDirty = true
         },
     })

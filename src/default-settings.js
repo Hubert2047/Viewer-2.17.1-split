@@ -10,7 +10,7 @@ const defaultSettings = Object.freeze({
     spin: {
         enabled: false,
         continuous: true,
-        autoStart: true,
+        autoRotate: true,
         direction: 'cw',
         axis: 'y',
         speed: 5,

@@ -768,6 +768,7 @@ class OtherController {
 
             this.recalBoundingBox({ sceneBound, type: 'reset' })
             this.settings.pivot = { position: null }
+            this.settings.initview = { pose: null, type: 'original' }
             this.reset()
         })
     }
@@ -878,6 +879,15 @@ class OtherController {
         if (initviewPose && useInitview) {
             const { position: p, rotation: r, focus: f, distanceScale: d, yaw, pitch, isFullyInView } = initviewPose
             targetFocus = new Vec3(f.x, f.y, f.z)
+            if (this.localBboxCenter) {
+                const targetTransform = new Mat4().setTRS(
+                    this.originEntityPos ? this.originEntityPos.clone() : this.basePosition.clone(),
+                    this.originEntityRotation ? this.originEntityRotation.clone() : this.baseRotation.clone(),
+                    modelEntity.getLocalScale(),
+                )
+                targetFocus = new Vec3()
+                targetTransform.transformPoint(this.localBboxCenter, targetFocus)
+            }
             targetDistance = isMobile
                 ? Math.max(pose.distance, this.clampDistance(this.getActualDistance(d, isFullyInView)))
                 : this.clampDistance(this.getActualDistance(d, isFullyInView))
@@ -900,10 +910,9 @@ class OtherController {
                 const targetTransform = new Mat4().setTRS(targetPosition, targetRotation, modelEntity.getLocalScale())
                 targetFocus = new Vec3()
                 targetTransform.transformPoint(this.localBboxCenter, targetFocus)
-            } else {
-                targetFocus = pose.focus.clone()
             }
         }
+
         if (isFirstInit) {
             startFocus = targetFocus.clone()
             startDistance = targetDistance
@@ -912,7 +921,7 @@ class OtherController {
             startPitch = targetPitch
             if (this.settings.spin.enabled) {
                 this.setSpinSettings()
-                if (this.settings.spin.autoStart) {
+                if (this.settings.spin.autoRotate) {
                     this.spin360({ model: this.model })
                 }
             }
