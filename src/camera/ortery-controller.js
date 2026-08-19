@@ -623,7 +623,7 @@ class OtherController {
             this.isEditPivot = true
             this.reset({
                 onResetFinished: () => {
-                    this.saveInitview({ isShowToast: false, defaultDistance: true })
+                    this.saveInitview({ isShowToast: false, defaultDistance: true, type: 'original' })
                 },
             })
         })
@@ -769,6 +769,7 @@ class OtherController {
             this.recalBoundingBox({ sceneBound, type: 'reset' })
             this.settings.pivot = { position: null }
             this.settings.initview = { pose: null, type: 'original' }
+            this.settings.orientation.pose = null
             this.reset()
         })
     }

@@ -72,8 +72,21 @@ function makeViewerSection(el, global) {
 
     const spinGroup = makeSectionGroup('Spin')
     const spinEnabledRow = makeRow({ title: 'Enabled' })
-    if (!settings.spin.enable) {
+    if (!settings.spin.enabled) {
         settings.spin.enabled = true
+        if (settings.model === 'spherical' && !settings.spin.rotation) {
+            ;(async () => {
+                if (!global.oobbInfo) {
+                    await global.loading.show()
+                    await global.oobbInfoPromise
+                    global.loading.hide()
+                }
+                settings.spin.rotation = global.oobbInfo.finalQuat.getEulerAngles()
+                settings.spin.axis = settings.spin.axis || 'y'
+                events.fire('spin-axis', settings.spin.axis)
+                global.dataDirty = true
+            })()
+        }
         events.fire('re-render:control-wrap', true)
     }
     const spinEnabledToggleEl = makeToggle({

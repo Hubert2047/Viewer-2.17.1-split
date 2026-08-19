@@ -245,7 +245,8 @@ function makePointEraser(global) {
                 position: 'top',
                 variant: 'delete',
                 title: 'Reset All Points',
-                message: 'All deleted points will be restored. This action cannot be undone.',
+                message:
+                    'All deleted points, the pivot point, and the ground will be reset to their original state. This action cannot be undone.',
                 confirmText: 'Reset',
             })
             if (!ok) return
