@@ -91,7 +91,6 @@ const files = [
     { file: 'src/components/dimensions/box-rotatable.js', preset: 'default' },
     { file: 'src/components/position-gizmo.js', preset: 'default' },
     { file: 'src/components/loading.js', preset: 'default' },
-    { file: 'src/components/ground-plane-picker.js', preset: 'default' },
     { file: 'src/components/ui.js', preset: 'default' },
     { file: 'src/components/selections.js', preset: 'default' },
     { file: 'src/camera/ortery-controller.js', preset: 'default' },

@@ -20,7 +20,7 @@ class OtherController {
     maxPitch = Math.PI / 2
     model = 'spherical'
     minDistance = 11
-    maxDistance = 200
+    maxDistance = 300
     resetPose = null
     inertiaVelX = 0
     inertiaVelY = 0
@@ -763,13 +763,20 @@ class OtherController {
             this.centerPivot = sceneBound.center.clone()
             this.basePosition = this.originEntityPos.clone()
 
-            this.recalBoundingBox({ sceneBound })
+            this.recalBoundingBox({ sceneBound, type: 'reset' })
             this.reset()
         })
     }
-    recalBoundingBox({ sceneBound }) {
+    recalBoundingBox({ sceneBound, type }) {
         this.bbox = sceneBound
         let distance = this.getDeafultDistance()
+        const newMaxDistance = (type === 'reset' ? this.framingDistance : distance) * 4
+        if (this.hasCalculated) {
+            this.maxDistance = Math.max(newMaxDistance, this.distance)
+            this._pendingMaxDistance = newMaxDistance
+        } else {
+            this.hasCalculated = true
+        }
         const result = new Camera()
         result.look(new Vec3(2, 0, 2).normalize().mulScalar(distance).add(sceneBound.center), sceneBound.center)
         let forward, fov
@@ -940,7 +947,6 @@ class OtherController {
             this.basePosition = this.originEntityPos.clone()
             this.baseRotation = this.originEntityRotation.clone()
         }
-
         this.setupTransition({
             transitionMode: transitionMode ?? this.originModel,
             startPose: {
@@ -965,6 +971,10 @@ class OtherController {
                 this.isResetting = false
                 this.isEditPivot = false
                 this.updateModelRotation()
+                if (this._pendingMaxDistance !== undefined) {
+                    this.maxDistance = this._pendingMaxDistance
+                    this._pendingMaxDistance = undefined
+                }
                 if (this.settings.pivot.position) {
                     this.centerPivot = localToWorld(this.settings.pivot.position)
                     this.basePosition = this.calcBasePositionFromPivot(this.centerPivot)
@@ -985,12 +995,12 @@ class OtherController {
         const baseOffset = new Vec33(x, y, z).transformQuat(invQuat)
         return centerPivot.clone().add(baseOffset)
     }
-    saveInitview({ isShowToast = true, defaultDistance = false } = {}) {
+    saveInitview({ isShowToast = true, defaultDistance = false, type = 'custom' } = {}) {
         const pose = this.getEntityInfo()
         if (defaultDistance) {
-            this.settings.initview = { pose: { ...pose, distanceScale: 1 } }
+            this.settings.initview = { pose: { ...pose, distanceScale: 1 }, type }
         } else {
-            this.settings.initview = { pose }
+            this.settings.initview = { pose, type }
         }
         if (isShowToast)
             showToast('Initial view updated', {
@@ -999,7 +1009,7 @@ class OtherController {
             })
     }
     removeInitview() {
-        this.settings.initview = { pose: null }
+        this.settings.initview = { pose: null, type: 'original' }
 
         if (this.originEntityRotation) {
             this.baseRotation = this.originEntityRotation.clone()
@@ -1048,14 +1058,15 @@ class OtherController {
     getFramingDistance() {
         const realDistance = this.getDeafultDistance()
         const cappedDistance = this.getDeafultDistance(1000)
-
         return Math.min(realDistance, cappedDistance)
     }
     onEnter(camera) {
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         if (!(isCylindrical && this.cylindricalCamPos)) {
-            distance = this.settings.setupStep === 1 ? this.getFramingDistance() : this.getDeafultDistance()
+            const dd = this.getDeafultDistance()
+            distance = this.settings.setupStep === 1 && dd > 1000 ? this.getFramingDistance() : dd
+            this.framingDistance = distance
         }
         const {
             bbox: { center, halfExtents },
@@ -1088,7 +1099,7 @@ class OtherController {
         } else {
             forward = focusPoint.clone().sub(camera.position).normalize()
         }
-        this.maxDistance = Math.max(distance, this.maxDistance)
+        this.maxDistance = distance * 4
         this.resetPose = {
             ...camera,
             distance,
@@ -1168,13 +1179,9 @@ class OtherController {
         this.baseRotation = this._preEditBaseRotation.clone()
 
         if (this.targetPose) {
-            const cancelCb = this.onTransitionCancelled
             this.targetPose = null
             this.startPose = null
-            this.onTransitionFinished = null
-            this.onTransitionCancelled = null
             this.isResetting = false
-            cancelCb?.()
         }
 
         this.currentYaw = 0
@@ -1184,14 +1191,16 @@ class OtherController {
     }
     resetOrientation() {
         this.settings.orientation.pose = null
-        this.settings.initview.pose = null
+        this.settings.initview = {
+            pose: null,
+            type: 'original',
+        }
         this.baseRotation = this.initialModelRotation.clone()
         this.basePosition = this.initialModelPosition.clone()
         this.originEntityRotation = this.initialModelRotation.clone()
         this.originEntityPos = this.initialModelPosition.clone()
 
         const euler = this.baseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
         this.setupTransition({
             transitionMode: 'spherical',
             startPose: {
@@ -1223,7 +1232,6 @@ class OtherController {
         this.originEntityRotation = this.baseRotation.clone()
         this.originEntityPos = this.basePosition.clone()
         const euler = this.baseRotation.getEulerAngles()
-        this.events.fire('orientation:aligned-model', { x: euler.x, y: euler.y, z: euler.z })
         this.settings.orientation.pose = {
             rotation: this.baseRotation,
             position: this.basePosition,
@@ -1231,7 +1239,7 @@ class OtherController {
         this.clearPrevEditOrientation()
         this.reset({
             onResetFinished: () => {
-                this.saveInitview({ isShowToast: false, defaultDistance: true })
+                this.saveInitview({ isShowToast: false, defaultDistance: true, type: 'original' })
                 this.events.fire('orientation:added')
             },
             useInitview: false,

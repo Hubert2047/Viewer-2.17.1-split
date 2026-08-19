@@ -496,6 +496,9 @@ function makeSidebar(global, dom) {
                     removedSplats: global.settings.removedSplats,
                     v: global.settings.v,
                 }
+                if (global.settings.initview.type === 'original') {
+                    basePreserved.initview = global.settings.initview
+                }
                 if (global.settings.model === 'cylindrical') {
                     basePreserved.cameras = global.settings.cameras
                 }

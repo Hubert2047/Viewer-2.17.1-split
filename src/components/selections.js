@@ -709,14 +709,8 @@ class SelectionController {
     _onCancel() {
         if (this._selectedSet.size === 0) return
 
-        if (this._historyIndex > 0) {
-            this._history.splice(this._historyIndex, 1)
-            this._historyIndex--
-        }
-
-        const snap = this._history[this._historyIndex]
-        this._stateData.set(snap.stateData)
-        this._selectedSet = new Set(snap.selectedSet)
+        this._stateData.fill(0)
+        this._selectedSet = new Set()
 
         const pixels = this._stateTex.lock()
         pixels.set(this._stateData)
@@ -724,6 +718,8 @@ class SelectionController {
         this.gsplatComp.material.setParameter('splatState', this._stateTex)
         this.gsplatComp.material.setParameter('splatStateSize', new Float32Array([this.texWidth, this.texHeight]))
         this.app.renderNextFrame = true
+
+        this._pushHistory()
 
         this.events.fire('point-selection', this._selectedSet)
     }

@@ -34,7 +34,7 @@ function makePointEraser(global) {
 
     const hint = document.createElement('p')
     hint.textContent =
-        'Stray points can push the bounding box out. Delete them so the box tightly wraps your model — skip if it already fits.'
+        'Select and delete unwanted points in the 3D spatial background. If it already looks right, you can skip this step.'
     hint.style.cssText = 'font-size: 0.8125rem; color: #8c9fb4; line-height: 1.5; margin: 0;'
 
     desGroup.appendChild(hint)
@@ -595,6 +595,7 @@ function makePointEraser(global) {
         isShowSplatMode = false
         isShowSplatRing = false
         applyShaderModes()
+        camera.camera.clearColor = new Color(normalizeColor('#ffffff'))
         events.fire('point-eraser:completed')
     }
     return container
