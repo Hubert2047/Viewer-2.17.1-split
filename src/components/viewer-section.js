@@ -340,7 +340,7 @@ function makeInitViewGroup(events, settings, global) {
     const statusText = document.createElement('span')
 
     function updateStatus() {
-        const isCustom = !!settings.initview.pose && settings.initview.type === 'custom'
+        const isCustom = !!settings.initview.pose && settings.initview?.type === 'custom'
         statusDot.style.backgroundColor = isCustom ? '#4dd0a3' : '#9aa0a6'
         statusText.textContent = isCustom ? 'Custom' : 'Original'
         statusText.style.color = isCustom ? '#4dd0a3' : '#9aa0a6'

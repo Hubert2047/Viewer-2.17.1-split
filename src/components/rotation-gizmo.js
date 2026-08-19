@@ -33,6 +33,14 @@ class RotationGizmo {
         svg.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;z-index:500;pointer-events:none;`
         this._canvas.parentElement.appendChild(svg)
         this._svg = svg
+
+        const blockContextMenu = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            e.stopImmediatePropagation()
+            return false
+        }
+
         for (const axis of ['z', 'x', 'y']) {
             const color = RotationGizmo.COLORS[axis]
             const ringBg = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -73,6 +81,22 @@ class RotationGizmo {
             svg.appendChild(ring)
             svg.appendChild(hit)
             svg.appendChild(text)
+
+            hit.addEventListener('contextmenu', blockContextMenu, true)
+            hit.addEventListener(
+                'mousedown',
+                (e) => {
+                    if (e.button === 2) blockContextMenu(e)
+                },
+                true,
+            )
+            hit.addEventListener(
+                'mouseup',
+                (e) => {
+                    if (e.button === 2) blockContextMenu(e)
+                },
+                true,
+            )
 
             hit.addEventListener('pointerenter', () => {
                 if (this._dragging) return
@@ -283,7 +307,6 @@ class RotationGizmo {
         document.body.style.cursor = ''
         const euler = this._target?.getEuler()
         this._target?.onDragEnd()
-
     }
 
     _highlightOnly(activeAxis) {

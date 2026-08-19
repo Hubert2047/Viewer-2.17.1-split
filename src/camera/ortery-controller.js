@@ -38,6 +38,7 @@ class OtherController {
     spinDirection = 'cw'
     panFovScale = 1
     isCtrlActive = false
+    currentLocalBboxCenter = null
     constructor({ global, bbox }) {
         this.global = global
         const { app, events, camera, settings, model } = global
@@ -720,6 +721,7 @@ class OtherController {
             const restTransform = new Mat4().setTRS(originPos, originRot, modelEntity.getLocalScale())
 
             this.localBboxCenter = center.clone()
+            this.currentLocalBboxCenter = center.clone()
 
             const worldCenter = new Vec3()
             restTransform.transformPoint(center, worldCenter)
@@ -750,6 +752,7 @@ class OtherController {
             this.localBboxCenter = null
 
             const { bbox } = calBbox({ modelEntity, removedSplats: [] })
+            this.currentLocalBboxCenter = bbox.center.clone()
             const restTransform = new Mat4().setTRS(
                 this.originEntityPos,
                 this.originEntityRotation,
@@ -764,6 +767,7 @@ class OtherController {
             this.basePosition = this.originEntityPos.clone()
 
             this.recalBoundingBox({ sceneBound, type: 'reset' })
+            this.settings.pivot = { position: null }
             this.reset()
         })
     }
@@ -1035,6 +1039,7 @@ class OtherController {
             this._autoRotateTick(dt)
         }
         this.getPose(camera)
+        this.global.currentLocalBboxCenter = this.currentLocalBboxCenter
     }
     getDeafultDistance(canonicalWidth) {
         const width = canonicalWidth ?? this.app.graphicsDevice.width
@@ -1075,6 +1080,7 @@ class OtherController {
             removedSplats: this.settings.removedSplats,
         })
         if (isFinite(center.x) && isFinite(halfExtents.x) && halfExtents.x >= 0) {
+            this.currentLocalBboxCenter = center.clone()
             const restTransform = new Mat4().setTRS(
                 this.originEntityPos ?? this.initialModelPosition,
                 this.originEntityRotation ?? this.initialModelRotation,

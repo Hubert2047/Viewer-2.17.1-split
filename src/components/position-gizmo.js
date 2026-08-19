@@ -52,6 +52,13 @@ class PointGizmo {
         this._canvas.parentElement.appendChild(svg)
         this._svg = svg
 
+        const blockContextMenu = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            e.stopImmediatePropagation()
+            return false
+        }
+
         for (const axis of ['x', 'y', 'z']) {
             const color = PointGizmo.CONFIG.colors[axis]
 
@@ -74,6 +81,22 @@ class PointGizmo {
             svg.appendChild(line)
             svg.appendChild(arrow)
             svg.appendChild(hit)
+
+            hit.addEventListener('contextmenu', blockContextMenu, true)
+            hit.addEventListener(
+                'mousedown',
+                (e) => {
+                    if (e.button === 2) blockContextMenu(e)
+                },
+                true,
+            )
+            hit.addEventListener(
+                'mouseup',
+                (e) => {
+                    if (e.button === 2) blockContextMenu(e)
+                },
+                true,
+            )
 
             hit.addEventListener('pointerenter', () => {
                 if (this._dragging || this._dotDragging) return
@@ -112,6 +135,22 @@ class PointGizmo {
         dot.style.cursor = 'move'
         svg.appendChild(dot)
         this._dot = dot
+
+        dot.addEventListener('contextmenu', blockContextMenu, true)
+        dot.addEventListener(
+            'mousedown',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
+        dot.addEventListener(
+            'mouseup',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
 
         dot.addEventListener('pointerenter', () => {
             if (this._dragging || this._dotDragging) return

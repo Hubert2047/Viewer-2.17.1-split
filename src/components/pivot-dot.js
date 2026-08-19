@@ -17,15 +17,60 @@ class PivotDot {
     _buildSVG() {
         const canvas = this._app.graphicsDevice.canvas
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;z-index:499;pointer-events:none;`
+
+        svg.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            z-index: 499;
+            pointer-events: none;
+            user-select: none;
+        `
+
+        const blockContextMenu = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            e.stopImmediatePropagation()
+            return false
+        }
+
+        window.addEventListener(
+            'contextmenu',
+            (e) => {
+                if (e.target === this._dot || e.target === this._ring || e.target.closest('svg') === svg) {
+                    blockContextMenu(e)
+                }
+            },
+            true,
+        )
+
         canvas.parentElement.appendChild(svg)
         this._svg = svg
 
         const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         ring.setAttribute('r', '12')
-        ring.setAttribute('fill', 'none')
+        ring.setAttribute('fill', 'rgba(0,0,0,0.001)')
         ring.setAttribute('stroke', 'rgba(255,255,255,0.8)')
         ring.setAttribute('stroke-width', '1.5')
+        ring.style.pointerEvents = 'all'
+        ring.addEventListener('contextmenu', blockContextMenu, true)
+        ring.addEventListener(
+            'mousedown',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
+        ring.addEventListener(
+            'mouseup',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
         svg.appendChild(ring)
         this._ring = ring
 
@@ -34,6 +79,22 @@ class PivotDot {
         dot.setAttribute('fill', 'white')
         dot.setAttribute('stroke', 'rgba(0,0,0,0.5)')
         dot.setAttribute('stroke-width', '1')
+        dot.style.pointerEvents = 'all'
+        dot.addEventListener('contextmenu', blockContextMenu, true)
+        dot.addEventListener(
+            'mousedown',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
+        dot.addEventListener(
+            'mouseup',
+            (e) => {
+                if (e.button === 2) blockContextMenu(e)
+            },
+            true,
+        )
         svg.appendChild(dot)
         this._dot = dot
     }
@@ -50,6 +111,7 @@ class PivotDot {
         const worldPos = new Vec3()
         worldMatrix.transformPoint(this._pivotLocal, worldPos)
         const s = this._w2s(worldPos)
+
         this._dot.setAttribute('cx', s.x.toFixed(1))
         this._dot.setAttribute('cy', s.y.toFixed(1))
         this._ring.setAttribute('cx', s.x.toFixed(1))
