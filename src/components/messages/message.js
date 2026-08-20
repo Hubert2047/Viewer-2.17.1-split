@@ -270,9 +270,32 @@ class Messages {
         if (style === 'circle') {
             this.dot.style.background = 'transparent'
             this.dot.style.border = `${stroke}px solid ${strokeColor}`
+            this.dot.style.borderRadius = '50%'
+            this.dot.style.clipPath = 'none'
+            this.dot.style.transform = 'none'
+            delete this.dot.dataset.arrowAngle
         } else {
             this.dot.style.background = strokeColor
             this.dot.style.border = 'none'
+            if (style === 'arrow') {
+                const divRect = this.div.getBoundingClientRect()
+                const dx = focusScreenPos.x - (divRect.left + divRect.width / 2)
+                const dy = focusScreenPos.y - (divRect.top + divRect.height / 2)
+                const angle = Math.atan2(dy, dx)
+                const halfSize = dotSize / 2
+
+                this.dot.style.borderRadius = '0'
+                this.dot.style.clipPath = 'polygon(100% 50%, 0 0, 0 100%)'
+                this.dot.style.transform = `rotate(${angle}rad)`
+                this.dot.dataset.arrowAngle = String(angle)
+                this.dot.style.left = focusScreenPos.x - Math.cos(angle) * halfSize - halfSize + 'px'
+                this.dot.style.top = focusScreenPos.y - Math.sin(angle) * halfSize - halfSize + 'px'
+                return
+            }
+            this.dot.style.borderRadius = '50%'
+            this.dot.style.clipPath = 'none'
+            this.dot.style.transform = 'none'
+            delete this.dot.dataset.arrowAngle
         }
 
         this.dot.style.left = focusScreenPos.x - this.dot.offsetWidth / 2 + 'px'
@@ -288,9 +311,15 @@ class Messages {
         const divRect = this.div.getBoundingClientRect()
         const cx = divRect.left + divRect.width / 2
         const cy = divRect.top + divRect.height / 2
-        const px = focusScreenPos.x
-        const py = focusScreenPos.y
+        const isArrow = this.data.dot.style === 'arrow'
         const radius = this.dot.offsetWidth / 2
+        let px = focusScreenPos.x
+        let py = focusScreenPos.y
+        if (isArrow) {
+            const angle = Number(this.dot.dataset.arrowAngle) || 0
+            px -= Math.cos(angle) * radius
+            py -= Math.sin(angle) * radius
+        }
         const borderWidth = parseFloat(getComputedStyle(this.dot).borderWidth) || 0
         const edgeOffset = borderWidth * 0.5
         const dx = cx - px,
@@ -324,8 +353,8 @@ class Messages {
             dy2 = y2 - py
         const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
         const scale = (radius - edgeOffset) / dist2
-        this.line.setAttribute('x1', px + dx2 * scale)
-        this.line.setAttribute('y1', py + dy2 * scale)
+        this.line.setAttribute('x1', isArrow ? px : px + dx2 * scale)
+        this.line.setAttribute('y1', isArrow ? py : py + dy2 * scale)
         this.line.setAttribute('x2', x2)
         this.line.setAttribute('y2', y2)
         this.line.setAttribute('stroke', this.data.dot.strokeColor)
@@ -541,7 +570,15 @@ class Messages {
             startX = e.clientX
             startY = e.clientY
             const r = this.dot.getBoundingClientRect()
-            this.updateLine({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, true)
+            let x = r.left + r.width / 2
+            let y = r.top + r.height / 2
+            if (this.data.dot.style === 'arrow') {
+                const angle = Number(this.dot.dataset.arrowAngle) || 0
+                const radius = this.dot.offsetWidth / 2
+                x += Math.cos(angle) * radius
+                y += Math.sin(angle) * radius
+            }
+            this.updateLine({ x, y }, true)
         })
 
         this.dot.addEventListener('pointerup', (e) => {
@@ -549,8 +586,14 @@ class Messages {
             this.dotDragging = false
             this.dot.releasePointerCapture(e.pointerId)
             this.dot.style.cursor = 'grab'
-            const screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
-            const screenY = parseFloat(this.dot.style.top) + this.dot.offsetHeight / 2
+            let screenX = parseFloat(this.dot.style.left) + this.dot.offsetWidth / 2
+            let screenY = parseFloat(this.dot.style.top) + this.dot.offsetHeight / 2
+            if (this.data.dot.style === 'arrow') {
+                const angle = Number(this.dot.dataset.arrowAngle) || 0
+                const radius = this.dot.offsetWidth / 2
+                screenX += Math.cos(angle) * radius
+                screenY += Math.sin(angle) * radius
+            }
             const newPos = pickModelLocalPoint({
                 x: screenX,
                 y: screenY,

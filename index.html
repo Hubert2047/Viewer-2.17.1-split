@@ -1,6 +1,5 @@
-
-    <!doctype html>
-    <html lang="en">
+<!doctype html>
+<html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -11,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=56" />
+        <link rel="stylesheet" href="./data/viewer.css?v=60" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -41,22 +40,32 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-        <svg class="progress-ring" viewBox="0 0 200 200">
-            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-            <circle
-                id="progressRingFg"
-                class="progress-ring-fg"
-                cx="100"
-                cy="100"
-                r="86"
-                fill="none"
-                stroke-dasharray="540.35"
-                stroke-dashoffset="540.35" />
+            <svg class="progress-ring" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+                <circle
+                    id="progressRingFg"
+                    class="progress-ring-fg"
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="none"
+                    stroke-dasharray="540.35"
+                    stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/test10.ply","v":56,"spin":{"enabled":true,"continuous":true,"autoRotate":true,"direction":"cw","axis":"y","speed":5,"rotation":null},"initview":{"pose":{"rotation":{"x":0,"y":0,"z":1,"w":6.123233995736766e-17},"position":{"x":0,"y":0,"z":0},"isFullyInView":false,"distanceScale":0.868,"focus":{"x":0.7024792653499846,"y":11.887855710813144,"z":0.4062645561123217},"pitch":0,"yaw":0},"type":"custom"},"setupStep":4,"chunkCount":0} }</script>
-    <script src="./data/viewer.js?v=56"></script>
-    </html> 
-    
+    <script>
+        window.sse = {
+            settings: {
+                ref: '',
+                model: 'cylindrical',
+                contentUrl: 'models/360_noise.ply',
+                v: 60,
+                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
+                chunkCount: 0,
+            },
+        }
+    </script>
+    <script src="./data/viewer.js?v=60"></script>
+</html>

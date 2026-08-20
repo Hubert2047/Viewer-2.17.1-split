@@ -367,12 +367,16 @@ class MessageEditorUI {
             options: [
                 { label: 'Circle', value: 'circle' },
                 { label: 'Dot', value: 'dot' },
+                { label: 'Arrow', value: 'arrow' },
             ],
             value: this.activeMessageData.dot.style,
             name: 'hotspot-style',
             onChange: (val) => {
                 this.activeMessageData.dot.style = val
-                strokeField.style.display = val === 'dot' ? 'none' : 'flex'
+                const defaultSize = { circle: 30, dot: 10, arrow: 10 }[val]
+                this.activeMessageData.dot.size = defaultSize
+                dotSizeInputEl.value = defaultSize
+                strokeField.style.display = val === 'circle' ? 'flex' : 'none'
                 this.applyDraft()
             },
         })
@@ -415,7 +419,7 @@ class MessageEditorUI {
         strokeWidthInputEl.style.flex = '1 1 auto'
         strokeWidthInputEl.style.minWidth = '0'
         strokeField.appendChild(strokeWidthInputEl)
-        if (this.activeMessageData.dot.style === 'dot') {
+        if (this.activeMessageData.dot.style !== 'circle') {
             strokeField.style.display = 'none'
         }
 
