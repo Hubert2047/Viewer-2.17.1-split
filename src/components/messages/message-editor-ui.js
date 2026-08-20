@@ -379,7 +379,7 @@ class MessageEditorUI {
             name: 'hotspot-style',
             onChange: (val) => {
                 this.activeMessageData.dot.style = val
-                const defaultSize = { circle: 30, dot: 10, arrow: 10 }[val]
+                const defaultSize = { circle: 30, dot: 15, arrow: 15 }[val]
                 this.activeMessageData.dot.size = defaultSize
                 dotSizeInputEl.value = defaultSize
                 strokeField.style.display = val === 'circle' ? 'flex' : 'none'

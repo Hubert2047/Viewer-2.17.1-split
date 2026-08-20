@@ -259,9 +259,7 @@ function makePointEraser(global) {
             currentSelectedSet = new Set()
             deleteBtn.disabled = true
             resetBtn.disabled = true
-            if (currentControl._activeStrategy) {
-                currentControl._activeStrategy._projDirty = true
-            }
+            currentControl.invalidateProjection()
             events.fire('point-eraser:reset')
             updateUndoRedoButtons()
             resetSelection()
@@ -368,9 +366,7 @@ function makePointEraser(global) {
         deleteBtn.disabled = true
         resetBtn.disabled = settings.removedSplats.length === 0
 
-        if (currentControl._activeStrategy) {
-            currentControl._activeStrategy._projDirty = true
-        }
+        currentControl.invalidateProjection()
         events.fire('point-eraser:commit-delete', settings.removedSplats)
         events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
     }
@@ -391,9 +387,7 @@ function makePointEraser(global) {
             currentControl.clearSelectionStateOnly()
             deleteBtn.disabled = true
             resetBtn.disabled = settings.removedSplats.length === 0
-            if (currentControl._activeStrategy) {
-                currentControl._activeStrategy._projDirty = true
-            }
+            currentControl.invalidateProjection()
             events.fire('point-eraser:commit-delete', settings.removedSplats)
             events.fire('point-eraser:deleted-set-changed', settings.removedSplats)
         }

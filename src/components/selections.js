@@ -1,6 +1,37 @@
 const WORKER = `
 self.onmessage = function({ data }) {
-    const { type, numSplats, texWidth, screenPositions, payload, deletedMask } = data
+    const { id, type, numSplats, texWidth, payload, deletedMask } = data
+
+    if (type === 'init') {
+        self.centers = data.centers
+        self.screenPositions = new Float32Array(numSplats * 2)
+        self.postMessage({ id })
+        return
+    }
+
+    if (type === 'project') {
+        const { world, viewProj, width, height, rect } = data
+        const centers = self.centers
+        const screenPositions = self.screenPositions
+        for (let i = 0; i < numSplats; i++) {
+            const x = centers[i * 3]
+            const y = centers[i * 3 + 1]
+            const z = centers[i * 3 + 2]
+            const wx = x * world[0] + y * world[4] + z * world[8] + world[12]
+            const wy = x * world[1] + y * world[5] + z * world[9] + world[13]
+            const wz = x * world[2] + y * world[6] + z * world[10] + world[14]
+            const cx = wx * viewProj[0] + wy * viewProj[4] + wz * viewProj[8] + viewProj[12]
+            const cy = wx * viewProj[1] + wy * viewProj[5] + wz * viewProj[9] + viewProj[13]
+            const cz = wx * viewProj[2] + wy * viewProj[6] + wz * viewProj[10] + viewProj[14]
+            const cw = wx * viewProj[3] + wy * viewProj[7] + wz * viewProj[11] + viewProj[15]
+            screenPositions[i * 2] = cz < 0 ? -1 : ((cx / cw + 1) * 0.5 * rect[2] + rect[0]) * width
+            screenPositions[i * 2 + 1] = cz < 0 ? -1 : ((1 - cy / cw) * 0.5 * rect[3] + 1 - rect[1] - rect[3]) * height
+        }
+        self.postMessage({ id })
+        return
+    }
+
+    const screenPositions = self.screenPositions
 
     const stateData = new Uint8Array(texWidth * Math.ceil(numSplats / texWidth))
     const selectedArr = []
@@ -65,32 +96,67 @@ self.onmessage = function({ data }) {
         }
     }
 
-    self.postMessage({ stateData, selectedArr }, [stateData.buffer])
+    self.postMessage({ id, stateData, selectedArr }, [stateData.buffer])
 }
 `
 
 class SelectionWorker {
-    constructor() {
+    constructor(centers, numSplats) {
         const blob = new Blob([WORKER], { type: 'application/javascript' })
         this._url = URL.createObjectURL(blob)
         this._worker = new Worker(this._url)
-        this._pending = false
+        this._nextId = 0
+        this._pending = new Map()
+        this._tail = Promise.resolve()
+        this._worker.onmessage = ({ data }) => {
+            const pending = this._pending.get(data.id)
+            if (!pending) return
+            this._pending.delete(data.id)
+            pending.resolve(data)
+        }
+        this._worker.onerror = (error) => {
+            this._pending.forEach(({ reject }) => reject(error))
+            this._pending.clear()
+        }
+        // The resource-owned centers must stay on the main thread, so transfer a
+        // one-time copy and retain it in the worker for every later selection.
+        const centersCopy = new Float32Array(centers)
+        this._ready = this._enqueue('init', { numSplats, centers: centersCopy }, [centersCopy.buffer])
     }
 
-    run(type, numSplats, texWidth, screenPositions, payload, deletedMask) {
-        return new Promise((resolve) => {
-            this._worker.onmessage = ({ data }) => {
-                this._pending = false
-                resolve(data)
-            }
-            this._pending = true
-            const transfers = [screenPositions.buffer]
-            if (payload.paintPixels) transfers.push(payload.paintPixels.buffer)
-            this._worker.postMessage({ type, numSplats, texWidth, screenPositions, payload, deletedMask }, transfers)
+    _enqueue(type, data, transfers = []) {
+        const run = () =>
+            new Promise((resolve, reject) => {
+                const id = this._nextId++
+                this._pending.set(id, { resolve, reject })
+                this._worker.postMessage({ id, type, ...data }, transfers)
+            })
+        const result = this._tail.then(run, run)
+        this._tail = result.catch(() => {})
+        return result
+    }
+
+    project(params) {
+        return this._ready.then(() => this._enqueue('project', params))
+    }
+
+    run(type, numSplats, texWidth, payload, deletedMask) {
+        const transfers = []
+        if (payload.paintPixels) transfers.push(payload.paintPixels.buffer)
+        return this._ready.then(() =>
+            this._enqueue(type, { numSplats, texWidth, payload, deletedMask }, transfers),
+        )
+    }
+
+    warm(params) {
+        return this.project(params).catch(() => {
+            // A later selection retries projection; do not surface an idle warm-up error.
         })
     }
 
     destroy() {
+        this._pending.forEach(({ reject }) => reject(new Error('Selection worker destroyed')))
+        this._pending.clear()
         this._worker.terminate()
         URL.revokeObjectURL(this._url)
     }
@@ -108,6 +174,8 @@ class BaseStrategy {
         getDeletedSet,
         getSelectedSet,
         isAdditive,
+        selectionWorker,
+        projectionCache,
     }) {
         this.centers = centers
         this.numSplats = numSplats
@@ -117,26 +185,44 @@ class BaseStrategy {
         this._stateData = stateData
         this.onChanged = onChanged
         this.gsplatComp = gsplatComp
-        this._screenPositions = new Float32Array(numSplats * 2)
-        this._projDirty = true
+        this._selectionWorker = selectionWorker
+        this._projectionCache = projectionCache
         this.getSelectedSet = getSelectedSet
         this.isAdditive = isAdditive
         this.getDeletedSet = getDeletedSet
-        this._worker = new SelectionWorker()
     }
 
-    _projectAll() {
-        const worldTransform = this.gsplatComp.entity.getWorldTransform()
-        const wp = new Vec3()
-        const sp = new Vec3()
-        for (let i = 0; i < this.numSplats; i++) {
-            wp.set(this.centers[i * 3], this.centers[i * 3 + 1], this.centers[i * 3 + 2])
-            worldTransform.transformPoint(wp, wp)
-            this.camera.camera.worldToScreen(wp, sp)
-            this._screenPositions[i * 2] = sp.z < 0 ? -1 : sp.x
-            this._screenPositions[i * 2 + 1] = sp.z < 0 ? -1 : sp.y
+    _projectionParams() {
+        const camera = this.camera.camera
+        const deviceRect = this.gsplatComp.system.app.graphicsDevice.clientRect
+        const viewProj = new Mat4().mul2(camera.projectionMatrix, camera.viewMatrix)
+        const rect = camera.rect
+        return {
+            numSplats: this.numSplats,
+            world: new Float32Array(this.gsplatComp.entity.getWorldTransform().data),
+            viewProj: new Float32Array(viewProj.data),
+            width: deviceRect.width,
+            height: deviceRect.height,
+            rect: [rect.x, rect.y, rect.z, rect.w],
         }
-        this._projDirty = false
+    }
+
+    _ensureProjection() {
+        const cache = this._projectionCache
+        if (!cache.dirty) return Promise.resolve()
+        if (!cache.promise) {
+            const version = cache.version
+            cache.promise = this._selectionWorker.project(this._projectionParams()).then(() => {
+                if (cache.version === version) cache.dirty = false
+            }).finally(() => {
+                cache.promise = null
+            })
+        }
+        return cache.promise.then(() => (cache.dirty ? this._ensureProjection() : undefined))
+    }
+
+    warmProjection() {
+        return this._ensureProjection().catch(() => {})
     }
 
     _buildDeletedMask() {
@@ -150,14 +236,12 @@ class BaseStrategy {
     }
 
     async _runWorker(type, payload) {
-        if (this._projDirty) this._projectAll()
-        const screenCopy = new Float32Array(this._screenPositions)
+        await this._ensureProjection()
         const deletedMask = this._buildDeletedMask()
-        const { stateData, selectedArr } = await this._worker.run(
+        const { stateData, selectedArr } = await this._selectionWorker.run(
             type,
             this.numSplats,
             this.texWidth,
-            screenCopy,
             payload,
             deletedMask,
         )
@@ -179,7 +263,6 @@ class BaseStrategy {
     }
 
     destroy() {
-        this._worker.destroy()
     }
 }
 
@@ -545,6 +628,8 @@ class SelectionController {
 
         this._selectedSet = new Set()
         this._stateData = new Uint8Array(this.texWidth * this.texHeight)
+        this._selectionWorker = new SelectionWorker(this.centers, this.numSplats)
+        this._projectionCache = { dirty: true, version: 0, promise: null }
         this._initOverlay()
         this._initMouseEvents()
         this._initAppEvents()
@@ -562,6 +647,8 @@ class SelectionController {
             getSelectedSet: () => new Set(this._selectedSet),
             isAdditive: () => this._shiftActive,
             onChanged: (selectedSet) => this._upload(selectedSet),
+            selectionWorker: this._selectionWorker,
+            projectionCache: this._projectionCache,
         }
         this._pushHistory()
         this._activeStrategy = null
@@ -669,7 +756,8 @@ class SelectionController {
             this.events.on('point-eraser:redo', () => this._onRedo()),
             this.events.on('point-eraser:commit-delete', () => this._pushHistory()),
             this.events.on('camera:moved', () => {
-                if (this._activeStrategy) this._activeStrategy._projDirty = true
+                this._projectionCache.dirty = true
+                this._projectionCache.version++
             }),
             this.events.on('point-eraser:ctrl-active', (active) => {
                 this._ctrlActive = active
@@ -704,6 +792,9 @@ class SelectionController {
             this._activeStrategy.setRadius(this._brushRadius)
         }
         this.setActive(true)
+        // Start the expensive projection while the user is choosing/drawing a shape,
+        // not after they release the pointer.
+        this._activeStrategy.warmProjection()
     }
 
     _onCancel() {
@@ -727,6 +818,10 @@ class SelectionController {
         this._active = v
         if (!v) this._clearOverlay()
     }
+    invalidateProjection() {
+        this._projectionCache.dirty = true
+        this._projectionCache.version++
+    }
 
     destroy() {
         const cvs = this.canvas
@@ -738,6 +833,7 @@ class SelectionController {
         this._resizeObserver.disconnect()
         this._overlay.remove()
         this._stateTex.destroy()
+        this._selectionWorker.destroy()
         this._activeStrategy?.destroy()
         this._appEventHandles?.forEach((h) => this.events.offByHandle(h))
     }

@@ -262,7 +262,11 @@ class Messages {
         worldMatrix.transformPoint(this.data.dot.botRight, dotWorldBR)
         const dotScreenTL = this.camera.worldToScreen(dotWorldTL)
         const dotScreenBR = this.camera.worldToScreen(dotWorldBR)
-        const dotSize = Math.abs(dotScreenBR.x - dotScreenTL.x)
+        // In the editor, the Size field is a pixel value. Render from that value
+        // directly so Circle/Dot/Arrow preview changes on every input event.
+        const dotSize = this.editable
+            ? Math.max(1, Number(this.data.dot.size) || 1)
+            : Math.abs(dotScreenBR.x - dotScreenTL.x)
         this.dot.style.width = dotSize + 'px'
         this.dot.style.height = dotSize + 'px'
 
@@ -551,6 +555,23 @@ class Messages {
     addDotDragEvents() {
         let startX = 0,
             startY = 0
+        let arrowPointerOffsetX = 0,
+            arrowPointerOffsetY = 0
+
+        const placeArrowTip = (tipX, tipY) => {
+            const uiRect = this.dom.ui.getBoundingClientRect()
+            const divRect = this.div.getBoundingClientRect()
+            const angle = Math.atan2(
+                tipY - (divRect.top + divRect.height / 2),
+                tipX - (divRect.left + divRect.width / 2),
+            )
+            const radius = this.dot.offsetWidth / 2
+            this.dot.style.transform = `rotate(${angle}rad)`
+            this.dot.dataset.arrowAngle = String(angle)
+            this.dot.style.left = tipX - uiRect.left - Math.cos(angle) * radius - radius + 'px'
+            this.dot.style.top = tipY - uiRect.top - Math.sin(angle) * radius - radius + 'px'
+            return { x: tipX, y: tipY }
+        }
 
         this.dot.addEventListener('pointerdown', (e) => {
             e.stopPropagation()
@@ -558,27 +579,34 @@ class Messages {
             this.dot.setPointerCapture(e.pointerId)
             startX = e.clientX
             startY = e.clientY
+            if (this.data.dot.style === 'arrow') {
+                const r = this.dot.getBoundingClientRect()
+                const angle = Number(this.dot.dataset.arrowAngle) || 0
+                const radius = r.width / 2
+                arrowPointerOffsetX = e.clientX - (r.left + r.width / 2 + Math.cos(angle) * radius)
+                arrowPointerOffsetY = e.clientY - (r.top + r.height / 2 + Math.sin(angle) * radius)
+            }
             this.dot.style.cursor = 'grabbing'
         })
 
         this.dot.addEventListener('pointermove', (e) => {
             if (!this.dotDragging) return
-            const newLeft = parseFloat(this.dot.style.left) + (e.clientX - startX)
-            const newTop = parseFloat(this.dot.style.top) + (e.clientY - startY)
-            this.dot.style.left = newLeft + 'px'
-            this.dot.style.top = newTop + 'px'
+            let focusScreenPos
+            if (this.data.dot.style === 'arrow') {
+                // Recompute the arrow direction for every pointer position while
+                // preserving the grabbed offset from its tip.
+                focusScreenPos = placeArrowTip(e.clientX - arrowPointerOffsetX, e.clientY - arrowPointerOffsetY)
+            } else {
+                const newLeft = parseFloat(this.dot.style.left) + (e.clientX - startX)
+                const newTop = parseFloat(this.dot.style.top) + (e.clientY - startY)
+                this.dot.style.left = newLeft + 'px'
+                this.dot.style.top = newTop + 'px'
+                const r = this.dot.getBoundingClientRect()
+                focusScreenPos = { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+            }
             startX = e.clientX
             startY = e.clientY
-            const r = this.dot.getBoundingClientRect()
-            let x = r.left + r.width / 2
-            let y = r.top + r.height / 2
-            if (this.data.dot.style === 'arrow') {
-                const angle = Number(this.dot.dataset.arrowAngle) || 0
-                const radius = this.dot.offsetWidth / 2
-                x += Math.cos(angle) * radius
-                y += Math.sin(angle) * radius
-            }
-            this.updateLine({ x, y }, true)
+            this.updateLine(focusScreenPos, true)
         })
 
         this.dot.addEventListener('pointerup', (e) => {
