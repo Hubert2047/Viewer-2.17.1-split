@@ -1111,7 +1111,7 @@ class OtherController {
         return Math.min(realDistance, cappedDistance)
     }
     onEnter(camera) {
-        if (this.global.config.editable) this.recalcBboxAndPivot()
+        this.recalcBboxAndPivot()
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         const dd = this.getDeafultDistance(this.bbox.halfExtents)

@@ -40,6 +40,10 @@ function makeDimensionSection(el, global) {
                 currentDimensions.useMeasurementData = true
                 setUseMeasurementChecked(true)
             }
+            autoCalc = false
+            setAutoCalChecked(false)
+            lastChangedAxis = null
+            lastInputAxisValue = null
             isNewDimension = true
             setDimConfigured(true)
             setValues(currentDimensions)
@@ -300,6 +304,7 @@ function makeDimensionSection(el, global) {
                     settings.dimensions = { ...currentDimensions }
                     isEditing = false
                     isNewDimension = false
+                    global.dimensionsBox.setEditing(false)
                     setDisabled(false)
                     renderBtns()
                     renderRealGroup()
@@ -329,7 +334,10 @@ function makeDimensionSection(el, global) {
                     editDimension = null
                     currentDimensions = null
                     setDimConfigured(false)
+                    autoCalc = false
                     setAutoCalChecked(false)
+                    lastChangedAxis = null
+                    lastInputAxisValue = null
                     setValues({
                         realSize: { x: 0, y: 0, z: 0 },
                         boxColor: '#f95f4d',
@@ -383,6 +391,7 @@ function makeDimensionSection(el, global) {
         lastInputAxisValue = null
         setDisabled(true)
         renderBtns()
+        global.dimensionsBox.setEditing(true)
         global.dimensionsBox.draw(currentDimensions)
         if (!dimensionRotatable) {
             dimensionRotatable = new BoxRotatable({
@@ -397,9 +406,10 @@ function makeDimensionSection(el, global) {
         global.rotationGizmo.enable(dimensionRotatable)
         events.fire('re-render:control-wrap')
     }
-    function onCancel() {
+    function onCancel({ keepVisible = false } = {}) {
         if (!isEditing) return
         isEditing = false
+        global.dimensionsBox.setEditing(false)
         setDisabled(false)
 
         if (isNewDimension) {
@@ -423,7 +433,8 @@ function makeDimensionSection(el, global) {
         currentDimensions = { ...editDimension }
         renderBtns()
         renderRealGroup()
-        hideDimensions()
+        if (keepVisible && currentDimensions) global.dimensionsBox.draw(currentDimensions)
+        else hideDimensions()
         global.rotationGizmo.disable()
     }
     function setDimConfigured(has) {
@@ -458,9 +469,9 @@ function makeDimensionSection(el, global) {
         }
     }
     const handles = [
-        events.on('sidebar:active', () => onCancel()),
+        events.on('sidebar:active', () => onCancel({ keepVisible: true })),
         events.on('sidebar:clicked', ({ id }) => {
-            onCancel()
+            onCancel({ keepVisible: true })
             if (id !== 'dimensions') return
             canUseMeasurementData = hasCalibrationData(settings.measurement?.calibration)
             setUseMeasurementChecked(currentDimensions?.useMeasurementData)

@@ -1,5 +1,6 @@
-<!doctype html>
-<html lang="en">
+
+    <!doctype html>
+    <html lang="en">
     <head>
         <title>3D Model Viewer</title>
         <meta charset="UTF-8" />
@@ -10,7 +11,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=60" />
+        <link rel="stylesheet" href="./data/viewer.css?v=62" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -40,32 +41,22 @@
         </div>
         <div id="tooltip"></div>
         <div id="spinnerWrap">
-            <svg class="progress-ring" viewBox="0 0 200 200">
-                <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
-                <circle
-                    id="progressRingFg"
-                    class="progress-ring-fg"
-                    cx="100"
-                    cy="100"
-                    r="86"
-                    fill="none"
-                    stroke-dasharray="540.35"
-                    stroke-dashoffset="540.35" />
+        <svg class="progress-ring" viewBox="0 0 200 200">
+            <circle class="progress-ring-bg" cx="100" cy="100" r="86" fill="none" />
+            <circle
+                id="progressRingFg"
+                class="progress-ring-fg"
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke-dasharray="540.35"
+                stroke-dashoffset="540.35" />
             </svg>
             <span id="spinnerPercent" class="spinner-percent">0%</span>
         </div>
     </body>
-    <script>
-        window.sse = {
-            settings: {
-                ref: '',
-                model: 'cylindrical',
-                contentUrl: 'models/360_noise.ply',
-                v: 60,
-                cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
-                chunkCount: 0,
-            },
-        }
-    </script>
-    <script src="./data/viewer.js?v=60"></script>
-</html>
+    <script>window.sse = { "settings": {"ref":"","model":"cylindrical","contentUrl":"models/360_noise.ply","v":62,"spin":{"enabled":true,"continuous":true,"autoRotate":true,"direction":"cw","axis":"y","speed":5,"rotation":null},"messages":[{"id":"f43acd65-1343-439d-b5ef-9c07e363e025","autoPlay":{"time":3},"button":{"title":"message1"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message1","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":-5.058515468919501,"y":-27.172701800233636,"z":-4.959893686583507},"botRight":{"x":-0.3218784701815869,"y":-24.718795058963984,"z":-10.562603471515516},"fontSize":16},"focus":{"position":{"x":-4.960609928450964,"y":-22.36270404377558,"z":-3.6257314603821555}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":-5.518191525228467,"y":-23.087740910702518,"z":-3.1296835950019606},"botRight":{"x":-4.4096536258706,"y":-21.635973065809203,"z":-4.127377828878254}},"entityInfo":{"rotation":{"x":-0.41278668354965,"y":-2.527589453698651e-17,"z":0.9108277300807662,"w":5.577211321090299e-17},"position":{"x":0.4782047833017704,"y":3.552713678800501e-15,"z":-0.21079983856321816},"isFullyInView":true,"distanceScale":-2.834320547386806,"focus":{"x":0.47167086601257563,"y":19.500326991081238,"z":0.42218756675720215},"pitch":0,"yaw":-0.851022910966357}},{"id":"10585952-4de1-4ec5-a518-7a79c1b71f60","autoPlay":{"time":3},"button":{"title":"message2"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message2","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":4.400164662540781,"y":-23.256730386871283,"z":-3.396227342988171},"botRight":{"x":10.002938824181724,"y":-20.7882511563249,"z":1.3625081554912581},"fontSize":16},"focus":{"position":{"x":3.161278658509815,"y":-18.403041782839587,"z":-3.4380147010802915}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":2.6566072334166444,"y":-19.133409543654935,"z":-3.984692126466318},"botRight":{"x":3.6714818630060044,"y":-17.671550148851388,"z":-2.8981576022241744}},"entityInfo":{"rotation":{"x":-0.9382412716129951,"y":-5.745070850543984e-17,"z":0.3459816703844728,"w":2.118526725999996e-17},"position":{"x":1.1045168263744247,"y":0,"z":0.43707843050344786},"isFullyInView":true,"distanceScale":-2.834320547386806,"focus":{"x":0.47167086601257563,"y":19.500326991081238,"z":0.42218756675720215},"pitch":0,"yaw":-2.4350229109663584}},{"id":"b8cbb3f8-bdcc-438f-8352-5200e8938401","autoPlay":{"time":3},"button":{"title":"message3"},"text":{"color":"black","bold":false,"italic":false,"align":"center","content":"message3","background":"#ffffff","backgroundAlpha":0.8,"originWidth":150,"originHeight":50,"topLeft":{"x":5.755885248720058,"y":-23.422620016391363,"z":0.7529674272246525},"botRight":{"x":5.3028670007099965,"y":-20.96898236748347,"z":8.088546398087832},"fontSize":16},"focus":{"position":{"x":5.039535144862867,"y":-18.575340464744418,"z":-0.25602651306998503}},"dot":{"style":"circle","strokeColor":"#D8D8D8","stroke":1,"size":30,"topLeft":{"x":5.175543954836913,"y":-19.303513891573235,"z":-0.9875609686941758},"botRight":{"x":4.912269346040006,"y":-17.845929025832714,"z":0.47594976700099245}},"entityInfo":{"rotation":{"x":0.994417357845486,"y":6.089050171510213e-17,"z":0.10551833213050082,"w":6.461134384749258e-18},"position":{"x":0.8442387946729402,"y":-3.552713678800501e-15,"z":0.933957911641649},"isFullyInView":true,"distanceScale":-2.834320547386806,"focus":{"x":0.47167086601257563,"y":19.500326991081238,"z":0.42218756675720215},"pitch":0,"yaw":2.930162396213234}}],"dimensions":{"boxColor":"#f95f4d","background":{"color":"#ffffff","alpha":0.8},"foregroundColor":"#f95f4d","realSize":{"x":12,"y":38.548497270547436,"z":12.050031587729821},"unit":"cm","type":"dimensions","position":{"x":-0.5036610994272142,"y":-19.500326991081238,"z":0.44829277566478143},"size":{"x":12.628386527863626,"y":40.56711030006409,"z":12.681038046901534},"rotation":{"x":0,"y":11.650000000000002,"z":0}},"measurement":{"lineColor":"#f95f4d","textColor":"#ffffff","textBackground":{"color":"#000000","alpha":0.8},"calibration":{"useDimensionData":true,"unit":"cm","distance":0,"points":[]}},"setupStep":4,"cameras":[{"x":-125.524347670157,"y":22.4157976410939,"alt":2.09231110640372}],"chunkCount":0} }</script>
+    <script src="./data/viewer.js?v=62"></script>
+    </html> 
+    

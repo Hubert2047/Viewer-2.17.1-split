@@ -4,6 +4,7 @@ class MessageEditorUI {
     constructor(body, { global, dom }) {
         this.body = body
         this.dom = dom
+        this.global = global
         this.confirmDialog = global.confirmDialog
         this.camera = global.camera.camera
         this.events = global.events
@@ -87,6 +88,11 @@ class MessageEditorUI {
         }
         document.body.style.cursor = 'crosshair'
         this.isCreatingMessage = true
+        if (this.global.measureTool?.active) this.events.fire('inputEvent:m')
+        if (this.global.dimensionsBox?.show) {
+            this.events.fire('inputEvent:hide-dimensions')
+            this.events.fire('re-render:control-wrap')
+        }
         this.events.fire('message:editing', true)
         this.events.fire('message:selected', null)
 

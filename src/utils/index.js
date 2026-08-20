@@ -389,7 +389,7 @@ function makeControlBotGroup(global, tooltip, dom) {
         measurement,
         spin: { enabled: hasSpin },
     } = settings
-    const hasDimension = !!dimensions
+    const hasDimension = !!dimensions || !!dimensionsBox?.show
     const isShowDimensions = dimensionsBox?.show && dimensionsBox?.type !== 'axis'
     const hasMeasurement =
         measurement &&
@@ -688,6 +688,7 @@ function transparentColor(color, alpha = 0.5) {
 }
 function dimensionsSetup(app, camera, config) {
     let currentDim = null
+    let isEditing = false
     const AXIS_COLORS = { x: '#e85555', y: '#55cc55', z: '#5588ff' }
     const layers = app.scene.layers
     const worldLayer = layers.getLayerByName('World')
@@ -883,7 +884,7 @@ function dimensionsSetup(app, camera, config) {
                 const value = realSize[axis]
                 const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
                 const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
-                if (!config.editable) return mainText
+                if (!isEditing) return mainText
                 return `${getDimensionLabel(axis)}: ${mainText}`
         }
     }
@@ -1092,6 +1093,10 @@ function dimensionsSetup(app, camera, config) {
             return modelEntity?.gsplat?.customAabb?.halfExtents ?? new Vec3(1, 1, 1)
         },
         draw: drawDimensionBox,
+        setEditing(editing) {
+            isEditing = editing
+            if (visible && currentCorners) updateLabels(currentCorners, currentDim)
+        },
         updateColorOnly,
         hide: hideDimensionBox,
     }
