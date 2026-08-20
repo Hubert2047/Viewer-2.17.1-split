@@ -1090,6 +1090,8 @@ class OtherController {
         return Math.min(realDistance, cappedDistance)
     }
     onEnter(camera) {
+        if (this.global.config.editable) this.recalcBboxAndPivot()
+
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         const dd = this.getDeafultDistance(this.bbox.halfExtents)
@@ -1135,11 +1137,7 @@ class OtherController {
             focus: focusPoint,
         }
         this.originCameraPosition = this.cameraEntity.position.clone()
-        this.reset({
-            onResetFinished: () => {
-                if (this.global.config.editable) this.recalcBboxAndPivot()
-            },
-        })
+        this.reset()
     }
     onExit() {}
     applyInertia() {
@@ -1496,6 +1494,7 @@ class OtherController {
     }
     getEntityInfo() {
         const isCylindrical = this.originModel === 'cylindrical' && this.cylindricalCamPos
+
         return {
             rotation: modelEntity.localRotation.clone(),
             position: modelEntity.localPosition.clone(),

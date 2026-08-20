@@ -482,12 +482,7 @@ function makePointEraser(global) {
             return
         }
 
-        const PADDING_RATIO = 0.02
-        const paddedHalfExtents = new Vec3(
-            bbox.halfExtents.x * (1 + PADDING_RATIO),
-            bbox.halfExtents.y * (1 + PADDING_RATIO),
-            bbox.halfExtents.z * (1 + PADDING_RATIO),
-        )
+        const paddedHalfExtents = new Vec3(bbox.halfExtents.x, bbox.halfExtents.y, bbox.halfExtents.z)
 
         currentAabb = {
             center: bbox.center,

@@ -370,7 +370,7 @@ function makeInitViewGroup(events, settings, global) {
     statusBadge.appendChild(statusText)
 
     const eyeBtn = makeButton({
-        title: 'Preview',
+        title: 'Go to initial view',
         icon: ICONS.eye,
         onClick: () => {
             events.fire('inputEvent:r')

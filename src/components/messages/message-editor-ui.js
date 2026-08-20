@@ -362,20 +362,23 @@ class MessageEditorUI {
         panel.appendChild(textGroup)
 
         const messageGroup = makeSectionGroup('Hotspot')
-        const styleField = this.makeField('Style')
-        const styleRow = makeSegmentRow({
+        const styleField = this.makeField('Style', '', true)
+        const styleSelect = makeSelect({
             options: [
                 { label: 'Circle', value: 'circle' },
                 { label: 'Dot', value: 'dot' },
             ],
-            defaultValue: this.activeMessageData.dot.style,
+            value: this.activeMessageData.dot.style,
+            name: 'hotspot-style',
             onChange: (val) => {
                 this.activeMessageData.dot.style = val
-                strokeField.style.display = val === 'dot' ? 'none' : 'block'
+                strokeField.style.display = val === 'dot' ? 'none' : 'flex'
                 this.applyDraft()
             },
         })
-        styleField.appendChild(styleRow)
+        styleSelect.el.style.flex = '1 1 auto'
+        styleSelect.el.style.minWidth = '0'
+        styleField.appendChild(styleSelect.el)
         messageGroup.appendChild(styleField)
 
         const sizeField = this.makeField('Size', '', true)
@@ -464,7 +467,7 @@ class MessageEditorUI {
         const hasAudio = !!(this.activeMessageData.audio?.fileName || this.activeMessageData.audio?.src)
 
         const audioFileFieldGroup = this.makeGrid(2)
-        const audioFileField = this.makeField('Audio file')
+        const audioFileField = this.makeField('File')
         const fileInput = document.createElement('input')
         fileInput.type = 'file'
         fileInput.accept = 'audio/*'

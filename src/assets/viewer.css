@@ -447,7 +447,7 @@ button {
     background-color: rgba(249, 87, 68, 0.18);
 }
 .message-label {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     min-width: max-content;
     color: rgb(140, 159, 180);
 }
