@@ -326,13 +326,34 @@ class OtherController {
             const cy = dotTL.y + dotH / 2
             const { style, stroke, strokeColor } = message.data.dot
             ctx.save()
-            ctx.beginPath()
-            ctx.ellipse(cx, cy, Math.max(dotW, 0) / 2, Math.max(dotH, 0) / 2, 0, 0, Math.PI * 2)
+            if (style === 'arrow') {
+                const angle = Number(message.dot.dataset.arrowAngle) || 0
+                const halfSize = parseFloat(message.dot.style.width) * scaleLenX * 0.5
+                const ux = Math.cos(angle)
+                const uy = Math.sin(angle)
+                const px = -uy
+                const py = ux
+                const tipX = cx + ux * halfSize
+                const tipY = cy + uy * halfSize
+                const baseX = cx - ux * halfSize
+                const baseY = cy - uy * halfSize
+
+                ctx.beginPath()
+                ctx.moveTo(tipX, tipY)
+                ctx.lineTo(baseX + px * halfSize, baseY + py * halfSize)
+                ctx.lineTo(baseX - px * halfSize, baseY - py * halfSize)
+                ctx.closePath()
+                ctx.fillStyle = strokeColor
+                ctx.fill()
+            } else {
+                ctx.beginPath()
+                ctx.ellipse(cx, cy, Math.max(dotW, 0) / 2, Math.max(dotH, 0) / 2, 0, 0, Math.PI * 2)
+            }
             if (style === 'circle') {
                 ctx.strokeStyle = strokeColor
                 ctx.lineWidth = Math.max(1, stroke * scaleLenX)
                 ctx.stroke()
-            } else {
+            } else if (style !== 'arrow') {
                 ctx.fillStyle = strokeColor
                 ctx.fill()
             }
@@ -1091,30 +1112,10 @@ class OtherController {
     }
     onEnter(camera) {
         if (this.global.config.editable) this.recalcBboxAndPivot()
-
         let distance
         const isCylindrical = this.originModel === 'cylindrical'
         const dd = this.getDeafultDistance(this.bbox.halfExtents)
         distance = this.settings.setupStep === 1 && dd > 1000 ? this.getFramingDistance() : dd
-        const {
-            bbox: { center, halfExtents },
-        } = calBbox({
-            modelEntity,
-            removedSplats: this.settings.removedSplats,
-        })
-        if (isFinite(center.x) && isFinite(halfExtents.x) && halfExtents.x >= 0) {
-            this.currentLocalBboxCenter = center.clone()
-            const restTransform = new Mat4().setTRS(
-                this.originEntityPos ?? this.initialModelPosition,
-                this.originEntityRotation ?? this.initialModelRotation,
-                modelEntity.getLocalScale(),
-            )
-            const sceneBound = new BoundingBox()
-            sceneBound.center.copy(center)
-            sceneBound.halfExtents.copy(halfExtents)
-            sceneBound.setFromTransformedAabb(sceneBound, restTransform)
-            this.bbox = sceneBound
-        }
         const focusPoint = this.bbox.center.clone()
         let forward
 
@@ -1128,7 +1129,7 @@ class OtherController {
         } else {
             forward = focusPoint.clone().sub(camera.position).normalize()
         }
-        this.maxDistance = distance * 4
+        this.maxDistance = Math.max(this.getOutBoxDistance() * 4, 300)
         this.resetPose = {
             ...camera,
             distance,
