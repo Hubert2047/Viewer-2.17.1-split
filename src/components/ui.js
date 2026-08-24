@@ -1159,6 +1159,8 @@ function makeVec3Inputs({
     defaultValues = { x: 0, y: 0, z: 0 },
     disabled = true,
     step = '1',
+    decimalPlaces = 1,
+    trimTrailingZeros = false,
     axisLabels,
     onChange,
     onFocus,
@@ -1171,6 +1173,10 @@ function makeVec3Inputs({
         z: axisLabels?.z ?? 'Z',
     }
     const inputEls = {}
+    const formatValue = (value) => {
+        const formatted = Number(value).toFixed(decimalPlaces)
+        return trimTrailingZeros ? String(Number(formatted)) : formatted
+    }
 
     const row = document.createElement('div')
     row.classList.add('vec-inputs')
@@ -1186,7 +1192,7 @@ function makeVec3Inputs({
 
         const input = document.createElement('input')
         input.type = 'number'
-        input.value = defaultValues[axis].toFixed(1)
+        input.value = formatValue(defaultValues[axis])
         input.step = step
         input.disabled = true
 
@@ -1195,6 +1201,10 @@ function makeVec3Inputs({
         })
 
         input.addEventListener('input', () => {
+            const [integer = '', fraction] = input.value.split('.')
+            if (fraction !== undefined && fraction.length > decimalPlaces) {
+                input.value = `${integer}.${fraction.slice(0, decimalPlaces)}`
+            }
             onChange?.({
                 x: parseFloat(inputEls.x.value) || 0,
                 y: parseFloat(inputEls.y.value) || 0,
@@ -1222,9 +1232,9 @@ function makeVec3Inputs({
     setDisabled(disabled)
 
     const setValues = ({ x, y, z }) => {
-        inputEls.x.value = x.toFixed(1)
-        inputEls.y.value = y.toFixed(1)
-        inputEls.z.value = z.toFixed(1)
+        inputEls.x.value = formatValue(x)
+        inputEls.y.value = formatValue(y)
+        inputEls.z.value = formatValue(z)
     }
 
     const wrapper = document.createElement('div')
@@ -1237,9 +1247,9 @@ function makeVec3Inputs({
         wrapper.appendChild(titleEl)
     }
     const setValuesPartial = (partial) => {
-        if (partial.x !== undefined) inputEls.x.value = partial.x.toFixed(1)
-        if (partial.y !== undefined) inputEls.y.value = partial.y.toFixed(1)
-        if (partial.z !== undefined) inputEls.z.value = partial.z.toFixed(1)
+        if (partial.x !== undefined) inputEls.x.value = formatValue(partial.x)
+        if (partial.y !== undefined) inputEls.y.value = formatValue(partial.y)
+        if (partial.z !== undefined) inputEls.z.value = formatValue(partial.z)
     }
     wrapper.appendChild(row)
     return { row: wrapper, setDisabled, setValues, setValuesPartial }

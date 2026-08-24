@@ -883,7 +883,7 @@ function dimensionsSetup(app, camera, config) {
                 const { realSize, unit } = getRealSize(dim, useMeasurementData)
                 const value = realSize[axis]
                 const unitText = { mm: 'mm', cm: 'cm', m: 'm', inch: '"' }[unit] || unit
-                const mainText = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unitText}`
+                const mainText = `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unitText}`
                 if (!isEditing) return mainText
                 return `${getDimensionLabel(axis)}: ${mainText}`
         }

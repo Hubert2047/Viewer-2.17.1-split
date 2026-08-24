@@ -10,7 +10,7 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <base href />
         <link rel="icon" href="data:," />
-        <link rel="stylesheet" href="./data/viewer.css?v=62" />
+        <link rel="stylesheet" href="./data/viewer.css?v=64" />
         <script>
             const params = new URLSearchParams(window.location.search)
             const currentV = params.get('v')
@@ -61,11 +61,50 @@
                 ref: '',
                 model: 'hemispherical',
                 contentUrl: 'models/360_noise.ply',
-                v: 62,
+                v: 64,
+                spin: {
+                    enabled: true,
+                    continuous: true,
+                    autoRotate: true,
+                    direction: 'cw',
+                    axis: 'y',
+                    speed: 5,
+                    rotation: null,
+                },
+                initview: {
+                    pose: {
+                        rotation: {
+                            x: 0.6281518325696976,
+                            y: 3.8463206556751215e-17,
+                            z: -0.7780907885583345,
+                            w: -4.764431968270021e-17,
+                        },
+                        position: { x: 0.7849148989604299, y: 0, z: -0.12789780232601966 },
+                        isFullyInView: false,
+                        distanceScale: 0.9835028960258868,
+                        focus: { x: 0.47167089284155683, y: 19.500326991081238, z: 0.42218755977393296 },
+                        pitch: 0,
+                        yaw: 0.9978431536968877,
+                    },
+                    type: 'custom',
+                },
+                orientation: {
+                    pose: {
+                        rotation: {
+                            x: 0.923879532511287,
+                            y: 5.657130561438503e-17,
+                            z: -0.38268343236508956,
+                            w: -2.3432602026631474e-17,
+                        },
+                        position: { x: 1.1037242252448654, y: 0, z: 0.3871975902982443 },
+                    },
+                },
+                setupStep: 4,
+                removedSplats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 3474, 455804, 455805, 455806, 455807, 455808, 455809],
                 cameras: [{ x: -125.524347670157, y: 22.4157976410939, alt: 2.09231110640372 }],
                 chunkCount: 0,
             },
         }
     </script>
-    <script src="./data/viewer.js?v=62"></script>
+    <script src="./data/viewer.js?v=64"></script>
 </html>

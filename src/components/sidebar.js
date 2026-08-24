@@ -411,7 +411,7 @@ function makeSidebar(global, dom) {
             viewerSection.cleanup?.()
             messageSection.cleanup?.()
             dimensionsSection.cleanup?.()
-            measurementSection.cleanup?.()
+            // measurementSection.cleanup?.()
             // posterSection.cleanup?.()
             recordSection.cleanup?.()
             exportSection.cleanup?.()
@@ -440,14 +440,14 @@ function makeSidebar(global, dom) {
             global,
             icon: ICONS.sectionDimensions,
         })
-        const measurementSection = makeSection({
-            id: 'measurement',
-            title: 'Measurement',
-            classname: 'measurement-section',
-            body: (el) => makeMeasurementSection(el, global),
-            global,
-            icon: ICONS.sectionMeasurement,
-        })
+        // const measurementSection = makeSection({
+        //     id: 'measurement',
+        //     title: 'Measurement',
+        //     classname: 'measurement-section',
+        //     body: (el) => makeMeasurementSection(el, global),
+        //     global,
+        //     icon: ICONS.sectionMeasurement,
+        // })
         // const posterSection = makeSection({
         //     id: 'poster',
         //     title: 'Poster',
@@ -474,7 +474,7 @@ function makeSidebar(global, dom) {
         contentArea.appendChild(viewerSection)
         contentArea.appendChild(messageSection)
         contentArea.appendChild(dimensionsSection)
-        contentArea.appendChild(measurementSection)
+        // contentArea.appendChild(measurementSection)
         // contentArea.appendChild(posterSection)
         contentArea.appendChild(recordSection)
         contentArea.appendChild(exportSection)

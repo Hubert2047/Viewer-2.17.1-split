@@ -202,7 +202,9 @@ function makeDimensionSection(el, global) {
     } = makeVec3Inputs({
         title: 'Size',
         axisLabels: { x: 'A', y: 'B', z: 'C' },
-        step: 0.1,
+        step: 0.01,
+        decimalPlaces: 2,
+        trimTrailingZeros: true,
         onChange: ({ x, y, z, changedAxis }) => {
             lastChangedAxis = changedAxis
             lastInputAxisValue = { x, y, z }[changedAxis]
@@ -268,6 +270,11 @@ function makeDimensionSection(el, global) {
         setTextColorValue(dim.foregroundColor)
         setBackgroundColorValue(dim.background.color, dim.background.alpha)
     }
+    function roundRealSize(realSize) {
+        return Object.fromEntries(
+            ['x', 'y', 'z'].map((axis) => [axis, Number((realSize?.[axis] || 0).toFixed(2))]),
+        )
+    }
 
     function setDisabled(on) {
         setRealDisabled(!on)
@@ -300,8 +307,14 @@ function makeDimensionSection(el, global) {
                         })
                         if (goBack) return
                     }
-                    editDimension = { ...currentDimensions }
-                    settings.dimensions = { ...currentDimensions }
+                    const savedDimensions = {
+                        ...currentDimensions,
+                        realSize: roundRealSize(currentDimensions.realSize),
+                    }
+                    currentDimensions = savedDimensions
+                    editDimension = savedDimensions
+                    settings.dimensions = savedDimensions
+                    setRealValues(savedDimensions.realSize)
                     isEditing = false
                     isNewDimension = false
                     global.dimensionsBox.setEditing(false)

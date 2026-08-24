@@ -28,6 +28,11 @@ class MessageEditorUI {
                 this._addPointerDown = null
                 this.updateAddIcon(false)
             }),
+            this.events.on('sidebar:clicked', ({ id }) => {
+                if (id === 'message') return
+                if (this.isCreatingMessage) this.events.fire('message:add-cancelled')
+                if (this.activeMessageData) this.events.fire('message:editor-cancelled')
+            }),
             this.events.on('message:update-ui-data', (data) => {
                 if (!this.activeMessageData) return
                 if (this.activeMessageData.dot.size !== data.dot.size) {
